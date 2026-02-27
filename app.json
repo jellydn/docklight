@@ -1,5 +1,16 @@
 {
-  "name": "docklight",
-  "description": "A minimal, self-hosted web UI for managing a Dokku server",
-  "healthcheck": "curl -f http://localhost:$PORT/api/health || exit 1"
+	"name": "docklight",
+	"description": "A minimal, self-hosted web UI for managing a Dokku server",
+	"healthchecks": {
+		"web": [
+			{
+				"type": "startup",
+				"name": "web check",
+				"path": "/api/health",
+				"attempts": 3,
+				"wait": 5,
+				"timeout": 10
+			}
+		]
+	}
 }
