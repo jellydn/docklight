@@ -21,7 +21,7 @@ function shellQuote(value: string): string {
 }
 
 export function buildRuntimeCommand(command: string, options?: ExecuteCommandOptions): string {
-	const baseCommand = options?.asRoot ? `sudo ${command}` : command;
+	const baseCommand = options?.asRoot ? `sudo -n ${command}` : command;
 	const target = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
 	if (!target || !command.startsWith("dokku ")) {
 		return baseCommand;
@@ -64,11 +64,18 @@ export async function executeCommand(
 		return result;
 	} catch (error: unknown) {
 		const err = error as { code?: number; stdout?: string; stderr?: string; message?: string };
+		let stderr = err.stderr || err.message || "";
+		if (
+			options?.asRoot &&
+			/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty/i.test(stderr)
+		) {
+			stderr = `${stderr}\nHint: configure passwordless sudo for Dokku commands or set DOCKLIGHT_DOKKU_SSH_TARGET to a root SSH user.`;
+		}
 		const result = {
 			command,
 			exitCode: err.code || 1,
 			stdout: err.stdout || "",
-			stderr: err.stderr || err.message || "",
+			stderr,
 		};
 		saveCommand(result);
 		return result;
