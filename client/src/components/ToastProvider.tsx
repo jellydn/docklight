@@ -1,6 +1,5 @@
-import { createContext, type ReactNode, useCallback, useContext, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext } from "react";
 import { toast } from "sonner";
-import { CommandResultComponent } from "./CommandResult.js";
 import type { CommandResult } from "./types.js";
 
 interface ToastContextType {
@@ -58,36 +57,56 @@ function ToastWithResult({
 	message: string;
 	result: CommandResult;
 }) {
-	const [expanded, setExpanded] = useState(false);
-	const bgColor =
-		type === "success" ? "bg-green-100 border-green-400" : "bg-red-100 border-red-400";
-	const textColor = type === "success" ? "text-green-800" : "text-red-800";
+	const statusDotColor = type === "success" ? "bg-emerald-500" : "bg-rose-500";
+	const statusTextColor = type === "success" ? "text-emerald-700" : "text-rose-700";
+	const stdoutPreview = result.stdout.trim().slice(0, 220);
+	const stderrPreview = result.stderr.trim().slice(0, 220);
 
 	return (
-		<div className={`${bgColor} border rounded-lg shadow-lg overflow-hidden`}>
-			<div className="p-4">
-				<div className="flex items-center justify-between">
-					<span className={`${textColor} font-medium`}>{message}</span>
+		<div className="group w-[360px] overflow-hidden rounded-lg border border-gray-200 bg-white text-gray-900 shadow-lg">
+			<div className="p-3">
+				<div className="flex items-start justify-between gap-3">
+					<div className="min-w-0">
+						<div className="flex items-center gap-2">
+							<span className={`h-2 w-2 rounded-full ${statusDotColor}`} />
+							<p className="truncate text-sm font-semibold">{message}</p>
+						</div>
+						<p className={`mt-1 text-xs ${statusTextColor}`}>
+							Exit code: {result.exitCode} • Hover for details
+						</p>
+					</div>
 					<button
 						onClick={() => toast.dismiss(id)}
-						className="ml-4 text-gray-500 hover:text-gray-700"
+						className="text-sm text-gray-400 hover:text-gray-700"
 						aria-label="Close"
 					>
 						×
 					</button>
 				</div>
-				<button
-					onClick={() => setExpanded(!expanded)}
-					className="mt-2 text-sm text-blue-600 hover:underline"
-				>
-					{expanded ? "Hide details" : "Show details"}
-				</button>
 			</div>
-			{expanded && (
-				<div className="border-t border-gray-200 p-4">
-					<CommandResultComponent result={result} />
+			<div className="max-h-0 overflow-y-auto border-t border-transparent px-3 opacity-0 transition-all duration-200 group-hover:max-h-64 group-hover:border-gray-200 group-hover:py-3 group-hover:opacity-100">
+				<div className="text-xs text-gray-700">
+					<div>
+						<span className="font-semibold">Command:</span> {result.command}
+					</div>
+					{stdoutPreview && (
+						<div className="mt-2">
+							<div className="font-semibold">Output</div>
+							<pre className="mt-1 overflow-x-auto rounded bg-gray-100 p-2 text-[11px] leading-4">
+								{stdoutPreview}
+							</pre>
+						</div>
+					)}
+					{stderrPreview && (
+						<div className="mt-2">
+							<div className="font-semibold text-rose-700">Error</div>
+							<pre className="mt-1 overflow-x-auto rounded bg-rose-50 p-2 text-[11px] leading-4 text-rose-800">
+								{stderrPreview}
+							</pre>
+						</div>
+					)}
 				</div>
-			)}
+			</div>
 		</div>
 	);
 }

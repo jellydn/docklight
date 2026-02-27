@@ -24,7 +24,16 @@ function App() {
 						<Route path="plugins" element={<Plugins />} />
 					</Route>
 				</Routes>
-				<Toaster position="bottom-right" richColors closeButton />
+				<Toaster
+					position="bottom-right"
+					closeButton
+					toastOptions={{
+						classNames: {
+							toast: "!border-gray-200 !bg-white !text-gray-900",
+							description: "!text-gray-600",
+						},
+					}}
+				/>
 			</BrowserRouter>
 		</ToastProvider>
 	);
