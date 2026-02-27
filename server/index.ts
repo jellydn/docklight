@@ -1,5 +1,6 @@
 import express from "express";
 import { isCommandAllowed } from "./lib/allowlist.js";
+import { getRecentCommands } from "./lib/db.js";
 import { executeCommand } from "./lib/executor.js";
 
 const app = express();
@@ -9,6 +10,12 @@ app.use(express.json());
 
 app.get("/api/health", (req, res) => {
 	res.json({ status: "ok" });
+});
+
+app.get("/api/commands", (req, res) => {
+	const limit = parseInt(req.query.limit as string) || 20;
+	const commands = getRecentCommands(limit);
+	res.json(commands);
 });
 
 app.listen(PORT, () => {
