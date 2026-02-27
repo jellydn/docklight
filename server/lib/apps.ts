@@ -97,7 +97,10 @@ async function fetchAppDetails(stdout: string): Promise<App[]> {
 }
 
 function parseStatus(stdout: string): "running" | "stopped" {
-	const lines = stdout.split("\n");
+	const lines = stdout.split("\n").map((line) => stripAnsi(line));
+	let sawProcessStatus = false;
+	let sawRunningProcess = false;
+
 	for (const line of lines) {
 		const stateMatch = line.match(/deployed state:\s*(running|stopped)/i);
 		if (stateMatch) {
@@ -105,6 +108,15 @@ function parseStatus(stdout: string): "running" | "stopped" {
 			if (status === "running" || status === "stopped") {
 				return status;
 			}
+		}
+
+		const processStatusMatch = line.match(/status\s+[a-z0-9-]+\s+\d+:\s*(running|stopped)/i);
+		if (processStatusMatch) {
+			sawProcessStatus = true;
+			if (processStatusMatch[1].toLowerCase() === "running") {
+				sawRunningProcess = true;
+			}
+			continue;
 		}
 
 		const keyValueMatch = line.match(/^[^:]+:\s*(.+)$/);
@@ -125,11 +137,16 @@ function parseStatus(stdout: string): "running" | "stopped" {
 			return value === "true" ? "running" : "stopped";
 		}
 	}
+
+	if (sawProcessStatus) {
+		return sawRunningProcess ? "running" : "stopped";
+	}
+
 	return "stopped";
 }
 
 function parseDeployTime(stdout: string): string | undefined {
-	const lines = stdout.split("\n");
+	const lines = stdout.split("\n").map((line) => stripAnsi(line));
 	for (const line of lines) {
 		if (line.includes("deployed at")) {
 			const match = line.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
@@ -142,16 +159,26 @@ function parseDeployTime(stdout: string): string | undefined {
 }
 
 function parseDomains(stdout: string): string[] {
-	const lines = stdout.split("\n");
+	const lines = stdout.split("\n").map((line) => stripAnsi(line));
+	const domains = new Set<string>();
+
 	for (const line of lines) {
-		if (line.includes("domains vhosts")) {
-			const match = line.match(/:\s*(.+)/);
-			if (match) {
-				return match[1].split(" ").filter((d) => d.length > 0);
-			}
+		const vhostsMatch = line.match(/domains(?:\s+app)?\s+vhosts:\s*(.+)$/i);
+		if (!vhostsMatch) {
+			continue;
+		}
+
+		const values = vhostsMatch[1]
+			.split(/\s+/)
+			.map((domain) => domain.trim())
+			.filter((domain) => domain.length > 0 && domain !== "-" && domain.toLowerCase() !== "(none)");
+
+		for (const value of values) {
+			domains.add(value);
 		}
 	}
-	return [];
+
+	return [...domains];
 }
 
 export function isValidAppName(name: string): boolean {
@@ -202,7 +229,7 @@ export async function getAppDetail(
 }
 
 function parseGitRemote(stdout: string): string {
-	const lines = stdout.split("\n");
+	const lines = stdout.split("\n").map((line) => stripAnsi(line));
 	for (const line of lines) {
 		if (line.includes("app deployed:")) {
 			return line;
@@ -213,7 +240,7 @@ function parseGitRemote(stdout: string): string {
 
 function parseProcesses(stdout: string): Record<string, number> {
 	const processes: Record<string, number> = {};
-	const lines = stdout.split("\n");
+	const lines = stdout.split("\n").map((line) => stripAnsi(line));
 
 	for (const line of lines) {
 		const processMatch = line.match(/process type scale: (.+)/);
@@ -226,6 +253,12 @@ function parseProcesses(stdout: string): Record<string, number> {
 					processes[procType] = Number.parseInt(countStr || "0", 10) || 0;
 				}
 			}
+		}
+
+		const processStatusMatch = line.match(/status\s+([a-z0-9-]+)\s+\d+:\s*(running|stopped)/i);
+		if (processStatusMatch) {
+			const processType = processStatusMatch[1].toLowerCase();
+			processes[processType] = (processes[processType] || 0) + 1;
 		}
 	}
 

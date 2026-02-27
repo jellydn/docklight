@@ -165,6 +165,33 @@ describe("getApps", () => {
 		expect(app.status).toBe("running");
 	});
 
+	it("should parse ANSI-colored boolean status from ps report", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku --quiet apps:list",
+				exitCode: 0,
+				stdout: "my-app",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku ps:report my-app",
+				exitCode: 0,
+				stdout: "Myapp Running: \u001b[32mtrue\u001b[0m",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku domains:report my-app",
+				exitCode: 0,
+				stdout: "Myapp domains vhosts:",
+				stderr: "",
+			});
+
+		const result = await getApps();
+
+		const [app] = result as App[];
+		expect(app.status).toBe("running");
+	});
+
 	it("should return error when apps list command fails", async () => {
 		const stderr = "Permission denied";
 		mockExecuteCommand.mockResolvedValue({
@@ -358,6 +385,53 @@ describe("getAppDetail", () => {
 
 		const app = result as AppDetail;
 		expect(app.domains).toEqual([]);
+	});
+
+	it("should parse domains from domains app vhosts format", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku ps:report my-app",
+				exitCode: 0,
+				stdout: "Myapp Running: true",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku domains:report my-app",
+				exitCode: 0,
+				stdout: "Domains app vhosts: my-app.example.com",
+				stderr: "",
+			});
+
+		const result = await getAppDetail("my-app");
+
+		const app = result as AppDetail;
+		expect(app.domains).toEqual(["my-app.example.com"]);
+	});
+
+	it("should parse process status lines for running app details", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku ps:report my-app",
+				exitCode: 0,
+				stdout: [
+					"Myapp Running: true",
+					"Myapp Status web 1: running (CID: abc123)",
+					"Myapp Status worker 1: running (CID: def456)",
+				].join("\n"),
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku domains:report my-app",
+				exitCode: 0,
+				stdout: "Myapp domains vhosts:",
+				stderr: "",
+			});
+
+		const result = await getAppDetail("my-app");
+
+		const app = result as AppDetail;
+		expect(app.status).toBe("running");
+		expect(app.processes).toEqual({ web: 1, worker: 1 });
 	});
 });
 
