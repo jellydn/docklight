@@ -432,3 +432,27 @@ Started: Fri Feb 27 21:01:07 +08 2026
 - useEffect with activeTab dependency pattern used for fetching data on tab change
 - App name validation reused from apps.ts via isValidAppName function
 
+## [Fri Feb 27 2026] - US-022
+[Session: https://opncd.ai/s/]
+- Implemented Command output toast and action result display system
+- Created reusable CommandResult component at client/src/components/CommandResult.tsx showing command, exit code badge, stdout in monospace, stderr in red
+- Created ToastProvider context at client/src/components/ToastProvider.tsx for managing toast notifications
+- Created ToastContainer component at client/src/components/ToastContainer.tsx with success (green) and error (red) toasts, expandable details showing CommandResult
+- Created types.ts at client/src/components/ exporting CommandResult and Toast interfaces
+- Updated App.tsx to wrap app with ToastProvider and add ToastContainer
+- Removed inline command result displays from AppDetail.tsx and Databases.tsx
+- Updated all action handlers to use addToast instead of inline displays:
+  - AppDetail: restart, rebuild, scale, config set/unset, domain add/remove, ssl enable/renew
+  - Databases: create, link, unlink, destroy
+- Removed duplicate CommandResult interfaces, now imported from types.ts
+- Removed actionResult state from components, now managed by toast system
+- Fixed lint issues: removed unnecessary fragment in AppDetail.tsx, prefixed unused variable with underscore in Login.tsx
+- Typecheck and lint pass
+- Browser verification skipped due to ChromeDevTools MCP not configured
+- Files changed: client/src/App.tsx, client/src/components/*.tsx, client/src/components/types.ts, client/src/pages/AppDetail.tsx, client/src/pages/Databases.tsx, client/src/pages/Login.tsx, scripts/ralph/prd.json
+- **Learnings for future iterations:**
+  - React Context API provides clean pattern for global toast notifications without prop drilling
+  - Toast system reduces code duplication by centralizing command result display logic
+  - TypeScript type exports should use `.js` extension when importing from type-only files
+  - Fragment removal required when wrapping single element in ternary expression
+  - All action buttons now provide consistent user feedback through toast notifications
