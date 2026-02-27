@@ -1,4 +1,4 @@
-import { executeCommand, CommandResult } from "./executor.js";
+import { executeCommand, type CommandResult } from "./executor.js";
 
 export interface Database {
 	name: string;
@@ -43,63 +43,60 @@ export async function getDatabases(): Promise<
 			return [];
 		}
 
-		const databases: Database[] = [];
+		// Fetch all plugins' databases in parallel
+		const pluginResults = await Promise.all(
+			installedPlugins.map(async (plugin) => {
+				const listResult = await executeCommand(`dokku ${plugin}:list`);
+				if (listResult.exitCode !== 0) return [];
 
-		// For each installed plugin, get the list of databases
-		for (const plugin of installedPlugins) {
-			const listResult = await executeCommand(`dokku ${plugin}:list`);
+				const dbLines = listResult.stdout.split("\n").filter((line) => line.trim());
 
-			if (listResult.exitCode !== 0) {
-				continue;
-			}
+				const dbs = await Promise.all(
+					dbLines.map(async (dbName) => {
+						const linkReportResult = await executeCommand(`dokku ${plugin}:links ${dbName}`);
 
-			const dbLines = listResult.stdout.split("\n").filter((line) => line.trim());
-
-			for (const dbName of dbLines) {
-				// Get linked apps for this database
-				const linkReportResult = await executeCommand(`dokku ${plugin}:links ${dbName}`);
-
-				let linkedApps: string[] = [];
-				if (linkReportResult.exitCode === 0) {
-					const linkLines = linkReportResult.stdout.split("\n").filter((line) => line.trim());
-					for (const line of linkLines) {
-						if (line.includes("linked apps")) {
-							const match = line.match(/linked apps:\s*(.+)/);
-							if (match) {
-								linkedApps = match[1].split(",").map((app) => app.trim());
+						let linkedApps: string[] = [];
+						if (linkReportResult.exitCode === 0) {
+							const linkLines = linkReportResult.stdout
+								.split("\n")
+								.filter((line) => line.trim());
+							for (const line of linkLines) {
+								if (line.includes("linked apps")) {
+									const match = line.match(/linked apps:\s*(.+)/);
+									if (match) {
+										linkedApps = match[1].split(",").map((app) => app.trim());
+									}
+								}
 							}
 						}
-					}
-				}
 
-				// Get connection info (basic)
-				let connectionInfo = "";
-				if (plugin === "postgres") {
-					connectionInfo = `postgresql://${dbName}@localhost`;
-				} else if (plugin === "mysql" || plugin === "mariadb") {
-					connectionInfo = `mysql://${dbName}@localhost`;
-				} else if (plugin === "redis") {
-					connectionInfo = `redis://localhost:6379`;
-				} else if (plugin === "mongo") {
-					connectionInfo = `mongodb://localhost`;
-				}
+						let connectionInfo = "";
+						if (plugin === "postgres") {
+							connectionInfo = `postgresql://${dbName}@localhost`;
+						} else if (plugin === "mysql" || plugin === "mariadb") {
+							connectionInfo = `mysql://${dbName}@localhost`;
+						} else if (plugin === "redis") {
+							connectionInfo = `redis://localhost:6379`;
+						} else if (plugin === "mongo") {
+							connectionInfo = `mongodb://localhost`;
+						}
 
-				databases.push({
-					name: dbName,
-					plugin,
-					linkedApps,
-					connectionInfo,
-				});
-			}
-		}
+						return { name: dbName, plugin, linkedApps, connectionInfo };
+					})
+				);
 
-		return databases;
-	} catch (error: any) {
+				return dbs;
+			})
+		);
+
+		return pluginResults.flat();
+	} catch (error: unknown) {
+		const err = error as { message?: string };
 		return {
-			error: error.message || "Unknown error occurred",
+			error: err.message || "Unknown error occurred",
 			command: "dokku plugin:list",
 			exitCode: 1,
-			stderr: error.message || "",
+			stderr: err.message || "",
 		};
 	}
 }
@@ -109,7 +106,7 @@ export async function createDatabase(
 	name: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
 	// Validate plugin
-	if (!SUPPORTED_PLUGINS.includes(plugin as any)) {
+	if (!SUPPORTED_PLUGINS.includes(plugin as (typeof SUPPORTED_PLUGINS)[number])) {
 		return {
 			error: "Invalid database plugin",
 			command: "",
@@ -139,9 +136,10 @@ export async function createDatabase(
 
 	try {
 		return executeCommand(`dokku ${plugin}:create ${sanitizedName}`);
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as { message?: string };
 		return {
-			error: error.message || "Unknown error occurred",
+			error: err.message || "Unknown error occurred",
 			command: `dokku ${plugin}:create ${sanitizedName}`,
 			exitCode: 1,
 		};
@@ -149,9 +147,19 @@ export async function createDatabase(
 }
 
 export async function linkDatabase(
+	plugin: string,
 	name: string,
 	app: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
+	// Validate plugin
+	if (!SUPPORTED_PLUGINS.includes(plugin as (typeof SUPPORTED_PLUGINS)[number])) {
+		return {
+			error: "Invalid database plugin",
+			command: "",
+			exitCode: 400,
+		};
+	}
+
 	// Validate database name
 	if (!name || name.trim().length === 0) {
 		return {
@@ -183,20 +191,31 @@ export async function linkDatabase(
 	}
 
 	try {
-		return executeCommand(`dokku ${name}:link ${sanitizedApp}`);
-	} catch (error: any) {
+		return executeCommand(`dokku ${plugin}:link ${sanitizedName} ${sanitizedApp}`);
+	} catch (error: unknown) {
+		const err = error as { message?: string };
 		return {
-			error: error.message || "Unknown error occurred",
-			command: `dokku ${name}:link ${sanitizedApp}`,
+			error: err.message || "Unknown error occurred",
+			command: `dokku ${plugin}:link ${sanitizedName} ${sanitizedApp}`,
 			exitCode: 1,
 		};
 	}
 }
 
 export async function unlinkDatabase(
+	plugin: string,
 	name: string,
 	app: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
+	// Validate plugin
+	if (!SUPPORTED_PLUGINS.includes(plugin as (typeof SUPPORTED_PLUGINS)[number])) {
+		return {
+			error: "Invalid database plugin",
+			command: "",
+			exitCode: 400,
+		};
+	}
+
 	// Validate database name
 	if (!name || name.trim().length === 0) {
 		return {
@@ -228,20 +247,31 @@ export async function unlinkDatabase(
 	}
 
 	try {
-		return executeCommand(`dokku ${name}:unlink ${sanitizedApp}`);
-	} catch (error: any) {
+		return executeCommand(`dokku ${plugin}:unlink ${sanitizedName} ${sanitizedApp}`);
+	} catch (error: unknown) {
+		const err = error as { message?: string };
 		return {
-			error: error.message || "Unknown error occurred",
-			command: `dokku ${name}:unlink ${sanitizedApp}`,
+			error: err.message || "Unknown error occurred",
+			command: `dokku ${plugin}:unlink ${sanitizedName} ${sanitizedApp}`,
 			exitCode: 1,
 		};
 	}
 }
 
 export async function destroyDatabase(
+	plugin: string,
 	name: string,
 	confirmName: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
+	// Validate plugin
+	if (!SUPPORTED_PLUGINS.includes(plugin as (typeof SUPPORTED_PLUGINS)[number])) {
+		return {
+			error: "Invalid database plugin",
+			command: "",
+			exitCode: 400,
+		};
+	}
+
 	// Validate database name
 	if (!name || name.trim().length === 0) {
 		return {
@@ -272,11 +302,12 @@ export async function destroyDatabase(
 	}
 
 	try {
-		return executeCommand(`dokku ${name}:destroy ${sanitizedName} --force`);
-	} catch (error: any) {
+		return executeCommand(`dokku ${plugin}:destroy ${sanitizedName} --force`);
+	} catch (error: unknown) {
+		const err = error as { message?: string };
 		return {
-			error: error.message || "Unknown error occurred",
-			command: `dokku ${name}:destroy ${sanitizedName} --force`,
+			error: err.message || "Unknown error occurred",
+			command: `dokku ${plugin}:destroy ${sanitizedName} --force`,
 			exitCode: 1,
 		};
 	}

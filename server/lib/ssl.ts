@@ -1,4 +1,4 @@
-import { executeCommand, CommandResult } from "./executor.js";
+import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 
 export interface SSLStatus {
@@ -48,7 +48,7 @@ export async function getSSL(
 			for (const line of lines) {
 				if (line.includes("ssl enabled")) {
 					const match = line.match(/:\s*(.+)/);
-					if (match && match[1].includes("true")) {
+					if (match?.[1].includes("true")) {
 						return {
 							active: true,
 							certProvider: "custom",
@@ -59,12 +59,13 @@ export async function getSSL(
 		}
 
 		return { active: false };
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as { message?: string };
 		return {
-			error: error.message || "Unknown error occurred",
+			error: err.message || "Unknown error occurred",
 			command: `dokku letsencrypt:ls`,
 			exitCode: 1,
-			stderr: error.message || "",
+			stderr: err.message || "",
 		};
 	}
 }

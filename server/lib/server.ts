@@ -52,12 +52,13 @@ export async function getServerHealth(): Promise<
 			memory: Math.min(100, Math.max(0, memory)),
 			disk: Math.min(100, Math.max(0, disk)),
 		};
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as { message?: string };
 		return {
-			error: error.message || "Unknown error occurred",
+			error: err.message || "Unknown error occurred",
 			command: "server health check",
 			exitCode: 1,
-			stderr: error.message || "",
+			stderr: err.message || "",
 		};
 	}
 }

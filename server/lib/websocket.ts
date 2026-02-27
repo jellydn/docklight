@@ -1,14 +1,17 @@
-import { WebSocketServer, WebSocket } from "ws";
+import { spawn, type ChildProcess } from "child_process";
+import type http from "http";
+import type net from "net";
+import { WebSocketServer, type WebSocket } from "ws";
 import { verifyToken } from "./auth.js";
 import { isValidAppName } from "./apps.js";
 
-export function setupLogStreaming(server: any) {
+export function setupLogStreaming(server: http.Server) {
 	const wss = new WebSocketServer({
 		noServer: true,
 		path: "/api/apps/:name/logs/stream",
 	});
 
-	server.on("upgrade", (req: any, socket: any, head: Buffer) => {
+	server.on("upgrade", (req: http.IncomingMessage, socket: net.Socket, head: Buffer) => {
 		const pathname = new URL(req.url || "", `http://${req.headers.host}`).pathname;
 		const match = pathname.match(/^\/api\/apps\/([^/]+)\/logs\/stream$/);
 
@@ -51,12 +54,12 @@ export function setupLogStreaming(server: any) {
 			return;
 		}
 
-		wss.handleUpgrade(req, socket, head, (ws: any) => {
+		wss.handleUpgrade(req, socket, head, (ws: WebSocket) => {
 			wss.emit("connection", ws, req);
 		});
 	});
 
-	wss.on("connection", (ws: WebSocket, req: any) => {
+	wss.on("connection", (ws: WebSocket, req: http.IncomingMessage) => {
 		const pathname = new URL(req.url || "", `http://${req.headers.host}`).pathname;
 		const match = pathname.match(/^\/api\/apps\/([^/]+)\/logs\/stream$/);
 
@@ -67,7 +70,7 @@ export function setupLogStreaming(server: any) {
 
 		const appName = match[1];
 		let lineCount = 100;
-		let process: any = null;
+		let logProcess: ChildProcess | null = null;
 
 		// Handle initial line count message
 		ws.on("message", (data: Buffer) => {
@@ -82,10 +85,9 @@ export function setupLogStreaming(server: any) {
 		});
 
 		// Spawn dokku logs process
-		const { spawn } = require("child_process");
-		process = spawn("dokku", ["logs", appName, "-t", "-n", String(lineCount)]);
+		logProcess = spawn("dokku", ["logs", appName, "-t", "-n", String(lineCount)]);
 
-		process.stdout.on("data", (data: Buffer) => {
+		logProcess.stdout?.on("data", (data: Buffer) => {
 			const lines = data
 				.toString()
 				.split("\n")
@@ -95,7 +97,7 @@ export function setupLogStreaming(server: any) {
 			});
 		});
 
-		process.stderr.on("data", (data: Buffer) => {
+		logProcess.stderr?.on("data", (data: Buffer) => {
 			const lines = data
 				.toString()
 				.split("\n")
@@ -105,25 +107,25 @@ export function setupLogStreaming(server: any) {
 			});
 		});
 
-		process.on("error", (error: Error) => {
+		logProcess.on("error", (error: Error) => {
 			ws.send(JSON.stringify({ error: error.message }));
 			ws.close();
 		});
 
-		process.on("close", () => {
+		logProcess.on("close", () => {
 			ws.close();
 		});
 
 		ws.on("close", () => {
-			if (process && !process.killed) {
-				process.kill();
+			if (logProcess && !logProcess.killed) {
+				logProcess.kill();
 			}
 		});
 
 		ws.on("error", (error: Error) => {
 			console.error("WebSocket error:", error);
-			if (process && !process.killed) {
-				process.kill();
+			if (logProcess && !logProcess.killed) {
+				logProcess.kill();
 			}
 		});
 	});

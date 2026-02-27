@@ -1,4 +1,4 @@
-import { executeCommand, CommandResult } from "./executor.js";
+import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 
 export async function getConfig(
@@ -38,12 +38,13 @@ export async function getConfig(
 		}
 
 		return config;
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as { message?: string };
 		return {
-			error: error.message || "Unknown error occurred",
+			error: err.message || "Unknown error occurred",
 			command: `dokku config:show ${name}`,
 			exitCode: 1,
-			stderr: error.message || "",
+			stderr: err.message || "",
 		};
 	}
 }
@@ -75,9 +76,10 @@ export async function setConfig(
 
 	try {
 		return executeCommand(`dokku config:set ${name} ${sanitizedKey}=${sanitizedValue}`);
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as { message?: string };
 		return {
-			error: error.message || "Unknown error occurred",
+			error: err.message || "Unknown error occurred",
 			command: `dokku config:set ${name} ${sanitizedKey}=${sanitizedValue}`,
 			exitCode: 1,
 		};
@@ -109,9 +111,10 @@ export async function unsetConfig(
 
 	try {
 		return executeCommand(`dokku config:unset ${name} ${sanitizedKey}`);
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as { message?: string };
 		return {
-			error: error.message || "Unknown error occurred",
+			error: err.message || "Unknown error occurred",
 			command: `dokku config:unset ${name} ${sanitizedKey}`,
 			exitCode: 1,
 		};

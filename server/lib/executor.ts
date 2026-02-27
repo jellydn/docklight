@@ -25,12 +25,13 @@ export async function executeCommand(
 		};
 		saveCommand(result);
 		return result;
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as { code?: number; stdout?: string; stderr?: string; message?: string };
 		const result = {
 			command,
-			exitCode: error.code || 1,
-			stdout: error.stdout || "",
-			stderr: error.stderr || error.message,
+			exitCode: err.code || 1,
+			stdout: err.stdout || "",
+			stderr: err.stderr || err.message || "",
 		};
 		saveCommand(result);
 		return result;

@@ -1,11 +1,10 @@
+import http from "http";
 import cookieParser from "cookie-parser";
 import express from "express";
 import path from "path";
-import { isCommandAllowed } from "./lib/allowlist.js";
 import { getApps, getAppDetail, restartApp, rebuildApp, scaleApp } from "./lib/apps.js";
 import { authMiddleware, clearAuthCookie, login, setAuthCookie } from "./lib/auth.js";
 import { getRecentCommands } from "./lib/db.js";
-import { executeCommand } from "./lib/executor.js";
 import { getServerHealth } from "./lib/server.js";
 import { getConfig, setConfig, unsetConfig } from "./lib/config.js";
 import { getDomains, addDomain, removeDomain } from "./lib/domains.js";
@@ -29,12 +28,7 @@ app.use(express.json());
 // Serve static files from client
 app.use(express.static(CLIENT_DIST));
 
-// SPA fallback for client-side routing
-app.get("*", (req, res) => {
-	res.sendFile(path.join(CLIENT_DIST, "index.html"));
-});
-
-app.get("/api/health", (req, res) => {
+app.get("/api/health", (_req, res) => {
 	res.json({ status: "ok" });
 });
 
@@ -49,12 +43,12 @@ app.post("/api/auth/login", (req, res) => {
 	}
 });
 
-app.post("/api/auth/logout", (req, res) => {
+app.post("/api/auth/logout", (_req, res) => {
 	clearAuthCookie(res);
 	res.json({ success: true });
 });
 
-app.get("/api/auth/me", authMiddleware, (req, res) => {
+app.get("/api/auth/me", authMiddleware, (_req, res) => {
 	res.json({ authenticated: true });
 });
 
@@ -66,7 +60,7 @@ app.get("/api/commands", (req, res) => {
 	res.json(commands);
 });
 
-app.get("/api/apps", async (req, res) => {
+app.get("/api/apps", async (_req, res) => {
 	const apps = await getApps();
 	res.json(apps);
 });
@@ -96,7 +90,7 @@ app.post("/api/apps/:name/scale", async (req, res) => {
 	res.json(result);
 });
 
-app.get("/api/server/health", async (req, res) => {
+app.get("/api/server/health", async (_req, res) => {
 	const health = await getServerHealth();
 	res.json(health);
 });
@@ -139,7 +133,7 @@ app.delete("/api/apps/:name/domains/:domain", async (req, res) => {
 	res.json(result);
 });
 
-app.get("/api/databases", async (req, res) => {
+app.get("/api/databases", async (_req, res) => {
 	const databases = await getDatabases();
 	res.json(databases);
 });
@@ -152,22 +146,22 @@ app.post("/api/databases", async (req, res) => {
 
 app.post("/api/databases/:name/link", async (req, res) => {
 	const { name } = req.params;
-	const { app } = req.body;
-	const result = await linkDatabase(name, app);
+	const { plugin, app } = req.body;
+	const result = await linkDatabase(plugin, name, app);
 	res.json(result);
 });
 
 app.post("/api/databases/:name/unlink", async (req, res) => {
 	const { name } = req.params;
-	const { app } = req.body;
-	const result = await unlinkDatabase(name, app);
+	const { plugin, app } = req.body;
+	const result = await unlinkDatabase(plugin, name, app);
 	res.json(result);
 });
 
 app.delete("/api/databases/:name", async (req, res) => {
 	const { name } = req.params;
-	const { confirmName } = req.body;
-	const result = await destroyDatabase(name, confirmName);
+	const { plugin, confirmName } = req.body;
+	const result = await destroyDatabase(plugin, name, confirmName);
 	res.json(result);
 });
 
@@ -189,8 +183,13 @@ app.post("/api/apps/:name/ssl/renew", async (req, res) => {
 	res.json(result);
 });
 
+// SPA fallback for client-side routing (must be after all API routes)
+app.get("*", (_req, res) => {
+	res.sendFile(path.join(CLIENT_DIST, "index.html"));
+});
+
 // Create server and setup WebSocket
-const server = require("http").createServer(app);
+const server = http.createServer(app);
 setupLogStreaming(server);
 
 server.listen(PORT, () => {

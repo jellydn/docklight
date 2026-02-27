@@ -1,4 +1,4 @@
-import { executeCommand, CommandResult } from "./executor.js";
+import { executeCommand, type CommandResult } from "./executor.js";
 
 export interface App {
 	name: string;
@@ -39,58 +39,61 @@ export async function getApps(): Promise<
 			return [];
 		}
 
-		const apps: App[] = [];
+		const apps = await Promise.all(
+			appNames.map(async (appName) => {
+				const [psReportResult, domainsReportResult] = await Promise.all([
+					executeCommand(`dokku ps:report ${appName}`),
+					executeCommand(`dokku domains:report ${appName}`),
+				]);
 
-		for (const appName of appNames) {
-			const psReportResult = await executeCommand(`dokku ps:report ${appName}`);
-			const domainsReportResult = await executeCommand(`dokku domains:report ${appName}`);
+				let status: "running" | "stopped" = "stopped";
+				let domains: string[] = [];
+				let lastDeployTime: string | undefined;
 
-			let status: "running" | "stopped" = "stopped";
-			let domains: string[] = [];
-			let lastDeployTime: string | undefined;
-
-			if (psReportResult.exitCode === 0) {
-				const lines = psReportResult.stdout.split("\n");
-				for (const line of lines) {
-					if (line.includes("deployed")) {
-						status = "running";
-					}
-					if (line.includes("deployed at")) {
-						const match = line.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
-						if (match) {
-							lastDeployTime = match[1];
+				if (psReportResult.exitCode === 0) {
+					const lines = psReportResult.stdout.split("\n");
+					for (const line of lines) {
+						if (line.includes("deployed")) {
+							status = "running";
+						}
+						if (line.includes("deployed at")) {
+							const match = line.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
+							if (match) {
+								lastDeployTime = match[1];
+							}
 						}
 					}
 				}
-			}
 
-			if (domainsReportResult.exitCode === 0) {
-				const lines = domainsReportResult.stdout.split("\n");
-				for (const line of lines) {
-					if (line.includes("domains vhosts")) {
-						const match = line.match(/:\s*(.+)/);
-						if (match) {
-							domains = match[1].split(" ").filter((d) => d.length > 0);
+				if (domainsReportResult.exitCode === 0) {
+					const lines = domainsReportResult.stdout.split("\n");
+					for (const line of lines) {
+						if (line.includes("domains vhosts")) {
+							const match = line.match(/:\s*(.+)/);
+							if (match) {
+								domains = match[1].split(" ").filter((d) => d.length > 0);
+							}
 						}
 					}
 				}
-			}
 
-			apps.push({
-				name: appName,
-				status,
-				domains,
-				lastDeployTime,
-			});
-		}
+				return {
+					name: appName,
+					status,
+					domains,
+					lastDeployTime,
+				};
+			})
+		);
 
 		return apps;
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as { message?: string };
 		return {
-			error: error.message || "Unknown error occurred",
+			error: err.message || "Unknown error occurred",
 			command: "dokku apps:list",
 			exitCode: 1,
-			stderr: error.message || "",
+			stderr: err.message || "",
 		};
 	}
 }
@@ -164,12 +167,13 @@ export async function getAppDetail(
 			domains,
 			processes,
 		};
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as { message?: string };
 		return {
-			error: error.message || "Unknown error occurred",
+			error: err.message || "Unknown error occurred",
 			command: `dokku ps:report ${name}`,
 			exitCode: 1,
-			stderr: error.message || "",
+			stderr: err.message || "",
 		};
 	}
 }

@@ -1,4 +1,4 @@
-import { executeCommand, CommandResult } from "./executor.js";
+import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 
 export async function getDomains(
@@ -39,12 +39,13 @@ export async function getDomains(
 		}
 
 		return domains;
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as { message?: string };
 		return {
-			error: error.message || "Unknown error occurred",
+			error: err.message || "Unknown error occurred",
 			command: `dokku domains:report ${name}`,
 			exitCode: 1,
-			stderr: error.message || "",
+			stderr: err.message || "",
 		};
 	}
 }
@@ -92,9 +93,10 @@ export async function addDomain(
 
 	try {
 		return executeCommand(`dokku domains:add ${name} ${sanitizedDomain}`);
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as { message?: string };
 		return {
-			error: error.message || "Unknown error occurred",
+			error: err.message || "Unknown error occurred",
 			command: `dokku domains:add ${name} ${sanitizedDomain}`,
 			exitCode: 1,
 		};
@@ -135,9 +137,10 @@ export async function removeDomain(
 
 	try {
 		return executeCommand(`dokku domains:remove ${name} ${sanitizedDomain}`);
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as { message?: string };
 		return {
-			error: error.message || "Unknown error occurred",
+			error: err.message || "Unknown error occurred",
 			command: `dokku domains:remove ${name} ${sanitizedDomain}`,
 			exitCode: 1,
 		};

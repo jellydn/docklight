@@ -1,4 +1,4 @@
-import type { Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.DOCKLIGHT_SECRET || "docklight-default-secret-change-in-production";
@@ -16,6 +16,12 @@ if (!PASSWORD) {
 	);
 }
 
+if (!process.env.DOCKLIGHT_SECRET) {
+	console.warn(
+		"WARNING: DOCKLIGHT_SECRET environment variable not set. Using default secret is insecure!"
+	);
+}
+
 export function generateToken(): string {
 	return jwt.sign({ authenticated: true }, JWT_SECRET, { expiresIn: "24h" });
 }
@@ -23,7 +29,7 @@ export function generateToken(): string {
 export function verifyToken(token: string): JWTPayload | null {
 	try {
 		return jwt.verify(token, JWT_SECRET) as JWTPayload;
-	} catch (error) {
+	} catch (_error) {
 		return null;
 	}
 }
@@ -46,16 +52,18 @@ export function clearAuthCookie(res: Response): void {
 	res.clearCookie("session");
 }
 
-export function authMiddleware(req: any, res: any, next: any) {
+export function authMiddleware(req: Request, res: Response, next: NextFunction) {
 	const token = req.cookies.session;
 
 	if (!token) {
-		return res.status(401).json({ error: "Unauthorized" });
+		res.status(401).json({ error: "Unauthorized" });
+		return;
 	}
 
 	const payload = verifyToken(token);
 	if (!payload || !payload.authenticated) {
-		return res.status(401).json({ error: "Unauthorized" });
+		res.status(401).json({ error: "Unauthorized" });
+		return;
 	}
 
 	next();
