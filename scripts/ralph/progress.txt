@@ -106,3 +106,20 @@ Started: Fri Feb 27 21:01:07 +08 2026
   - SPA fallback must come after static file serving in Express middleware order
   - Client dist path is ../client/dist relative to server/ directory
 ---
+
+## [Fri Feb 27 2026] - US-007
+[Session: https://opncd.ai/s/]
+- Implemented GET /api/apps endpoint calling 'dokku apps:list' and 'dokku ps:report' via shell executor
+- Created server/lib/apps.ts with getApps() function
+- Parses dokku output into JSON array: [{ name, status (running/stopped), domains, lastDeployTime }]
+- Domains parsed from 'dokku domains:report <app>' for each app
+- Returns empty array if no apps exist
+- Errors return { error, command, exitCode, stderr } object
+- Typecheck passes
+- Files changed: server/lib/apps.ts, server/index.ts
+- **Learnings for future iterations:**
+  - Dokku commands called via executor with proper error handling
+  - Status determined by checking for 'deployed' in ps:report output
+  - Deploy time parsed from 'deployed at' timestamp using regex
+  - Domains extracted from 'domains vhosts' field in domains:report
+---
