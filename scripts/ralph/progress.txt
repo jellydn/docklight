@@ -51,3 +51,23 @@ Started: Fri Feb 27 21:01:07 +08 2026
   - httpOnly cookie prevents XSS attacks on session token
   - Cookie configured with secure flag in production environment
 ---
+
+## [Fri Feb 27 2026] - US-004
+[Session: https://opncd.ai/s/]
+- Created frontend scaffold with React + Vite + TypeScript
+- Installed and configured Tailwind CSS v3
+- Installed react-router-dom for routing
+- Created AppLayout component with left sidebar (Dashboard, Apps, Databases links) and main content area
+- Set up routes: /login, /dashboard, /apps, /apps/:name, /databases
+- Created API client utility at client/src/lib/api.ts with fetch wrapper that handles auth (redirects to /login on 401)
+- Configured Vite proxy to forward /api/* to backend (http://localhost:3001) in development
+- Created placeholder pages for all routes
+- Added typecheck script to package.json
+- Typecheck passes
+- Files changed: client/package.json, client/tsconfig.json, client/vite.config.ts, client/tailwind.config.js, client/postcss.config.js, client/src/index.css, client/src/App.tsx, client/src/components/AppLayout.tsx, client/src/lib/api.ts, client/src/pages/*.tsx
+- **Learnings for future iterations:**
+  - Tailwind CSS v3 requires specifying content paths in config
+  - Vite proxy configured to forward /api/* to backend during development
+  - API client uses credentials: 'include' to send cookies with requests
+  - React Router uses <Outlet /> for nested route rendering in AppLayout
+---
