@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { logger } from "./logger.js";
 
 const JWT_SECRET = process.env.DOCKLIGHT_SECRET || "docklight-default-secret-change-in-production";
 const PASSWORD = process.env.DOCKLIGHT_PASSWORD;
@@ -11,15 +12,11 @@ export interface JWTPayload {
 }
 
 if (!PASSWORD) {
-	console.warn(
-		"WARNING: DOCKLIGHT_PASSWORD environment variable not set. Set this for production!"
-	);
+	logger.warn("DOCKLIGHT_PASSWORD environment variable not set. Set this for production!");
 }
 
 if (!process.env.DOCKLIGHT_SECRET) {
-	console.warn(
-		"WARNING: DOCKLIGHT_SECRET environment variable not set. Using default secret is insecure!"
-	);
+	logger.warn("DOCKLIGHT_SECRET environment variable not set. Using default secret is insecure!");
 }
 
 export function generateToken(): string {

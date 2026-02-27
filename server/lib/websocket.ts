@@ -4,6 +4,7 @@ import type net from "net";
 import { WebSocketServer, type WebSocket } from "ws";
 import { verifyToken } from "./auth.js";
 import { isValidAppName } from "./apps.js";
+import { logger } from "./logger.js";
 
 export function setupLogStreaming(server: http.Server) {
 	const wss = new WebSocketServer({
@@ -80,7 +81,7 @@ export function setupLogStreaming(server: http.Server) {
 					lineCount = message.lines;
 				}
 			} catch (error) {
-				console.error("Error parsing WebSocket message:", error);
+				logger.error({ err: error }, "Error parsing WebSocket message");
 			}
 		});
 
@@ -123,7 +124,7 @@ export function setupLogStreaming(server: http.Server) {
 		});
 
 		ws.on("error", (error: Error) => {
-			console.error("WebSocket error:", error);
+			logger.error({ err: error }, "WebSocket error");
 			if (logProcess && !logProcess.killed) {
 				logProcess.kill();
 			}

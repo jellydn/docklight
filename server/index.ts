@@ -1,7 +1,9 @@
 import http from "http";
 import cookieParser from "cookie-parser";
 import express from "express";
+import pinoHttp from "pino-http";
 import path from "path";
+import { logger } from "./lib/logger.js";
 import { getApps, getAppDetail, restartApp, rebuildApp, scaleApp } from "./lib/apps.js";
 import { authMiddleware, clearAuthCookie, login, setAuthCookie } from "./lib/auth.js";
 import { getRecentCommands } from "./lib/db.js";
@@ -24,6 +26,7 @@ const CLIENT_DIST = path.resolve(__dirname, "..", "..", "client", "dist");
 
 app.use(cookieParser());
 app.use(express.json());
+app.use(pinoHttp({ logger }));
 
 // Serve static files from client
 app.use(express.static(CLIENT_DIST));
@@ -193,5 +196,5 @@ const server = http.createServer(app);
 setupLogStreaming(server);
 
 server.listen(PORT, () => {
-	console.log(`Docklight server running on port ${PORT}`);
+	logger.info(`Docklight server running on port ${PORT}`);
 });
