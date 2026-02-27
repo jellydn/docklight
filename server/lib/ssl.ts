@@ -7,6 +7,134 @@ export interface SSLStatus {
 	certProvider?: string;
 }
 
+function stripAnsi(value: string): string {
+	return value.replaceAll("\u001b", "").replace(/\[[0-9;]*m/g, "");
+}
+
+function parseReportLine(line: string): { key: string; value: string } | null {
+	const clean = stripAnsi(line).trim();
+	const separatorIndex = clean.indexOf(":");
+	if (separatorIndex <= 0) {
+		return null;
+	}
+
+	return {
+		key: clean.slice(0, separatorIndex).trim().toLowerCase(),
+		value: clean.slice(separatorIndex + 1).trim(),
+	};
+}
+
+function parseBoolean(value: string): boolean | null {
+	const normalized = value.trim().toLowerCase();
+	if (normalized === "true") {
+		return true;
+	}
+	if (normalized === "false") {
+		return false;
+	}
+	return null;
+}
+
+function extractExpiry(value: string): string | undefined {
+	const dateMatch = value.match(/\d{4}-\d{2}-\d{2}/);
+	return dateMatch?.[0];
+}
+
+function parseLetsencryptReport(stdout: string): SSLStatus | null {
+	let active: boolean | null = null;
+	let expiryDate: string | undefined;
+
+	for (const line of stdout.split("\n")) {
+		const parsed = parseReportLine(line);
+		if (!parsed) {
+			continue;
+		}
+
+		const { key, value } = parsed;
+		const boolValue = parseBoolean(value);
+		if (boolValue !== null && /(enabled|active|exists|registered)/.test(key)) {
+			active = boolValue;
+		}
+
+		if (/(expires|expiry|not after|expiration)/.test(key)) {
+			expiryDate = extractExpiry(value) || expiryDate;
+		}
+	}
+
+	if (active === null) {
+		return null;
+	}
+
+	return {
+		active,
+		certProvider: "letsencrypt",
+		expiryDate,
+	};
+}
+
+function parseCertsReport(stdout: string): SSLStatus | null {
+	let active: boolean | null = null;
+	let expiryDate: string | undefined;
+	let hasCertEvidence = false;
+
+	for (const line of stdout.split("\n")) {
+		const parsed = parseReportLine(line);
+		if (!parsed) {
+			continue;
+		}
+
+		const { key, value } = parsed;
+		const boolValue = parseBoolean(value);
+		if (boolValue !== null && /(ssl.*enabled|certificate.*enabled|certificates.*enabled)/.test(key)) {
+			active = boolValue;
+		}
+
+		if (/(issuer|subject|not before|not after|certificate)/.test(key) && value !== "") {
+			hasCertEvidence = true;
+		}
+
+		if (/(expires|expiry|not after|expiration)/.test(key)) {
+			expiryDate = extractExpiry(value) || expiryDate;
+		}
+	}
+
+	if (active === null && !hasCertEvidence) {
+		return null;
+	}
+
+	return {
+		active: active ?? hasCertEvidence,
+		certProvider: "custom",
+		expiryDate,
+	};
+}
+
+function parseLetsencryptList(stdout: string, appName: string): SSLStatus | null {
+	const lines = stdout.split("\n").map((line) => stripAnsi(line).trim());
+	for (const line of lines) {
+		if (!line.toLowerCase().includes(appName.toLowerCase())) {
+			continue;
+		}
+
+		const parts = line.split(/\s+/).filter((part) => part.length > 0);
+		if (parts.length === 0) {
+			continue;
+		}
+
+		const expiryDate = parts
+			.map((part) => extractExpiry(part))
+			.find((value): value is string => Boolean(value));
+
+		return {
+			active: true,
+			certProvider: "letsencrypt",
+			expiryDate,
+		};
+	}
+
+	return null;
+}
+
 export async function getSSL(
 	appName: string
 ): Promise<SSLStatus | { error: string; command: string; exitCode: number; stderr: string }> {
@@ -20,41 +148,29 @@ export async function getSSL(
 	}
 
 	try {
-		// Try letsencrypt:ls first
-		const letsencryptResult = await executeCommand("dokku letsencrypt:ls");
-
-		if (letsencryptResult.exitCode === 0) {
-			const lines = letsencryptResult.stdout.split("\n");
-			for (const line of lines) {
-				if (line.includes(appName)) {
-					// Parse SSL status from letsencrypt output
-					const parts = line.split(/\s+/).filter((p) => p.length > 0);
-					if (parts.length >= 3) {
-						return {
-							active: true,
-							certProvider: "letsencrypt",
-							expiryDate: parts[2] || undefined,
-						};
-					}
-				}
+		const letsencryptReportResult = await executeCommand(`dokku letsencrypt:report ${appName}`);
+		if (letsencryptReportResult.exitCode === 0) {
+			const reportStatus = parseLetsencryptReport(letsencryptReportResult.stdout);
+			if (reportStatus) {
+				return reportStatus;
 			}
 		}
 
-		// Fall back to certs:report
+		const letsencryptResult = await executeCommand("dokku letsencrypt:ls");
+
+		if (letsencryptResult.exitCode === 0) {
+			const listStatus = parseLetsencryptList(letsencryptResult.stdout, appName);
+			if (listStatus) {
+				return listStatus;
+			}
+		}
+
 		const certsResult = await executeCommand(`dokku certs:report ${appName}`);
 
 		if (certsResult.exitCode === 0) {
-			const lines = certsResult.stdout.split("\n");
-			for (const line of lines) {
-				if (line.includes("ssl enabled")) {
-					const match = line.match(/:\s*(.+)/);
-					if (match?.[1].includes("true")) {
-						return {
-							active: true,
-							certProvider: "custom",
-						};
-					}
-				}
+			const certsStatus = parseCertsReport(certsResult.stdout);
+			if (certsStatus) {
+				return certsStatus;
 			}
 		}
 
