@@ -7,8 +7,7 @@ export interface ServerHealth {
 }
 
 export async function getServerHealth(): Promise<
-	| ServerHealth
-	| { error: string; command: string; exitCode: number; stderr: string }
+	ServerHealth | { error: string; command: string; exitCode: number; stderr: string }
 > {
 	try {
 		let cpu = 0;
@@ -17,7 +16,7 @@ export async function getServerHealth(): Promise<
 
 		// Parse CPU from /proc/stat
 		const cpuResult = await executeCommand(
-			"grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage}'",
+			"grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage}'"
 		);
 		if (cpuResult.exitCode === 0) {
 			cpu = parseFloat(cpuResult.stdout.trim()) || 0;

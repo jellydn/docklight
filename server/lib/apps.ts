@@ -43,9 +43,7 @@ export async function getApps(): Promise<
 
 		for (const appName of appNames) {
 			const psReportResult = await executeCommand(`dokku ps:report ${appName}`);
-			const domainsReportResult = await executeCommand(
-				`dokku domains:report ${appName}`,
-			);
+			const domainsReportResult = await executeCommand(`dokku domains:report ${appName}`);
 
 			let status: "running" | "stopped" = "stopped";
 			let domains: string[] = [];
@@ -102,11 +100,8 @@ export function isValidAppName(name: string): boolean {
 }
 
 export async function getAppDetail(
-	name: string,
-): Promise<
-	| AppDetail
-	| { error: string; command: string; exitCode: number; stderr: string }
-> {
+	name: string
+): Promise<AppDetail | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
 		return {
 			error: "Invalid app name",
@@ -180,7 +175,7 @@ export async function getAppDetail(
 }
 
 export async function restartApp(
-	name: string,
+	name: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
 	if (!isValidAppName(name)) {
 		return {
@@ -194,7 +189,7 @@ export async function restartApp(
 }
 
 export async function rebuildApp(
-	name: string,
+	name: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
 	if (!isValidAppName(name)) {
 		return {

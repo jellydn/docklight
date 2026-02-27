@@ -17,6 +17,11 @@ import {
 import { getRecentCommands } from "./lib/db.js";
 import { executeCommand } from "./lib/executor.js";
 import { getServerHealth } from "./lib/server.js";
+import {
+	getConfig,
+	setConfig,
+	unsetConfig,
+} from "./lib/config.js";
 import { setupLogStreaming } from "./lib/websocket.js";
 
 const app = express();
@@ -92,6 +97,25 @@ app.post("/api/apps/:name/rebuild", async (req, res) => {
 app.get("/api/server/health", async (req, res) => {
 	const health = await getServerHealth();
 	res.json(health);
+});
+
+app.get("/api/apps/:name/config", async (req, res) => {
+	const { name } = req.params;
+	const config = await getConfig(name);
+	res.json(config);
+});
+
+app.post("/api/apps/:name/config", async (req, res) => {
+	const { name } = req.params;
+	const { key, value } = req.body;
+	const result = await setConfig(name, key, value);
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/config/:key", async (req, res) => {
+	const { name, key } = req.params;
+	const result = await unsetConfig(name, key);
+	res.json(result);
 });
 
 // Create server and setup WebSocket

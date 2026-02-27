@@ -13,7 +13,7 @@ export interface CommandResult {
 
 export async function executeCommand(
 	command: string,
-	timeout: number = 30000,
+	timeout: number = 30000
 ): Promise<CommandResult> {
 	try {
 		const { stdout, stderr } = await execAsync(command, { timeout });
