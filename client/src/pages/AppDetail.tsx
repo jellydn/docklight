@@ -47,6 +47,14 @@ export function AppDetail() {
 	const [showRemoveDialog, setShowRemoveDialog] = useState(false);
 	const [pendingRemoveKey, setPendingRemoveKey] = useState<string | null>(null);
 
+	// Domains state
+	const [domains, setDomains] = useState<string[]>([]);
+	const [domainsLoading, setDomainsLoading] = useState(false);
+	const [domainsError, setDomainsError] = useState<string | null>(null);
+	const [newDomain, setNewDomain] = useState("");
+	const [showDomainRemoveDialog, setShowDomainRemoveDialog] = useState(false);
+	const [pendingRemoveDomain, setPendingRemoveDomain] = useState<string | null>(null);
+
 	// Log viewer state
 	const [logs, setLogs] = useState<string[]>([]);
 	const [connectionStatus, setConnectionStatus] = useState<
@@ -76,6 +84,12 @@ export function AppDetail() {
 	useEffect(() => {
 		if (activeTab === "config" && name) {
 			fetchConfigVars();
+		}
+	}, [activeTab, name]);
+
+	useEffect(() => {
+		if (activeTab === "domains" && name) {
+			fetchDomains();
 		}
 	}, [activeTab, name]);
 
@@ -301,6 +315,73 @@ export function AppDetail() {
 		});
 	};
 
+	const fetchDomains = async () => {
+		if (!name) return;
+
+		setDomainsLoading(true);
+		setDomainsError(null);
+		try {
+			const domainsData = await apiFetch<string[]>(`/apps/${name}/domains`);
+			setDomains(domainsData);
+		} catch (err) {
+			setDomainsError(err instanceof Error ? err.message : "Failed to load domains");
+		} finally {
+			setDomainsLoading(false);
+		}
+	};
+
+	const handleAddDomain = async () => {
+		if (!name || !newDomain) return;
+
+		try {
+			const result = await apiFetch<CommandResult>(`/apps/${name}/domains`, {
+				method: "POST",
+				body: JSON.stringify({ domain: newDomain }),
+			});
+			setActionResult(result);
+			setNewDomain("");
+			fetchDomains();
+		} catch (err) {
+			setActionResult({
+				command: `dokku domains:add ${name} ${newDomain}`,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Failed to add domain",
+			});
+		}
+	};
+
+	const handleRemoveDomain = (domain: string) => {
+		setPendingRemoveDomain(domain);
+		setShowDomainRemoveDialog(true);
+	};
+
+	const confirmRemoveDomain = async () => {
+		if (!name || !pendingRemoveDomain) return;
+
+		try {
+			const result = await apiFetch<CommandResult>(
+				`/apps/${name}/domains/${encodeURIComponent(pendingRemoveDomain)}`,
+				{
+					method: "DELETE",
+				},
+			);
+			setActionResult(result);
+			setShowDomainRemoveDialog(false);
+			setPendingRemoveDomain(null);
+			fetchDomains();
+		} catch (err) {
+			setActionResult({
+				command: `dokku domains:remove ${name} ${pendingRemoveDomain}`,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Failed to remove domain",
+			});
+			setShowDomainRemoveDialog(false);
+			setPendingRemoveDomain(null);
+		}
+	};
+
 	if (loading) {
 		return (
 			<div className="flex justify-center items-center py-12">
@@ -480,6 +561,34 @@ export function AppDetail() {
 							</button>
 							<button
 								onClick={confirmRemoveConfigVar}
+								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+							>
+								Remove
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{showDomainRemoveDialog && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4">Confirm Remove</h2>
+						<p className="mb-6">
+							Are you sure you want to remove domain <strong>{pendingRemoveDomain}</strong>?
+						</p>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => {
+									setShowDomainRemoveDialog(false);
+									setPendingRemoveDomain(null);
+								}}
+								className="px-4 py-2 border rounded hover:bg-gray-100"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmRemoveDomain}
 								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
 							>
 								Remove
@@ -763,11 +872,127 @@ export function AppDetail() {
 				</div>
 			)}
 
-			{(activeTab === "domains" || activeTab === "ssl") && (
+			{activeTab === "domains" && (
 				<div className="bg-white rounded-lg shadow p-6">
-					<p className="text-gray-500">
-						{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} - Coming Soon
-					</p>
+					<div className="flex justify-between items-center mb-4">
+						<h2 className="text-lg font-semibold">Domains</h2>
+						{actionResult && activeTab === "domains" && (
+							<button
+								onClick={() => setActionResult(null)}
+								className="text-blue-600 hover:underline text-sm"
+							>
+								Hide Output
+							</button>
+						)}
+					</div>
+
+					{domainsLoading ? (
+						<div className="flex justify-center py-8">
+							<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+						</div>
+					) : domainsError ? (
+						<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+							{domainsError}
+						</div>
+					) : (
+						<>
+							<div className="mb-6">
+								<h3 className="text-sm font-medium text-gray-700 mb-2">Add New Domain</h3>
+								<div className="flex space-x-2">
+									<input
+										type="text"
+										placeholder="example.com"
+										value={newDomain}
+										onChange={(e) => setNewDomain(e.target.value)}
+										className="flex-1 border rounded px-3 py-2"
+									/>
+									<button
+										onClick={handleAddDomain}
+										disabled={!newDomain}
+										className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+									>
+										Add
+									</button>
+								</div>
+							</div>
+
+							{domains.length > 0 ? (
+								<table className="min-w-full divide-y divide-gray-200">
+									<thead>
+										<tr>
+											<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Domain</th>
+											<th className="px-4 py-2"></th>
+										</tr>
+									</thead>
+									<tbody className="divide-y divide-gray-200">
+										{domains.map((domain) => (
+											<tr key={domain}>
+												<td className="px-4 py-2">
+													<code className="bg-gray-100 px-2 py-1 rounded text-sm">{domain}</code>
+												</td>
+												<td className="px-4 py-2 text-right">
+													<button
+														onClick={() => handleRemoveDomain(domain)}
+														className="text-red-600 hover:text-red-800"
+														title="Remove"
+													>
+														🗑️
+													</button>
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							) : (
+								<p className="text-gray-500">No domains configured.</p>
+							)}
+						</>
+					)}
+
+					{actionResult && activeTab === "domains" && (
+						<div className="mt-6 bg-gray-100 rounded p-4">
+							<h3 className="font-semibold mb-2">Command Output</h3>
+							<div className="text-sm">
+								<div className="mb-2">
+									<strong>Command:</strong> {actionResult.command}
+								</div>
+								<div className="mb-2">
+									<strong>Exit Code:</strong>{" "}
+									<span className={actionResult.exitCode === 0 ? "text-green-600" : "text-red-600"}>
+										{actionResult.exitCode}
+									</span>
+								</div>
+								{actionResult.stdout && (
+									<div className="mb-2">
+										<strong>Output:</strong>
+										<pre className="bg-white p-2 rounded mt-1 overflow-x-auto">
+											{actionResult.stdout}
+										</pre>
+									</div>
+								)}
+								{actionResult.stderr && (
+									<div>
+										<strong>Error:</strong>
+										<pre className="bg-red-50 p-2 rounded mt-1 overflow-x-auto text-red-800">
+											{actionResult.stderr}
+										</pre>
+									</div>
+								)}
+							</div>
+							<button
+								onClick={() => setActionResult(null)}
+								className="mt-4 text-blue-600 hover:underline"
+							>
+								Close
+							</button>
+						</div>
+					)}
+				</div>
+			)}
+
+			{activeTab === "ssl" && (
+				<div className="bg-white rounded-lg shadow p-6">
+					<p className="text-gray-500">SSL - Coming Soon</p>
 				</div>
 			)}
 		</div>
