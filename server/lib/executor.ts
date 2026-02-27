@@ -21,6 +21,12 @@ function shellQuote(value: string): string {
 	return `'${value.replace(/'/g, "'\"'\"'")}'`;
 }
 
+function getSshUser(target: string): string | null {
+	const atIndex = target.indexOf("@");
+	if (atIndex <= 0) return null;
+	return target.slice(0, atIndex).trim().toLowerCase();
+}
+
 export function buildRuntimeCommand(command: string, options?: ExecuteCommandOptions): string {
 	const trimmedPassword = options?.sudoPassword?.trim();
 	const baseCommand = options?.asRoot
@@ -28,7 +34,9 @@ export function buildRuntimeCommand(command: string, options?: ExecuteCommandOpt
 			? `printf '%s\\n' ${shellQuote(trimmedPassword)} | sudo -S -p '' ${command}`
 			: `sudo -n ${command}`
 		: command;
-	const target = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
+	const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
+	const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
+	const target = options?.asRoot ? rootTarget || defaultTarget : defaultTarget;
 	if (!target || !command.startsWith("dokku ")) {
 		return baseCommand;
 	}
@@ -52,6 +60,20 @@ export async function executeCommand(
 			exitCode: 1,
 			stdout: "",
 			stderr: `Command not allowed: ${command.split(" ")[0]}`,
+		};
+		saveCommand(result);
+		return result;
+	}
+
+	const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
+	const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
+	if (options?.asRoot && defaultTarget && !rootTarget && getSshUser(defaultTarget) === "dokku") {
+		const result: CommandResult = {
+			command,
+			exitCode: 1,
+			stdout: "",
+			stderr:
+				"Root-required command cannot run through dokku SSH wrapper. Set DOCKLIGHT_DOKKU_SSH_ROOT_TARGET=root@<server-ip> for plugin management commands.",
 		};
 		saveCommand(result);
 		return result;
