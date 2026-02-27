@@ -1,184 +1,126 @@
 # Codebase Concerns
 
 **Analysis Date:** 2026-02-27
-**Last Updated:** 2026-02-27
 
 ## Tech Debt
 
-**~~Pervasive `any` types across server:~~** ✅ FIXED
-- All `catch (error: any)` replaced with `error: unknown` + type narrowing
-- `authMiddleware` typed with `Request, Response, NextFunction`
-- `websocket.ts` typed with `http.Server`, `http.IncomingMessage`, `net.Socket`, `ChildProcess`
+**Command execution and validation are split across many modules:**
+- Issue: Validation/sanitization rules are implemented ad hoc in each feature module while execution policy is centralized separately, causing inconsistent protections and duplicated parsing logic.
+- Files: `server/lib/executor.ts`, `server/lib/allowlist.ts`, `server/lib/apps.ts`, `server/lib/config.ts`, `server/lib/domains.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`
+- Impact: Security checks are uneven and easy to bypass when one path misses a character/class.
+- Fix approach: Move to a single command builder + argument escaping layer and execute with `spawn` args (no shell string interpolation).
 
-**~~SPA fallback catch-all registered before API routes:~~** ✅ FIXED
-- Moved `app.get("*")` to after all API route definitions
+**HTTP API error semantics are inconsistent:**
+- Issue: Many backend operations return error payloads with HTTP 200 instead of status-aligned 4xx/5xx responses.
+- Files: `server/index.ts`, `server/lib/apps.ts`, `server/lib/config.ts`, `server/lib/domains.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`, `client/src/lib/api.ts`, `client/src/pages/Dashboard.tsx`, `client/src/pages/Databases.tsx`
+- Impact: Frontend can treat failed backend operations as successful data fetches and show misleading empty states.
+- Fix approach: Standardize API response contracts and set proper HTTP status codes for operational failures.
 
-**Inconsistent error return types:**
-- Issue: Functions return `Result | { error, exitCode, ... }` union types with different shapes. Some include `command`/`stderr`, others don't. No shared error type
-- Files: `server/lib/apps.ts`, `server/lib/config.ts`, `server/lib/databases.ts`, `server/lib/domains.ts`, `server/lib/ssl.ts`
-- Impact: Client must handle multiple error shapes; easy to miss error cases
-- Fix approach: Define a shared `ApiError` type and use discriminated unions consistently
-
-**~~`require()` mixed with ESM imports:~~** ✅ FIXED
-- `require("http")` → `import http from "http"` in `server/index.ts`
-- `require("child_process")` → `import { spawn } from "child_process"` in `server/lib/websocket.ts`
-
-**~~Duplicate ESLint + Biome linting in client:~~** ✅ FIXED
-- Removed ESLint deps, `eslint.config.js`, and `lint:eslint` script from `client/package.json`
+**Operational parsing depends on CLI text output:**
+- Issue: Core state is parsed from brittle string matching against Dokku CLI human-readable output.
+- Files: `server/lib/apps.ts`, `server/lib/domains.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`, `server/lib/server.ts`
+- Impact: Dokku output format changes can silently break parsing and UI behavior.
+- Fix approach: Prefer machine-readable output where available or isolate robust parsers with regression tests.
 
 ## Known Bugs
 
-**~~GET API routes unreachable due to route ordering:~~** ✅ FIXED
-- SPA catch-all moved to end of route definitions
+**Unauthenticated login possible when password env var is missing:**
+- Symptoms: Login can succeed with an empty/missing password field when `DOCKLIGHT_PASSWORD` is not set.
+- Files: `server/lib/auth.ts`, `server/index.ts`
+- Trigger: Start server without `DOCKLIGHT_PASSWORD`, then POST `/api/auth/login` with `{}`.
+- Workaround: Always set `DOCKLIGHT_PASSWORD` in all environments.
 
-**~~Database link/unlink/destroy uses `name` as plugin prefix:~~** ✅ FIXED
-- Added `plugin` parameter to `linkDatabase`, `unlinkDatabase`, `destroyDatabase`
-- Commands now correctly use `dokku postgres:link mydb myapp` format
-- API routes and client updated to pass `plugin` in request body
-
-**Log streaming ignores line count changes after connection:**
-- Symptoms: WebSocket receives `lines` message but the `dokku logs` process is already spawned with the initial count. Changing `lineCount` requires reconnection
-- Files: `server/lib/websocket.ts:73-81,86`
-- Trigger: Changing line count dropdown while logs are streaming
-- Workaround: Client does reconnect via `useEffect` dependency on `lineCount` (`client/src/pages/AppDetail.tsx:88`), but the server-side message handler is dead code
+**Scale action applies only one changed process type:**
+- Symptoms: When multiple process scales are edited, only the first entry is sent to backend.
+- Files: `client/src/pages/AppDetail.tsx`
+- Trigger: Change scale for more than one process type, then click "Apply Scaling".
+- Workaround: Apply scaling one process type at a time.
 
 ## Security Considerations
 
-**Hardcoded default JWT secret:** ⚠️ PARTIALLY FIXED
-- Risk: Default secret `"docklight-default-secret-change-in-production"` is used when `DOCKLIGHT_SECRET` is unset
-- Files: `server/lib/auth.ts:4`
-- Current mitigation: Console warning now logged when `DOCKLIGHT_SECRET` is unset
-- Remaining: Consider refusing to start without `DOCKLIGHT_SECRET` in production; or generate a random secret at first run
+**Shell command injection risk in config value handling:**
+- Risk: `config:set` interpolates user value into a shell command string wrapped in single quotes while not blocking single quotes/`&`, enabling command chaining in some payloads.
+- Files: `server/lib/config.ts`, `server/lib/executor.ts`, `server/lib/allowlist.ts`
+- Current mitigation: Partial character blacklist and allowlist on command prefixes.
+- Recommendations: Stop using `exec` with shell strings; use `spawn` with argv, strict allowlist by full command shape, and reject unsafe characters including `'`, `&`, newlines.
 
-**No rate limiting on login endpoint:**
-- Risk: Brute-force password attacks; no throttling or lockout mechanism
-- Files: `server/index.ts:35-43`
-- Current mitigation: None
-- Recommendations: Add rate limiting (e.g., `express-rate-limit`) on `/api/auth/login`
-
-**No CORS, Helmet, or CSP headers:**
-- Risk: Missing security headers leave app vulnerable to clickjacking, XSS, MIME sniffing attacks
-- Files: `server/index.ts`
-- Current mitigation: `sameSite: "strict"` on cookies
-- Recommendations: Add `helmet` middleware; configure CORS if needed; set CSP headers
-
-**~~Allowlist is dead code — never enforced:~~** ✅ FIXED
-- Removed unused `isCommandAllowed` import from `server/index.ts`
-- `allowlist.ts` module still exists but is unused; consider removing entirely or enforcing in `executeCommand()`
-
-**Command history stores all stdout/stderr:**
-- Risk: Sensitive data (database credentials, env vars from `config:show`) is stored in plaintext in SQLite
-- Files: `server/lib/db.ts:36-40`, `server/lib/executor.ts:26`
-- Current mitigation: None
-- Recommendations: Redact sensitive output before saving; or don't store stdout for `config:show` commands
+**Weak/default auth secret and no login throttling:**
+- Risk: Predictable default JWT secret and no brute-force protection on login endpoint.
+- Files: `server/lib/auth.ts`, `server/index.ts`
+- Current mitigation: Warning logs and `httpOnly`/`sameSite=strict` cookie flags.
+- Recommendations: Fail fast on missing secret in production, require strong secret/password at startup, add rate limiting/lockout for `/api/auth/login`.
 
 ## Performance Bottlenecks
 
-**~~Sequential command execution for app listing (N+1 problem):~~** ✅ FIXED
-- `getApps()` now uses `Promise.all()` to parallelize per-app `ps:report` and `domains:report` queries
+**N+1 command execution for database view:**
+- Problem: Database listing runs plugin discovery, per-plugin list, then per-database link queries.
+- Files: `server/lib/databases.ts`
+- Cause: Nested async calls per plugin and per database without caching.
+- Improvement path: Cache plugin availability and batch/limit detail fetches; add pagination for large fleets.
 
-**~~Sequential database enumeration:~~** ✅ FIXED
-- `getDatabases()` now uses nested `Promise.all()` to parallelize plugin listing and per-db link queries
-
-**Dashboard makes 3 parallel API calls but each triggers multiple shell commands:**
-- Problem: Dashboard fetches health + apps + commands simultaneously. Health alone runs 3 shell commands; apps runs 1 + 2N commands
-- Files: `client/src/pages/Dashboard.tsx:36-39`, `server/lib/server.ts`, `server/lib/apps.ts`
-- Cause: No caching layer; every page load re-executes all commands
-- Improvement path: Add server-side caching with short TTL (5-10s) for health/app data
-
-**~~Unbounded log accumulation in client memory:~~** ✅ FIXED
-- Log buffer capped at 10,000 lines with FIFO eviction in `AppDetail.tsx`
+**Dashboard refresh does repeated expensive shell calls:**
+- Problem: Every refresh triggers health checks plus app/command queries, and app listing itself triggers multiple Dokku commands per app.
+- Files: `client/src/pages/Dashboard.tsx`, `server/lib/server.ts`, `server/lib/apps.ts`
+- Cause: Polling every 30s with no server-side caching or incremental updates.
+- Improvement path: Add short-lived server cache and incremental/push updates where possible.
 
 ## Fragile Areas
 
-**AppDetail.tsx — 1005-line monolith component:**
-- Files: `client/src/pages/AppDetail.tsx`
-- Why fragile: 50+ state variables, 5 tabs (overview, config, domains, logs, ssl), all in one component with interleaved state management
-- Safe modification: Extract each tab into its own component; extract custom hooks for data fetching (useAppConfig, useDomains, useSSL, useLogs)
-- Test coverage: Zero — no tests exist anywhere in the project
+**WebSocket log streaming lifecycle and protocol assumptions:**
+- Files: `server/lib/websocket.ts`, `client/src/pages/AppDetail.tsx`
+- Why fragile: Custom cookie parsing, strict path regex handling, and reconnect/state behavior are hand-rolled.
+- Safe modification: Change protocol handling with integration tests that cover auth failure, reconnect, and app name edge cases.
+- Test coverage: No dedicated websocket tests found in `server/` or `client/`.
 
-**Dokku output parsing with regex:**
-- Files: `server/lib/apps.ts`, `server/lib/ssl.ts`, `server/lib/databases.ts`, `server/lib/config.ts`
-- Why fragile: Parsing relies on exact Dokku output format; any Dokku version upgrade could change output formatting
-- Safe modification: Pin Dokku version; add integration tests with sample outputs; consider using `--format json` where available
-- Test coverage: None — all parsing logic is untested
-
-**WebSocket log streaming:**
-- Files: `server/lib/websocket.ts`
-- Why fragile: Manual cookie parsing, manual URL regex matching, raw process spawning, no reconnection logic on server side
-- Safe modification: Use a cookie-parsing library; add health checks; handle process spawn failures gracefully
-- Test coverage: None
+**Dokku response parsing in app/config/domain/ssl flows:**
+- Files: `server/lib/apps.ts`, `server/lib/config.ts`, `server/lib/domains.ts`, `server/lib/ssl.ts`
+- Why fragile: Business behavior depends on matching specific output phrases.
+- Safe modification: Wrap parsers in small pure functions and validate them with fixture-based tests before altering regexes.
+- Test coverage: No parser tests found in `server/`.
 
 ## Scaling Limits
 
-**SQLite command history:**
-- Current capacity: Single-writer, all commands logged
-- Limit: No cleanup/rotation — database grows indefinitely. High command frequency can cause WAL contention
-- Scaling path: Add TTL-based cleanup (delete entries older than N days); add index on `createdAt`; consider `maxEntries` cap
+**Command history storage:**
+- Current capacity: SQLite table `command_history` has no retention policy and stores full stdout/stderr per command.
+- Limit: Unbounded growth increases disk usage and query cost over time.
+- Scaling path: Add retention/TTL, truncation/compression for large outputs, and archive strategy.
 
-**Single-process Express server:**
-- Current capacity: Single Node.js process handling all requests + WebSocket connections
-- Limit: Cannot utilize multiple CPU cores; long-running commands (rebuild) block the event loop timeout
-- Scaling path: Use `cluster` module or PM2 for multi-process; move long commands to a job queue
-
-**30-second command timeout:**
-- Current capacity: `executeCommand` has 30s default timeout
-- Limit: `dokku ps:rebuild` and `letsencrypt:enable` can take minutes
-- Scaling path: Increase timeout for specific operations; use WebSocket streaming for long operations
+**Single-process backend execution model:**
+- Current capacity: One Node process handles API, shell execution orchestration, and websocket log streaming.
+- Limit: Under high concurrent operations/log streams, event-loop contention and process spawning overhead can degrade responsiveness.
+- Scaling path: Introduce background job queue and isolate long-running operations from request path.
 
 ## Dependencies at Risk
 
-**Express 4.x:**
-- Risk: Express 5 has been in development; v4 is aging but stable
-- Impact: Low immediate risk; eventual migration needed
-- Migration plan: Monitor Express 5 stable release; update when ready
-
-**~~Duplicate linting toolchain (ESLint + Biome):~~** ✅ FIXED
-- ESLint and related packages removed from `client/package.json`
+**Non-reproducible container dependency installs:**
+- Risk: Docker builds use `npm install` with `package*.json` and no committed npm lockfiles, while repo lockfiles are Bun lockfiles.
+- Impact: Dependency drift across builds can cause unexpected runtime/build breakage.
+- Migration plan: Use deterministic installs (`npm ci` + `package-lock.json`) or standardize container builds on Bun with `bun.lock`.
 
 ## Missing Critical Features
 
-**No HTTPS/TLS termination:**
-- Problem: Server listens on plain HTTP; relies on reverse proxy (Dokku/nginx) for TLS
-- Blocks: Direct deployment without a reverse proxy is insecure
+**No automated test suite for app server/client paths:**
+- Problem: There are no tests in `server/` or `client/` validating command construction, parsing, auth edge cases, or UI flows.
+- Blocks: Safe refactoring and confident releases for security-sensitive command execution paths.
 
-**No database migration system:**
-- Problem: Schema is created inline with `CREATE TABLE IF NOT EXISTS`. No versioned migrations
-- Blocks: Schema changes require manual intervention; no rollback capability
-
-**No app creation/deletion via UI:**
-- Problem: Can manage existing apps but cannot create new ones or destroy them
-- Blocks: Full lifecycle management requires SSH access
-
-**No user management:**
-- Problem: Single shared password for all users; no audit trail per user
-- Blocks: Multi-user deployments; accountability for actions
+**No startup hard-fail for insecure auth configuration:**
+- Problem: Server logs warnings for missing `DOCKLIGHT_PASSWORD`/`DOCKLIGHT_SECRET` but continues running.
+- Blocks: Reliable secure-by-default deployments.
 
 ## Test Coverage Gaps
 
-**Entire server has zero tests:**
-- What's not tested: All server modules — executor, auth, apps, config, databases, domains, ssl, websocket, allowlist, db
-- Files: `server/lib/*.ts`, `server/index.ts`
-- Risk: Parsing regressions go undetected
-- Priority: **Critical**
+**Backend security and command execution paths untested:**
+- What's not tested: Login edge cases, command allowlist bypass attempts, config/domain/database input validation, command failure handling.
+- Files: `server/lib/auth.ts`, `server/lib/executor.ts`, `server/lib/allowlist.ts`, `server/lib/config.ts`, `server/lib/domains.ts`, `server/lib/databases.ts`
+- Risk: Security regressions or command execution bugs can ship unnoticed.
+- Priority: High
 
-**Entire client has zero tests:**
-- What's not tested: All React components, API client, routing, WebSocket handling
-- Files: `client/src/**/*.tsx`, `client/src/lib/api.ts`
-- Risk: UI regressions, broken auth flows, WebSocket disconnection handling
-- Priority: **High** — especially for AppDetail.tsx (1005 lines of complex state)
-
-**No integration/E2E tests:**
-- What's not tested: Full request flow from client → server → dokku CLI
-- Files: N/A — no test infrastructure exists
-- Risk: Cannot verify deployment, scaling, or database operations without manual testing
-- Priority: **High** — at minimum, API route tests with mocked executor
-
-**Dokku output parsing completely untested:**
-- What's not tested: All regex-based parsing of `ps:report`, `domains:report`, `config:show`, `letsencrypt:ls`, `plugin:list` output
-- Files: `server/lib/apps.ts`, `server/lib/config.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`
-- Risk: Any Dokku version change silently breaks data extraction
-- Priority: **High** — easy to test with fixture data
+**Frontend critical workflows untested:**
+- What's not tested: Multi-process scaling UX behavior, websocket log lifecycle, error-state rendering when backend returns non-array error objects.
+- Files: `client/src/pages/AppDetail.tsx`, `client/src/pages/Dashboard.tsx`, `client/src/pages/Databases.tsx`, `client/src/lib/api.ts`
+- Risk: Regressions in operational workflows and misleading UI states.
+- Priority: High
 
 ---
-*Concerns audit: 2026-02-27 | Updated: 2026-02-27*
+
+*Concerns audit: 2026-02-27*

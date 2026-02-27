@@ -5,183 +5,86 @@
 ## Naming Patterns
 
 **Files:**
-- kebab-case for all TypeScript files (e.g., `command-executor.ts`, `allowlist.ts`)
-- PascalCase for React components (e.g., `AppLayout.tsx`, `ToastProvider.tsx`)
-- Page components match route names in PascalCase (e.g., `Dashboard.tsx`, `AppDetail.tsx`)
+- `kebab-case` for server modules in `server/lib/*.ts` (for example `server/lib/allowlist.ts`, `server/lib/websocket.ts`).
+- React page/component files use PascalCase in `client/src/pages/*.tsx` and `client/src/components/*.tsx` (for example `client/src/pages/AppDetail.tsx`, `client/src/components/ToastProvider.tsx`).
 
 **Functions:**
-- camelCase with verb prefixes: `get` (read), `set` (write), `is`/`has` (boolean), `add`/`remove` (mutations)
-- Examples: `getApps()`, `setConfig()`, `isValidAppName()`, `addDomain()`, `removeToast()`
-- React components use PascalCase function declarations: `function Dashboard() {}`
-- Event handlers prefixed with `handle`: `handleSubmit`, `handleLogout`
-- Custom hooks prefixed with `use`: `useToast()`
+- camelCase with verb-oriented names in backend helpers and handlers (for example `executeCommand` in `server/lib/executor.ts`, `getDatabases` in `server/lib/databases.ts`, `setAuthCookie` in `server/lib/auth.ts`).
+- Event-style handler naming in React (`handleLogout`, `handleCreateDatabase`, `confirmDestroyDatabase`) in `client/src/components/AppLayout.tsx` and `client/src/pages/Databases.tsx`.
 
 **Variables:**
-- camelCase throughout: `lineCount`, `appNames`, `sanitizedKey`
-- React state follows `[value, setValue]` convention: `[loading, setLoading]`
-- Constants at module scope use camelCase (not SCREAMING_SNAKE) for most values: `const API_BASE`, `const JWT_SECRET`
-- `as const` arrays for enum-like values: `ALLOWED_COMMANDS`, `SUPPORTED_PLUGINS`
+- `UPPER_SNAKE_CASE` for constants (`ALLOWED_COMMANDS` in `server/lib/allowlist.ts`, `SUPPORTED_PLUGINS` in `server/lib/databases.ts`).
+- camelCase for runtime state and locals (`pendingScaleType`, `visibleConnections`) in `client/src/pages/AppDetail.tsx` and `client/src/pages/Databases.tsx`.
 
 **Types:**
-- PascalCase for interfaces and types: `CommandResult`, `ServerHealth`, `App`, `SSLStatus`
-- No `I` prefix on interfaces
-- `interface` for object shapes, inline types for props: `{ children: ReactNode }`
-- Union literal types for status enums: `"running" | "stopped"`, `"success" | "error"`
+- PascalCase `interface` for object shapes (`CommandResult` in `server/lib/executor.ts` and `client/src/components/types.ts`, `SSLStatus` in `server/lib/ssl.ts`).
+- String-literal union types for bounded values (`type TabType = "overview" | "config" | "domains" | "logs" | "ssl"` in `client/src/pages/AppDetail.tsx`).
 
 ## Code Style
 
 **Formatting:**
-- Tool: Biome v2.4.4 (both client and server)
-- Indent: tabs (width 2)
-- Line width: 100 characters
-- Quotes: double quotes
-- Semicolons: always
-- Trailing commas: ES5 style (trailing in objects/arrays, not function params)
+- Biome formatter is used in both apps via `server/package.json` (`"format": "biome format --write ."`) and `client/package.json` (`"format": "biome format --write ."`).
+- Formatting settings are explicit in `server/biome.json` and `client/biome.json`: tabs, width 2, line width 100, double quotes, trailing commas `es5`, semicolons always.
 
 **Linting:**
-- Primary tool: Biome (replaces ESLint for day-to-day linting)
-- ESLint retained in client for React-specific rules (react-hooks, react-refresh) but Biome is the primary `lint` script
-- Key Biome rules:
-  - `recommended: true` as baseline
-  - `noExplicitAny: off` (both client and server)
-  - `useImportType: on` (enforces `import type` for type-only imports)
-  - `useNodejsImportProtocol: off` (server; allows bare `"path"` instead of `"node:path"`)
-  - `noUnusedVariables: warn` (client only)
-  - `useExhaustiveDependencies: off` (client; relaxed React hook deps)
-  - `useButtonType: off` (client; allows `<button>` without explicit `type`)
-  - `useParseIntRadix: off` (server)
-
-**TypeScript:**
-- `strict: true` in all tsconfig files
-- Server: CommonJS module, ES2022 target, `.js` extension on relative imports
-- Client: ESNext module (bundler mode), `verbatimModuleSyntax: true`, `noUnusedLocals: true`, `noUnusedParameters: true`
-- Client uses `.js` extension on relative component imports (e.g., `from "./types.js"`)
+- Biome linting is used via `server/package.json` and `client/package.json` (`"lint": "biome lint ."`).
+- Shared rule patterns in `server/biome.json` and `client/biome.json`: recommended rules enabled, `useImportType` enabled, `noExplicitAny` disabled.
+- Client-specific relaxations in `client/biome.json`: `noNonNullAssertion` off, `useExhaustiveDependencies` off, `useButtonType` off.
 
 ## Import Organization
 
 **Order:**
-1. External packages (`express`, `react`, `react-router-dom`)
-2. Internal modules (`./lib/executor.js`, `../lib/api`)
-3. Type-only imports using `import type` (e.g., `import type { Request, Response } from "express"`)
+1. External packages first (for example `import express from "express"` in `server/index.ts`).
+2. Internal project imports next (for example `import { logger } from "./lib/logger.js"` in `server/index.ts`).
+3. Type imports inline or separate with `import type` (for example `import type { Request, Response, NextFunction } from "express"` in `server/lib/auth.ts`, `import { spawn, type ChildProcess } from "child_process"` in `server/lib/websocket.ts`).
 
 **Path Aliases:**
-- `@/*` → `./src/*` in dev-browser skill only
-- No path aliases in main client or server (relative paths throughout)
-
-**Patterns:**
-- Server uses `.js` extension on all relative imports (CommonJS/tsc output convention)
-- Client uses `.js` extension on relative imports within components; `.tsx` extension for App import in `main.tsx`
-- Named exports preferred; only `App` component uses `export default`
+- No alias in main server/client app code; they use relative imports (`server/lib/*.ts`, `client/src/**/*.ts(x)`).
+- `@/*` alias is configured only in `.agents/skills/dev-browser/package.json` and used in skill code (for example `.agents/skills/dev-browser/src/index.ts`).
 
 ## Error Handling
 
-**Server Pattern — Result Objects (no throwing):**
-```typescript
-// Functions return success data OR error objects — never throw
-async function getApps(): Promise<
-  App[] | { error: string; command: string; exitCode: number; stderr: string }
-> {
-  try {
-    const result = await executeCommand("dokku apps:list");
-    if (result.exitCode !== 0) {
-      return { error: "Failed to list apps", command: result.command, exitCode: result.exitCode, stderr: result.stderr };
-    }
-    // ... parse and return data
-  } catch (error: any) {
-    return { error: error.message || "Unknown error occurred", command: "...", exitCode: 1, stderr: error.message || "" };
-  }
-}
-```
-
-**Server Validation Pattern — Early return with error objects:**
-```typescript
-if (!isValidAppName(name)) {
-  return { error: "Invalid app name", command: "", exitCode: 400 };
-}
-```
-
-**Client Pattern — try/catch with state updates:**
-```typescript
-try {
-  const data = await apiFetch<T>("/endpoint");
-  setData(data);
-} catch (err) {
-  setError(err instanceof Error ? err.message : "Failed to load data");
-}
-```
-
-**API Client — centralized 401 handling:**
-- `apiFetch()` automatically redirects to `/login` on 401 responses
-- Throws `Error` for non-OK responses with server error message
-
-**Error typing:** `catch (error: any)` used consistently on server; `catch (err)` or `catch (_err)` on client
+**Patterns:**
+- Backend uses `try/catch` and returns structured error objects instead of throwing in many modules (`server/lib/apps.ts`, `server/lib/config.ts`, `server/lib/domains.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`, `server/lib/server.ts`).
+- Input validation returns early with `exitCode: 400` style objects (`server/lib/config.ts`, `server/lib/domains.ts`, `server/lib/databases.ts`).
+- Frontend wraps API calls in `try/catch` and converts failures to local UI state/toasts (`client/src/pages/AppDetail.tsx`, `client/src/pages/Databases.tsx`, `client/src/pages/Login.tsx`).
 
 ## Logging
 
-**Framework:** `console` (no logging library)
+**Framework:** pino
+
 **Patterns:**
-- `console.log()` for startup messages: `"Docklight server running on port ${PORT}"`
-- `console.warn()` for configuration warnings: missing `DOCKLIGHT_PASSWORD`
-- `console.error()` for operational errors: WebSocket errors, logout failures
-- No structured logging or log levels beyond console methods
+- Server logger is centralized in `server/lib/logger.ts` and wired into HTTP logging via `pino-http` in `server/index.ts`.
+- Security/runtime warnings are logged in `server/lib/auth.ts`.
+- WebSocket/runtime parse errors are logged with structured metadata in `server/lib/websocket.ts` and `client/src/pages/AppDetail.tsx`.
 
 ## Comments
 
 **When to Comment:**
-- Inline comments for non-obvious logic: `// Sanitize inputs to prevent shell injection`
-- Section dividers in JSX: `{/* Server Health */}`, `{/* Apps */}`
-- Brief explanatory comments before code blocks: `// Parse CPU from /proc/stat`
-- URLs for config references: `// https://vite.dev/config/`
+- Comments are sparse and mainly explain intent for non-trivial behavior (examples: SPA fallback and static serving in `server/index.ts`, input sanitization rationale in `server/lib/config.ts`, plugin discovery steps in `server/lib/databases.ts`).
 
 **JSDoc/TSDoc:**
-- Not used anywhere in the codebase
-- Self-documenting function names and type signatures serve as documentation
+- No JSDoc/TSDoc blocks were observed in core app source (`server/*.ts`, `server/lib/*.ts`, `client/src/**/*.ts(x)`).
 
 ## Function Design
 
-**Size:** Functions are small and focused (10–40 lines typical). Largest functions are page components (~100 lines) that include JSX rendering.
+**Size:** medium-to-large orchestrator functions are common (for example `getDatabases` in `server/lib/databases.ts`, `AppDetail` component in `client/src/pages/AppDetail.tsx`).
 
-**Parameters:**
-- Primitive parameters for simple operations: `login(password: string)`
-- 1–3 positional parameters typical: `setConfig(name, key, value)`
-- Default parameter values used: `timeout: number = 30000`, `limit: number = 20`
+**Parameters:** explicit primitive parameters with validation (for example `scaleApp(name, processType, count)` in `server/lib/apps.ts`, `setConfig(name, key, value)` in `server/lib/config.ts`).
 
 **Return Values:**
-- Server: union return types of success data `|` error objects (discriminated by `error` property)
-- Client: `void` for event handlers; state updates via React hooks
-- Boolean for validation: `isValidAppName(name: string): boolean`
+- Backend frequently uses union return types: success payload or error object (`server/lib/apps.ts`, `server/lib/config.ts`, `server/lib/ssl.ts`).
+- Frontend data access uses generic typed fetch helper (`apiFetch<T>`) in `client/src/lib/api.ts`.
 
 ## Module Design
 
 **Exports:**
-- Named exports throughout (one `export default` for `App` component)
-- Each server module exports a cohesive set of functions for one domain:
-  - `apps.ts` → `getApps`, `getAppDetail`, `restartApp`, `rebuildApp`, `scaleApp`, `isValidAppName`
-  - `auth.ts` → `login`, `generateToken`, `verifyToken`, `setAuthCookie`, `clearAuthCookie`, `authMiddleware`
-  - `domains.ts` → `getDomains`, `addDomain`, `removeDomain`
-- Interfaces exported alongside their functions
+- Named exports are standard in backend modules (`server/lib/*.ts`) and most frontend modules (`client/src/components/*.tsx`, `client/src/pages/*.tsx`).
+- Default export is used for root app component in `client/src/App.tsx`.
 
 **Barrel Files:**
-- Not used. Direct imports to specific module files throughout.
-
-**Client Structure:**
-- `lib/` for utilities (`api.ts`)
-- `components/` for reusable UI (`AppLayout`, `ToastProvider`, `CommandResult`)
-- `pages/` for route-level components (`Dashboard`, `Apps`, `Login`)
-- `components/types.ts` for shared component types
-
-**Server Structure:**
-- Flat `lib/` directory, one file per domain
-- `index.ts` as entry point with all route definitions
-- No middleware directory; auth middleware defined in `auth.ts`
-
-## Security Patterns
-
-- Command allowlist (`allowlist.ts`) restricts shell execution to `dokku`, `top`, `free`, `df`
-- Input sanitization via regex replacement before shell execution
-- Validation-then-reject pattern: sanitize, compare to original, reject if different
-- JWT authentication with HTTP-only cookies
-- WebSocket connections authenticated via cookie verification
+- No barrel index files were observed for server/client feature modules (`server/lib/`, `client/src/components/`, `client/src/pages/`).
 
 ---
+
 *Convention analysis: 2026-02-27*

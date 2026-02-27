@@ -3,166 +3,113 @@
 **Analysis Date:** 2026-02-27
 
 ## Directory Layout
+
 ```
-docklight/
-├── client/                    # React SPA frontend (Vite + Tailwind)
-│   ├── public/                # Static assets
-│   ├── src/
-│   │   ├── assets/            # Frontend assets
-│   │   ├── components/        # Shared UI components
-│   │   ├── lib/               # API client utilities
-│   │   ├── pages/             # Route-level page components
-│   │   ├── App.tsx            # Router + layout definition
-│   │   ├── App.css            # App-level styles
-│   │   ├── index.css          # Global styles (Tailwind directives)
-│   │   └── main.tsx           # React entry point
-│   ├── biome.json             # Biome linter/formatter config
-│   ├── index.html             # HTML shell for SPA
-│   ├── package.json           # Client dependencies
-│   ├── postcss.config.js      # PostCSS config (Tailwind)
-│   ├── tailwind.config.js     # Tailwind CSS config
-│   ├── tsconfig.json          # TypeScript project references
-│   ├── tsconfig.app.json      # App TypeScript config
-│   ├── tsconfig.node.json     # Node TypeScript config (Vite)
-│   └── vite.config.ts         # Vite bundler config
-├── server/                    # Express backend
-│   ├── lib/
-│   │   ├── allowlist.ts       # Allowed shell commands whitelist
-│   │   ├── apps.ts            # App CRUD + status operations
-│   │   ├── auth.ts            # JWT auth, login, middleware
-│   │   ├── config.ts          # App env var management
-│   │   ├── databases.ts       # Database plugin operations
-│   │   ├── db.ts              # SQLite command history storage
-│   │   ├── domains.ts         # Domain management
-│   │   ├── executor.ts        # Shell command execution + logging
-│   │   ├── server.ts          # Server health (CPU/mem/disk)
-│   │   ├── ssl.ts             # SSL/Let's Encrypt management
-│   │   └── websocket.ts       # WebSocket log streaming
-│   ├── biome.json             # Biome linter/formatter config
-│   ├── index.ts               # Express app entry point + routes
-│   ├── package.json           # Server dependencies
-│   └── tsconfig.json          # Server TypeScript config
-├── scripts/                   # Automation scripts
-│   └── ralph/                 # Ralph agent scripts
-├── .agents/                   # Agent tooling
-│   └── skills/
-│       └── dev-browser/       # Browser automation skill
-├── .planning/                 # Project planning documents
-│   └── codebase/              # Architecture analysis docs
-├── .claude/                   # Claude AI configuration
-├── AGENTS.md                  # AI agent development guide
-├── CLAUDE.md                  # Claude project instructions
-├── Dockerfile                 # Multi-stage Docker build
-├── Procfile                   # Dokku process definition
-├── app.json                   # Dokku app metadata + healthcheck
-├── justfile                   # Task runner recipes
-├── LICENSE                    # Project license
-└── README.md                  # Project documentation
+[project-root]/
+├── client/ # React SPA (Vite + TypeScript)
+├── server/ # Express API and Dokku command orchestration
+├── docs/ # Deployment and operational docs
+├── scripts/ # Utility scripts (Ralph-related automation)
+├── data/ # Runtime SQLite database directory (`docklight.db`)
+├── .agents/ # Local skill assets (including dev-browser)
+├── justfile # Cross-project command runner shortcuts
+├── Dockerfile # Container build recipe
+└── app.json # Dokku app/deploy metadata
 ```
 
 ## Directory Purposes
-**client/src/pages/:**
-- Purpose: Route-level page components, one per app route
-- Contains: `Dashboard.tsx`, `Apps.tsx`, `AppDetail.tsx`, `Databases.tsx`, `Login.tsx`
-- Key files: `AppDetail.tsx` (largest, multi-tab view with logs/config/domains/ssl)
 
-**client/src/components/:**
-- Purpose: Shared UI components used across pages
-- Contains: Layout shell, toast notification system, command result display, shared types
-- Key files: `AppLayout.tsx` (sidebar + outlet), `ToastProvider.tsx` (context), `types.ts` (shared interfaces)
+**client:**
+- Purpose: Browser UI for login, dashboard, app management, database management, and live logs.
+- Contains: React pages/components, API client, CSS assets, Vite/Tailwind/Biome config.
+- Key files: `client/src/main.tsx`, `client/src/App.tsx`, `client/src/pages/AppDetail.tsx`, `client/vite.config.ts`, `client/package.json`
 
-**client/src/lib/:**
-- Purpose: Client-side utilities and API layer
-- Contains: HTTP client wrapper
-- Key files: `api.ts` (apiFetch with auth handling)
+**server:**
+- Purpose: Backend API, auth, command execution, persistence, and WebSocket log streaming.
+- Contains: Express entrypoint and feature-focused service modules in `server/lib/`.
+- Key files: `server/index.ts`, `server/lib/executor.ts`, `server/lib/auth.ts`, `server/lib/websocket.ts`, `server/package.json`
 
-**server/lib/:**
-- Purpose: All backend business logic, one file per resource domain
-- Contains: Domain modules, infrastructure (auth, db, executor, websocket)
-- Key files: `executor.ts` (central shell runner), `auth.ts` (JWT + middleware), `db.ts` (SQLite)
+**docs:**
+- Purpose: Human documentation for deployment/setup.
+- Contains: Markdown docs.
+- Key files: `docs/deployment.md`
+
+**scripts:**
+- Purpose: Auxiliary automation not in app runtime.
+- Contains: Ralph helper shell/prompt artifacts.
+- Key files: `scripts/ralph/ralph.sh`, `scripts/ralph/prd.json`
+
+**data:**
+- Purpose: Persistent runtime state for command history.
+- Contains: SQLite DB created at runtime.
+- Key files: `data/docklight.db` (created by `server/lib/db.ts`)
 
 ## Key File Locations
+
 **Entry Points:**
-- `server/index.ts`: Express server bootstrap, all route definitions, WebSocket setup
-- `client/src/main.tsx`: React DOM mount point
-- `client/src/App.tsx`: React Router configuration + provider wiring
-- `Dockerfile`: Production container build
+- `server/index.ts`: Backend process start, route registration, static serving, and WebSocket hookup.
+- `client/src/main.tsx`: Frontend bootstrap and React root mount.
 
 **Configuration:**
-- `server/package.json`: Server deps (express, better-sqlite3, jsonwebtoken, ws)
-- `client/package.json`: Client deps (react 19, react-router-dom 7, tailwindcss 3)
-- `justfile`: All dev/build/lint/format commands
-- `app.json`: Dokku app metadata
-- `Procfile`: Production process command
+- `server/tsconfig.json`: Server TypeScript compiler config.
+- `client/tsconfig.json`: Client TypeScript project config.
+- `client/vite.config.ts`: Dev server and `/api` proxy configuration.
+- `server/biome.json`: Server lint/format configuration.
+- `client/biome.json`: Client lint/format configuration.
+- `justfile`: Unified dev/test/build command shortcuts.
+- `Dockerfile`: Containerization for deployment.
 
 **Core Logic:**
-- `server/lib/executor.ts`: Central shell command executor (exec → log → return)
-- `server/lib/apps.ts`: App listing, detail, restart, rebuild, scale
-- `server/lib/databases.ts`: Multi-plugin database CRUD + linking
-- `server/lib/auth.ts`: Password auth, JWT generation/verification, cookie management
-- `server/lib/websocket.ts`: Real-time log streaming via `dokku logs -t`
-- `client/src/lib/api.ts`: Typed fetch wrapper with 401 auto-redirect
+- `server/lib/apps.ts`: App listing/detail/restart/rebuild/scale logic.
+- `server/lib/config.ts`: Config var read/write/unset with sanitization.
+- `server/lib/domains.ts`: Domain list/add/remove logic.
+- `server/lib/databases.ts`: Database plugin operations.
+- `server/lib/ssl.ts`: SSL status/enable/renew flows.
+- `server/lib/executor.ts`: Command allowlist enforcement + command execution persistence.
 
 **Testing:**
-- `.agents/skills/dev-browser/`: Browser automation tests (Vitest)
-- No unit tests in `server/` or `client/` currently
+- `.agents/skills/dev-browser/src/**/*.test.ts`: Vitest-based tests for browser automation skill.
 
 ## Naming Conventions
+
 **Files:**
-- kebab-case for all source files: `command-executor.ts`, `AppLayout.tsx`
-- Exception: React components use PascalCase filenames: `AppDetail.tsx`, `Dashboard.tsx`
-- Types co-located in `types.ts` files within component directories
+- `kebab-case` for most repository-level docs/scripts/config names: `justfile`, `app.json`, `docs/deployment.md`.
+- `PascalCase` for React page/component files in `client/src/pages/` and `client/src/components/`: `AppDetail.tsx`, `AppLayout.tsx`.
+- `lowercase` module filenames for backend services in `server/lib/`: `apps.ts`, `executor.ts`, `websocket.ts`.
 
 **Directories:**
-- Lowercase, singular nouns: `lib/`, `pages/`, `components/`, `assets/`
-- Top-level: `server/`, `client/`, `scripts/`
-
-**Code:**
-- Functions: camelCase with verb prefixes (`getApps`, `executeCommand`, `isValidAppName`)
-- Interfaces/Types: PascalCase (`CommandResult`, `AppDetail`, `SSLStatus`)
-- Constants: SCREAMING_SNAKE_CASE (`ALLOWED_COMMANDS`, `SUPPORTED_PLUGINS`, `JWT_SECRET`)
-- Route paths: RESTful (`/api/apps/:name/config`, `/api/databases/:name/link`)
+- Feature/runtime split by top-level directories: `client/` and `server/`.
+- Backend grouping by concern under `server/lib/` and frontend grouping by UI role under `client/src/pages/`, `client/src/components/`, and `client/src/lib/`.
 
 ## Where to Add New Code
-**New Dokku Resource (e.g., network management):**
-- Domain logic: `server/lib/networks.ts`
-- Routes: Add to `server/index.ts`
-- Client page: `client/src/pages/Networks.tsx`
-- Route entry: Add to `client/src/App.tsx` Routes
-- Nav link: Add to `client/src/components/AppLayout.tsx`
 
-**New API Endpoint:**
-- Implementation: `server/lib/<resource>.ts`
-- Route registration: `server/index.ts`
+**New Feature:**
+- Primary code: `server/lib/` (backend capability) and matching UI page/component in `client/src/pages/` or `client/src/components/`.
+- Tests: `.agents/skills/dev-browser/src/**/*.test.ts` for browser-skill coverage; repository app code currently has no dedicated app test directory.
 
-**New UI Component:**
-- Implementation: `client/src/components/<ComponentName>.tsx`
-- Shared types: `client/src/components/types.ts`
+**New Component/Module:**
+- Implementation: `client/src/components/` for reusable UI blocks, `server/lib/` for backend service modules.
 
 **Utilities:**
-- Server: `server/lib/` (follow existing module pattern)
-- Client: `client/src/lib/`
+- Shared helpers: `client/src/lib/` for frontend helpers and `server/lib/` for backend shared utilities.
 
 ## Special Directories
-**data/:**
-- Purpose: SQLite database storage (`docklight.db`)
-- Generated: Yes (created at runtime by `server/lib/db.ts`)
-- Committed: No (created outside project root at `../data/`)
 
-**.agents/:**
-- Purpose: AI agent skills and tooling
+**.agents/skills/dev-browser:**
+- Purpose: Browser automation skill with its own package, scripts, and tests.
 - Generated: No
 - Committed: Yes
 
-**.planning/:**
-- Purpose: Architecture analysis and planning documents
-- Generated: Yes (by analysis tools)
-- Committed: Yes
+**.planning/codebase:**
+- Purpose: Generated codebase mapping documents (including this file).
+- Generated: Yes
+- Committed: Not guaranteed (depends on team workflow and `.gitignore` policy)
 
-**client/dist/ and server/dist/:**
-- Purpose: Production build output
-- Generated: Yes (by `vite build` and `tsc`)
-- Committed: No (gitignored)
+**data:**
+- Purpose: Runtime persistent SQLite storage used by `server/lib/db.ts`.
+- Generated: Yes
+- Committed: No (runtime state directory)
 
 ---
+
 *Structure analysis: 2026-02-27*
