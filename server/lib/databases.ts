@@ -9,36 +9,52 @@ export interface Database {
 
 // List of supported database plugins
 const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"] as const;
+type SupportedPlugin = (typeof SUPPORTED_PLUGINS)[number];
+
+function parseInstalledPlugins(pluginListOutput: string): SupportedPlugin[] {
+	const installedPlugins = new Set<SupportedPlugin>();
+	const lines = pluginListOutput.split("\n").filter((line) => line.trim());
+
+	for (const line of lines) {
+		const lowerLine = line.toLowerCase();
+		for (const plugin of SUPPORTED_PLUGINS) {
+			const pluginPattern = new RegExp(`\\b(?:dokku-)?${plugin}\\b`, "i");
+			if (pluginPattern.test(lowerLine)) {
+				installedPlugins.add(plugin);
+			}
+		}
+	}
+
+	return [...installedPlugins];
+}
+
+async function getInstalledPlugins(): Promise<
+	{ plugins: SupportedPlugin[] } | { error: string; command: string; exitCode: number; stderr: string }
+> {
+	const pluginListResult = await executeCommand("dokku plugin:list");
+
+	if (pluginListResult.exitCode !== 0) {
+		return {
+			error: "Failed to list plugins",
+			command: pluginListResult.command,
+			exitCode: pluginListResult.exitCode,
+			stderr: pluginListResult.stderr,
+		};
+	}
+
+	return { plugins: parseInstalledPlugins(pluginListResult.stdout) };
+}
 
 export async function getDatabases(): Promise<
 	Database[] | { error: string; command: string; exitCode: number; stderr: string }
 > {
 	try {
-		// First, check which plugins are installed
-		const pluginListResult = await executeCommand("dokku plugin:list");
-
-		if (pluginListResult.exitCode !== 0) {
-			return {
-				error: "Failed to list plugins",
-				command: pluginListResult.command,
-				exitCode: pluginListResult.exitCode,
-				stderr: pluginListResult.stderr,
-			};
+		const installedPluginsResult = await getInstalledPlugins();
+		if ("error" in installedPluginsResult) {
+			return installedPluginsResult;
 		}
 
-		const installedPlugins: string[] = [];
-		const lines = pluginListResult.stdout.split("\n").filter((line) => line.trim());
-
-		for (const line of lines) {
-			// Check if any supported plugin is in the line
-			for (const plugin of SUPPORTED_PLUGINS) {
-				if (line.includes(plugin)) {
-					installedPlugins.push(plugin);
-					break;
-				}
-			}
-		}
-
+		const installedPlugins = installedPluginsResult.plugins;
 		if (installedPlugins.length === 0) {
 			return [];
 		}
@@ -106,7 +122,7 @@ export async function createDatabase(
 	name: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
 	// Validate plugin
-	if (!SUPPORTED_PLUGINS.includes(plugin as (typeof SUPPORTED_PLUGINS)[number])) {
+	if (!SUPPORTED_PLUGINS.includes(plugin as SupportedPlugin)) {
 		return {
 			error: "Invalid database plugin",
 			command: "",
@@ -135,6 +151,28 @@ export async function createDatabase(
 	}
 
 	try {
+		const installedPluginsResult = await getInstalledPlugins();
+		if ("error" in installedPluginsResult) {
+			return {
+				error: "Failed to verify installed plugins before creating database",
+				command: installedPluginsResult.command,
+				exitCode: installedPluginsResult.exitCode,
+				stderr: installedPluginsResult.stderr,
+			};
+		}
+
+		if (!installedPluginsResult.plugins.includes(plugin as SupportedPlugin)) {
+			const installed = installedPluginsResult.plugins.length
+				? installedPluginsResult.plugins.join(", ")
+				: "none";
+			return {
+				error: `Database plugin '${plugin}' is not installed`,
+				command: "dokku plugin:list",
+				exitCode: 400,
+				stderr: `Installed database plugins: ${installed}`,
+			};
+		}
+
 		return executeCommand(`dokku ${plugin}:create ${sanitizedName}`);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
