@@ -17,3 +17,4 @@
 .agents/skills/dev-browser/src/snapshot/inject.ts
 data/docklight.db
 server/data/docklight.db
+.claude/settings.local.json

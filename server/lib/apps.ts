@@ -16,90 +16,111 @@ export interface AppDetail {
 }
 
 function stripAnsi(value: string): string {
-	return value.replace(/[^\x20-\x7E]/g, "");
+	return value.replaceAll("\u001b", "").replace(/\[[0-9;]*m/g, "");
 }
+
+const UNKNOWN_ERROR = "Unknown error";
 
 export async function getApps(): Promise<
 	App[] | { error: string; command: string; exitCode: number; stderr: string }
 > {
 	try {
-		const listResult = await executeCommand("dokku --quiet apps:list");
+		const listCommands = [
+			"dokku --quiet apps:list",
+			"dokku apps:list",
+		];
+		let listResult: CommandResult | undefined;
 
-		if (listResult.exitCode !== 0) {
-			return {
-				error: "Failed to list apps",
-				command: listResult.command,
-				exitCode: listResult.exitCode,
-				stderr: listResult.stderr,
-			};
+		for (const command of listCommands) {
+			const result = await executeCommand(command);
+			if (result.exitCode === 0) {
+				return await fetchAppDetails(result.stdout);
+			}
+			listResult = result;
 		}
 
-		const appNames = listResult.stdout
-			.split("\n")
-			.map((line) => stripAnsi(line).trim())
-			.filter((line) => isValidAppName(line));
-
-		if (appNames.length === 0) {
-			return [];
-		}
-
-		const apps = await Promise.all(
-			appNames.map(async (appName) => {
-				const [psReportResult, domainsReportResult] = await Promise.all([
-					executeCommand(`dokku ps:report ${appName}`),
-					executeCommand(`dokku domains:report ${appName}`),
-				]);
-
-				let status: "running" | "stopped" = "stopped";
-				let domains: string[] = [];
-				let lastDeployTime: string | undefined;
-
-				if (psReportResult.exitCode === 0) {
-					const lines = psReportResult.stdout.split("\n");
-					for (const line of lines) {
-						if (line.includes("deployed")) {
-							status = "running";
-						}
-						if (line.includes("deployed at")) {
-							const match = line.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
-							if (match) {
-								lastDeployTime = match[1];
-							}
-						}
-					}
-				}
-
-				if (domainsReportResult.exitCode === 0) {
-					const lines = domainsReportResult.stdout.split("\n");
-					for (const line of lines) {
-						if (line.includes("domains vhosts")) {
-							const match = line.match(/:\s*(.+)/);
-							if (match) {
-								domains = match[1].split(" ").filter((d) => d.length > 0);
-							}
-						}
-					}
-				}
-
-				return {
-					name: appName,
-					status,
-					domains,
-					lastDeployTime,
-				};
-			})
-		);
-
-		return apps;
+		return {
+			error: "Failed to list apps",
+			command: listResult?.command || "dokku apps:list",
+			exitCode: listResult?.exitCode || 1,
+			stderr: listResult?.stderr || UNKNOWN_ERROR,
+		};
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
-			error: err.message || "Unknown error occurred",
+			error: err.message || UNKNOWN_ERROR,
 			command: "dokku apps:list",
 			exitCode: 1,
 			stderr: err.message || "",
 		};
 	}
+}
+
+async function fetchAppDetails(stdout: string): Promise<App[]> {
+	const appNames = stdout
+		.split("\n")
+		.map((line) => stripAnsi(line).trim())
+		.filter(isValidAppName);
+
+	if (appNames.length === 0) {
+		return [];
+	}
+
+	return Promise.all(
+		appNames.map(async (appName) => {
+			const [psReportResult, domainsReportResult] = await Promise.all([
+				executeCommand(`dokku ps:report ${appName}`),
+				executeCommand(`dokku domains:report ${appName}`),
+			]);
+
+			return {
+				name: appName,
+				status: parseStatus(psReportResult.stdout),
+				domains: parseDomains(domainsReportResult.stdout),
+				lastDeployTime: parseDeployTime(psReportResult.stdout),
+			};
+		})
+	);
+}
+
+function parseStatus(stdout: string): "running" | "stopped" {
+	const lines = stdout.split("\n");
+	for (const line of lines) {
+		const stateMatch = line.match(/deployed state:\s*(running|stopped)/i);
+		if (stateMatch) {
+			const status = stateMatch[1].toLowerCase();
+			if (status === "running" || status === "stopped") {
+				return status;
+			}
+		}
+	}
+	return "stopped";
+}
+
+function parseDeployTime(stdout: string): string | undefined {
+	const lines = stdout.split("\n");
+	for (const line of lines) {
+		if (line.includes("deployed at")) {
+			const match = line.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
+			if (match) {
+				return match[1];
+			}
+		}
+	}
+	return undefined;
+}
+
+function parseDomains(stdout: string): string[] {
+	const lines = stdout.split("\n");
+	for (const line of lines) {
+		if (line.includes("domains vhosts")) {
+			const match = line.match(/:\s*(.+)/);
+			if (match) {
+				return match[1].split(" ").filter((d) => d.length > 0);
+			}
+		}
+	}
+	return [];
 }
 
 export function isValidAppName(name: string): boolean {
@@ -131,55 +152,53 @@ export async function getAppDetail(
 			};
 		}
 
-		let status: "running" | "stopped" = "stopped";
-		let gitRemote = "";
-		let domains: string[] = [];
-		const processes: Record<string, number> = {};
-
-		const psLines = psReportResult.stdout.split("\n");
-		for (const line of psLines) {
-			if (line.includes("deployed")) {
-				status = "running";
-			}
-			if (line.includes("app deployed")) {
-				gitRemote = line;
-			}
-			const processMatch = line.match(/process type scale: (.+)/);
-			if (processMatch) {
-				const procInfo = processMatch[1].trim();
-				const [procType, countStr] = procInfo.split(/\s+/);
-				processes[procType] = parseInt(countStr) || 0;
-			}
-		}
-
-		if (domainsReportResult.exitCode === 0) {
-			const domainLines = domainsReportResult.stdout.split("\n");
-			for (const line of domainLines) {
-				if (line.includes("domains vhosts")) {
-					const match = line.match(/:\s*(.+)/);
-					if (match) {
-						domains = match[1].split(" ").filter((d) => d.length > 0);
-					}
-				}
-			}
-		}
-
 		return {
 			name,
-			status,
-			gitRemote,
-			domains,
-			processes,
+			status: parseStatus(psReportResult.stdout),
+			gitRemote: parseGitRemote(psReportResult.stdout),
+			domains: parseDomains(domainsReportResult.stdout),
+			processes: parseProcesses(psReportResult.stdout),
 		};
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
-			error: err.message || "Unknown error occurred",
+			error: err.message || UNKNOWN_ERROR,
 			command: `dokku ps:report ${name}`,
 			exitCode: 1,
 			stderr: err.message || "",
 		};
 	}
+}
+
+function parseGitRemote(stdout: string): string {
+	const lines = stdout.split("\n");
+	for (const line of lines) {
+		if (line.includes("app deployed:")) {
+			return line;
+		}
+	}
+	return "";
+}
+
+function parseProcesses(stdout: string): Record<string, number> {
+	const processes: Record<string, number> = {};
+	const lines = stdout.split("\n");
+
+	for (const line of lines) {
+		const processMatch = line.match(/process type scale: (.+)/);
+		if (processMatch) {
+			const procInfo = processMatch[1].trim();
+			const scales = procInfo.split(/\s+/);
+			for (const scale of scales) {
+				const [procType, countStr] = scale.split("=");
+				if (procType) {
+					processes[procType] = Number.parseInt(countStr || "0", 10) || 0;
+				}
+			}
+		}
+	}
+
+	return processes;
 }
 
 export async function restartApp(
