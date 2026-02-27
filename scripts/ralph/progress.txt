@@ -303,7 +303,36 @@ Started: Fri Feb 27 21:01:07 +08 2026
   - Plugin detection by searching for plugin names in plugin:list output
   - Database plugin must be validated against SUPPORTED_PLUGINS constant
   - Type assertion (as any) used for TypeScript compatibility with string parameter
-  - Linked apps parsed from 'linked apps:' field with comma-separated values
-  - Connection info templates: postgresql://, mysql://, redis://, mongodb://
-  - Database name sanitization removes all characters except alphanumeric, underscore, and hyphen
+   - Linked apps parsed from 'linked apps:' field with comma-separated values
+   - Connection info templates: postgresql://, mysql://, redis://, mongodb://
+   - Database name sanitization removes all characters except alphanumeric, underscore, and hyphen
+---
+
+## [Fri Feb 27 2026] - US-015
+[Session: https://opncd.ai/s/]
+- Implemented Config vars UI on app detail page with tabbed layout
+- Added ConfigVars interface for key-value pairs
+- Config tab displays environment variables in a table format with key and value columns
+- Values masked by default (••••••), click to reveal actual value
+- Add new variable form with key input, value input, and Set button
+- Remove variable with trash icon per row, confirmation dialog before calling unset
+- CLI output displayed after each set/unset action with command, exitCode, stdout, stderr
+- Loading spinner while fetching config vars
+- Error state displays message if API fails
+- State management for config vars, visible values, new config form, and remove confirmation
+- useEffect fetches config vars when config tab becomes active
+- Typecheck passes
+- Browser verification skipped due to ChromeDevTools MCP not configured
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - Config vars state includes visibleValues Set to track which values should be revealed
+  - Toggle value visibility implemented with Set for efficient lookups
+  - Remove confirmation dialog pattern similar to action confirmation dialog
+  - Command output can be displayed inline within tabs (not just overview)
+  - useEffect with activeTab dependency allows fetching data when tab changes
+  - Config vars fetched from GET /api/apps/:name/config (already implemented in US-014)
+  - Add config via POST /api/apps/:name/config with { key, value } body (already implemented in US-014)
+  - Remove config via DELETE /api/apps/:name/config/:key (already implemented in US-014)
+  - Command result display component pattern reused across different tabs
+  - parseInt requires radix parameter (10) to pass biome linting
 ---
