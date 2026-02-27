@@ -1,6 +1,20 @@
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet, useNavigate } from "react-router-dom";
+import { apiFetch } from "../lib/api";
 
 export function AppLayout() {
+	const navigate = useNavigate();
+
+	const handleLogout = async () => {
+		try {
+			await apiFetch("/auth/logout", {
+				method: "POST",
+			});
+			navigate("/login");
+		} catch (err) {
+			console.error("Logout failed:", err);
+		}
+	};
+
 	return (
 		<div className="flex min-h-screen bg-gray-100">
 			<aside className="w-64 bg-gray-900 text-white">
@@ -17,6 +31,12 @@ export function AppLayout() {
 					<Link to="/databases" className="block px-4 py-2 hover:bg-gray-800">
 						Databases
 					</Link>
+					<button
+						onClick={handleLogout}
+						className="w-full text-left px-4 py-2 hover:bg-gray-800 mt-4"
+					>
+						Logout
+					</button>
 				</nav>
 			</aside>
 			<main className="flex-1 p-6">
