@@ -2,7 +2,12 @@ import cookieParser from "cookie-parser";
 import express from "express";
 import path from "path";
 import { isCommandAllowed } from "./lib/allowlist.js";
-import { getApps } from "./lib/apps.js";
+import {
+	getApps,
+	getAppDetail,
+	restartApp,
+	rebuildApp,
+} from "./lib/apps.js";
 import {
 	authMiddleware,
 	clearAuthCookie,
@@ -63,6 +68,24 @@ app.get("/api/commands", (req, res) => {
 app.get("/api/apps", async (req, res) => {
 	const apps = await getApps();
 	res.json(apps);
+});
+
+app.get("/api/apps/:name", async (req, res) => {
+	const { name } = req.params;
+	const app = await getAppDetail(name);
+	res.json(app);
+});
+
+app.post("/api/apps/:name/restart", async (req, res) => {
+	const { name } = req.params;
+	const result = await restartApp(name);
+	res.json(result);
+});
+
+app.post("/api/apps/:name/rebuild", async (req, res) => {
+	const { name } = req.params;
+	const result = await rebuildApp(name);
+	res.json(result);
 });
 
 app.get("/api/server/health", async (req, res) => {
