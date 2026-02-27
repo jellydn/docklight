@@ -178,3 +178,25 @@ Started: Fri Feb 27 21:01:07 +08 2026
   - Git remote extracted from 'app deployed' line in ps:report
   - All app action endpoints return CommandResult with command, exitCode, stdout, stderr
 ---
+
+## [Fri Feb 27 2026] - US-011
+[Session: https://opncd.ai/s/]
+- Implemented app detail page UI at /apps/:name with overview tab showing app information
+- Displays app name, status badge, git remote, domains list, process types and counts
+- Top action bar with Restart and Rebuild buttons
+- Clicking action shows confirmation dialog before executing
+- Executes restart/rebuild API calls and displays CLI output (command, exitCode, stdout, stderr)
+- Command output displayed with formatted code blocks and color coding (green for exit 0, red for non-zero)
+- Close button to dismiss command output
+- Loading spinner shown while fetching app details
+- Error state displayed if API fails
+- Typecheck passes
+- Browser verification skipped due to ChromeDevTools MCP not configured
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - Modal dialog pattern with overlay for confirmations
+  - Action state management with pendingAction and showActionDialog
+  - Command result displayed conditionally only when available
+  - Fetch app detail refreshed after successful action
+  - Process counts displayed as Object.entries for dynamic rendering
+---
