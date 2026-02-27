@@ -1,6 +1,10 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 
+function stripAnsi(value: string): string {
+	return value.replaceAll("\u001b", "").replace(/\[[0-9;]*m/g, "");
+}
+
 export async function getDomains(
 	name: string
 ): Promise<string[] | { error: string; command: string; exitCode: number; stderr: string }> {
@@ -25,20 +29,26 @@ export async function getDomains(
 			};
 		}
 
-		const domains: string[] = [];
-		const lines = result.stdout.split("\n");
+		const domains = new Set<string>();
+		const lines = result.stdout.split("\n").map((line) => stripAnsi(line));
 
 		for (const line of lines) {
-			if (line.includes("domains vhosts")) {
-				const match = line.match(/:\s*(.+)/);
-				if (match) {
-					const domainList = match[1].split(" ").filter((d) => d.length > 0);
-					domains.push(...domainList);
-				}
+			const vhostsMatch = line.match(/domains(?:\s+app)?\s+vhosts:\s*(.+)$/i);
+			if (!vhostsMatch) {
+				continue;
+			}
+
+			const domainList = vhostsMatch[1]
+				.split(/\s+/)
+				.map((domain) => domain.trim())
+				.filter((domain) => domain.length > 0 && domain !== "-" && domain.toLowerCase() !== "(none)");
+
+			for (const domain of domainList) {
+				domains.add(domain);
 			}
 		}
 
-		return domains;
+		return [...domains];
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {

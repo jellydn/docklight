@@ -16,7 +16,7 @@ function shellQuote(value: string): string {
 	return `'${value.replace(/'/g, "'\"'\"'")}'`;
 }
 
-function resolveRuntimeCommand(command: string): string {
+export function buildRuntimeCommand(command: string): string {
 	const target = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
 	if (!target || !command.startsWith("dokku ")) {
 		return command;
@@ -46,7 +46,7 @@ export async function executeCommand(
 	}
 
 	try {
-		const runtimeCommand = resolveRuntimeCommand(command);
+		const runtimeCommand = buildRuntimeCommand(command);
 		const { stdout, stderr } = await execAsync(runtimeCommand, { timeout });
 		const result = {
 			command,

@@ -4,12 +4,12 @@ import type net from "net";
 import { WebSocketServer, type WebSocket } from "ws";
 import { verifyToken } from "./auth.js";
 import { isValidAppName } from "./apps.js";
+import { buildRuntimeCommand } from "./executor.js";
 import { logger } from "./logger.js";
 
 export function setupLogStreaming(server: http.Server) {
 	const wss = new WebSocketServer({
 		noServer: true,
-		path: "/api/apps/:name/logs/stream",
 	});
 
 	server.on("upgrade", (req: http.IncomingMessage, socket: net.Socket, head: Buffer) => {
@@ -85,8 +85,8 @@ export function setupLogStreaming(server: http.Server) {
 			}
 		});
 
-		// Spawn dokku logs process
-		logProcess = spawn("dokku", ["logs", appName, "-t", "-n", String(lineCount)]);
+		const command = buildRuntimeCommand(`dokku logs ${appName} -t -n ${lineCount}`);
+		logProcess = spawn("sh", ["-lc", command]);
 
 		logProcess.stdout?.on("data", (data: Buffer) => {
 			const lines = data
