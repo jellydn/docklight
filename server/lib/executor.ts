@@ -12,6 +12,24 @@ export interface CommandResult {
 	stderr: string;
 }
 
+function shellQuote(value: string): string {
+	return `'${value.replace(/'/g, "'\"'\"'")}'`;
+}
+
+function resolveRuntimeCommand(command: string): string {
+	const target = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
+	if (!target || !command.startsWith("dokku ")) {
+		return command;
+	}
+
+	const keyPath = process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim();
+	const sshOptions =
+		process.env.DOCKLIGHT_DOKKU_SSH_OPTS?.trim() ||
+		"-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10";
+	const keyOption = keyPath ? `-i ${shellQuote(keyPath)}` : "";
+	return `ssh ${sshOptions} ${keyOption} ${shellQuote(target)} ${shellQuote(command)}`.trim();
+}
+
 export async function executeCommand(
 	command: string,
 	timeout: number = 30000
@@ -28,7 +46,8 @@ export async function executeCommand(
 	}
 
 	try {
-		const { stdout, stderr } = await execAsync(command, { timeout });
+		const runtimeCommand = resolveRuntimeCommand(command);
+		const { stdout, stderr } = await execAsync(runtimeCommand, { timeout });
 		const result = {
 			command,
 			exitCode: 0,
