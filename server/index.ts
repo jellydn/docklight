@@ -17,6 +17,7 @@ import {
 import { getRecentCommands } from "./lib/db.js";
 import { executeCommand } from "./lib/executor.js";
 import { getServerHealth } from "./lib/server.js";
+import { setupLogStreaming } from "./lib/websocket.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -93,6 +94,10 @@ app.get("/api/server/health", async (req, res) => {
 	res.json(health);
 });
 
-app.listen(PORT, () => {
+// Create server and setup WebSocket
+const server = require("http").createServer(app);
+setupLogStreaming(server);
+
+server.listen(PORT, () => {
 	console.log(`Docklight server running on port ${PORT}`);
 });
