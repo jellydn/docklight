@@ -11,6 +11,7 @@ import {
 } from "./lib/auth.js";
 import { getRecentCommands } from "./lib/db.js";
 import { executeCommand } from "./lib/executor.js";
+import { getServerHealth } from "./lib/server.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -62,6 +63,11 @@ app.get("/api/commands", (req, res) => {
 app.get("/api/apps", async (req, res) => {
 	const apps = await getApps();
 	res.json(apps);
+});
+
+app.get("/api/server/health", async (req, res) => {
+	const health = await getServerHealth();
+	res.json(health);
 });
 
 app.listen(PORT, () => {
