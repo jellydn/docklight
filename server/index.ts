@@ -2,28 +2,20 @@ import cookieParser from "cookie-parser";
 import express from "express";
 import path from "path";
 import { isCommandAllowed } from "./lib/allowlist.js";
-import {
-	getApps,
-	getAppDetail,
-	restartApp,
-	rebuildApp,
-} from "./lib/apps.js";
-import {
-	authMiddleware,
-	clearAuthCookie,
-	login,
-	setAuthCookie,
-} from "./lib/auth.js";
+import { getApps, getAppDetail, restartApp, rebuildApp, scaleApp } from "./lib/apps.js";
+import { authMiddleware, clearAuthCookie, login, setAuthCookie } from "./lib/auth.js";
 import { getRecentCommands } from "./lib/db.js";
 import { executeCommand } from "./lib/executor.js";
 import { getServerHealth } from "./lib/server.js";
-import {
-	getConfig,
-	setConfig,
-	unsetConfig,
-} from "./lib/config.js";
+import { getConfig, setConfig, unsetConfig } from "./lib/config.js";
 import { getDomains, addDomain, removeDomain } from "./lib/domains.js";
-import { getDatabases, createDatabase, linkDatabase, unlinkDatabase, destroyDatabase } from "./lib/databases.js";
+import {
+	getDatabases,
+	createDatabase,
+	linkDatabase,
+	unlinkDatabase,
+	destroyDatabase,
+} from "./lib/databases.js";
 import { setupLogStreaming } from "./lib/websocket.js";
 
 const app = express();
@@ -93,6 +85,13 @@ app.post("/api/apps/:name/restart", async (req, res) => {
 app.post("/api/apps/:name/rebuild", async (req, res) => {
 	const { name } = req.params;
 	const result = await rebuildApp(name);
+	res.json(result);
+});
+
+app.post("/api/apps/:name/scale", async (req, res) => {
+	const { name } = req.params;
+	const { processType, count } = req.body;
+	const result = await scaleApp(name, processType, count);
 	res.json(result);
 });
 

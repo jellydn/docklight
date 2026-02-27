@@ -2,7 +2,7 @@ import { useParams } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
 import { apiFetch } from "../lib/api";
 
-	interface AppDetail {
+interface AppDetail {
 	name: string;
 	status: "running" | "stopped";
 	gitRemote: string;
@@ -31,6 +31,10 @@ export function AppDetail() {
 	const [actionResult, setActionResult] = useState<CommandResult | null>(null);
 	const [showActionDialog, setShowActionDialog] = useState(false);
 	const [pendingAction, setPendingAction] = useState<string | null>(null);
+	const [showScaleDialog, setShowScaleDialog] = useState(false);
+	const [pendingScaleType, setPendingScaleType] = useState<string | null>(null);
+	const [pendingScaleCount, setPendingScaleCount] = useState<number | null>(null);
+	const [scaleChanges, setScaleChanges] = useState<Record<string, number>>({});
 	const [activeTab, setActiveTab] = useState<TabType>("overview");
 
 	// Config vars state
@@ -45,7 +49,9 @@ export function AppDetail() {
 
 	// Log viewer state
 	const [logs, setLogs] = useState<string[]>([]);
-	const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "reconnecting">("disconnected");
+	const [connectionStatus, setConnectionStatus] = useState<
+		"connected" | "disconnected" | "reconnecting"
+	>("disconnected");
 	const [autoScroll, setAutoScroll] = useState(true);
 	const [lineCount, setLineCount] = useState(100);
 	const wsRef = useRef<WebSocket | null>(null);
@@ -148,12 +154,9 @@ export function AppDetail() {
 		if (!pendingAction || !name) return;
 
 		try {
-			const result = await apiFetch<CommandResult>(
-				`/apps/${name}/${pendingAction}`,
-				{
-					method: "POST",
-				},
-			);
+			const result = await apiFetch<CommandResult>(`/apps/${name}/${pendingAction}`, {
+				method: "POST",
+			});
 			setActionResult(result);
 			setShowActionDialog(false);
 			setPendingAction(null);
@@ -167,6 +170,57 @@ export function AppDetail() {
 			});
 			setShowActionDialog(false);
 			setPendingAction(null);
+		}
+	};
+
+	const handleScaleChange = (processType: string, count: number) => {
+		setScaleChanges((prev) => ({
+			...prev,
+			[processType]: count,
+		}));
+	};
+
+	const handleApplyScale = async () => {
+		if (!name) return;
+
+		const entries = Object.entries(scaleChanges);
+		if (entries.length === 0) return;
+
+		const firstEntry = entries[0];
+		const [processType, count] = firstEntry;
+
+		setPendingScaleType(processType);
+		setPendingScaleCount(count);
+		setShowScaleDialog(true);
+	};
+
+	const confirmScale = async () => {
+		if (!name || !pendingScaleType || pendingScaleCount === null) return;
+
+		try {
+			const result = await apiFetch<CommandResult>(`/apps/${name}/scale`, {
+				method: "POST",
+				body: JSON.stringify({
+					processType: pendingScaleType,
+					count: pendingScaleCount,
+				}),
+			});
+			setActionResult(result);
+			setShowScaleDialog(false);
+			setPendingScaleType(null);
+			setPendingScaleCount(null);
+			setScaleChanges({});
+			fetchAppDetail();
+		} catch (err) {
+			setActionResult({
+				command: `dokku ps:scale ${name} ${pendingScaleType}=${pendingScaleCount}`,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Scale failed",
+			});
+			setShowScaleDialog(false);
+			setPendingScaleType(null);
+			setPendingScaleCount(null);
 		}
 	};
 
@@ -216,12 +270,9 @@ export function AppDetail() {
 		if (!name || !pendingRemoveKey) return;
 
 		try {
-			const result = await apiFetch<CommandResult>(
-				`/apps/${name}/config/${pendingRemoveKey}`,
-				{
-					method: "DELETE",
-				},
-			);
+			const result = await apiFetch<CommandResult>(`/apps/${name}/config/${pendingRemoveKey}`, {
+				method: "DELETE",
+			});
 			setActionResult(result);
 			setShowRemoveDialog(false);
 			setPendingRemoveKey(null);
@@ -268,13 +319,9 @@ export function AppDetail() {
 
 	const getStatusBadge = () => {
 		const color =
-			app.status === "running"
-				? "bg-green-100 text-green-800"
-				: "bg-red-100 text-red-800";
+			app.status === "running" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
 		return (
-			<span className={`px-3 py-1 rounded-full text-sm font-medium ${color}`}>
-				{app.status}
-			</span>
+			<span className={`px-3 py-1 rounded-full text-sm font-medium ${color}`}>{app.status}</span>
 		);
 	};
 
@@ -285,9 +332,7 @@ export function AppDetail() {
 			reconnecting: "bg-yellow-100 text-yellow-800",
 		};
 		return (
-			<span
-				className={`px-2 py-1 rounded-full text-xs font-medium ${colors[connectionStatus]}`}
-			>
+			<span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[connectionStatus]}`}>
 				{connectionStatus}
 			</span>
 		);
@@ -327,11 +372,7 @@ export function AppDetail() {
 						</div>
 						<div className="mb-2">
 							<strong>Exit Code:</strong>{" "}
-							<span
-								className={
-									actionResult.exitCode === 0 ? "text-green-600" : "text-red-600"
-								}
-							>
+							<span className={actionResult.exitCode === 0 ? "text-green-600" : "text-red-600"}>
 								{actionResult.exitCode}
 							</span>
 						</div>
@@ -389,12 +430,43 @@ export function AppDetail() {
 				</div>
 			)}
 
+			{showScaleDialog && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4">Confirm Scale</h2>
+						<p className="mb-6">
+							Are you sure you want to scale <strong>{pendingScaleType}</strong> to{" "}
+							<strong>{pendingScaleCount}</strong> processes for <strong>{app.name}</strong>?
+						</p>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => {
+									setShowScaleDialog(false);
+									setPendingScaleType(null);
+									setPendingScaleCount(null);
+								}}
+								className="px-4 py-2 border rounded hover:bg-gray-100"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmScale}
+								className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+							>
+								Confirm
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
 			{showRemoveDialog && (
 				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
 					<div className="bg-white rounded p-6 max-w-md w-full">
 						<h2 className="text-lg font-semibold mb-4">Confirm Remove</h2>
 						<p className="mb-6">
-							Are you sure you want to remove environment variable <strong>{pendingRemoveKey}</strong>?
+							Are you sure you want to remove environment variable{" "}
+							<strong>{pendingRemoveKey}</strong>?
 						</p>
 						<div className="flex justify-end space-x-2">
 							<button
@@ -457,14 +529,11 @@ export function AppDetail() {
 					<h2 className="text-lg font-semibold mb-4">Overview</h2>
 					<div className="space-y-4">
 						<div>
-							<strong className="text-gray-700">Status:</strong>{" "}
-							{getStatusBadge()}
+							<strong className="text-gray-700">Status:</strong> {getStatusBadge()}
 						</div>
 						<div>
 							<strong className="text-gray-700">Git Remote:</strong>{" "}
-							<code className="bg-gray-100 px-2 py-1 rounded text-sm">
-								{app.gitRemote || "-"}
-							</code>
+							<code className="bg-gray-100 px-2 py-1 rounded text-sm">{app.gitRemote || "-"}</code>
 						</div>
 						<div>
 							<strong className="text-gray-700">Domains:</strong>
@@ -481,12 +550,39 @@ export function AppDetail() {
 						<div>
 							<strong className="text-gray-700">Processes:</strong>
 							{Object.keys(app.processes).length > 0 ? (
-								<div className="mt-2 space-y-1">
-									{Object.entries(app.processes).map(([type, count]) => (
-										<div key={type}>
-											<strong>{type}:</strong> {count}
+								<div className="mt-4">
+									<div className="space-y-3">
+										{Object.entries(app.processes).map(([type, count]) => (
+											<div key={type} className="flex items-center space-x-4">
+												<div className="w-32 font-medium">{type}</div>
+												<div className="flex items-center space-x-2">
+													<span className="text-gray-600">Current:</span>
+													<span className="font-mono">{count}</span>
+												</div>
+												<div className="flex items-center space-x-2">
+													<span className="text-gray-600">Scale to:</span>
+													<input
+														type="number"
+														min="0"
+														max="100"
+														defaultValue={count}
+														onChange={(e) => handleScaleChange(type, parseInt(e.target.value, 10))}
+														className="w-20 border rounded px-2 py-1"
+													/>
+												</div>
+											</div>
+										))}
+									</div>
+									{Object.keys(scaleChanges).length > 0 && (
+										<div className="mt-4">
+											<button
+												onClick={handleApplyScale}
+												className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+											>
+												Apply Scaling
+											</button>
 										</div>
-									))}
+									)}
 								</div>
 							) : (
 								<span className="text-gray-400">No processes running</span>
@@ -520,10 +616,7 @@ export function AppDetail() {
 						</div>
 					</div>
 					<div className="bg-gray-900 rounded p-4 h-96 overflow-y-auto">
-						<pre
-							ref={logsEndRef}
-							className="text-green-400 font-mono text-sm whitespace-pre-wrap"
-						>
+						<pre ref={logsEndRef} className="text-green-400 font-mono text-sm whitespace-pre-wrap">
 							{logs.length > 0
 								? logs.join("\n")
 								: connectionStatus === "connected"
@@ -590,7 +683,9 @@ export function AppDetail() {
 									<thead>
 										<tr>
 											<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Key</th>
-											<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Value</th>
+											<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
+												Value
+											</th>
 											<th className="px-4 py-2"></th>
 										</tr>
 									</thead>
@@ -636,11 +731,7 @@ export function AppDetail() {
 								</div>
 								<div className="mb-2">
 									<strong>Exit Code:</strong>{" "}
-									<span
-										className={
-											actionResult.exitCode === 0 ? "text-green-600" : "text-red-600"
-										}
-									>
+									<span className={actionResult.exitCode === 0 ? "text-green-600" : "text-red-600"}>
 										{actionResult.exitCode}
 									</span>
 								</div>

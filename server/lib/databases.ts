@@ -1,4 +1,4 @@
-import { executeCommand, CommandResult } from './executor.js';
+import { executeCommand, CommandResult } from "./executor.js";
 
 export interface Database {
 	name: string;
@@ -8,16 +8,18 @@ export interface Database {
 }
 
 // List of supported database plugins
-const SUPPORTED_PLUGINS = ['postgres', 'redis', 'mysql', 'mariadb', 'mongo'] as const;
+const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"] as const;
 
-export async function getDatabases(): Promise<Database[] | { error: string; command: string; exitCode: number; stderr: string }> {
+export async function getDatabases(): Promise<
+	Database[] | { error: string; command: string; exitCode: number; stderr: string }
+> {
 	try {
 		// First, check which plugins are installed
-		const pluginListResult = await executeCommand('dokku plugin:list');
-		
+		const pluginListResult = await executeCommand("dokku plugin:list");
+
 		if (pluginListResult.exitCode !== 0) {
 			return {
-				error: 'Failed to list plugins',
+				error: "Failed to list plugins",
 				command: pluginListResult.command,
 				exitCode: pluginListResult.exitCode,
 				stderr: pluginListResult.stderr,
@@ -25,8 +27,8 @@ export async function getDatabases(): Promise<Database[] | { error: string; comm
 		}
 
 		const installedPlugins: string[] = [];
-		const lines = pluginListResult.stdout.split('\n').filter(line => line.trim());
-		
+		const lines = pluginListResult.stdout.split("\n").filter((line) => line.trim());
+
 		for (const line of lines) {
 			// Check if any supported plugin is in the line
 			for (const plugin of SUPPORTED_PLUGINS) {
@@ -46,39 +48,39 @@ export async function getDatabases(): Promise<Database[] | { error: string; comm
 		// For each installed plugin, get the list of databases
 		for (const plugin of installedPlugins) {
 			const listResult = await executeCommand(`dokku ${plugin}:list`);
-			
+
 			if (listResult.exitCode !== 0) {
 				continue;
 			}
 
-			const dbLines = listResult.stdout.split('\n').filter(line => line.trim());
-			
+			const dbLines = listResult.stdout.split("\n").filter((line) => line.trim());
+
 			for (const dbName of dbLines) {
 				// Get linked apps for this database
 				const linkReportResult = await executeCommand(`dokku ${plugin}:links ${dbName}`);
-				
+
 				let linkedApps: string[] = [];
 				if (linkReportResult.exitCode === 0) {
-					const linkLines = linkReportResult.stdout.split('\n').filter(line => line.trim());
+					const linkLines = linkReportResult.stdout.split("\n").filter((line) => line.trim());
 					for (const line of linkLines) {
-						if (line.includes('linked apps')) {
+						if (line.includes("linked apps")) {
 							const match = line.match(/linked apps:\s*(.+)/);
 							if (match) {
-								linkedApps = match[1].split(',').map(app => app.trim());
+								linkedApps = match[1].split(",").map((app) => app.trim());
 							}
 						}
 					}
 				}
 
 				// Get connection info (basic)
-				let connectionInfo = '';
-				if (plugin === 'postgres') {
+				let connectionInfo = "";
+				if (plugin === "postgres") {
 					connectionInfo = `postgresql://${dbName}@localhost`;
-				} else if (plugin === 'mysql' || plugin === 'mariadb') {
+				} else if (plugin === "mysql" || plugin === "mariadb") {
 					connectionInfo = `mysql://${dbName}@localhost`;
-				} else if (plugin === 'redis') {
+				} else if (plugin === "redis") {
 					connectionInfo = `redis://localhost:6379`;
-				} else if (plugin === 'mongo') {
+				} else if (plugin === "mongo") {
 					connectionInfo = `mongodb://localhost`;
 				}
 
@@ -94,23 +96,23 @@ export async function getDatabases(): Promise<Database[] | { error: string; comm
 		return databases;
 	} catch (error: any) {
 		return {
-			error: error.message || 'Unknown error occurred',
-			command: 'dokku plugin:list',
+			error: error.message || "Unknown error occurred",
+			command: "dokku plugin:list",
 			exitCode: 1,
-			stderr: error.message || '',
+			stderr: error.message || "",
 		};
 	}
 }
 
 export async function createDatabase(
 	plugin: string,
-	name: string,
+	name: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
 	// Validate plugin
 	if (!SUPPORTED_PLUGINS.includes(plugin as any)) {
 		return {
-			error: 'Invalid database plugin',
-			command: '',
+			error: "Invalid database plugin",
+			command: "",
 			exitCode: 400,
 		};
 	}
@@ -118,19 +120,19 @@ export async function createDatabase(
 	// Validate database name
 	if (!name || name.trim().length === 0) {
 		return {
-			error: 'Database name cannot be empty',
-			command: '',
+			error: "Database name cannot be empty",
+			command: "",
 			exitCode: 400,
 		};
 	}
 
 	// Sanitize database name (no shell characters)
-	const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, '');
+	const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, "");
 
 	if (sanitizedName !== name) {
 		return {
-			error: 'Database name contains invalid characters',
-			command: '',
+			error: "Database name contains invalid characters",
+			command: "",
 			exitCode: 400,
 		};
 	}
@@ -139,7 +141,7 @@ export async function createDatabase(
 		return executeCommand(`dokku ${plugin}:create ${sanitizedName}`);
 	} catch (error: any) {
 		return {
-			error: error.message || 'Unknown error occurred',
+			error: error.message || "Unknown error occurred",
 			command: `dokku ${plugin}:create ${sanitizedName}`,
 			exitCode: 1,
 		};
@@ -148,13 +150,13 @@ export async function createDatabase(
 
 export async function linkDatabase(
 	name: string,
-	app: string,
+	app: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
 	// Validate database name
 	if (!name || name.trim().length === 0) {
 		return {
-			error: 'Database name cannot be empty',
-			command: '',
+			error: "Database name cannot be empty",
+			command: "",
 			exitCode: 400,
 		};
 	}
@@ -162,20 +164,20 @@ export async function linkDatabase(
 	// Validate app name
 	if (!app || app.trim().length === 0) {
 		return {
-			error: 'App name cannot be empty',
-			command: '',
+			error: "App name cannot be empty",
+			command: "",
 			exitCode: 400,
 		};
 	}
 
 	// Sanitize names
-	const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, '');
-	const sanitizedApp = app.replace(/[^a-zA-Z0-9_-]/g, '');
+	const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, "");
+	const sanitizedApp = app.replace(/[^a-zA-Z0-9_-]/g, "");
 
 	if (sanitizedName !== name || sanitizedApp !== app) {
 		return {
-			error: 'Database name or app name contains invalid characters',
-			command: '',
+			error: "Database name or app name contains invalid characters",
+			command: "",
 			exitCode: 400,
 		};
 	}
@@ -184,7 +186,7 @@ export async function linkDatabase(
 		return executeCommand(`dokku ${name}:link ${sanitizedApp}`);
 	} catch (error: any) {
 		return {
-			error: error.message || 'Unknown error occurred',
+			error: error.message || "Unknown error occurred",
 			command: `dokku ${name}:link ${sanitizedApp}`,
 			exitCode: 1,
 		};
@@ -193,13 +195,13 @@ export async function linkDatabase(
 
 export async function unlinkDatabase(
 	name: string,
-	app: string,
+	app: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
 	// Validate database name
 	if (!name || name.trim().length === 0) {
 		return {
-			error: 'Database name cannot be empty',
-			command: '',
+			error: "Database name cannot be empty",
+			command: "",
 			exitCode: 400,
 		};
 	}
@@ -207,20 +209,20 @@ export async function unlinkDatabase(
 	// Validate app name
 	if (!app || app.trim().length === 0) {
 		return {
-			error: 'App name cannot be empty',
-			command: '',
+			error: "App name cannot be empty",
+			command: "",
 			exitCode: 400,
 		};
 	}
 
 	// Sanitize names
-	const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, '');
-	const sanitizedApp = app.replace(/[^a-zA-Z0-9_-]/g, '');
+	const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, "");
+	const sanitizedApp = app.replace(/[^a-zA-Z0-9_-]/g, "");
 
 	if (sanitizedName !== name || sanitizedApp !== app) {
 		return {
-			error: 'Database name or app name contains invalid characters',
-			command: '',
+			error: "Database name or app name contains invalid characters",
+			command: "",
 			exitCode: 400,
 		};
 	}
@@ -229,7 +231,7 @@ export async function unlinkDatabase(
 		return executeCommand(`dokku ${name}:unlink ${sanitizedApp}`);
 	} catch (error: any) {
 		return {
-			error: error.message || 'Unknown error occurred',
+			error: error.message || "Unknown error occurred",
 			command: `dokku ${name}:unlink ${sanitizedApp}`,
 			exitCode: 1,
 		};
@@ -238,13 +240,13 @@ export async function unlinkDatabase(
 
 export async function destroyDatabase(
 	name: string,
-	confirmName: string,
+	confirmName: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
 	// Validate database name
 	if (!name || name.trim().length === 0) {
 		return {
-			error: 'Database name cannot be empty',
-			command: '',
+			error: "Database name cannot be empty",
+			command: "",
 			exitCode: 400,
 		};
 	}
@@ -252,19 +254,19 @@ export async function destroyDatabase(
 	// Validate confirmation
 	if (!confirmName || confirmName !== name) {
 		return {
-			error: 'Confirmation name does not match database name',
-			command: '',
+			error: "Confirmation name does not match database name",
+			command: "",
 			exitCode: 400,
 		};
 	}
 
 	// Sanitize database name
-	const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, '');
+	const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, "");
 
 	if (sanitizedName !== name) {
 		return {
-			error: 'Database name contains invalid characters',
-			command: '',
+			error: "Database name contains invalid characters",
+			command: "",
 			exitCode: 400,
 		};
 	}
@@ -273,7 +275,7 @@ export async function destroyDatabase(
 		return executeCommand(`dokku ${name}:destroy ${sanitizedName} --force`);
 	} catch (error: any) {
 		return {
-			error: error.message || 'Unknown error occurred',
+			error: error.message || "Unknown error occurred",
 			command: `dokku ${name}:destroy ${sanitizedName} --force`,
 			exitCode: 1,
 		};

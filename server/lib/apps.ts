@@ -201,3 +201,35 @@ export async function rebuildApp(
 
 	return executeCommand(`dokku ps:rebuild ${name}`);
 }
+
+export async function scaleApp(
+	name: string,
+	processType: string,
+	count: number
+): Promise<CommandResult | { error: string; exitCode: number }> {
+	if (!isValidAppName(name)) {
+		return {
+			error: "Invalid app name",
+			command: "",
+			exitCode: 400,
+		};
+	}
+
+	if (!processType || !/^[a-z0-9-]+$/.test(processType)) {
+		return {
+			error: "Invalid process type",
+			command: "",
+			exitCode: 400,
+		};
+	}
+
+	if (count < 0 || count > 100) {
+		return {
+			error: "Process count must be between 0 and 100",
+			command: "",
+			exitCode: 400,
+		};
+	}
+
+	return executeCommand(`dokku ps:scale ${name} ${processType}=${count}`);
+}
