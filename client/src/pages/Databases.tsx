@@ -156,7 +156,7 @@ export function Databases() {
 		try {
 			const result = await apiFetch<CommandResult>(`/databases/${pendingDestroyDb}`, {
 				method: "DELETE",
-				body: JSON.stringify({ confirmName: confirmDestroyName }),
+				body: JSON.stringify({ plugin: getDbPlugin(pendingDestroyDb), confirmName: confirmDestroyName }),
 			});
 			addToast(result.exitCode === 0 ? "success" : "error", "Database destroyed", result);
 			setShowDestroyDialog(false);

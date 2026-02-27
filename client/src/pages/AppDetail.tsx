@@ -129,7 +129,10 @@ export function AppDetail() {
 				try {
 					const data = JSON.parse(event.data);
 					if (data.line) {
-						setLogs((prev) => [...prev, data.line]);
+						setLogs((prev) => {
+							const next = [...prev, data.line];
+							return next.length > 10000 ? next.slice(-10000) : next;
+						});
 					}
 					if (data.error && !data.line) {
 						setConnectionStatus("disconnected");
