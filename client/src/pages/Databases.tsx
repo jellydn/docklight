@@ -1,18 +1,13 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
+import { useToast } from "../components/ToastProvider";
+import type { CommandResult } from "../components/types";
 
 interface Database {
 	name: string;
 	plugin: string;
 	linkedApps: string[];
 	connectionInfo: string;
-}
-
-interface CommandResult {
-	command: string;
-	exitCode: number;
-	stdout: string;
-	stderr: string;
 }
 
 interface App {
@@ -22,11 +17,11 @@ interface App {
 const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"];
 
 export function Databases() {
+	const { addToast } = useToast();
 	const [databases, setDatabases] = useState<Database[]>([]);
 	const [apps, setApps] = useState<App[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [actionResult, setActionResult] = useState<CommandResult | null>(null);
 
 	// Create database form state
 	const [newDbPlugin, setNewDbPlugin] = useState("");
@@ -78,17 +73,18 @@ export function Databases() {
 				method: "POST",
 				body: JSON.stringify({ plugin: newDbPlugin, name: newDbName }),
 			});
-			setActionResult(result);
+			addToast(result.exitCode === 0 ? "success" : "error", "Database created", result);
 			setNewDbPlugin("");
 			setNewDbName("");
 			fetchData();
 		} catch (err) {
-			setActionResult({
+			const errorResult: CommandResult = {
 				command: `dokku ${newDbPlugin}:create ${newDbName}`,
 				exitCode: 1,
 				stdout: "",
 				stderr: err instanceof Error ? err.message : "Failed to create database",
-			});
+			};
+			addToast("error", "Failed to create database", errorResult);
 		}
 	};
 
@@ -100,17 +96,18 @@ export function Databases() {
 				method: "POST",
 				body: JSON.stringify({ plugin: getDbPlugin(linkDbName), app: linkAppName }),
 			});
-			setActionResult(result);
+			addToast(result.exitCode === 0 ? "success" : "error", "Database linked", result);
 			setLinkDbName("");
 			setLinkAppName("");
 			fetchData();
 		} catch (err) {
-			setActionResult({
+			const errorResult: CommandResult = {
 				command: `dokku ${getDbPlugin(linkDbName)}:link ${linkDbName} ${linkAppName}`,
 				exitCode: 1,
 				stdout: "",
 				stderr: err instanceof Error ? err.message : "Failed to link database",
-			});
+			};
+			addToast("error", "Failed to link database", errorResult);
 		}
 	};
 
@@ -128,18 +125,19 @@ export function Databases() {
 				method: "POST",
 				body: JSON.stringify({ plugin: getDbPlugin(pendingUnlinkDb), app: pendingUnlinkApp }),
 			});
-			setActionResult(result);
+			addToast(result.exitCode === 0 ? "success" : "error", "Database unlinked", result);
 			setShowUnlinkDialog(false);
 			setPendingUnlinkDb("");
 			setPendingUnlinkApp("");
 			fetchData();
 		} catch (err) {
-			setActionResult({
+			const errorResult: CommandResult = {
 				command: `dokku ${getDbPlugin(pendingUnlinkDb)}:unlink ${pendingUnlinkDb} ${pendingUnlinkApp}`,
 				exitCode: 1,
 				stdout: "",
 				stderr: err instanceof Error ? err.message : "Failed to unlink database",
-			});
+			};
+			addToast("error", "Failed to unlink database", errorResult);
 			setShowUnlinkDialog(false);
 			setPendingUnlinkDb("");
 			setPendingUnlinkApp("");
@@ -160,18 +158,19 @@ export function Databases() {
 				method: "DELETE",
 				body: JSON.stringify({ confirmName: confirmDestroyName }),
 			});
-			setActionResult(result);
+			addToast(result.exitCode === 0 ? "success" : "error", "Database destroyed", result);
 			setShowDestroyDialog(false);
 			setPendingDestroyDb("");
 			setConfirmDestroyName("");
 			fetchData();
 		} catch (err) {
-			setActionResult({
+			const errorResult: CommandResult = {
 				command: `dokku ${getDbPlugin(pendingDestroyDb)}:destroy ${pendingDestroyDb} --force`,
 				exitCode: 1,
 				stdout: "",
 				stderr: err instanceof Error ? err.message : "Failed to destroy database",
-			});
+			};
+			addToast("error", "Failed to destroy database", errorResult);
 			setShowDestroyDialog(false);
 			setPendingDestroyDb("");
 			setConfirmDestroyName("");
@@ -225,45 +224,6 @@ export function Databases() {
 	return (
 		<div>
 			<h1 className="text-2xl font-bold mb-6">Databases</h1>
-
-			{actionResult && (
-				<div className="bg-gray-100 rounded p-4 mb-6">
-					<h3 className="font-semibold mb-2">Command Output</h3>
-					<div className="text-sm">
-						<div className="mb-2">
-							<strong>Command:</strong> {actionResult.command}
-						</div>
-						<div className="mb-2">
-							<strong>Exit Code:</strong>{" "}
-							<span className={actionResult.exitCode === 0 ? "text-green-600" : "text-red-600"}>
-								{actionResult.exitCode}
-							</span>
-						</div>
-						{actionResult.stdout && (
-							<div className="mb-2">
-								<strong>Output:</strong>
-								<pre className="bg-white p-2 rounded mt-1 overflow-x-auto">
-									{actionResult.stdout}
-								</pre>
-							</div>
-						)}
-						{actionResult.stderr && (
-							<div>
-								<strong>Error:</strong>
-								<pre className="bg-red-50 p-2 rounded mt-1 overflow-x-auto text-red-800">
-									{actionResult.stderr}
-								</pre>
-							</div>
-						)}
-					</div>
-					<button
-						onClick={() => setActionResult(null)}
-						className="mt-4 text-blue-600 hover:underline"
-					>
-						Close
-					</button>
-				</div>
-			)}
 
 			{/* Create Database Form */}
 			<div className="bg-white rounded-lg shadow p-6 mb-6">

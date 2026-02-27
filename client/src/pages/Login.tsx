@@ -27,7 +27,7 @@ export function Login() {
 				body: JSON.stringify({ password }),
 			});
 			navigate("/dashboard");
-		} catch (err) {
+		} catch (_err) {
 			setError("Invalid password");
 		}
 	};

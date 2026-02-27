@@ -1,6 +1,8 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
 import { apiFetch } from "../lib/api";
+import { useToast } from "../components/ToastProvider";
+import type { CommandResult } from "../components/types";
 
 interface AppDetail {
 	name: string;
@@ -8,13 +10,6 @@ interface AppDetail {
 	gitRemote: string;
 	domains: string[];
 	processes: Record<string, number>;
-}
-
-interface CommandResult {
-	command: string;
-	exitCode: number;
-	stdout: string;
-	stderr: string;
 }
 
 interface SSLStatus {
@@ -31,10 +26,10 @@ interface ConfigVars {
 
 export function AppDetail() {
 	const { name } = useParams<{ name: string }>();
+	const { addToast } = useToast();
 	const [app, setApp] = useState<AppDetail | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [actionResult, setActionResult] = useState<CommandResult | null>(null);
 	const [showActionDialog, setShowActionDialog] = useState(false);
 	const [pendingAction, setPendingAction] = useState<string | null>(null);
 	const [showScaleDialog, setShowScaleDialog] = useState(false);
@@ -188,17 +183,18 @@ export function AppDetail() {
 			const result = await apiFetch<CommandResult>(`/apps/${name}/${pendingAction}`, {
 				method: "POST",
 			});
-			setActionResult(result);
+			addToast(result.exitCode === 0 ? "success" : "error", `${pendingAction} completed`, result);
 			setShowActionDialog(false);
 			setPendingAction(null);
 			fetchAppDetail();
 		} catch (err) {
-			setActionResult({
+			const errorResult: CommandResult = {
 				command: `dokku ps:${pendingAction} ${name}`,
 				exitCode: 1,
 				stdout: "",
 				stderr: err instanceof Error ? err.message : "Action failed",
-			});
+			};
+			addToast("error", `${pendingAction} failed`, errorResult);
 			setShowActionDialog(false);
 			setPendingAction(null);
 		}
@@ -236,19 +232,20 @@ export function AppDetail() {
 					count: pendingScaleCount,
 				}),
 			});
-			setActionResult(result);
+			addToast(result.exitCode === 0 ? "success" : "error", "Scaling completed", result);
 			setShowScaleDialog(false);
 			setPendingScaleType(null);
 			setPendingScaleCount(null);
 			setScaleChanges({});
 			fetchAppDetail();
 		} catch (err) {
-			setActionResult({
+			const errorResult: CommandResult = {
 				command: `dokku ps:scale ${name} ${pendingScaleType}=${pendingScaleCount}`,
 				exitCode: 1,
 				stdout: "",
 				stderr: err instanceof Error ? err.message : "Scale failed",
-			});
+			};
+			addToast("error", "Scaling failed", errorResult);
 			setShowScaleDialog(false);
 			setPendingScaleType(null);
 			setPendingScaleCount(null);
@@ -278,17 +275,18 @@ export function AppDetail() {
 				method: "POST",
 				body: JSON.stringify({ key: newConfigKey, value: newConfigValue }),
 			});
-			setActionResult(result);
+			addToast(result.exitCode === 0 ? "success" : "error", "Config var set", result);
 			setNewConfigKey("");
 			setNewConfigValue("");
 			fetchConfigVars();
 		} catch (err) {
-			setActionResult({
+			const errorResult: CommandResult = {
 				command: `dokku config:set ${name} ${newConfigKey}=***`,
 				exitCode: 1,
 				stdout: "",
 				stderr: err instanceof Error ? err.message : "Failed to set config var",
-			});
+			};
+			addToast("error", "Failed to set config var", errorResult);
 		}
 	};
 
@@ -304,17 +302,18 @@ export function AppDetail() {
 			const result = await apiFetch<CommandResult>(`/apps/${name}/config/${pendingRemoveKey}`, {
 				method: "DELETE",
 			});
-			setActionResult(result);
+			addToast(result.exitCode === 0 ? "success" : "error", "Config var removed", result);
 			setShowRemoveDialog(false);
 			setPendingRemoveKey(null);
 			fetchConfigVars();
 		} catch (err) {
-			setActionResult({
+			const errorResult: CommandResult = {
 				command: `dokku config:unset ${name} ${pendingRemoveKey}`,
 				exitCode: 1,
 				stdout: "",
 				stderr: err instanceof Error ? err.message : "Failed to unset config var",
-			});
+			};
+			addToast("error", "Failed to unset config var", errorResult);
 			setShowRemoveDialog(false);
 			setPendingRemoveKey(null);
 		}
@@ -355,16 +354,17 @@ export function AppDetail() {
 				method: "POST",
 				body: JSON.stringify({ domain: newDomain }),
 			});
-			setActionResult(result);
+			addToast(result.exitCode === 0 ? "success" : "error", "Domain added", result);
 			setNewDomain("");
 			fetchDomains();
 		} catch (err) {
-			setActionResult({
+			const errorResult: CommandResult = {
 				command: `dokku domains:add ${name} ${newDomain}`,
 				exitCode: 1,
 				stdout: "",
 				stderr: err instanceof Error ? err.message : "Failed to add domain",
-			});
+			};
+			addToast("error", "Failed to add domain", errorResult);
 		}
 	};
 
@@ -383,17 +383,18 @@ export function AppDetail() {
 					method: "DELETE",
 				}
 			);
-			setActionResult(result);
+			addToast(result.exitCode === 0 ? "success" : "error", "Domain removed", result);
 			setShowDomainRemoveDialog(false);
 			setPendingRemoveDomain(null);
 			fetchDomains();
 		} catch (err) {
-			setActionResult({
+			const errorResult: CommandResult = {
 				command: `dokku domains:remove ${name} ${pendingRemoveDomain}`,
 				exitCode: 1,
 				stdout: "",
 				stderr: err instanceof Error ? err.message : "Failed to remove domain",
-			});
+			};
+			addToast("error", "Failed to remove domain", errorResult);
 			setShowDomainRemoveDialog(false);
 			setPendingRemoveDomain(null);
 		}
@@ -421,15 +422,16 @@ export function AppDetail() {
 			const result = await apiFetch<CommandResult>(`/apps/${name}/ssl/enable`, {
 				method: "POST",
 			});
-			setActionResult(result);
+			addToast(result.exitCode === 0 ? "success" : "error", "SSL enabled", result);
 			fetchSSLStatus();
 		} catch (err) {
-			setActionResult({
+			const errorResult: CommandResult = {
 				command: `dokku letsencrypt:enable ${name}`,
 				exitCode: 1,
 				stdout: "",
 				stderr: err instanceof Error ? err.message : "Failed to enable SSL",
-			});
+			};
+			addToast("error", "Failed to enable SSL", errorResult);
 		}
 	};
 
@@ -440,15 +442,16 @@ export function AppDetail() {
 			const result = await apiFetch<CommandResult>(`/apps/${name}/ssl/renew`, {
 				method: "POST",
 			});
-			setActionResult(result);
+			addToast(result.exitCode === 0 ? "success" : "error", "SSL renewed", result);
 			fetchSSLStatus();
 		} catch (err) {
-			setActionResult({
+			const errorResult: CommandResult = {
 				command: `dokku letsencrypt:auto-renew ${name}`,
 				exitCode: 1,
 				stdout: "",
 				stderr: err instanceof Error ? err.message : "Failed to renew SSL",
-			});
+			};
+			addToast("error", "Failed to renew SSL", errorResult);
 		}
 	};
 
@@ -513,45 +516,6 @@ export function AppDetail() {
 					</div>
 				)}
 			</div>
-
-			{actionResult && (
-				<div className="bg-gray-100 rounded p-4 mb-6">
-					<h3 className="font-semibold mb-2">Command Output</h3>
-					<div className="text-sm">
-						<div className="mb-2">
-							<strong>Command:</strong> {actionResult.command}
-						</div>
-						<div className="mb-2">
-							<strong>Exit Code:</strong>{" "}
-							<span className={actionResult.exitCode === 0 ? "text-green-600" : "text-red-600"}>
-								{actionResult.exitCode}
-							</span>
-						</div>
-						{actionResult.stdout && (
-							<div className="mb-2">
-								<strong>Output:</strong>
-								<pre className="bg-white p-2 rounded mt-1 overflow-x-auto">
-									{actionResult.stdout}
-								</pre>
-							</div>
-						)}
-						{actionResult.stderr && (
-							<div>
-								<strong>Error:</strong>
-								<pre className="bg-red-50 p-2 rounded mt-1 overflow-x-auto text-red-800">
-									{actionResult.stderr}
-								</pre>
-							</div>
-						)}
-					</div>
-					<button
-						onClick={() => setActionResult(null)}
-						className="mt-4 text-blue-600 hover:underline"
-					>
-						Close
-					</button>
-				</div>
-			)}
 
 			{showActionDialog && (
 				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -810,14 +774,6 @@ export function AppDetail() {
 				<div className="bg-white rounded-lg shadow p-6">
 					<div className="flex justify-between items-center mb-4">
 						<h2 className="text-lg font-semibold">Environment Variables</h2>
-						{actionResult && activeTab === "config" && (
-							<button
-								onClick={() => setActionResult(null)}
-								className="text-blue-600 hover:underline text-sm"
-							>
-								Hide Output
-							</button>
-						)}
 					</div>
 
 					{configLoading ? (
@@ -900,45 +856,6 @@ export function AppDetail() {
 							)}
 						</>
 					)}
-
-					{actionResult && activeTab === "config" && (
-						<div className="mt-6 bg-gray-100 rounded p-4">
-							<h3 className="font-semibold mb-2">Command Output</h3>
-							<div className="text-sm">
-								<div className="mb-2">
-									<strong>Command:</strong> {actionResult.command}
-								</div>
-								<div className="mb-2">
-									<strong>Exit Code:</strong>{" "}
-									<span className={actionResult.exitCode === 0 ? "text-green-600" : "text-red-600"}>
-										{actionResult.exitCode}
-									</span>
-								</div>
-								{actionResult.stdout && (
-									<div className="mb-2">
-										<strong>Output:</strong>
-										<pre className="bg-white p-2 rounded mt-1 overflow-x-auto">
-											{actionResult.stdout}
-										</pre>
-									</div>
-								)}
-								{actionResult.stderr && (
-									<div>
-										<strong>Error:</strong>
-										<pre className="bg-red-50 p-2 rounded mt-1 overflow-x-auto text-red-800">
-											{actionResult.stderr}
-										</pre>
-									</div>
-								)}
-							</div>
-							<button
-								onClick={() => setActionResult(null)}
-								className="mt-4 text-blue-600 hover:underline"
-							>
-								Close
-							</button>
-						</div>
-					)}
 				</div>
 			)}
 
@@ -946,14 +863,6 @@ export function AppDetail() {
 				<div className="bg-white rounded-lg shadow p-6">
 					<div className="flex justify-between items-center mb-4">
 						<h2 className="text-lg font-semibold">Domains</h2>
-						{actionResult && activeTab === "domains" && (
-							<button
-								onClick={() => setActionResult(null)}
-								className="text-blue-600 hover:underline text-sm"
-							>
-								Hide Output
-							</button>
-						)}
 					</div>
 
 					{domainsLoading ? (
@@ -1020,45 +929,6 @@ export function AppDetail() {
 							)}
 						</>
 					)}
-
-					{actionResult && activeTab === "domains" && (
-						<div className="mt-6 bg-gray-100 rounded p-4">
-							<h3 className="font-semibold mb-2">Command Output</h3>
-							<div className="text-sm">
-								<div className="mb-2">
-									<strong>Command:</strong> {actionResult.command}
-								</div>
-								<div className="mb-2">
-									<strong>Exit Code:</strong>{" "}
-									<span className={actionResult.exitCode === 0 ? "text-green-600" : "text-red-600"}>
-										{actionResult.exitCode}
-									</span>
-								</div>
-								{actionResult.stdout && (
-									<div className="mb-2">
-										<strong>Output:</strong>
-										<pre className="bg-white p-2 rounded mt-1 overflow-x-auto">
-											{actionResult.stdout}
-										</pre>
-									</div>
-								)}
-								{actionResult.stderr && (
-									<div>
-										<strong>Error:</strong>
-										<pre className="bg-red-50 p-2 rounded mt-1 overflow-x-auto text-red-800">
-											{actionResult.stderr}
-										</pre>
-									</div>
-								)}
-							</div>
-							<button
-								onClick={() => setActionResult(null)}
-								className="mt-4 text-blue-600 hover:underline"
-							>
-								Close
-							</button>
-						</div>
-					)}
 				</div>
 			)}
 
@@ -1066,14 +936,6 @@ export function AppDetail() {
 				<div className="bg-white rounded-lg shadow p-6">
 					<div className="flex justify-between items-center mb-4">
 						<h2 className="text-lg font-semibold">SSL Certificate</h2>
-						{actionResult && activeTab === "ssl" && (
-							<button
-								onClick={() => setActionResult(null)}
-								className="text-blue-600 hover:underline text-sm"
-							>
-								Hide Output
-							</button>
-						)}
 					</div>
 
 					{sslLoading ? (
@@ -1085,8 +947,7 @@ export function AppDetail() {
 							{sslError}
 						</div>
 					) : (
-						<>
-							<div className="space-y-4">
+						<div className="space-y-4">
 								<div className="flex items-center justify-between p-4 bg-gray-50 rounded">
 									<div>
 										<strong className="text-gray-700">Status:</strong>{" "}
@@ -1133,46 +994,6 @@ export function AppDetail() {
 									)}
 								</div>
 							</div>
-						</>
-					)}
-
-					{actionResult && activeTab === "ssl" && (
-						<div className="mt-6 bg-gray-100 rounded p-4">
-							<h3 className="font-semibold mb-2">Command Output</h3>
-							<div className="text-sm">
-								<div className="mb-2">
-									<strong>Command:</strong> {actionResult.command}
-								</div>
-								<div className="mb-2">
-									<strong>Exit Code:</strong>{" "}
-									<span className={actionResult.exitCode === 0 ? "text-green-600" : "text-red-600"}>
-										{actionResult.exitCode}
-									</span>
-								</div>
-								{actionResult.stdout && (
-									<div className="mb-2">
-										<strong>Output:</strong>
-										<pre className="bg-white p-2 rounded mt-1 overflow-x-auto">
-											{actionResult.stdout}
-										</pre>
-									</div>
-								)}
-								{actionResult.stderr && (
-									<div>
-										<strong>Error:</strong>
-										<pre className="bg-red-50 p-2 rounded mt-1 overflow-x-auto text-red-800">
-											{actionResult.stderr}
-										</pre>
-									</div>
-								)}
-							</div>
-							<button
-								onClick={() => setActionResult(null)}
-								className="mt-4 text-blue-600 hover:underline"
-							>
-								Close
-							</button>
-						</div>
 					)}
 				</div>
 			)}
