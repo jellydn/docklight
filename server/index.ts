@@ -22,6 +22,7 @@ import {
 	setConfig,
 	unsetConfig,
 } from "./lib/config.js";
+import { getDomains, addDomain, removeDomain } from "./lib/domains.js";
 import { setupLogStreaming } from "./lib/websocket.js";
 
 const app = express();
@@ -115,6 +116,25 @@ app.post("/api/apps/:name/config", async (req, res) => {
 app.delete("/api/apps/:name/config/:key", async (req, res) => {
 	const { name, key } = req.params;
 	const result = await unsetConfig(name, key);
+	res.json(result);
+});
+
+app.get("/api/apps/:name/domains", async (req, res) => {
+	const { name } = req.params;
+	const domains = await getDomains(name);
+	res.json(domains);
+});
+
+app.post("/api/apps/:name/domains", async (req, res) => {
+	const { name } = req.params;
+	const { domain } = req.body;
+	const result = await addDomain(name, domain);
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/domains/:domain", async (req, res) => {
+	const { name, domain } = req.params;
+	const result = await removeDomain(name, domain);
 	res.json(result);
 });
 
