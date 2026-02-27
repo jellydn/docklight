@@ -95,6 +95,9 @@ just client-dev    # terminal 2
 | -------------------- | -------- | ----------------------------------- |
 | `DOCKLIGHT_PASSWORD` | Yes      | Admin login password                |
 | `DOCKLIGHT_SECRET`   | No       | JWT signing secret (auto-generated) |
+| `DOCKLIGHT_DOKKU_SSH_TARGET` | No (recommended on Dokku deploy) | SSH target used to run Dokku commands (example: `dokku@<server-ip>`) |
+| `DOCKLIGHT_DOKKU_SSH_KEY_PATH` | No | Private key path inside container for Dokku SSH (default ssh key lookup if unset) |
+| `DOCKLIGHT_DOKKU_SSH_OPTS` | No | Extra SSH options for Dokku command execution |
 | `PORT`               | No       | Server port (default: 3001)         |
 
 ## Security

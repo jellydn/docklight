@@ -43,6 +43,29 @@ dokku config:set docklight DOCKLIGHT_PASSWORD=<your-secure-password>
 dokku config:set docklight DOCKLIGHT_SECRET=<random-secret-string>
 ```
 
+## Step 2.5: Configure Dokku CLI access from container (required)
+
+Docklight runs inside a container, so `dokku` is not available as a local binary there.
+Configure Docklight to execute Dokku commands via SSH back to the host.
+
+```bash
+ssh root@<your-server-ip>
+
+# Generate a dedicated key for Docklight (as dokku user)
+sudo -u dokku ssh-keygen -t ed25519 -N "" -f /home/dokku/.ssh/docklight
+
+# Authorize the key for dokku user
+sudo -u dokku sh -c 'cat /home/dokku/.ssh/docklight.pub >> /home/dokku/.ssh/authorized_keys'
+
+# Mount private key into Docklight container
+dokku storage:mount docklight /home/dokku/.ssh/docklight:/app/.ssh/id_ed25519
+
+# Configure Docklight to use SSH for Dokku commands
+dokku config:set docklight \
+  DOCKLIGHT_DOKKU_SSH_TARGET=dokku@<your-server-ip> \
+  DOCKLIGHT_DOKKU_SSH_KEY_PATH=/app/.ssh/id_ed25519
+```
+
 ## Step 3: Configure domain (optional but recommended)
 
 ```bash
@@ -167,6 +190,7 @@ dokku logs docklight --num 100
 
 Common issues:
 - `DOCKLIGHT_PASSWORD` not set → `dokku config:set docklight DOCKLIGHT_PASSWORD=...`
+- `dokku: not found` in dashboard → configure Step 2.5 (Dokku SSH access)
 - Port conflict → Dokku handles port mapping automatically, no manual config needed
 
 ### Build fails

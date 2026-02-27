@@ -17,6 +17,7 @@ RUN npm run build
 # Stage 3: Final runtime
 FROM node:20-alpine
 WORKDIR /app
+RUN apk add --no-cache openssh-client
 COPY server/package*.json ./server/
 RUN cd server && npm install --production
 COPY --from=server-build /app/server/dist ./server/dist
