@@ -138,6 +138,33 @@ describe("getApps", () => {
 		expect(app.status).toBe("stopped");
 	});
 
+	it("should parse boolean running status from ps report", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku --quiet apps:list",
+				exitCode: 0,
+				stdout: "my-app",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku ps:report my-app",
+				exitCode: 0,
+				stdout: "Myapp running: true",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku domains:report my-app",
+				exitCode: 0,
+				stdout: "Myapp domains vhosts:",
+				stderr: "",
+			});
+
+		const result = await getApps();
+
+		const [app] = result as App[];
+		expect(app.status).toBe("running");
+	});
+
 	it("should return error when apps list command fails", async () => {
 		const stderr = "Permission denied";
 		mockExecuteCommand.mockResolvedValue({
@@ -282,6 +309,27 @@ describe("getAppDetail", () => {
 				command: "dokku domains:report stopped-app",
 				exitCode: 0,
 				stdout: "Myapp domains vhosts:",
+				stderr: "",
+			});
+
+		const result = await getAppDetail("stopped-app");
+
+		const app = result as AppDetail;
+		expect(app.status).toBe("stopped");
+	});
+
+	it("should parse boolean stopped status from ps report", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku ps:report stopped-app",
+				exitCode: 0,
+				stdout: "Stoppedapp running: false",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku domains:report stopped-app",
+				exitCode: 0,
+				stdout: "Stoppedapp domains vhosts:",
 				stderr: "",
 			});
 

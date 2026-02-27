@@ -35,6 +35,7 @@ export async function getApps(): Promise<
 > {
 	try {
 		const listCommands = [
+			"dokku apps:list --quiet",
 			"dokku --quiet apps:list",
 			"dokku apps:list",
 		];
@@ -104,6 +105,24 @@ function parseStatus(stdout: string): "running" | "stopped" {
 			if (status === "running" || status === "stopped") {
 				return status;
 			}
+		}
+
+		const keyValueMatch = line.match(/^[^:]+:\s*(.+)$/);
+		if (!keyValueMatch) {
+			continue;
+		}
+
+		const key = line.slice(0, line.indexOf(":")).toLowerCase();
+		const value = keyValueMatch[1].trim().toLowerCase();
+		const isBooleanValue = value === "true" || value === "false";
+		if (!isBooleanValue) {
+			continue;
+		}
+
+		const isRunningKey = /\brunning\b/.test(key);
+		const isDeployedKey = /\bdeployed\b/.test(key) && !/\bapp deployed\b/.test(key);
+		if (isRunningKey || isDeployedKey) {
+			return value === "true" ? "running" : "stopped";
 		}
 	}
 	return "stopped";
