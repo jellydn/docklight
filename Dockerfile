@@ -17,13 +17,11 @@ RUN npm run build
 # Stage 3: Final runtime
 FROM node:20-alpine
 WORKDIR /app
-RUN npm install -g bun
 COPY server/package*.json ./server/
 COPY server/bun.lock ./server/
 RUN cd server && npm install --production
 COPY --from=server-build /app/server/dist ./server/dist
 COPY --from=client-build /app/client/dist ./client/dist
-COPY server/ ./server/
 
 # Expose port from environment or default to 3001
 ENV PORT=3001
