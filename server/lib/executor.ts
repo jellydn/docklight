@@ -25,7 +25,7 @@ export function buildRuntimeCommand(command: string, options?: ExecuteCommandOpt
 	const trimmedPassword = options?.sudoPassword?.trim();
 	const baseCommand = options?.asRoot
 		? trimmedPassword
-			? `printf %s\\n ${shellQuote(trimmedPassword)} | sudo -S -p '' ${command}`
+			? `printf '%s\\n' ${shellQuote(trimmedPassword)} | sudo -S -p '' ${command}`
 			: `sudo -n ${command}`
 		: command;
 	const target = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
