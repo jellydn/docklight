@@ -123,3 +123,21 @@ Started: Fri Feb 27 21:01:07 +08 2026
   - Deploy time parsed from 'deployed at' timestamp using regex
   - Domains extracted from 'domains vhosts' field in domains:report
 ---
+
+## [Fri Feb 27 2026] - US-008
+[Session: https://opncd.ai/s/]
+- Implemented GET /api/server/health endpoint returning { cpu, memory, disk } as percentages 0-100
+- Created server/lib/server.ts with getServerHealth() function
+- CPU parsed from /proc/stat using awk to calculate usage percentage
+- Memory parsed from 'free -m' output (used/total percentage)
+- Disk parsed from 'df -h /' output (percentage column)
+- Values clamped to 0-100 range
+- Errors return { error, command, exitCode, stderr } object
+- Typecheck passes
+- Files changed: server/lib/server.ts, server/index.ts
+- **Learnings for future iterations:**
+  - CPU usage calculated from /proc/stat user+nice time vs total time
+  - awk used for parsing Linux system files efficiently
+  - Memory percentage calculated from used vs total in MB
+  - Disk percentage extracted from df output using awk
+---
