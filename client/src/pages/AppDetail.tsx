@@ -364,7 +364,7 @@ export function AppDetail() {
 				`/apps/${name}/domains/${encodeURIComponent(pendingRemoveDomain)}`,
 				{
 					method: "DELETE",
-				},
+				}
 			);
 			setActionResult(result);
 			setShowDomainRemoveDialog(false);
@@ -920,7 +920,9 @@ export function AppDetail() {
 								<table className="min-w-full divide-y divide-gray-200">
 									<thead>
 										<tr>
-											<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Domain</th>
+											<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
+												Domain
+											</th>
 											<th className="px-4 py-2"></th>
 										</tr>
 									</thead>

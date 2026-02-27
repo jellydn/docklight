@@ -1,3 +1,474 @@
+import { useEffect, useState } from "react";
+import { apiFetch } from "../lib/api";
+
+interface Database {
+	name: string;
+	plugin: string;
+	linkedApps: string[];
+	connectionInfo: string;
+}
+
+interface CommandResult {
+	command: string;
+	exitCode: number;
+	stdout: string;
+	stderr: string;
+}
+
+interface App {
+	name: string;
+}
+
+const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"];
+
 export function Databases() {
-	return <div>Databases - Coming Soon</div>;
+	const [databases, setDatabases] = useState<Database[]>([]);
+	const [apps, setApps] = useState<App[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+	const [actionResult, setActionResult] = useState<CommandResult | null>(null);
+
+	// Create database form state
+	const [newDbPlugin, setNewDbPlugin] = useState("");
+	const [newDbName, setNewDbName] = useState("");
+
+	// Link database state
+	const [linkDbName, setLinkDbName] = useState("");
+	const [linkAppName, setLinkAppName] = useState("");
+
+	// Unlink database state
+	const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
+	const [pendingUnlinkDb, setPendingUnlinkDb] = useState("");
+	const [pendingUnlinkApp, setPendingUnlinkApp] = useState("");
+
+	// Destroy database state
+	const [showDestroyDialog, setShowDestroyDialog] = useState(false);
+	const [pendingDestroyDb, setPendingDestroyDb] = useState("");
+	const [confirmDestroyName, setConfirmDestroyName] = useState("");
+
+	// Connection info visibility
+	const [visibleConnections, setVisibleConnections] = useState<Set<string>>(new Set());
+
+	useEffect(() => {
+		fetchData();
+	}, []);
+
+	const fetchData = async () => {
+		setLoading(true);
+		setError(null);
+		try {
+			const [databasesData, appsData] = await Promise.all([
+				apiFetch<Database[]>("/databases"),
+				apiFetch<App[]>("/apps"),
+			]);
+			setDatabases(Array.isArray(databasesData) ? databasesData : []);
+			setApps(Array.isArray(appsData) ? appsData : []);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to load data");
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const handleCreateDatabase = async () => {
+		if (!newDbPlugin || !newDbName) return;
+
+		try {
+			const result = await apiFetch<CommandResult>("/databases", {
+				method: "POST",
+				body: JSON.stringify({ plugin: newDbPlugin, name: newDbName }),
+			});
+			setActionResult(result);
+			setNewDbPlugin("");
+			setNewDbName("");
+			fetchData();
+		} catch (err) {
+			setActionResult({
+				command: `dokku ${newDbPlugin}:create ${newDbName}`,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Failed to create database",
+			});
+		}
+	};
+
+	const handleLinkDatabase = async () => {
+		if (!linkDbName || !linkAppName) return;
+
+		try {
+			const result = await apiFetch<CommandResult>(`/databases/${linkDbName}/link`, {
+				method: "POST",
+				body: JSON.stringify({ plugin: getDbPlugin(linkDbName), app: linkAppName }),
+			});
+			setActionResult(result);
+			setLinkDbName("");
+			setLinkAppName("");
+			fetchData();
+		} catch (err) {
+			setActionResult({
+				command: `dokku ${getDbPlugin(linkDbName)}:link ${linkDbName} ${linkAppName}`,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Failed to link database",
+			});
+		}
+	};
+
+	const handleUnlinkDatabase = (dbName: string, appName: string) => {
+		setPendingUnlinkDb(dbName);
+		setPendingUnlinkApp(appName);
+		setShowUnlinkDialog(true);
+	};
+
+	const confirmUnlinkDatabase = async () => {
+		if (!pendingUnlinkDb || !pendingUnlinkApp) return;
+
+		try {
+			const result = await apiFetch<CommandResult>(`/databases/${pendingUnlinkDb}/unlink`, {
+				method: "POST",
+				body: JSON.stringify({ plugin: getDbPlugin(pendingUnlinkDb), app: pendingUnlinkApp }),
+			});
+			setActionResult(result);
+			setShowUnlinkDialog(false);
+			setPendingUnlinkDb("");
+			setPendingUnlinkApp("");
+			fetchData();
+		} catch (err) {
+			setActionResult({
+				command: `dokku ${getDbPlugin(pendingUnlinkDb)}:unlink ${pendingUnlinkDb} ${pendingUnlinkApp}`,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Failed to unlink database",
+			});
+			setShowUnlinkDialog(false);
+			setPendingUnlinkDb("");
+			setPendingUnlinkApp("");
+		}
+	};
+
+	const handleDestroyDatabase = (dbName: string) => {
+		setPendingDestroyDb(dbName);
+		setConfirmDestroyName("");
+		setShowDestroyDialog(true);
+	};
+
+	const confirmDestroyDatabase = async () => {
+		if (!pendingDestroyDb || confirmDestroyName !== pendingDestroyDb) return;
+
+		try {
+			const result = await apiFetch<CommandResult>(`/databases/${pendingDestroyDb}`, {
+				method: "DELETE",
+				body: JSON.stringify({ confirmName: confirmDestroyName }),
+			});
+			setActionResult(result);
+			setShowDestroyDialog(false);
+			setPendingDestroyDb("");
+			setConfirmDestroyName("");
+			fetchData();
+		} catch (err) {
+			setActionResult({
+				command: `dokku ${getDbPlugin(pendingDestroyDb)}:destroy ${pendingDestroyDb} --force`,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Failed to destroy database",
+			});
+			setShowDestroyDialog(false);
+			setPendingDestroyDb("");
+			setConfirmDestroyName("");
+		}
+	};
+
+	const toggleConnectionVisibility = (dbName: string) => {
+		setVisibleConnections((prev) => {
+			const newSet = new Set(prev);
+			if (newSet.has(dbName)) {
+				newSet.delete(dbName);
+			} else {
+				newSet.add(dbName);
+			}
+			return newSet;
+		});
+	};
+
+	const getDbPlugin = (dbName: string): string => {
+		const db = databases.find((d) => d.name === dbName);
+		return db?.plugin || "";
+	};
+
+	const getDatabasesByPlugin = () => {
+		const grouped: Record<string, Database[]> = {};
+		for (const db of databases) {
+			if (!grouped[db.plugin]) {
+				grouped[db.plugin] = [];
+			}
+			grouped[db.plugin].push(db);
+		}
+		return grouped;
+	};
+
+	if (loading) {
+		return (
+			<div className="flex justify-center items-center py-12">
+				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">{error}</div>
+		);
+	}
+
+	const groupedDatabases = getDatabasesByPlugin();
+
+	return (
+		<div>
+			<h1 className="text-2xl font-bold mb-6">Databases</h1>
+
+			{actionResult && (
+				<div className="bg-gray-100 rounded p-4 mb-6">
+					<h3 className="font-semibold mb-2">Command Output</h3>
+					<div className="text-sm">
+						<div className="mb-2">
+							<strong>Command:</strong> {actionResult.command}
+						</div>
+						<div className="mb-2">
+							<strong>Exit Code:</strong>{" "}
+							<span className={actionResult.exitCode === 0 ? "text-green-600" : "text-red-600"}>
+								{actionResult.exitCode}
+							</span>
+						</div>
+						{actionResult.stdout && (
+							<div className="mb-2">
+								<strong>Output:</strong>
+								<pre className="bg-white p-2 rounded mt-1 overflow-x-auto">
+									{actionResult.stdout}
+								</pre>
+							</div>
+						)}
+						{actionResult.stderr && (
+							<div>
+								<strong>Error:</strong>
+								<pre className="bg-red-50 p-2 rounded mt-1 overflow-x-auto text-red-800">
+									{actionResult.stderr}
+								</pre>
+							</div>
+						)}
+					</div>
+					<button
+						onClick={() => setActionResult(null)}
+						className="mt-4 text-blue-600 hover:underline"
+					>
+						Close
+					</button>
+				</div>
+			)}
+
+			{/* Create Database Form */}
+			<div className="bg-white rounded-lg shadow p-6 mb-6">
+				<h2 className="text-lg font-semibold mb-4">Create New Database</h2>
+				<div className="flex space-x-2">
+					<select
+						value={newDbPlugin}
+						onChange={(e) => setNewDbPlugin(e.target.value)}
+						className="border rounded px-3 py-2"
+					>
+						<option value="">Select plugin</option>
+						{SUPPORTED_PLUGINS.map((plugin) => (
+							<option key={plugin} value={plugin}>
+								{plugin}
+							</option>
+						))}
+					</select>
+					<input
+						type="text"
+						placeholder="Database name"
+						value={newDbName}
+						onChange={(e) => setNewDbName(e.target.value)}
+						className="flex-1 border rounded px-3 py-2"
+					/>
+					<button
+						onClick={handleCreateDatabase}
+						disabled={!newDbPlugin || !newDbName}
+						className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+					>
+						Create
+					</button>
+				</div>
+			</div>
+
+			{/* Databases by Plugin */}
+			{Object.keys(groupedDatabases).length === 0 ? (
+				<div className="bg-white rounded-lg shadow p-6">
+					<p className="text-gray-500">No databases found</p>
+				</div>
+			) : (
+				Object.entries(groupedDatabases).map(([plugin, dbs]) => (
+					<div key={plugin} className="bg-white rounded-lg shadow p-6 mb-6">
+						<h2 className="text-lg font-semibold mb-4 capitalize">{plugin} Databases</h2>
+						{dbs.map((db) => (
+							<div key={db.name} className="border rounded p-4 mb-4">
+								<div className="space-y-2">
+									<div>
+										<strong className="text-gray-700">Name:</strong>{" "}
+										<code className="bg-gray-100 px-2 py-1 rounded text-sm">{db.name}</code>
+									</div>
+									<div>
+										<strong className="text-gray-700">Plugin:</strong> {db.plugin}
+									</div>
+									<div>
+										<strong className="text-gray-700">Linked Apps:</strong>
+										{db.linkedApps.length > 0 ? (
+											<ul className="list-disc list-inside ml-4 mt-1">
+												{db.linkedApps.map((app) => (
+													<li key={app} className="flex items-center justify-between py-1">
+														<span>{app}</span>
+														<button
+															onClick={() => handleUnlinkDatabase(db.name, app)}
+															className="ml-4 text-red-600 hover:text-red-800 text-sm"
+															title="Unlink"
+														>
+															Unlink
+														</button>
+													</li>
+												))}
+											</ul>
+										) : (
+											<span className="text-gray-400">No linked apps</span>
+										)}
+									</div>
+									<div>
+										<strong className="text-gray-700">Connection Info:</strong>
+										<button
+											onClick={() => toggleConnectionVisibility(db.name)}
+											className="font-mono text-sm cursor-pointer hover:text-blue-600 ml-2"
+										>
+											{visibleConnections.has(db.name) ? db.connectionInfo : "••••••••••••"}
+										</button>
+									</div>
+
+									{/* Link App Form */}
+									{apps.length > 0 && (
+										<div className="mt-4 pt-4 border-t">
+											<div className="flex space-x-2">
+												<span className="text-sm font-medium text-gray-700 self-center">
+													Link App:
+												</span>
+												<select
+													value={linkDbName === db.name ? linkAppName : ""}
+													onChange={(e) => {
+														setLinkDbName(db.name);
+														setLinkAppName(e.target.value);
+													}}
+													className="flex-1 border rounded px-3 py-2 text-sm"
+												>
+													<option value="">Select app</option>
+													{apps
+														.filter((app) => !db.linkedApps.includes(app.name))
+														.map((app) => (
+															<option key={app.name} value={app.name}>
+																{app.name}
+															</option>
+														))}
+												</select>
+												<button
+													onClick={handleLinkDatabase}
+													disabled={linkAppName === "" || linkDbName !== db.name}
+													className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+												>
+													Link
+												</button>
+											</div>
+										</div>
+									)}
+
+									{/* Destroy Database Button */}
+									<div className="mt-4 pt-4 border-t">
+										<button
+											onClick={() => handleDestroyDatabase(db.name)}
+											className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 text-sm"
+										>
+											Destroy Database
+										</button>
+									</div>
+								</div>
+							</div>
+						))}
+					</div>
+				))
+			)}
+
+			{/* Unlink Confirmation Dialog */}
+			{showUnlinkDialog && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4">Confirm Unlink</h2>
+						<p className="mb-6">
+							Are you sure you want to unlink <strong>{pendingUnlinkApp}</strong> from{" "}
+							<strong>{pendingUnlinkDb}</strong>?
+						</p>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => {
+									setShowUnlinkDialog(false);
+									setPendingUnlinkDb("");
+									setPendingUnlinkApp("");
+								}}
+								className="px-4 py-2 border rounded hover:bg-gray-100"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmUnlinkDatabase}
+								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+							>
+								Unlink
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Destroy Confirmation Dialog */}
+			{showDestroyDialog && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4">Confirm Destroy</h2>
+						<p className="mb-2">
+							This action cannot be undone. Are you sure you want to destroy database{" "}
+							<strong>{pendingDestroyDb}</strong>?
+						</p>
+						<p className="mb-4 text-sm text-gray-600">Type the database name to confirm:</p>
+						<input
+							type="text"
+							value={confirmDestroyName}
+							onChange={(e) => setConfirmDestroyName(e.target.value)}
+							placeholder={pendingDestroyDb}
+							className="w-full border rounded px-3 py-2 mb-4"
+						/>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => {
+									setShowDestroyDialog(false);
+									setPendingDestroyDb("");
+									setConfirmDestroyName("");
+								}}
+								className="px-4 py-2 border rounded hover:bg-gray-100"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmDestroyDatabase}
+								disabled={confirmDestroyName !== pendingDestroyDb}
+								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+							>
+								Destroy
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+		</div>
+	);
 }
