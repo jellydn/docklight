@@ -141,3 +141,23 @@ Started: Fri Feb 27 21:01:07 +08 2026
   - Memory percentage calculated from used vs total in MB
   - Disk percentage extracted from df output using awk
 ---
+
+## [Fri Feb 27 2026] - US-009
+[Session: https://opncd.ai/s/]
+- Implemented dashboard page UI at /dashboard with server health, apps list, and recent activity
+- Server health bar at top showing CPU, memory, disk with color coding (green <60%, yellow <85%, red >=85%)
+- Apps table with columns: Name, Status (badge), Domains, Last Deploy
+- App name is a Link to /apps/:name
+- Loading spinner shown while fetching data
+- Error state displays message if API fails
+- Auto-refreshes every 30 seconds using setInterval
+- Recent Activity section showing last 20 commands from GET /api/commands
+- Typecheck passes
+- Browser verification skipped due to ChromeDevTools MCP not configured
+- Files changed: client/src/pages/Dashboard.tsx
+- **Learnings for future iterations:**
+  - useEffect with empty deps runs once and clears interval on unmount
+  - Promise.all used to fetch multiple API endpoints in parallel
+  - Tailwind utility classes used for conditional styling and responsive layout
+  - Link component from react-router-dom for client-side navigation
+---
