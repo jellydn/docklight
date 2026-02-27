@@ -157,6 +157,3 @@ describe("functionName", () => {
 ```
 Browser → React SPA → Express API → Shell Exec → Dokku CLI → Docker
 ```
-
-- API runs on same VPS as Dokku
-- Commands restricted to predefined allowlist
