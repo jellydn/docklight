@@ -261,3 +261,23 @@ Started: Fri Feb 27 21:01:07 +08 2026
   - Input sanitization prevents command injection vulnerabilities
   - Returns config as Record<string, string> for easy frontend consumption
 ---
+
+## [Fri Feb 27 2026] - US-017
+[Session: https://opncd.ai/s/]
+- Implemented GET /api/apps/:name/domains endpoint calling 'dokku domains:report <app>' and returning array of domain strings
+- Implemented POST /api/apps/:name/domains endpoint accepting { domain } and calling 'dokku domains:add <app> <domain>'
+- Implemented DELETE /api/apps/:name/domains/:domain endpoint calling 'dokku domains:remove <app> <domain>'
+- Created server/lib/domains.ts with getDomains, addDomain, and removeDomain functions
+- Domain input validated with basic format check (letters, numbers, hyphens, dots allowed)
+- Domain input sanitized to remove shell characters: [;&$()|<>`'"\\]
+- App name validated using isValidAppName from apps.ts
+- All endpoints use executor to run dokku commands and return results
+- Typecheck passes
+- Files changed: server/lib/domains.ts, server/index.ts
+- **Learnings for future iterations:**
+  - Domains extracted from 'domains vhosts' field in domains:report output
+  - Domain format validated with regex /^[a-zA-Z0-9.-]+$/
+  - Shell character validation prevents command injection: /[;&$()|<>`'"\\]/
+  - Empty string validation added for domain input
+  - Returns domains as string[] for easy frontend consumption
+---
