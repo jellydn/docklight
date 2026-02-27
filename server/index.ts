@@ -23,6 +23,7 @@ import {
 	unsetConfig,
 } from "./lib/config.js";
 import { getDomains, addDomain, removeDomain } from "./lib/domains.js";
+import { getDatabases, createDatabase, linkDatabase, unlinkDatabase, destroyDatabase } from "./lib/databases.js";
 import { setupLogStreaming } from "./lib/websocket.js";
 
 const app = express();
@@ -135,6 +136,38 @@ app.post("/api/apps/:name/domains", async (req, res) => {
 app.delete("/api/apps/:name/domains/:domain", async (req, res) => {
 	const { name, domain } = req.params;
 	const result = await removeDomain(name, domain);
+	res.json(result);
+});
+
+app.get("/api/databases", async (req, res) => {
+	const databases = await getDatabases();
+	res.json(databases);
+});
+
+app.post("/api/databases", async (req, res) => {
+	const { plugin, name } = req.body;
+	const result = await createDatabase(plugin, name);
+	res.json(result);
+});
+
+app.post("/api/databases/:name/link", async (req, res) => {
+	const { name } = req.params;
+	const { app } = req.body;
+	const result = await linkDatabase(name, app);
+	res.json(result);
+});
+
+app.post("/api/databases/:name/unlink", async (req, res) => {
+	const { name } = req.params;
+	const { app } = req.body;
+	const result = await unlinkDatabase(name, app);
+	res.json(result);
+});
+
+app.delete("/api/databases/:name", async (req, res) => {
+	const { name } = req.params;
+	const { confirmName } = req.body;
+	const result = await destroyDatabase(name, confirmName);
 	res.json(result);
 });
 
