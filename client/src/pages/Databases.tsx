@@ -15,6 +15,13 @@ interface App {
 }
 
 const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"];
+const POPULAR_PLUGIN_REPOS = [
+	{ label: "Postgres", repository: "dokku/dokku-postgres", name: "dokku-postgres" },
+	{ label: "Redis", repository: "dokku/dokku-redis", name: "dokku-redis" },
+	{ label: "MySQL", repository: "dokku/dokku-mysql", name: "dokku-mysql" },
+	{ label: "MariaDB", repository: "dokku/dokku-mariadb", name: "dokku-mariadb" },
+	{ label: "Mongo", repository: "dokku/dokku-mongo", name: "dokku-mongo" },
+];
 
 export function Databases() {
 	const { addToast } = useToast();
@@ -26,6 +33,8 @@ export function Databases() {
 	// Create database form state
 	const [newDbPlugin, setNewDbPlugin] = useState("");
 	const [newDbName, setNewDbName] = useState("");
+	const [pluginRepo, setPluginRepo] = useState("");
+	const [pluginName, setPluginName] = useState("");
 
 	// Link database state
 	const [linkDbName, setLinkDbName] = useState("");
@@ -85,6 +94,38 @@ export function Databases() {
 				stderr: err instanceof Error ? err.message : "Failed to create database",
 			};
 			addToast("error", "Failed to create database", errorResult);
+		}
+	};
+
+	const handleInstallPlugin = async () => {
+		if (!pluginRepo.trim()) return;
+
+		try {
+			const body: { repository: string; name?: string } = { repository: pluginRepo.trim() };
+			if (pluginName.trim()) body.name = pluginName.trim();
+
+			const result = await apiFetch<CommandResult>("/plugins/install", {
+				method: "POST",
+				body: JSON.stringify(body),
+			});
+			addToast(result.exitCode === 0 ? "success" : "error", "Plugin installation", result);
+
+			if (result.exitCode === 0) {
+				setPluginRepo("");
+				setPluginName("");
+				fetchData();
+			}
+		} catch (err) {
+			const command = pluginName.trim()
+				? `dokku plugin:install ${pluginRepo.trim()} ${pluginName.trim()}`
+				: `dokku plugin:install ${pluginRepo.trim()}`;
+			const errorResult: CommandResult = {
+				command,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Failed to install plugin",
+			};
+			addToast("error", "Failed to install plugin", errorResult);
 		}
 	};
 
@@ -227,6 +268,48 @@ export function Databases() {
 	return (
 		<div>
 			<h1 className="text-2xl font-bold mb-6">Databases</h1>
+
+			{/* Install Plugin Form */}
+			<div className="bg-white rounded-lg shadow p-6 mb-6">
+				<h2 className="text-lg font-semibold mb-4">Install Dokku Plugin</h2>
+				<div className="grid gap-2 md:grid-cols-3">
+					<input
+						type="text"
+						placeholder="Repository URL or owner/repo"
+						value={pluginRepo}
+						onChange={(e) => setPluginRepo(e.target.value)}
+						className="border rounded px-3 py-2"
+					/>
+					<input
+						type="text"
+						placeholder="Plugin name (optional)"
+						value={pluginName}
+						onChange={(e) => setPluginName(e.target.value)}
+						className="border rounded px-3 py-2"
+					/>
+					<button
+						onClick={handleInstallPlugin}
+						disabled={!pluginRepo.trim()}
+						className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+					>
+						Install Plugin
+					</button>
+				</div>
+				<div className="flex flex-wrap gap-2 mt-3">
+					{POPULAR_PLUGIN_REPOS.map((plugin) => (
+						<button
+							key={plugin.name}
+							onClick={() => {
+								setPluginRepo(plugin.repository);
+								setPluginName(plugin.name);
+							}}
+							className="text-sm border rounded px-2 py-1 hover:bg-gray-50"
+						>
+							{plugin.label}
+						</button>
+					))}
+				</div>
+			</div>
 
 			{/* Create Database Form */}
 			<div className="bg-white rounded-lg shadow p-6 mb-6">

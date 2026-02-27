@@ -1,12 +1,12 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { Toaster } from "sonner";
 import { AppLayout } from "./components/AppLayout";
+import { ToastProvider } from "./components/ToastProvider";
 import { AppDetail } from "./pages/AppDetail";
 import { Apps } from "./pages/Apps";
 import { Dashboard } from "./pages/Dashboard";
 import { Databases } from "./pages/Databases";
 import { Login } from "./pages/Login";
-import { ToastProvider } from "./components/ToastProvider";
-import { ToastContainer } from "./components/ToastContainer";
 
 function App() {
 	return (
@@ -22,7 +22,7 @@ function App() {
 						<Route path="databases" element={<Databases />} />
 					</Route>
 				</Routes>
-				<ToastContainer />
+				<Toaster position="bottom-right" richColors closeButton />
 			</BrowserRouter>
 		</ToastProvider>
 	);
