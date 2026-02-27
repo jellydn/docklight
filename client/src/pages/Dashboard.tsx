@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch } from "../lib/api";
 
 interface ServerHealth {
@@ -69,7 +71,12 @@ export function Dashboard() {
 
 	return (
 		<div>
-			<h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+			<div className="mb-6 flex items-center justify-between">
+				<h1 className="text-2xl font-bold">Dashboard</h1>
+				<Button onClick={() => void fetchData()} size="sm" variant="outline">
+					Refresh
+				</Button>
+			</div>
 
 			{loading && (
 				<div className="flex justify-center items-center py-12">
@@ -86,49 +93,53 @@ export function Dashboard() {
 			{!loading && !error && (
 				<>
 					{/* Server Health */}
-					<div className="bg-white rounded-lg shadow p-6 mb-6">
-						<h2 className="text-lg font-semibold mb-4">Server Health</h2>
-						{health && (
-							<div className="space-y-4">
-								<div>
-									<div className="flex justify-between mb-1">
-										<span className="text-sm font-medium">CPU</span>
-										<span className="text-sm text-gray-600">{health.cpu.toFixed(1)}%</span>
+					<Card className="mb-6">
+						<CardHeader>
+							<CardTitle>Server Health</CardTitle>
+						</CardHeader>
+						<CardContent>
+							{health && (
+								<div className="space-y-4">
+									<div>
+										<div className="flex justify-between mb-1">
+											<span className="text-sm font-medium">CPU</span>
+											<span className="text-sm text-gray-600">{health.cpu.toFixed(1)}%</span>
+										</div>
+										<div className="w-full bg-gray-200 rounded-full h-2">
+											<div
+												className={`h-2 rounded-full transition-all ${getHealthColor(health.cpu)}`}
+												style={{ width: `${health.cpu}%` }}
+											></div>
+										</div>
 									</div>
-									<div className="w-full bg-gray-200 rounded-full h-2">
-										<div
-											className={`h-2 rounded-full transition-all ${getHealthColor(health.cpu)}`}
-											style={{ width: `${health.cpu}%` }}
-										></div>
+									<div>
+										<div className="flex justify-between mb-1">
+											<span className="text-sm font-medium">Memory</span>
+											<span className="text-sm text-gray-600">{health.memory.toFixed(1)}%</span>
+										</div>
+										<div className="w-full bg-gray-200 rounded-full h-2">
+											<div
+												className={`h-2 rounded-full transition-all ${getHealthColor(health.memory)}`}
+												style={{ width: `${health.memory}%` }}
+											></div>
+										</div>
+									</div>
+									<div>
+										<div className="flex justify-between mb-1">
+											<span className="text-sm font-medium">Disk</span>
+											<span className="text-sm text-gray-600">{health.disk.toFixed(1)}%</span>
+										</div>
+										<div className="w-full bg-gray-200 rounded-full h-2">
+											<div
+												className={`h-2 rounded-full transition-all ${getHealthColor(health.disk)}`}
+												style={{ width: `${health.disk}%` }}
+											></div>
+										</div>
 									</div>
 								</div>
-								<div>
-									<div className="flex justify-between mb-1">
-										<span className="text-sm font-medium">Memory</span>
-										<span className="text-sm text-gray-600">{health.memory.toFixed(1)}%</span>
-									</div>
-									<div className="w-full bg-gray-200 rounded-full h-2">
-										<div
-											className={`h-2 rounded-full transition-all ${getHealthColor(health.memory)}`}
-											style={{ width: `${health.memory}%` }}
-										></div>
-									</div>
-								</div>
-								<div>
-									<div className="flex justify-between mb-1">
-										<span className="text-sm font-medium">Disk</span>
-										<span className="text-sm text-gray-600">{health.disk.toFixed(1)}%</span>
-									</div>
-									<div className="w-full bg-gray-200 rounded-full h-2">
-										<div
-											className={`h-2 rounded-full transition-all ${getHealthColor(health.disk)}`}
-											style={{ width: `${health.disk}%` }}
-										></div>
-									</div>
-								</div>
-							</div>
-						)}
-					</div>
+							)}
+						</CardContent>
+					</Card>
 
 					{/* Apps */}
 					<div className="bg-white rounded-lg shadow p-6 mb-6">
