@@ -1,3 +1,5 @@
+import { Navigate } from "react-router-dom";
+
 export function Apps() {
-	return <div>Apps - Coming Soon</div>;
+	return <Navigate to="/dashboard" replace />;
 }
