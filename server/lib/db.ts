@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import type { CommandResult } from "./executor.js";
 
-const DATA_DIR = path.join(process.cwd(), "..", "data");
+const DATA_DIR = path.resolve(__dirname, "..", "..", "data");
 const DB_PATH = path.join(DATA_DIR, "docklight.db");
 
 if (!fs.existsSync(DATA_DIR)) {

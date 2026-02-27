@@ -20,7 +20,7 @@ import { setupLogStreaming } from "./lib/websocket.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const CLIENT_DIST = path.join(process.cwd(), "..", "client", "dist");
+const CLIENT_DIST = path.resolve(__dirname, "..", "..", "client", "dist");
 
 app.use(cookieParser());
 app.use(express.json());
