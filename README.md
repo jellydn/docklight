@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./client/public/logo.svg" alt="Docklight Logo" width="128" height="128">
+</p>
+
 # Docklight
 
 A minimal, self-hosted web UI for managing a single-node Dokku server.
