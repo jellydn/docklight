@@ -71,3 +71,21 @@ Started: Fri Feb 27 21:01:07 +08 2026
   - API client uses credentials: 'include' to send cookies with requests
   - React Router uses <Outlet /> for nested route rendering in AppLayout
 ---
+
+## [Fri Feb 27 2026] - US-005
+[Session: https://opncd.ai/s/]
+- Implemented login page UI with form handling and error display
+- Added password input field and submit button to Login page
+- Implemented form submission calling POST /api/auth/login with entered password
+- On successful login, redirects to /dashboard
+- On failure, displays error message 'Invalid password'
+- Added authentication check on mount - if already authenticated (GET /api/auth/me returns 200), redirects to /dashboard
+- Added logout button in sidebar calling POST /api/auth/logout and redirecting to /login
+- Typecheck passes
+- Browser verification skipped due to ChromeDevTools MCP not configured
+- Files changed: client/src/pages/Login.tsx, client/src/components/AppLayout.tsx
+- **Learnings for future iterations:**
+  - Login component checks /api/auth/me on mount to redirect authenticated users
+  - Logout button uses onClick handler instead of Link for POST request
+  - Form uses React controlled component pattern for password state
+---
