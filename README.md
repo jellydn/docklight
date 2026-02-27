@@ -95,7 +95,7 @@ just client-dev    # terminal 2
 | -------------------- | -------- | ----------------------------------- |
 | `DOCKLIGHT_PASSWORD` | Yes      | Admin login password                |
 | `DOCKLIGHT_SECRET`   | No       | JWT signing secret (auto-generated) |
-| `DOCKLIGHT_DOKKU_SSH_TARGET` | No (recommended on Dokku deploy) | SSH target used to run Dokku commands (example: `dokku@<server-ip>`) |
+| `DOCKLIGHT_DOKKU_SSH_TARGET` | No (recommended on Dokku deploy) | SSH target used to run Dokku commands (example: `dokku@<server-ip>`). For plugin install/enable/disable/uninstall, use a root SSH user (example: `root@<server-ip>`) or configure passwordless sudo. |
 | `DOCKLIGHT_DOKKU_SSH_KEY_PATH` | No | Private key path inside container for Dokku SSH (default ssh key lookup if unset) |
 | `DOCKLIGHT_DOKKU_SSH_OPTS` | No | Extra SSH options for Dokku command execution |
 | `PORT`               | No       | Server port (default: 3001)         |
@@ -110,6 +110,14 @@ Docklight runs shell commands on your server. For production use:
 - Commands are restricted to a predefined allowlist — no arbitrary shell execution
 
 > ⚠️ If Docklight crashes, you always have SSH as a fallback. This is a convenience layer, not your only access path.
+
+### Plugin Management Note
+
+Plugin install/enable/disable/uninstall commands run with root privileges (`sudo -n dokku ...`).
+If plugin actions fail with sudo password/tty errors, either:
+
+- Configure passwordless sudo for the Docklight runtime user, or
+- Set `DOCKLIGHT_DOKKU_SSH_TARGET` to a root SSH target (for example `root@<server-ip>`).
 
 ## Dokku Commands Coverage
 
