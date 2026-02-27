@@ -1,4 +1,4 @@
-import { executeCommand, type CommandResult } from "./executor.js";
+import { executeCommand, executeCommandAsRoot, type CommandResult } from "./executor.js";
 
 interface PluginInputError {
 	error: string;
@@ -140,23 +140,23 @@ export async function installPlugin(
 		? `dokku plugin:install ${normalizedRepository} ${normalizedName}`
 		: `dokku plugin:install ${normalizedRepository}`;
 
-	return executeCommand(command);
+	return executeCommandAsRoot(command);
 }
 
 export async function uninstallPlugin(name: string): Promise<CommandResult | PluginInputError> {
 	const validationError = validatePluginName(name);
 	if (validationError) return validationError;
-	return executeCommand(`dokku plugin:uninstall ${name.trim()}`);
+	return executeCommandAsRoot(`dokku plugin:uninstall ${name.trim()}`);
 }
 
 export async function enablePlugin(name: string): Promise<CommandResult | PluginInputError> {
 	const validationError = validatePluginName(name);
 	if (validationError) return validationError;
-	return executeCommand(`dokku plugin:enable ${name.trim()}`);
+	return executeCommandAsRoot(`dokku plugin:enable ${name.trim()}`);
 }
 
 export async function disablePlugin(name: string): Promise<CommandResult | PluginInputError> {
 	const validationError = validatePluginName(name);
 	if (validationError) return validationError;
-	return executeCommand(`dokku plugin:disable ${name.trim()}`);
+	return executeCommandAsRoot(`dokku plugin:disable ${name.trim()}`);
 }

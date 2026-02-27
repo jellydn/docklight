@@ -12,14 +12,19 @@ export interface CommandResult {
 	stderr: string;
 }
 
+interface ExecuteCommandOptions {
+	asRoot?: boolean;
+}
+
 function shellQuote(value: string): string {
 	return `'${value.replace(/'/g, "'\"'\"'")}'`;
 }
 
-export function buildRuntimeCommand(command: string): string {
+export function buildRuntimeCommand(command: string, options?: ExecuteCommandOptions): string {
+	const baseCommand = options?.asRoot ? `sudo ${command}` : command;
 	const target = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
 	if (!target || !command.startsWith("dokku ")) {
-		return command;
+		return baseCommand;
 	}
 
 	const keyPath = process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim();
@@ -27,12 +32,13 @@ export function buildRuntimeCommand(command: string): string {
 		process.env.DOCKLIGHT_DOKKU_SSH_OPTS?.trim() ||
 		"-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10";
 	const keyOption = keyPath ? `-i ${shellQuote(keyPath)}` : "";
-	return `ssh ${sshOptions} ${keyOption} ${shellQuote(target)} ${shellQuote(command)}`.trim();
+	return `ssh ${sshOptions} ${keyOption} ${shellQuote(target)} ${shellQuote(baseCommand)}`.trim();
 }
 
 export async function executeCommand(
 	command: string,
-	timeout: number = 30000
+	timeout: number = 30000,
+	options?: ExecuteCommandOptions
 ): Promise<CommandResult> {
 	if (!isCommandAllowed(command)) {
 		const result: CommandResult = {
@@ -46,7 +52,7 @@ export async function executeCommand(
 	}
 
 	try {
-		const runtimeCommand = buildRuntimeCommand(command);
+		const runtimeCommand = buildRuntimeCommand(command, options);
 		const { stdout, stderr } = await execAsync(runtimeCommand, { timeout });
 		const result = {
 			command,
@@ -67,4 +73,11 @@ export async function executeCommand(
 		saveCommand(result);
 		return result;
 	}
+}
+
+export async function executeCommandAsRoot(
+	command: string,
+	timeout: number = 30000
+): Promise<CommandResult> {
+	return executeCommand(command, timeout, { asRoot: true });
 }

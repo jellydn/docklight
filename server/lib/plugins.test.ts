@@ -1,20 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { disablePlugin, enablePlugin, getPlugins, installPlugin, uninstallPlugin } from "./plugins.js";
-import { executeCommand } from "./executor.js";
+import { executeCommand, executeCommandAsRoot } from "./executor.js";
 
 vi.mock("./executor.js", () => ({
 	executeCommand: vi.fn(),
+	executeCommandAsRoot: vi.fn(),
 }));
 
 describe("installPlugin", () => {
-	const mockExecuteCommand = executeCommand as ReturnType<typeof vi.fn>;
+	const mockExecuteCommandAsRoot = executeCommandAsRoot as ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
 	it("installs plugin from full repository URL", async () => {
-		mockExecuteCommand.mockResolvedValue({
+		mockExecuteCommandAsRoot.mockResolvedValue({
 			command: "dokku plugin:install https://github.com/dokku/dokku-postgres.git",
 			exitCode: 0,
 			stdout: "installed",
@@ -24,13 +25,13 @@ describe("installPlugin", () => {
 		const result = await installPlugin("https://github.com/dokku/dokku-postgres.git");
 
 		expect(result).toMatchObject({ exitCode: 0 });
-		expect(mockExecuteCommand).toHaveBeenCalledWith(
+		expect(mockExecuteCommandAsRoot).toHaveBeenCalledWith(
 			"dokku plugin:install https://github.com/dokku/dokku-postgres.git"
 		);
 	});
 
 	it("supports owner/repo shorthand and optional plugin name", async () => {
-		mockExecuteCommand.mockResolvedValue({
+		mockExecuteCommandAsRoot.mockResolvedValue({
 			command: "dokku plugin:install https://github.com/acme/custom-plugin.git custom-plugin",
 			exitCode: 0,
 			stdout: "installed",
@@ -39,7 +40,7 @@ describe("installPlugin", () => {
 
 		await installPlugin("acme/custom-plugin", "custom-plugin");
 
-		expect(mockExecuteCommand).toHaveBeenCalledWith(
+		expect(mockExecuteCommandAsRoot).toHaveBeenCalledWith(
 			"dokku plugin:install https://github.com/acme/custom-plugin.git custom-plugin"
 		);
 	});
@@ -52,7 +53,7 @@ describe("installPlugin", () => {
 			command: "",
 			exitCode: 400,
 		});
-		expect(mockExecuteCommand).not.toHaveBeenCalled();
+		expect(mockExecuteCommandAsRoot).not.toHaveBeenCalled();
 	});
 });
 
@@ -84,14 +85,14 @@ describe("getPlugins", () => {
 });
 
 describe("plugin state operations", () => {
-	const mockExecuteCommand = executeCommand as ReturnType<typeof vi.fn>;
+	const mockExecuteCommandAsRoot = executeCommandAsRoot as ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
 	it("enables plugin by name", async () => {
-		mockExecuteCommand.mockResolvedValue({
+		mockExecuteCommandAsRoot.mockResolvedValue({
 			command: "dokku plugin:enable dokku-postgres",
 			exitCode: 0,
 			stdout: "enabled",
@@ -99,11 +100,11 @@ describe("plugin state operations", () => {
 		});
 
 		await enablePlugin("dokku-postgres");
-		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku plugin:enable dokku-postgres");
+		expect(mockExecuteCommandAsRoot).toHaveBeenCalledWith("dokku plugin:enable dokku-postgres");
 	});
 
 	it("disables plugin by name", async () => {
-		mockExecuteCommand.mockResolvedValue({
+		mockExecuteCommandAsRoot.mockResolvedValue({
 			command: "dokku plugin:disable dokku-postgres",
 			exitCode: 0,
 			stdout: "disabled",
@@ -111,11 +112,11 @@ describe("plugin state operations", () => {
 		});
 
 		await disablePlugin("dokku-postgres");
-		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku plugin:disable dokku-postgres");
+		expect(mockExecuteCommandAsRoot).toHaveBeenCalledWith("dokku plugin:disable dokku-postgres");
 	});
 
 	it("uninstalls plugin by name", async () => {
-		mockExecuteCommand.mockResolvedValue({
+		mockExecuteCommandAsRoot.mockResolvedValue({
 			command: "dokku plugin:uninstall dokku-postgres",
 			exitCode: 0,
 			stdout: "removed",
@@ -123,7 +124,7 @@ describe("plugin state operations", () => {
 		});
 
 		await uninstallPlugin("dokku-postgres");
-		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku plugin:uninstall dokku-postgres");
+		expect(mockExecuteCommandAsRoot).toHaveBeenCalledWith("dokku plugin:uninstall dokku-postgres");
 	});
 
 	it("rejects invalid plugin names", async () => {
@@ -133,6 +134,6 @@ describe("plugin state operations", () => {
 			command: "",
 			exitCode: 400,
 		});
-		expect(mockExecuteCommand).not.toHaveBeenCalled();
+		expect(mockExecuteCommandAsRoot).not.toHaveBeenCalled();
 	});
 });
