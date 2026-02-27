@@ -1,0 +1,384 @@
+{
+  "project": "Docklight",
+  "branchName": "ralph/docklight",
+  "description": "A minimal, self-hosted web UI for managing a single-node Dokku server. Wraps Dokku CLI in a thin Node.js API layer and presents it through a React SPA.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Backend scaffold with Express and shell executor",
+      "description": "As a developer, I need the Node.js backend with TypeScript, Express, and a shell executor utility so other API routes can be built on top.",
+      "acceptanceCriteria": [
+        "Create server/ directory with Express app in TypeScript",
+        "Entry point at server/index.ts that starts Express on PORT env var (default 3001)",
+        "Shell executor utility at server/lib/executor.ts that runs commands via child_process.exec with timeout (30s), returns { command, exitCode, stdout, stderr }",
+        "Command allowlist in server/lib/allowlist.ts restricting executable commands to dokku and system health commands only",
+        "GET /api/health returns { status: 'ok' }",
+        "package.json with Express, TypeScript, and build scripts",
+        "tsconfig.json configured for Node.js",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "SQLite command history persistence",
+      "description": "As a developer, I need a SQLite database to persist command execution history.",
+      "acceptanceCriteria": [
+        "Install better-sqlite3 dependency",
+        "Create server/lib/db.ts that initializes SQLite DB at data/docklight.db",
+        "Command history table: id (auto), command (text), exitCode (int), stdout (text), stderr (text), createdAt (datetime default now)",
+        "Functions: saveCommand(result), getRecentCommands(limit=20)",
+        "Shell executor from US-001 auto-saves every execution to the DB",
+        "GET /api/commands returns last 20 commands from DB",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Authentication backend — login, session, middleware",
+      "description": "As a developer, I need auth endpoints and middleware so all API routes are protected.",
+      "acceptanceCriteria": [
+        "Password read from DOCKLIGHT_PASSWORD env var",
+        "POST /api/auth/login accepts { password }, validates against env var, returns JWT in httpOnly cookie",
+        "POST /api/auth/logout clears the session cookie",
+        "GET /api/auth/me returns { authenticated: true } if valid session, 401 otherwise",
+        "Auth middleware on all /api/* routes except /api/auth/login and /api/health",
+        "Install jsonwebtoken dependency, JWT secret from DOCKLIGHT_SECRET env var or random default",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Frontend scaffold with React, Vite, Tailwind, and layout shell",
+      "description": "As a developer, I need the React frontend with routing and the app layout shell.",
+      "acceptanceCriteria": [
+        "Create client/ directory with React + Vite + TypeScript",
+        "Tailwind CSS configured",
+        "React Router with routes: /login, /dashboard, /apps/:name, /databases",
+        "AppLayout component with left sidebar (Dashboard, Apps, Databases links) and main content area",
+        "API client utility at client/lib/api.ts with fetch wrapper that handles auth (redirects to /login on 401)",
+        "Vite proxy configured to forward /api/* to backend in development",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Login page UI",
+      "description": "As an admin, I want a login page so I can authenticate before accessing the dashboard.",
+      "acceptanceCriteria": [
+        "Login page at /login with password input field and submit button",
+        "Calls POST /api/auth/login with entered password",
+        "On success, redirects to /dashboard",
+        "On failure, shows error message 'Invalid password'",
+        "If already authenticated (GET /api/auth/me returns 200), redirect to /dashboard",
+        "Logout button in sidebar calls POST /api/auth/logout and redirects to /login",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Dockerfile and Dokku deployment config",
+      "description": "As a developer, I need a Dockerfile that builds both frontend and backend for Dokku deployment.",
+      "acceptanceCriteria": [
+        "Multi-stage Dockerfile: stage 1 builds client with Vite, stage 2 builds server TypeScript, stage 3 runs Node.js serving SPA + API",
+        "Express serves client/dist as static files, with SPA fallback for client-side routing",
+        "Procfile with web process type",
+        "app.json with healthcheck pointing to /api/health",
+        ".dockerignore excludes node_modules, .git, data/",
+        "EXPOSE port matches Express PORT",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Apps list API endpoint",
+      "description": "As a developer, I need the API to list all Dokku apps with their status.",
+      "acceptanceCriteria": [
+        "GET /api/apps calls 'dokku apps:list' and 'dokku ps:report' via shell executor",
+        "Parses output into JSON array: [{ name, status (running/stopped), domains, lastDeployTime }]",
+        "Domains parsed from 'dokku domains:report <app>' for each app",
+        "Returns empty array if no apps exist",
+        "Errors return { error, command, exitCode, stderr }",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Server health API endpoint",
+      "description": "As a developer, I need the API to return server CPU, memory, and disk usage.",
+      "acceptanceCriteria": [
+        "GET /api/server/health returns { cpu: number, memory: number, disk: number } as percentages 0-100",
+        "CPU from 'top -bn1' or /proc/stat parsing",
+        "Memory from 'free -m' parsing (used/total percentage)",
+        "Disk from 'df -h /' parsing (use percentage)",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Dashboard page UI — apps list and health",
+      "description": "As a user, I want to see all my apps and server health on the dashboard.",
+      "acceptanceCriteria": [
+        "Dashboard page at /dashboard",
+        "Server health bar at top showing CPU, memory, disk with color coding (green <60%, yellow <85%, red >=85%)",
+        "Apps table with columns: Name, Status (badge), Domains, Last Deploy",
+        "App name is a link to /apps/:name",
+        "Loading spinner while fetching",
+        "Error state with message if API fails",
+        "Auto-refreshes every 30 seconds",
+        "Recent Activity section showing last 20 commands from GET /api/commands",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "App detail API — report, restart, rebuild",
+      "description": "As a developer, I need API endpoints for app details and actions.",
+      "acceptanceCriteria": [
+        "GET /api/apps/:name returns app detail: name, status, git remote, domains, process types/counts from 'dokku ps:report <app>'",
+        "POST /api/apps/:name/restart executes 'dokku ps:restart <app>' and returns executor result",
+        "POST /api/apps/:name/rebuild executes 'dokku ps:rebuild <app>' and returns executor result",
+        "App name validated against allowlist pattern (alphanumeric + hyphens only)",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "App detail page UI — overview and actions",
+      "description": "As a user, I want to see app details and restart/rebuild from the UI.",
+      "acceptanceCriteria": [
+        "App detail page at /apps/:name with tabbed layout (Overview, Config, Domains, Logs, SSL)",
+        "Overview tab shows: app name, status badge, git remote, domains list, process types and counts",
+        "Top action bar with Restart and Rebuild buttons",
+        "Clicking action shows confirmation dialog, then executes and displays CLI output (command, exitCode, stdout, stderr)",
+        "Toast notification for action success/failure",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Log streaming backend via WebSocket",
+      "description": "As a developer, I need a WebSocket endpoint that streams live Dokku logs.",
+      "acceptanceCriteria": [
+        "Install ws dependency",
+        "WebSocket endpoint at /api/apps/:name/logs/stream",
+        "On connection, spawns 'dokku logs <app> -t -n <num>' via child_process.spawn",
+        "Streams stdout lines to WebSocket client as they arrive",
+        "Client can send { lines: 100|500|1000 } to set initial line count",
+        "On WebSocket close, kills the spawned process",
+        "Auth check on WebSocket upgrade (validate JWT from cookie)",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Log viewer UI on app detail page",
+      "description": "As a user, I want to view live streaming logs for my app.",
+      "acceptanceCriteria": [
+        "Logs tab on app detail page",
+        "Connects to WebSocket endpoint on tab open",
+        "Log output displayed in monospace pre-formatted text with dark background",
+        "Auto-scroll to bottom enabled by default, toggleable",
+        "Line count selector (100/500/1000) at top",
+        "Disconnects WebSocket when navigating away",
+        "Connection status indicator (connected/disconnected/reconnecting)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Config vars API endpoints",
+      "description": "As a developer, I need API endpoints to read and modify app config vars.",
+      "acceptanceCriteria": [
+        "GET /api/apps/:name/config calls 'dokku config:show <app>' and returns key-value JSON object",
+        "POST /api/apps/:name/config accepts { key, value } and calls 'dokku config:set <app> KEY=VALUE', returns executor result",
+        "DELETE /api/apps/:name/config/:key calls 'dokku config:unset <app> KEY', returns executor result",
+        "Key and value inputs sanitized (no shell injection)",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Config vars UI on app detail page",
+      "description": "As a user, I want to view and edit environment variables for my app.",
+      "acceptanceCriteria": [
+        "Config tab on app detail page",
+        "Displays config as key-value table",
+        "Values masked by default (shown as ••••••), click to reveal",
+        "Add new var: key input + value input + Set button",
+        "Remove var: trash icon per row, shows confirmation dialog before calling unset",
+        "Shows CLI output after each set/unset action",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Process scaling API and UI",
+      "description": "As a user, I want to scale my app processes from the UI.",
+      "acceptanceCriteria": [
+        "POST /api/apps/:name/scale accepts { processType, count } and calls 'dokku ps:scale <app> <type>=<count>'",
+        "Scale section on app Overview tab showing current process types and counts (from ps:report)",
+        "Number input per process type to change count",
+        "Apply button calls scale endpoint and shows CLI output result",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Domain management API endpoints",
+      "description": "As a developer, I need API endpoints to list, add, and remove domains.",
+      "acceptanceCriteria": [
+        "GET /api/apps/:name/domains calls 'dokku domains:report <app>' and returns array of domain strings",
+        "POST /api/apps/:name/domains accepts { domain } and calls 'dokku domains:add <app> <domain>'",
+        "DELETE /api/apps/:name/domains/:domain calls 'dokku domains:remove <app> <domain>'",
+        "Domain input validated (basic format check, no shell chars)",
+        "Typecheck passes"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Domain management UI on app detail page",
+      "description": "As a user, I want to view, add, and remove domains for my app.",
+      "acceptanceCriteria": [
+        "Domains tab on app detail page",
+        "Lists current domains",
+        "Add domain: text input + Add button",
+        "Remove: trash icon per domain with confirmation dialog",
+        "Shows CLI output after each action",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Database management API endpoints",
+      "description": "As a developer, I need API endpoints to list, create, link, unlink, and destroy databases.",
+      "acceptanceCriteria": [
+        "GET /api/databases detects installed DB plugins by checking 'dokku plugin:list' for postgres, redis, mysql, mariadb, mongo",
+        "For each installed plugin, calls '<plugin>:list' to get databases",
+        "Returns array: [{ name, plugin, linkedApps, connectionInfo }]",
+        "POST /api/databases accepts { plugin, name } and calls 'dokku <plugin>:create <name>'",
+        "POST /api/databases/:name/link accepts { plugin, app } and calls 'dokku <plugin>:link <name> <app>'",
+        "POST /api/databases/:name/unlink accepts { plugin, app } and calls 'dokku <plugin>:unlink <name> <app>'",
+        "DELETE /api/databases/:name accepts { plugin, confirmName } and calls 'dokku <plugin>:destroy <name> --force' only if confirmName matches name",
+        "Typecheck passes"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Database management UI page",
+      "description": "As a user, I want to manage databases from a dedicated page.",
+      "acceptanceCriteria": [
+        "Databases page at /databases",
+        "Lists all databases grouped by plugin type",
+        "Each database shows: name, plugin, linked apps, connection info (masked, click to reveal)",
+        "Create form: plugin dropdown + name input + Create button",
+        "Link: dropdown to select app + Link button",
+        "Unlink: button per linked app with confirmation",
+        "Destroy: button with double confirmation (type database name to confirm)",
+        "Shows CLI output for all actions",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "SSL management API and UI",
+      "description": "As a user, I want to manage SSL certificates for my apps.",
+      "acceptanceCriteria": [
+        "GET /api/apps/:name/ssl returns SSL status by parsing 'dokku letsencrypt:ls' or 'dokku certs:report <app>'",
+        "POST /api/apps/:name/ssl/enable calls 'dokku letsencrypt:enable <app>'",
+        "POST /api/apps/:name/ssl/renew calls 'dokku letsencrypt:auto-renew <app>'",
+        "SSL tab on app detail page showing status (active/inactive), expiry date if active",
+        "Enable Let's Encrypt button (shown when inactive)",
+        "Renew button (shown when active)",
+        "Shows CLI output for all actions",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Command output toast and action result display",
+      "description": "As a user, I want every action to show the exact CLI command, exit code, and output.",
+      "acceptanceCriteria": [
+        "Reusable CommandResult component showing: command string, exit code badge (green 0, red non-zero), stdout in monospace pre block, stderr in red monospace",
+        "Toast notification system: success (green) or error (red) with expandable detail showing CommandResult",
+        "All action buttons (restart, rebuild, scale, config set/unset, domain add/remove, db create/link/destroy, ssl enable/renew) use this component",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

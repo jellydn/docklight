@@ -1,0 +1,18 @@
+# Ralph Progress Log
+Started: Fri Feb 27 21:01:07 +08 2026
+---
+
+## [Fri Feb 27 2026] - US-001
+[Session: https://opncd.ai/s/]
+- Implemented backend scaffold with Express, TypeScript, and shell executor
+- Created server/ directory with package.json, tsconfig.json
+- Implemented shell executor at server/lib/executor.ts with 30s timeout
+- Created command allowlist at server/lib/allowlist.ts
+- Set up Express server at server/index.ts with /api/health endpoint
+- Typecheck passes
+- Files changed: server/package.json, server/tsconfig.json, server/lib/allowlist.ts, server/lib/executor.ts, server/index.ts, server/.gitignore
+- **Learnings for future iterations:**
+  - Used Bun for package installation and running scripts
+  - TypeScript configured with ES2022 target and commonjs module for Node.js
+  - Command executor uses promisify(exec) for async/await pattern
+---
