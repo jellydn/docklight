@@ -16,6 +16,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 		(type: "success" | "error", message: string, result?: CommandResult) => {
 			const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 			setToasts((prev) => [...prev, { id, type, message, result }]);
+			setTimeout(() => {
+				setToasts((prev) => prev.filter((toast) => toast.id !== id));
+			}, 5000);
 		},
 		[]
 	);
