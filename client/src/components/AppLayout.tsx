@@ -1,5 +1,6 @@
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
+import { logger } from "../lib/logger";
 
 export function AppLayout() {
 	const navigate = useNavigate();
@@ -11,7 +12,7 @@ export function AppLayout() {
 			});
 			navigate("/login");
 		} catch (err) {
-			console.error("Logout failed:", err);
+			logger.error({ err }, "Logout failed");
 		}
 	};
 

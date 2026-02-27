@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
 import { apiFetch } from "../lib/api";
+import { logger } from "../lib/logger";
 import { useToast } from "../components/ToastProvider";
 import type { CommandResult } from "../components/types";
 
@@ -138,7 +139,7 @@ export function AppDetail() {
 						setConnectionStatus("disconnected");
 					}
 				} catch (err) {
-					console.error("Error parsing WebSocket message:", err);
+					logger.error({ err }, "Error parsing WebSocket message");
 				}
 			};
 
@@ -150,7 +151,7 @@ export function AppDetail() {
 				setConnectionStatus("disconnected");
 			};
 		} catch (err) {
-			console.error("Failed to connect to WebSocket:", err);
+			logger.error({ err }, "Failed to connect to WebSocket");
 			setConnectionStatus("disconnected");
 		}
 	};
