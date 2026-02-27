@@ -1,23 +1,23 @@
-import http from "http";
 import cookieParser from "cookie-parser";
 import express from "express";
-import pinoHttp from "pino-http";
+import http from "http";
 import path from "path";
-import { logger } from "./lib/logger.js";
-import { getApps, getAppDetail, restartApp, rebuildApp, scaleApp } from "./lib/apps.js";
+import pinoHttp from "pino-http";
+import { getAppDetail, getApps, rebuildApp, restartApp, scaleApp } from "./lib/apps.js";
 import { authMiddleware, clearAuthCookie, login, setAuthCookie } from "./lib/auth.js";
-import { getRecentCommands } from "./lib/db.js";
-import { getServerHealth } from "./lib/server.js";
 import { getConfig, setConfig, unsetConfig } from "./lib/config.js";
-import { getDomains, addDomain, removeDomain } from "./lib/domains.js";
 import {
-	getDatabases,
 	createDatabase,
+	destroyDatabase,
+	getDatabases,
 	linkDatabase,
 	unlinkDatabase,
-	destroyDatabase,
 } from "./lib/databases.js";
-import { getSSL, enableSSL, renewSSL } from "./lib/ssl.js";
+import { getRecentCommands } from "./lib/db.js";
+import { addDomain, getDomains, removeDomain } from "./lib/domains.js";
+import { logger } from "./lib/logger.js";
+import { getServerHealth } from "./lib/server.js";
+import { enableSSL, getSSL, renewSSL } from "./lib/ssl.js";
 import { setupLogStreaming } from "./lib/websocket.js";
 
 const app = express();
@@ -65,6 +65,11 @@ app.get("/api/commands", (req, res) => {
 
 app.get("/api/apps", async (_req, res) => {
 	const apps = await getApps();
+	if (!Array.isArray(apps)) {
+		res.status(apps.exitCode >= 400 ? apps.exitCode : 500).json(apps);
+		return;
+	}
+
 	res.json(apps);
 });
 

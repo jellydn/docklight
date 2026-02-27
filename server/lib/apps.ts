@@ -1,4 +1,4 @@
-import { executeCommand, type CommandResult } from "./executor.js";
+import { type CommandResult, executeCommand } from "./executor.js";
 
 export interface App {
 	name: string;
@@ -15,11 +15,15 @@ export interface AppDetail {
 	processes: Record<string, number>;
 }
 
+function stripAnsi(value: string): string {
+	return value.replace(/[^\x20-\x7E]/g, "");
+}
+
 export async function getApps(): Promise<
 	App[] | { error: string; command: string; exitCode: number; stderr: string }
 > {
 	try {
-		const listResult = await executeCommand("dokku apps:list");
+		const listResult = await executeCommand("dokku --quiet apps:list");
 
 		if (listResult.exitCode !== 0) {
 			return {
@@ -32,8 +36,8 @@ export async function getApps(): Promise<
 
 		const appNames = listResult.stdout
 			.split("\n")
-			.map((line) => line.trim())
-			.filter((line) => line.length > 0 && !line.startsWith("="));
+			.map((line) => stripAnsi(line).trim())
+			.filter((line) => isValidAppName(line));
 
 		if (appNames.length === 0) {
 			return [];
