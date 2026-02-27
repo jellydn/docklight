@@ -32,3 +32,22 @@ Started: Fri Feb 27 21:01:07 +08 2026
   - DB stored in ../data/ relative to server/ directory
   - Command executor now always saves to DB, regardless of success/failure
 ---
+
+## [Fri Feb 27 2026] - US-003
+[Session: https://opncd.ai/s/]
+- Implemented authentication backend with JWT and cookie sessions
+- Installed jsonwebtoken and cookie-parser dependencies
+- Created server/lib/auth.ts with login, verifyToken, generateToken, setAuthCookie, clearAuthCookie, and authMiddleware
+- Added POST /api/auth/login endpoint accepting { password }
+- Added POST /api/auth/logout endpoint clearing session cookie
+- Added GET /api/auth/me endpoint returning { authenticated: true } if valid session
+- Applied authMiddleware to all /api/* routes except /api/auth/login and /api/health
+- JWT secret from DOCKLIGHT_SECRET env var or default (production warning)
+- Password read from DOCKLIGHT_PASSWORD env var
+- Typecheck passes
+- Files changed: server/lib/auth.ts, server/index.ts, server/package.json, server/tsconfig.json
+- **Learnings for future iterations:**
+  - authMiddleware applied after specific routes to exclude them from protection
+  - httpOnly cookie prevents XSS attacks on session token
+  - Cookie configured with secure flag in production environment
+---
