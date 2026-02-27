@@ -358,3 +358,25 @@ Started: Fri Feb 27 21:01:07 +08 2026
   - Biome format command fixes formatting across all modified files
 ---
 
+## [Fri Feb 27 2026] - US-018
+[Session: https://opncd.ai/s/]
+- Implemented Domain management UI on app detail page
+- Added domains state management: domains, domainsLoading, domainsError, newDomain, showDomainRemoveDialog, pendingRemoveDomain
+- Added useEffect to fetch domains when domains tab becomes active
+- Implemented fetchDomains() function to fetch domains from GET /api/apps/:name/domains
+- Implemented handleAddDomain() function to add domain via POST /api/apps/:name/domains
+- Implemented handleRemoveDomain() and confirmRemoveDomain() functions to remove domain via DELETE /api/apps/:name/domains/:domain
+- Added domain removal confirmation dialog
+- Domains tab lists current domains in table format with trash icon for removal
+- Add domain form with text input and Add button
+- CLI output displayed after each add/remove action using existing CommandResult component
+- Typecheck passes
+- Browser verification skipped due to ChromeDevTools MCP not configured
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - Domain management follows same pattern as config vars management
+  - fetchDomains called when activeTab === 'domains' to get fresh data
+  - Domain removal uses encodeURIComponent for URL parameter safety
+  - Domain removal dialog reuses same confirmation dialog pattern as config vars
+  - Command result display pattern reused across all tab actions
+---
