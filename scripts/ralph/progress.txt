@@ -200,3 +200,23 @@ Started: Fri Feb 27 21:01:07 +08 2026
   - Fetch app detail refreshed after successful action
   - Process counts displayed as Object.entries for dynamic rendering
 ---
+
+## [Fri Feb 27 2026] - US-012
+[Session: https://opncd.ai/s/]
+- Installed ws dependency for WebSocket support
+- Created WebSocket endpoint at /api/apps/:name/logs/stream
+- On connection, spawns 'dokku logs <app> -t -n <num>' via child_process.spawn
+- Streams stdout lines to WebSocket client as they arrive using send()
+- Client can send { lines: 100|500|1000 } to set initial line count
+- On WebSocket close, kills the spawned process
+- Auth check on WebSocket upgrade validates JWT from cookie
+- Setup integrated with HTTP server in server/index.ts
+- Typecheck passes
+- Files changed: server/lib/websocket.ts, server/index.ts, server/package.json
+- **Learnings for future iterations:**
+  - WebSocketServer with noServer option for manual upgrade handling
+  - HTTP server upgrade event allows WebSocket routing
+  - Cookie parsing from request headers for auth validation
+  - handleUpgrade method properly integrates ws with http server
+  - Process cleanup on WebSocket close to prevent orphaned processes
+---
