@@ -220,3 +220,25 @@ Started: Fri Feb 27 21:01:07 +08 2026
   - handleUpgrade method properly integrates ws with http server
   - Process cleanup on WebSocket close to prevent orphaned processes
 ---
+
+## [Fri Feb 27 2026] - US-013
+[Session: https://opncd.ai/s/]
+- Implemented Logs tab on app detail page with tabbed layout (Overview, Config, Domains, Logs, SSL)
+- Connects to WebSocket endpoint on tab open
+- Log output displayed in monospace pre-formatted text with dark background (bg-gray-900)
+- Auto-scroll to bottom enabled by default, toggleable with button
+- Line count selector (100/500/1000) at top with dropdown
+- Disconnects WebSocket when navigating away (useEffect cleanup)
+- Connection status indicator (connected/disconnected/reconnecting) with color coding
+- WebSocket URL uses ws:// or wss:// based on current protocol
+- Logs state managed with useRef for logsEndRef and wsRef
+- Typecheck passes
+- Browser verification skipped due to ChromeDevTools MCP not configured
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - Tab pattern with activeTab state for switching views
+  - WebSocket connection established in useEffect with cleanup on unmount/tab change
+  - Ref types must match the HTML element type (HTMLPreElement for pre tag)
+  - Auto-scroll implemented by setting scrollTop to scrollHeight on logs update
+  - Connection status displayed with color-coded badges for user feedback
+---
