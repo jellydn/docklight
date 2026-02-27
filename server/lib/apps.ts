@@ -21,6 +21,15 @@ function stripAnsi(value: string): string {
 
 const UNKNOWN_ERROR = "Unknown error";
 
+function withRuntimeHint(command: string, stderr: string): string {
+	const lowerStderr = stderr.toLowerCase();
+	const lowerCommand = command.toLowerCase();
+	if (lowerCommand.includes("dokku") && lowerStderr.includes("not found")) {
+		return `${stderr}. Dokku CLI is unavailable in this runtime`;
+	}
+	return stderr;
+}
+
 export async function getApps(): Promise<
 	App[] | { error: string; command: string; exitCode: number; stderr: string }
 > {
@@ -43,7 +52,10 @@ export async function getApps(): Promise<
 			error: "Failed to list apps",
 			command: listResult?.command || "dokku apps:list",
 			exitCode: listResult?.exitCode || 1,
-			stderr: listResult?.stderr || UNKNOWN_ERROR,
+			stderr: withRuntimeHint(
+				listResult?.command || "dokku apps:list",
+				listResult?.stderr || UNKNOWN_ERROR
+			),
 		};
 	} catch (error: unknown) {
 		const err = error as { message?: string };

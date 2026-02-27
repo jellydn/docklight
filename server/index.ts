@@ -66,6 +66,7 @@ app.get("/api/commands", (req, res) => {
 app.get("/api/apps", async (_req, res) => {
 	const apps = await getApps();
 	if (!Array.isArray(apps)) {
+		logger.error({ apps }, "Failed to fetch apps");
 		res.status(apps.exitCode >= 400 ? apps.exitCode : 500).json(apps);
 		return;
 	}

@@ -2,6 +2,9 @@ const API_BASE = "/api";
 
 export interface ApiError {
 	error: string;
+	command?: string;
+	exitCode?: number;
+	stderr?: string;
 }
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
@@ -25,7 +28,9 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
 
 	if (!response.ok) {
 		const error: ApiError = await response.json();
-		throw new Error(error.error || "Request failed");
+		const details = [error.stderr, error.command].filter(Boolean).join(" | ");
+		const message = details ? `${error.error || "Request failed"}: ${details}` : error.error;
+		throw new Error(message || "Request failed");
 	}
 
 	return response.json();
