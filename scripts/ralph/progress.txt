@@ -161,3 +161,20 @@ Started: Fri Feb 27 21:01:07 +08 2026
   - Tailwind utility classes used for conditional styling and responsive layout
   - Link component from react-router-dom for client-side navigation
 ---
+
+## [Fri Feb 27 2026] - US-010
+[Session: https://opncd.ai/s/]
+- Implemented GET /api/apps/:name endpoint returning app detail from 'dokku ps:report <app>'
+- App detail includes: name, status, git remote, domains, process types/counts
+- Implemented POST /api/apps/:name/restart executing 'dokku ps:restart <app>' and returning executor result
+- Implemented POST /api/apps/:name/rebuild executing 'dokku ps:rebuild <app>' and returning executor result
+- App name validated against allowlist pattern (alphanumeric lowercase + hyphens only) using regex /^[a-z0-9-]+$/
+- All endpoints use executor to run dokku commands and return results
+- Typecheck passes
+- Files changed: server/lib/apps.ts, server/index.ts
+- **Learnings for future iterations:**
+  - isValidAppName function validates app names before executing commands
+  - Process types/counts parsed from 'process type scale' lines in ps:report
+  - Git remote extracted from 'app deployed' line in ps:report
+  - All app action endpoints return CommandResult with command, exitCode, stdout, stderr
+---
