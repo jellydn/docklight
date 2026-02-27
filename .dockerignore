@@ -1,0 +1,9 @@
+node_modules
+.git
+data
+dist
+bun.lock
+package-lock.json
+.DS_Store
+.env
+*.log

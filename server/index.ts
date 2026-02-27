@@ -1,5 +1,6 @@
 import cookieParser from "cookie-parser";
 import express from "express";
+import path from "path";
 import { isCommandAllowed } from "./lib/allowlist.js";
 import {
 	authMiddleware,
@@ -12,9 +13,18 @@ import { executeCommand } from "./lib/executor.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const CLIENT_DIST = path.join(process.cwd(), "..", "client", "dist");
 
 app.use(cookieParser());
 app.use(express.json());
+
+// Serve static files from client
+app.use(express.static(CLIENT_DIST));
+
+// SPA fallback for client-side routing
+app.get("*", (req, res) => {
+	res.sendFile(path.join(CLIENT_DIST, "index.html"));
+});
 
 app.get("/api/health", (req, res) => {
 	res.json({ status: "ok" });
