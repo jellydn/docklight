@@ -32,6 +32,9 @@ export function AppLayout() {
 					<Link to="/databases" className="block px-4 py-2 hover:bg-gray-800">
 						Databases
 					</Link>
+					<Link to="/plugins" className="block px-4 py-2 hover:bg-gray-800">
+						Plugins
+					</Link>
 					<button
 						onClick={handleLogout}
 						className="w-full text-left px-4 py-2 hover:bg-gray-800 mt-4"
