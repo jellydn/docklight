@@ -57,10 +57,12 @@ Runs on the same VPS as Dokku. No remote orchestration. No distributed complexit
 dokku apps:create docklight
 dokku config:set docklight DOCKLIGHT_PASSWORD=your-secure-password
 
-# From your local machine
-git remote add dokku dokku@your-server:docklight
+# From your local machine (use your server IP)
+git remote add dokku dokku@<your-server-ip>:docklight
 git push dokku main
 ```
+
+📖 **[Full deployment guide →](docs/deployment.md)** — SSH keys, domains, HTTPS, persistent storage, troubleshooting.
 
 ### Local Development
 
