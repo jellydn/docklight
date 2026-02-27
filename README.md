@@ -119,6 +119,7 @@ Docklight runs shell commands on your server. For production use:
 | Config    | `config:show`, `config:set`, `config:unset`                                                |
 | Domains   | `domains:report`, `domains:add`, `domains:remove`                                          |
 | Databases | `<plugin>:list`, `<plugin>:create`, `<plugin>:link`, `<plugin>:unlink`, `<plugin>:destroy` |
+| Plugins   | `plugin:list`, `plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`     |
 | SSL       | `letsencrypt:enable`, `letsencrypt:auto-renew`                                             |
 
 ## License
