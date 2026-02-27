@@ -1,83 +1,48 @@
 # AGENTS.md - Docklight Development Guide
 
-This file provides guidance for AI agents working in this repository.
+Docklight is a minimal, self-hosted web UI for managing a Dokku server.
 
-## Project Overview
-
-Docklight is a minimal, self-hosted web UI for managing a Dokku server. It consists of:
+## Project Structure
 
 - **server/** - Express backend with TypeScript (port 3001)
-- **.agents/skills/dev-browser/** - Browser automation skill for testing
+- **client/** - React + Vite frontend (port 5173)
+- **.agents/skills/dev-browser/** - Browser automation for testing
 
 ## Commands
 
-### Server (docklight-server)
+### Server
 
 ```bash
 cd server
-
-# Install dependencies
-bun install
-
-# Development (with hot reload)
-bun run dev
-
-# Type check
-bun run typecheck
-
-# Build for production
-bun run build
-
-# Start production server
-bun start
-
-# Lint code (biome)
-bun run lint
-
-# Format code (biome)
-bun run format
+bun install          # Install dependencies
+bun run dev          # Dev server with hot reload
+bun run typecheck    # Type check
+bun run build        # Build for production
+bun start            # Start production server
+bun run lint         # Lint (biome)
+bun run format       # Format (biome)
 ```
 
-### Client (React + Vite)
+### Client
 
 ```bash
 cd client
-
-# Install dependencies
 bun install
-
-# Development server (port 5173)
-bun run dev
-
-# Build for production
+bun run dev          # Dev server (port 5173)
 bun run build
-
-# Type check
 bun run typecheck
-
-# Lint code (biome - replaces eslint)
 bun run lint
-
-# Format code (biome)
 bun run format
-
-# Preview production build
-bun run preview
+bun run preview      # Preview production build
 ```
 
-### Dev Browser Skill
+### Dev Browser (Testing)
 
 ```bash
 cd .agents/skills/dev-browser
-
-# Install dependencies
 bun install
-
-# Run all tests
-bun test
-
-# Watch mode for tests
-bun run test:watch
+bun test             # Run all tests
+bun run test:watch   # Watch mode
 
 # Single test file
 npx vitest run src/snapshot/index.test.ts
@@ -85,35 +50,46 @@ npx vitest run src/snapshot/index.test.ts
 # Single test by name
 npx vitest run -t "test name"
 
-# Start Docklight server (for integration testing)
-bun run start-server
+bun run start-server     # Start Docklight server (integration tests)
+bun run start-extension  # Start browser extension relay
+```
 
-# Start browser extension relay
-bun run start-extension
+### Justfile Shortcuts
+
+```bash
+just                           # List all recipes
+just install                   # Install all deps
+just server-dev/client-dev    # Run dev servers
+just server-typecheck         # Type check all
+just lint                     # Lint all
+just format                   # Format all
+just build                    # Build all
+just browser-test             # Run browser tests
 ```
 
 ## Code Style Guidelines
 
 ### TypeScript
 
-- Use explicit types for function parameters and return types
+- Explicit types for function parameters and return types
 - Enable `strict: true` in tsconfig.json
 - Use `import type` for type-only imports
-- Use interface for object shapes, type for unions/primitives
+- Use `interface` for object shapes, `type` for unions/primitives
 
 ### Naming Conventions
 
-- **Files**: kebab-case (e.g., `command-executor.ts`)
-- **Functions**: camelCase, use verb prefixes (`get`, `set`, `is`, `has`)
-- **Classes/Interfaces/Types**: PascalCase
-- **Constants**: SCREAMING_SNAKE_CASE for config values
-- **Interfaces**: Add `I` prefix only when necessary to avoid collision
+| Type                     | Convention              | Example                   |
+| ------------------------ | ----------------------- | ------------------------- |
+| Files                    | kebab-case              | `command-executor.ts`     |
+| Functions                | camelCase + verb prefix | `getData`, `isActive`     |
+| Classes/Interfaces/Types | PascalCase              | `UserService`, `AppState` |
+| Constants                | SCREAMING_SNAKE_CASE    | `MAX_RETRIES`             |
 
 ### Imports
 
-- Use ES module syntax with `.js` extension for relative imports
-- Group imports: external → internal → types
-- Use path aliases when available (`@/*` in dev-browser)
+- Use ES modules with `.js` extension for relative imports
+- Group: external → internal → types
+- Use path aliases when available (`@/*`)
 
 ```typescript
 import express from "express";
@@ -122,24 +98,23 @@ import { getData } from "./lib/db.js";
 import type { Data } from "./lib/types.js";
 ```
 
-### Formatting
+### Formatting (biome)
 
-- Use tabs for indentation (2 spaces)
-- Use double quotes for strings
-- Add trailing commas in multiline objects/arrays
-- Maximum line length: 100 characters
-- Use semicolons
+- Indent: tabs (2 spaces)
+- Strings: double quotes
+- Trailing commas: es5
+- Line width: 100
+- Semicolons: always
 
 ### Error Handling
 
 - Use try-catch for async operations
-- Return error results with exitCode and stderr rather than throwing
-- Log errors with console.error for debugging
+- Return `{ exitCode, stderr }` rather than throwing
+- Log errors with `console.error`
 
 ```typescript
-// Good pattern from executor.ts
 try {
-  const result = await execAsync(command, { timeout });
+  const result = await execAsync(cmd, { timeout });
   return { ...result, exitCode: 0 };
 } catch (error: unknown) {
   const err = error as { code?: number; message?: string };
@@ -149,21 +124,19 @@ try {
 
 ### Database
 
-- Use better-sqlite3 for synchronous SQLite operations
-- Use prepared statements to prevent SQL injection
+- Use better-sqlite3 for sync SQLite
+- Use prepared statements (prevent SQL injection)
 - Create tables with `IF NOT EXISTS`
 
 ### Security
 
-- Never expose shell execution directly to clients
-- Use command allowlists (see `server/lib/allowlist.ts`)
-- Validate and sanitize all user inputs
-- Use JWT for authentication in production
+- Never expose shell execution to clients
+- Use command allowlists (`server/lib/allowlist.ts`)
+- Validate and sanitize all inputs
 
-### Testing (dev-browser skill)
+### Testing (Vitest)
 
-- Tests use Vitest with Node environment
-- Include `*.test.ts` suffix
+- Test files: `*.test.ts`
 - Use descriptive test names
 - Mock external dependencies
 
@@ -184,43 +157,5 @@ Browser → React SPA → Express API → Shell Exec → Dokku CLI → Docker
 ```
 
 - API runs on same VPS as Dokku
-- Commands are restricted to predefined allowlist
+- Commands restricted to predefined allowlist
 - All commands show exit code and output for transparency
-
-### Justfile
-
-A `justfile` provides convenient shortcuts for common commands:
-
-```bash
-# List all available recipes
-just
-
-# Install all dependencies
-just install
-
-# Server commands
-just server-dev
-just server-build
-just server-typecheck
-just server-lint
-just server-format
-
-# Client commands
-just client-dev
-just client-build
-just client-typecheck
-just client-lint
-just client-format
-just client-preview
-
-# Dev Browser commands
-just browser-test
-just browser-test-watch
-just browser-start-server
-
-# Run all checks
-just typecheck
-just lint
-just format
-just build
-```
