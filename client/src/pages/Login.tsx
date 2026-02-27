@@ -38,10 +38,7 @@ export function Login() {
 				<h1 className="text-2xl font-bold mb-6 text-center">Docklight Login</h1>
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>
-						<label
-							htmlFor="password"
-							className="block text-sm font-medium mb-2"
-						>
+						<label htmlFor="password" className="block text-sm font-medium mb-2">
 							Password
 						</label>
 						<input

@@ -1,10 +1,10 @@
-import { useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { apiFetch } from '../lib/api';
+import { useParams } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import { apiFetch } from "../lib/api";
 
 interface AppDetail {
 	name: string;
-	status: 'running' | 'stopped';
+	status: "running" | "stopped";
 	gitRemote: string;
 	domains: string[];
 	processes: Record<string, number>;
@@ -17,6 +17,8 @@ interface CommandResult {
 	stderr: string;
 }
 
+type TabType = "overview" | "config" | "domains" | "logs" | "ssl";
+
 export function AppDetail() {
 	const { name } = useParams<{ name: string }>();
 	const [app, setApp] = useState<AppDetail | null>(null);
@@ -25,12 +27,85 @@ export function AppDetail() {
 	const [actionResult, setActionResult] = useState<CommandResult | null>(null);
 	const [showActionDialog, setShowActionDialog] = useState(false);
 	const [pendingAction, setPendingAction] = useState<string | null>(null);
+	const [activeTab, setActiveTab] = useState<TabType>("overview");
+
+	// Log viewer state
+	const [logs, setLogs] = useState<string[]>([]);
+	const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "reconnecting">("disconnected");
+	const [autoScroll, setAutoScroll] = useState(true);
+	const [lineCount, setLineCount] = useState(100);
+	const wsRef = useRef<WebSocket | null>(null);
+	const logsEndRef = useRef<HTMLPreElement>(null);
 
 	useEffect(() => {
 		if (name) {
 			fetchAppDetail();
 		}
 	}, [name]);
+
+	useEffect(() => {
+		if (activeTab === "logs" && name) {
+			connectWebSocket();
+		}
+
+		return () => {
+			disconnectWebSocket();
+		};
+	}, [activeTab, name, lineCount]);
+
+	useEffect(() => {
+		if (autoScroll && logsEndRef.current) {
+			logsEndRef.current.scrollTop = logsEndRef.current.scrollHeight;
+		}
+	}, [logs, autoScroll]);
+
+	const connectWebSocket = () => {
+		const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+		const wsUrl = `${protocol}//${window.location.host}/api/apps/${name}/logs/stream`;
+
+		try {
+			const ws = new WebSocket(wsUrl);
+			wsRef.current = ws;
+
+			ws.onopen = () => {
+				setConnectionStatus("connected");
+				setLogs([]);
+				ws.send(JSON.stringify({ lines: lineCount }));
+			};
+
+			ws.onmessage = (event) => {
+				try {
+					const data = JSON.parse(event.data);
+					if (data.line) {
+						setLogs((prev) => [...prev, data.line]);
+					}
+					if (data.error && !data.line) {
+						setConnectionStatus("disconnected");
+					}
+				} catch (err) {
+					console.error("Error parsing WebSocket message:", err);
+				}
+			};
+
+			ws.onclose = () => {
+				setConnectionStatus("disconnected");
+			};
+
+			ws.onerror = () => {
+				setConnectionStatus("disconnected");
+			};
+		} catch (err) {
+			console.error("Failed to connect to WebSocket:", err);
+			setConnectionStatus("disconnected");
+		}
+	};
+
+	const disconnectWebSocket = () => {
+		if (wsRef.current) {
+			wsRef.current.close();
+			wsRef.current = null;
+		}
+	};
 
 	const fetchAppDetail = async () => {
 		try {
@@ -39,12 +114,12 @@ export function AppDetail() {
 			setLoading(false);
 			setError(null);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to load app details');
+			setError(err instanceof Error ? err.message : "Failed to load app details");
 			setLoading(false);
 		}
 	};
 
-	const handleAction = async (action: 'restart' | 'rebuild') => {
+	const handleAction = async (action: "restart" | "rebuild") => {
 		setPendingAction(action);
 		setShowActionDialog(true);
 	};
@@ -53,9 +128,12 @@ export function AppDetail() {
 		if (!pendingAction || !name) return;
 
 		try {
-			const result = await apiFetch<CommandResult>(`/apps/${name}/${pendingAction}`, {
-				method: 'POST',
-			});
+			const result = await apiFetch<CommandResult>(
+				`/apps/${name}/${pendingAction}`,
+				{
+					method: "POST",
+				},
+			);
 			setActionResult(result);
 			setShowActionDialog(false);
 			setPendingAction(null);
@@ -64,8 +142,8 @@ export function AppDetail() {
 			setActionResult({
 				command: `dokku ps:${pendingAction} ${name}`,
 				exitCode: 1,
-				stdout: '',
-				stderr: err instanceof Error ? err.message : 'Action failed',
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Action failed",
 			});
 			setShowActionDialog(false);
 			setPendingAction(null);
@@ -83,16 +161,34 @@ export function AppDetail() {
 	if (error || !app) {
 		return (
 			<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-				{error || 'App not found'}
+				{error || "App not found"}
 			</div>
 		);
 	}
 
 	const getStatusBadge = () => {
-		const color = app.status === 'running' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+		const color =
+			app.status === "running"
+				? "bg-green-100 text-green-800"
+				: "bg-red-100 text-red-800";
 		return (
 			<span className={`px-3 py-1 rounded-full text-sm font-medium ${color}`}>
 				{app.status}
+			</span>
+		);
+	};
+
+	const getConnectionStatusBadge = () => {
+		const colors = {
+			connected: "bg-green-100 text-green-800",
+			disconnected: "bg-gray-100 text-gray-800",
+			reconnecting: "bg-yellow-100 text-yellow-800",
+		};
+		return (
+			<span
+				className={`px-2 py-1 rounded-full text-xs font-medium ${colors[connectionStatus]}`}
+			>
+				{connectionStatus}
 			</span>
 		);
 	};
@@ -104,20 +200,22 @@ export function AppDetail() {
 					<h1 className="text-2xl font-bold">{app.name}</h1>
 					<div className="mt-2">{getStatusBadge()}</div>
 				</div>
-				<div className="space-x-2">
-					<button
-						onClick={() => handleAction('restart')}
-						className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-					>
-						Restart
-					</button>
-					<button
-						onClick={() => handleAction('rebuild')}
-						className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
-					>
-						Rebuild
-					</button>
-				</div>
+				{activeTab === "overview" && (
+					<div className="space-x-2">
+						<button
+							onClick={() => handleAction("restart")}
+							className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+						>
+							Restart
+						</button>
+						<button
+							onClick={() => handleAction("rebuild")}
+							className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+						>
+							Rebuild
+						</button>
+					</div>
+				)}
 			</div>
 
 			{actionResult && (
@@ -128,8 +226,12 @@ export function AppDetail() {
 							<strong>Command:</strong> {actionResult.command}
 						</div>
 						<div className="mb-2">
-							<strong>Exit Code:</strong>{' '}
-							<span className={actionResult.exitCode === 0 ? 'text-green-600' : 'text-red-600'}>
+							<strong>Exit Code:</strong>{" "}
+							<span
+								className={
+									actionResult.exitCode === 0 ? "text-green-600" : "text-red-600"
+								}
+							>
 								{actionResult.exitCode}
 							</span>
 						</div>
@@ -187,47 +289,130 @@ export function AppDetail() {
 				</div>
 			)}
 
-			<div className="bg-white rounded-lg shadow p-6">
-				<h2 className="text-lg font-semibold mb-4">Overview</h2>
-				<div className="space-y-4">
-					<div>
-						<strong className="text-gray-700">Status:</strong>{' '}
-						{getStatusBadge()}
-					</div>
-					<div>
-						<strong className="text-gray-700">Git Remote:</strong>{' '}
-						<code className="bg-gray-100 px-2 py-1 rounded text-sm">
-							{app.gitRemote || '-'}
-						</code>
-					</div>
-					<div>
-						<strong className="text-gray-700">Domains:</strong>
-						{app.domains.length > 0 ? (
-							<ul className="list-disc list-inside ml-4">
-								{app.domains.map((domain) => (
-									<li key={domain}>{domain}</li>
-								))}
-							</ul>
-						) : (
-							<span className="text-gray-400">No domains</span>
-						)}
-					</div>
-					<div>
-						<strong className="text-gray-700">Processes:</strong>
-						{Object.keys(app.processes).length > 0 ? (
-							<div className="mt-2 space-y-1">
-								{Object.entries(app.processes).map(([type, count]) => (
-									<div key={type}>
-										<strong>{type}:</strong> {count}
-									</div>
-								))}
-							</div>
-						) : (
-							<span className="text-gray-400">No processes running</span>
-						)}
+			<div className="border-b mb-4">
+				<nav className="flex space-x-4">
+					<button
+						onClick={() => setActiveTab("overview")}
+						className={`pb-2 px-2 ${activeTab === "overview" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+					>
+						Overview
+					</button>
+					<button
+						onClick={() => setActiveTab("config")}
+						className={`pb-2 px-2 ${activeTab === "config" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+					>
+						Config
+					</button>
+					<button
+						onClick={() => setActiveTab("domains")}
+						className={`pb-2 px-2 ${activeTab === "domains" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+					>
+						Domains
+					</button>
+					<button
+						onClick={() => setActiveTab("logs")}
+						className={`pb-2 px-2 ${activeTab === "logs" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+					>
+						Logs
+					</button>
+					<button
+						onClick={() => setActiveTab("ssl")}
+						className={`pb-2 px-2 ${activeTab === "ssl" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+					>
+						SSL
+					</button>
+				</nav>
+			</div>
+
+			{activeTab === "overview" && (
+				<div className="bg-white rounded-lg shadow p-6">
+					<h2 className="text-lg font-semibold mb-4">Overview</h2>
+					<div className="space-y-4">
+						<div>
+							<strong className="text-gray-700">Status:</strong>{" "}
+							{getStatusBadge()}
+						</div>
+						<div>
+							<strong className="text-gray-700">Git Remote:</strong>{" "}
+							<code className="bg-gray-100 px-2 py-1 rounded text-sm">
+								{app.gitRemote || "-"}
+							</code>
+						</div>
+						<div>
+							<strong className="text-gray-700">Domains:</strong>
+							{app.domains.length > 0 ? (
+								<ul className="list-disc list-inside ml-4">
+									{app.domains.map((domain) => (
+										<li key={domain}>{domain}</li>
+									))}
+								</ul>
+							) : (
+								<span className="text-gray-400">No domains</span>
+							)}
+						</div>
+						<div>
+							<strong className="text-gray-700">Processes:</strong>
+							{Object.keys(app.processes).length > 0 ? (
+								<div className="mt-2 space-y-1">
+									{Object.entries(app.processes).map(([type, count]) => (
+										<div key={type}>
+											<strong>{type}:</strong> {count}
+										</div>
+									))}
+								</div>
+							) : (
+								<span className="text-gray-400">No processes running</span>
+							)}
+						</div>
 					</div>
 				</div>
-			</div>
+			)}
+
+			{activeTab === "logs" && (
+				<div className="bg-white rounded-lg shadow p-6">
+					<div className="flex justify-between items-center mb-4">
+						<h2 className="text-lg font-semibold">Logs</h2>
+						<div className="flex items-center space-x-4">
+							{getConnectionStatusBadge()}
+							<select
+								value={lineCount}
+								onChange={(e) => setLineCount(parseInt(e.target.value))}
+								className="border rounded px-2 py-1"
+							>
+								<option value={100}>100 lines</option>
+								<option value={500}>500 lines</option>
+								<option value={1000}>1000 lines</option>
+							</select>
+							<button
+								onClick={() => setAutoScroll(!autoScroll)}
+								className="px-3 py-1 border rounded hover:bg-gray-100"
+							>
+								{autoScroll ? "Auto-scroll: ON" : "Auto-scroll: OFF"}
+							</button>
+						</div>
+					</div>
+					<div className="bg-gray-900 rounded p-4 h-96 overflow-y-auto">
+						<pre
+							ref={logsEndRef}
+							className="text-green-400 font-mono text-sm whitespace-pre-wrap"
+						>
+							{logs.length > 0
+								? logs.join("\n")
+								: connectionStatus === "connected"
+									? "Waiting for logs..."
+									: "Not connected"}
+						</pre>
+					</div>
+				</div>
+			)}
+
+			{(activeTab === "config" || activeTab === "domains" || activeTab === "ssl") && (
+				<div className="bg-white rounded-lg shadow p-6">
+					<p className="text-gray-500">
+						{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} - Coming Soon
+					</p>
+				</div>
+			)}
 		</div>
 	);
 }

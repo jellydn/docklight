@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { apiFetch } from '../lib/api';
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { apiFetch } from "../lib/api";
 
 interface ServerHealth {
 	cpu: number;
@@ -10,7 +10,7 @@ interface ServerHealth {
 
 interface App {
 	name: string;
-	status: 'running' | 'stopped';
+	status: "running" | "stopped";
 	domains: string[];
 	lastDeployTime?: string;
 }
@@ -34,9 +34,9 @@ export function Dashboard() {
 	const fetchData = async () => {
 		try {
 			const [healthData, appsData, commandsData] = await Promise.all([
-				apiFetch<ServerHealth>('/server/health'),
-				apiFetch<App[]>('/apps'),
-				apiFetch<CommandHistory[]>('/commands?limit=20'),
+				apiFetch<ServerHealth>("/server/health"),
+				apiFetch<App[]>("/apps"),
+				apiFetch<CommandHistory[]>("/commands?limit=20"),
 			]);
 
 			setHealth(healthData);
@@ -45,7 +45,7 @@ export function Dashboard() {
 			setLoading(false);
 			setError(null);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to load data');
+			setError(err instanceof Error ? err.message : "Failed to load data");
 			setLoading(false);
 		}
 	};
@@ -57,18 +57,14 @@ export function Dashboard() {
 	}, []);
 
 	const getHealthColor = (value: number) => {
-		if (value < 60) return 'bg-green-500';
-		if (value < 85) return 'bg-yellow-500';
-		return 'bg-red-500';
+		if (value < 60) return "bg-green-500";
+		if (value < 85) return "bg-yellow-500";
+		return "bg-red-500";
 	};
 
 	const getStatusBadge = (status: string) => {
-		const color = status === 'running' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
-		return (
-			<span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>
-				{status}
-			</span>
-		);
+		const color = status === "running" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
+		return <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>{status}</span>;
 	};
 
 	return (
@@ -169,7 +165,7 @@ export function Dashboard() {
 													<span className="text-gray-400">-</span>
 												)}
 											</td>
-											<td className="py-2 px-4">{app.lastDeployTime || '-'}</td>
+											<td className="py-2 px-4">{app.lastDeployTime || "-"}</td>
 										</tr>
 									))}
 								</tbody>
@@ -186,9 +182,7 @@ export function Dashboard() {
 							<div className="space-y-2">
 								{commands.map((cmd) => (
 									<div key={cmd.id} className="text-sm">
-										<div className="font-mono bg-gray-100 p-2 rounded">
-											{cmd.command}
-										</div>
+										<div className="font-mono bg-gray-100 p-2 rounded">{cmd.command}</div>
 										<div className="text-gray-500 text-xs mt-1">
 											{new Date(cmd.createdAt).toLocaleString()}
 										</div>
