@@ -1,9 +1,9 @@
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useEffect, useState, useRef } from "react";
-import { apiFetch } from "../lib/api";
-import { logger } from "../lib/logger";
 import { useToast } from "../components/ToastProvider";
 import type { CommandResult } from "../components/types";
+import { apiFetch } from "../lib/api";
+import { logger } from "../lib/logger";
 
 interface AppDetail {
 	name: string;
@@ -25,6 +25,11 @@ interface ConfigVars {
 	[key: string]: string;
 }
 
+interface ScaleChange {
+	processType: string;
+	count: number;
+}
+
 export function AppDetail() {
 	const { name } = useParams<{ name: string }>();
 	const { addToast } = useToast();
@@ -34,8 +39,7 @@ export function AppDetail() {
 	const [showActionDialog, setShowActionDialog] = useState(false);
 	const [pendingAction, setPendingAction] = useState<string | null>(null);
 	const [showScaleDialog, setShowScaleDialog] = useState(false);
-	const [pendingScaleType, setPendingScaleType] = useState<string | null>(null);
-	const [pendingScaleCount, setPendingScaleCount] = useState<number | null>(null);
+	const [pendingScaleChanges, setPendingScaleChanges] = useState<ScaleChange[]>([]);
 	const [scaleChanges, setScaleChanges] = useState<Record<string, number>>({});
 	const [activeTab, setActiveTab] = useState<TabType>("overview");
 
@@ -204,11 +208,23 @@ export function AppDetail() {
 		}
 	};
 
-	const handleScaleChange = (processType: string, count: number) => {
-		setScaleChanges((prev) => ({
-			...prev,
-			[processType]: count,
-		}));
+	const handleScaleChange = (processType: string, count: number, currentCount: number) => {
+		if (!Number.isInteger(count) || count < 0) {
+			return;
+		}
+
+		setScaleChanges((prev) => {
+			if (count === currentCount) {
+				const next = { ...prev };
+				delete next[processType];
+				return next;
+			}
+
+			return {
+				...prev,
+				[processType]: count,
+			};
+		});
 	};
 
 	const handleApplyScale = async () => {
@@ -217,43 +233,42 @@ export function AppDetail() {
 		const entries = Object.entries(scaleChanges);
 		if (entries.length === 0) return;
 
-		const firstEntry = entries[0];
-		const [processType, count] = firstEntry;
-
-		setPendingScaleType(processType);
-		setPendingScaleCount(count);
+		setPendingScaleChanges(entries.map(([processType, count]) => ({ processType, count })));
 		setShowScaleDialog(true);
 	};
 
 	const confirmScale = async () => {
-		if (!name || !pendingScaleType || pendingScaleCount === null) return;
+		if (!name || pendingScaleChanges.length === 0) return;
 
-		try {
-			const result = await apiFetch<CommandResult>(`/apps/${name}/scale`, {
-				method: "POST",
-				body: JSON.stringify({
-					processType: pendingScaleType,
-					count: pendingScaleCount,
-				}),
-			});
-			addToast(result.exitCode === 0 ? "success" : "error", "Scaling completed", result);
-			setShowScaleDialog(false);
-			setPendingScaleType(null);
-			setPendingScaleCount(null);
-			setScaleChanges({});
-			fetchAppDetail();
-		} catch (err) {
-			const errorResult: CommandResult = {
-				command: `dokku ps:scale ${name} ${pendingScaleType}=${pendingScaleCount}`,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Scale failed",
-			};
-			addToast("error", "Scaling failed", errorResult);
-			setShowScaleDialog(false);
-			setPendingScaleType(null);
-			setPendingScaleCount(null);
+		for (const change of pendingScaleChanges) {
+			try {
+				const result = await apiFetch<CommandResult>(`/apps/${name}/scale`, {
+					method: "POST",
+					body: JSON.stringify({
+						processType: change.processType,
+						count: change.count,
+					}),
+				});
+				addToast(
+					result.exitCode === 0 ? "success" : "error",
+					`Scale ${change.processType} to ${change.count}`,
+					result
+				);
+			} catch (err) {
+				const errorResult: CommandResult = {
+					command: `dokku ps:scale ${name} ${change.processType}=${change.count}`,
+					exitCode: 1,
+					stdout: "",
+					stderr: err instanceof Error ? err.message : "Scale failed",
+				};
+				addToast("error", `Scale ${change.processType} failed`, errorResult);
+			}
 		}
+
+		setShowScaleDialog(false);
+		setPendingScaleChanges([]);
+		setScaleChanges({});
+		fetchAppDetail();
 	};
 
 	const fetchConfigVars = async () => {
@@ -553,16 +568,22 @@ export function AppDetail() {
 				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
 					<div className="bg-white rounded p-6 max-w-md w-full">
 						<h2 className="text-lg font-semibold mb-4">Confirm Scale</h2>
-						<p className="mb-6">
-							Are you sure you want to scale <strong>{pendingScaleType}</strong> to{" "}
-							<strong>{pendingScaleCount}</strong> processes for <strong>{app.name}</strong>?
+						<p className="mb-3">
+							Apply these scaling changes for <strong>{app.name}</strong>?
 						</p>
+						<ul className="mb-6 list-disc list-inside">
+							{pendingScaleChanges.map((change) => (
+								<li key={change.processType}>
+									<strong>{change.processType}</strong>: {change.count}
+								</li>
+							))}
+						</ul>
 						<div className="flex justify-end space-x-2">
 							<button
+								type="button"
 								onClick={() => {
 									setShowScaleDialog(false);
-									setPendingScaleType(null);
-									setPendingScaleCount(null);
+									setPendingScaleChanges([]);
 								}}
 								className="px-4 py-2 border rounded hover:bg-gray-100"
 							>
@@ -713,7 +734,9 @@ export function AppDetail() {
 														min="0"
 														max="100"
 														defaultValue={count}
-														onChange={(e) => handleScaleChange(type, parseInt(e.target.value, 10))}
+														onChange={(e) =>
+															handleScaleChange(type, parseInt(e.target.value, 10), count)
+														}
 														className="w-20 border rounded px-2 py-1"
 													/>
 												</div>
@@ -952,52 +975,52 @@ export function AppDetail() {
 						</div>
 					) : (
 						<div className="space-y-4">
-								<div className="flex items-center justify-between p-4 bg-gray-50 rounded">
-									<div>
-										<strong className="text-gray-700">Status:</strong>{" "}
-										{sslStatus?.active ? (
-											<span className="ml-2 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-												Active
-											</span>
-										) : (
-											<span className="ml-2 px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-												Inactive
-											</span>
-										)}
-									</div>
-									{sslStatus?.certProvider && (
-										<div>
-											<strong className="text-gray-700">Provider:</strong>{" "}
-											<span className="ml-2 text-sm">{sslStatus.certProvider}</span>
-										</div>
+							<div className="flex items-center justify-between p-4 bg-gray-50 rounded">
+								<div>
+									<strong className="text-gray-700">Status:</strong>{" "}
+									{sslStatus?.active ? (
+										<span className="ml-2 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+											Active
+										</span>
+									) : (
+										<span className="ml-2 px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+											Inactive
+										</span>
 									)}
 								</div>
-
-								{sslStatus?.expiryDate && (
-									<div className="flex items-center p-4 bg-gray-50 rounded">
-										<strong className="text-gray-700">Expiry Date:</strong>
-										<span className="ml-2 text-sm">{sslStatus.expiryDate}</span>
+								{sslStatus?.certProvider && (
+									<div>
+										<strong className="text-gray-700">Provider:</strong>{" "}
+										<span className="ml-2 text-sm">{sslStatus.certProvider}</span>
 									</div>
 								)}
-
-								<div className="pt-4 border-t">
-									{sslStatus?.active ? (
-										<button
-											onClick={handleRenewSSL}
-											className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-										>
-											Renew Certificate
-										</button>
-									) : (
-										<button
-											onClick={handleEnableSSL}
-											className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-										>
-											Enable Let's Encrypt
-										</button>
-									)}
-								</div>
 							</div>
+
+							{sslStatus?.expiryDate && (
+								<div className="flex items-center p-4 bg-gray-50 rounded">
+									<strong className="text-gray-700">Expiry Date:</strong>
+									<span className="ml-2 text-sm">{sslStatus.expiryDate}</span>
+								</div>
+							)}
+
+							<div className="pt-4 border-t">
+								{sslStatus?.active ? (
+									<button
+										onClick={handleRenewSSL}
+										className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+									>
+										Renew Certificate
+									</button>
+								) : (
+									<button
+										onClick={handleEnableSSL}
+										className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+									>
+										Enable Let's Encrypt
+									</button>
+								)}
+							</div>
+						</div>
 					)}
 				</div>
 			)}
