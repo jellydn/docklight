@@ -24,6 +24,7 @@ export function Plugins() {
 	const [error, setError] = useState<string | null>(null);
 	const [pluginRepo, setPluginRepo] = useState("");
 	const [pluginName, setPluginName] = useState("");
+	const [sudoPassword, setSudoPassword] = useState("");
 
 	const fetchPlugins = async () => {
 		setLoading(true);
@@ -46,8 +47,11 @@ export function Plugins() {
 		if (!pluginRepo.trim()) return;
 
 		try {
-			const body: { repository: string; name?: string } = { repository: pluginRepo.trim() };
+			const body: { repository: string; name?: string; sudoPassword?: string } = {
+				repository: pluginRepo.trim(),
+			};
 			if (pluginName.trim()) body.name = pluginName.trim();
+			if (sudoPassword.trim()) body.sudoPassword = sudoPassword;
 
 			const result = await apiFetch<CommandResult>("/plugins/install", {
 				method: "POST",
@@ -83,7 +87,10 @@ export function Plugins() {
 		try {
 			const result = await apiFetch<CommandResult>(
 				action === "uninstall" ? `/plugins/${pluginNameValue}` : `/plugins/${pluginNameValue}/${action}`,
-				{ method: action === "uninstall" ? "DELETE" : "POST" }
+				{
+					method: action === "uninstall" ? "DELETE" : "POST",
+					body: sudoPassword.trim() ? JSON.stringify({ sudoPassword }) : undefined,
+				}
 			);
 			addToast(
 				result.exitCode === 0 ? "success" : "error",
@@ -152,6 +159,18 @@ export function Plugins() {
 						Install
 					</button>
 				</div>
+				<div className="mt-2">
+					<input
+						type="password"
+						placeholder="Sudo password (optional)"
+						value={sudoPassword}
+						onChange={(e) => setSudoPassword(e.target.value)}
+						className="border rounded px-3 py-2 w-full md:w-1/3"
+					/>
+				</div>
+				<p className="text-xs text-gray-500 mt-2">
+					Used only for plugin actions. Leave empty if passwordless sudo is configured.
+				</p>
 				<div className="flex flex-wrap gap-2 mt-3">
 					{POPULAR_PLUGIN_REPOS.map((plugin) => (
 						<button

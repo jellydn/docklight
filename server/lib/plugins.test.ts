@@ -26,7 +26,9 @@ describe("installPlugin", () => {
 
 		expect(result).toMatchObject({ exitCode: 0 });
 		expect(mockExecuteCommandAsRoot).toHaveBeenCalledWith(
-			"dokku plugin:install https://github.com/dokku/dokku-postgres.git"
+			"dokku plugin:install https://github.com/dokku/dokku-postgres.git",
+			30000,
+			undefined
 		);
 	});
 
@@ -41,7 +43,26 @@ describe("installPlugin", () => {
 		await installPlugin("acme/custom-plugin", "custom-plugin");
 
 		expect(mockExecuteCommandAsRoot).toHaveBeenCalledWith(
-			"dokku plugin:install https://github.com/acme/custom-plugin.git custom-plugin"
+			"dokku plugin:install https://github.com/acme/custom-plugin.git custom-plugin",
+			30000,
+			undefined
+		);
+	});
+
+	it("passes sudo password when provided", async () => {
+		mockExecuteCommandAsRoot.mockResolvedValue({
+			command: "dokku plugin:install https://github.com/acme/custom-plugin.git custom-plugin",
+			exitCode: 0,
+			stdout: "installed",
+			stderr: "",
+		});
+
+		await installPlugin("acme/custom-plugin", "custom-plugin", "secret");
+
+		expect(mockExecuteCommandAsRoot).toHaveBeenCalledWith(
+			"dokku plugin:install https://github.com/acme/custom-plugin.git custom-plugin",
+			30000,
+			"secret"
 		);
 	});
 
@@ -100,7 +121,11 @@ describe("plugin state operations", () => {
 		});
 
 		await enablePlugin("dokku-postgres");
-		expect(mockExecuteCommandAsRoot).toHaveBeenCalledWith("dokku plugin:enable dokku-postgres");
+		expect(mockExecuteCommandAsRoot).toHaveBeenCalledWith(
+			"dokku plugin:enable dokku-postgres",
+			30000,
+			undefined
+		);
 	});
 
 	it("disables plugin by name", async () => {
@@ -112,7 +137,11 @@ describe("plugin state operations", () => {
 		});
 
 		await disablePlugin("dokku-postgres");
-		expect(mockExecuteCommandAsRoot).toHaveBeenCalledWith("dokku plugin:disable dokku-postgres");
+		expect(mockExecuteCommandAsRoot).toHaveBeenCalledWith(
+			"dokku plugin:disable dokku-postgres",
+			30000,
+			undefined
+		);
 	});
 
 	it("uninstalls plugin by name", async () => {
@@ -124,7 +153,11 @@ describe("plugin state operations", () => {
 		});
 
 		await uninstallPlugin("dokku-postgres");
-		expect(mockExecuteCommandAsRoot).toHaveBeenCalledWith("dokku plugin:uninstall dokku-postgres");
+		expect(mockExecuteCommandAsRoot).toHaveBeenCalledWith(
+			"dokku plugin:uninstall dokku-postgres",
+			30000,
+			undefined
+		);
 	});
 
 	it("rejects invalid plugin names", async () => {

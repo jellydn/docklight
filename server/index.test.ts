@@ -255,8 +255,11 @@ function createTestApp(): Express {
 	}));
 
 	app.post("/api/plugins/install", withAuth(async (req, res) => {
-		const { repository, name } = req.body;
-		const result = await installPlugin(repository, name);
+		const { repository, name, sudoPassword } = req.body ?? {};
+		const result =
+			typeof sudoPassword === "string" && sudoPassword.trim().length > 0
+				? await installPlugin(repository, name, sudoPassword)
+				: await installPlugin(repository, name);
 		res.json(result);
 	}));
 
@@ -267,19 +270,31 @@ function createTestApp(): Express {
 
 	app.post("/api/plugins/:name/enable", withAuth(async (req, res) => {
 		const { name } = req.params;
-		const result = await enablePlugin(name);
+		const { sudoPassword } = req.body ?? {};
+		const result =
+			typeof sudoPassword === "string" && sudoPassword.trim().length > 0
+				? await enablePlugin(name, sudoPassword)
+				: await enablePlugin(name);
 		res.json(result);
 	}));
 
 	app.post("/api/plugins/:name/disable", withAuth(async (req, res) => {
 		const { name } = req.params;
-		const result = await disablePlugin(name);
+		const { sudoPassword } = req.body ?? {};
+		const result =
+			typeof sudoPassword === "string" && sudoPassword.trim().length > 0
+				? await disablePlugin(name, sudoPassword)
+				: await disablePlugin(name);
 		res.json(result);
 	}));
 
 	app.delete("/api/plugins/:name", withAuth(async (req, res) => {
 		const { name } = req.params;
-		const result = await uninstallPlugin(name);
+		const { sudoPassword } = req.body ?? {};
+		const result =
+			typeof sudoPassword === "string" && sudoPassword.trim().length > 0
+				? await uninstallPlugin(name, sudoPassword)
+				: await uninstallPlugin(name);
 		res.json(result);
 	}));
 
@@ -643,6 +658,24 @@ describe("API Routes", () => {
 
 			expect(response.status).toBe(200);
 			expect(installPlugin).toHaveBeenCalledWith("dokku/dokku-postgres", "dokku-postgres");
+		});
+
+		it("POST /api/plugins/install - should pass sudo password when provided", async () => {
+			const mockResult = { command: "dokku plugin:install x", exitCode: 0, stdout: "", stderr: "" };
+			vi.mocked(installPlugin).mockResolvedValue(mockResult as never);
+
+			const response = await request(app).post("/api/plugins/install").send({
+				repository: "dokku/dokku-postgres",
+				name: "dokku-postgres",
+				sudoPassword: "secret",
+			});
+
+			expect(response.status).toBe(200);
+			expect(installPlugin).toHaveBeenCalledWith(
+				"dokku/dokku-postgres",
+				"dokku-postgres",
+				"secret"
+			);
 		});
 
 		it("GET /api/plugins - should list plugins", async () => {

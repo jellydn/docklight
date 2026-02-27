@@ -108,7 +108,8 @@ export async function getPlugins(): Promise<PluginInfo[] | PluginInputError> {
 
 export async function installPlugin(
 	repository: string,
-	name?: string
+	name?: string,
+	sudoPassword?: string
 ): Promise<CommandResult | PluginInputError> {
 	const normalizedRepository = normalizeRepository(repository);
 	if (!normalizedRepository) {
@@ -140,23 +141,32 @@ export async function installPlugin(
 		? `dokku plugin:install ${normalizedRepository} ${normalizedName}`
 		: `dokku plugin:install ${normalizedRepository}`;
 
-	return executeCommandAsRoot(command);
+	return executeCommandAsRoot(command, 30000, sudoPassword);
 }
 
-export async function uninstallPlugin(name: string): Promise<CommandResult | PluginInputError> {
+export async function uninstallPlugin(
+	name: string,
+	sudoPassword?: string
+): Promise<CommandResult | PluginInputError> {
 	const validationError = validatePluginName(name);
 	if (validationError) return validationError;
-	return executeCommandAsRoot(`dokku plugin:uninstall ${name.trim()}`);
+	return executeCommandAsRoot(`dokku plugin:uninstall ${name.trim()}`, 30000, sudoPassword);
 }
 
-export async function enablePlugin(name: string): Promise<CommandResult | PluginInputError> {
+export async function enablePlugin(
+	name: string,
+	sudoPassword?: string
+): Promise<CommandResult | PluginInputError> {
 	const validationError = validatePluginName(name);
 	if (validationError) return validationError;
-	return executeCommandAsRoot(`dokku plugin:enable ${name.trim()}`);
+	return executeCommandAsRoot(`dokku plugin:enable ${name.trim()}`, 30000, sudoPassword);
 }
 
-export async function disablePlugin(name: string): Promise<CommandResult | PluginInputError> {
+export async function disablePlugin(
+	name: string,
+	sudoPassword?: string
+): Promise<CommandResult | PluginInputError> {
 	const validationError = validatePluginName(name);
 	if (validationError) return validationError;
-	return executeCommandAsRoot(`dokku plugin:disable ${name.trim()}`);
+	return executeCommandAsRoot(`dokku plugin:disable ${name.trim()}`, 30000, sudoPassword);
 }

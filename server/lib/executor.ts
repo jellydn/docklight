@@ -14,6 +14,7 @@ export interface CommandResult {
 
 interface ExecuteCommandOptions {
 	asRoot?: boolean;
+	sudoPassword?: string;
 }
 
 function shellQuote(value: string): string {
@@ -21,7 +22,12 @@ function shellQuote(value: string): string {
 }
 
 export function buildRuntimeCommand(command: string, options?: ExecuteCommandOptions): string {
-	const baseCommand = options?.asRoot ? `sudo -n ${command}` : command;
+	const trimmedPassword = options?.sudoPassword?.trim();
+	const baseCommand = options?.asRoot
+		? trimmedPassword
+			? `printf %s\\n ${shellQuote(trimmedPassword)} | sudo -S -p '' ${command}`
+			: `sudo -n ${command}`
+		: command;
 	const target = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
 	if (!target || !command.startsWith("dokku ")) {
 		return baseCommand;
@@ -84,7 +90,8 @@ export async function executeCommand(
 
 export async function executeCommandAsRoot(
 	command: string,
-	timeout: number = 30000
+	timeout: number = 30000,
+	sudoPassword?: string
 ): Promise<CommandResult> {
-	return executeCommand(command, timeout, { asRoot: true });
+	return executeCommand(command, timeout, { asRoot: true, sudoPassword });
 }
