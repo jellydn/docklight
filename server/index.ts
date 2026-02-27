@@ -2,6 +2,7 @@ import cookieParser from "cookie-parser";
 import express from "express";
 import path from "path";
 import { isCommandAllowed } from "./lib/allowlist.js";
+import { getApps } from "./lib/apps.js";
 import {
 	authMiddleware,
 	clearAuthCookie,
@@ -56,6 +57,11 @@ app.get("/api/commands", (req, res) => {
 	const limit = parseInt(req.query.limit as string) || 20;
 	const commands = getRecentCommands(limit);
 	res.json(commands);
+});
+
+app.get("/api/apps", async (req, res) => {
+	const apps = await getApps();
+	res.json(apps);
 });
 
 app.listen(PORT, () => {
