@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from "express";
+import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { logger } from "./logger.js";
 
@@ -31,7 +31,15 @@ export function verifyToken(token: string): JWTPayload | null {
 	}
 }
 
-export function login(password: string): boolean {
+export function login(password: unknown): boolean {
+	if (!PASSWORD) {
+		return false;
+	}
+
+	if (typeof password !== "string") {
+		return false;
+	}
+
 	return password === PASSWORD;
 }
 
