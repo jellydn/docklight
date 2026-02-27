@@ -242,3 +242,22 @@ Started: Fri Feb 27 21:01:07 +08 2026
   - Auto-scroll implemented by setting scrollTop to scrollHeight on logs update
   - Connection status displayed with color-coded badges for user feedback
 ---
+
+## [Fri Feb 27 2026] - US-014
+[Session: https://opncd.ai/s/]
+- Implemented GET /api/apps/:name/config endpoint calling 'dokku config:show <app>' and returning key-value JSON object
+- Implemented POST /api/apps/:name/config endpoint accepting { key, value } and calling 'dokku config:set <app> KEY=VALUE'
+- Implemented DELETE /api/apps/:name/config/:key endpoint calling 'dokku config:unset <app> KEY'
+- Created server/lib/config.ts with getConfig, setConfig, and unsetConfig functions
+- Key and value inputs sanitized using regex to remove shell metacharacters
+- Sanitization removes characters that could enable shell injection: ['"`$()|<>\\
+- App name validated using isValidAppName from apps.ts
+- All endpoints use executor to run dokku commands and return results
+- Typecheck passes
+- Files changed: server/lib/config.ts, server/index.ts
+- **Learnings for future iterations:**
+  - Config parsing from dokku config:show output with regex matching
+  - Key-value pairs extracted from format "key: value"
+  - Input sanitization prevents command injection vulnerabilities
+  - Returns config as Record<string, string> for easy frontend consumption
+---
