@@ -1,0 +1,17 @@
+.agents/skills/dev-browser/bun.lock
+.agents/skills/dev-browser/package-lock.json
+.agents/skills/dev-browser/package.json
+.agents/skills/dev-browser/server.sh
+.agents/skills/dev-browser/SKILL.md
+.agents/skills/dev-browser/tsconfig.json
+.agents/skills/dev-browser/vitest.config.ts
+.agents/skills/dev-browser/references/scraping.md
+.agents/skills/dev-browser/scripts/start-relay.ts
+.agents/skills/dev-browser/scripts/start-server.ts
+.agents/skills/dev-browser/src/client.ts
+.agents/skills/dev-browser/src/index.ts
+.agents/skills/dev-browser/src/relay.ts
+.agents/skills/dev-browser/src/types.ts
+.agents/skills/dev-browser/src/snapshot/browser-script.ts
+.agents/skills/dev-browser/src/snapshot/index.ts
+.agents/skills/dev-browser/src/snapshot/inject.ts

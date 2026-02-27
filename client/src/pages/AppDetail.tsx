@@ -17,6 +17,12 @@ interface CommandResult {
 	stderr: string;
 }
 
+interface SSLStatus {
+	active: boolean;
+	expiryDate?: string;
+	certProvider?: string;
+}
+
 type TabType = "overview" | "config" | "domains" | "logs" | "ssl";
 
 interface ConfigVars {
@@ -55,6 +61,11 @@ export function AppDetail() {
 	const [showDomainRemoveDialog, setShowDomainRemoveDialog] = useState(false);
 	const [pendingRemoveDomain, setPendingRemoveDomain] = useState<string | null>(null);
 
+	// SSL state
+	const [sslStatus, setSslStatus] = useState<SSLStatus | null>(null);
+	const [sslLoading, setSslLoading] = useState(false);
+	const [sslError, setSslError] = useState<string | null>(null);
+
 	// Log viewer state
 	const [logs, setLogs] = useState<string[]>([]);
 	const [connectionStatus, setConnectionStatus] = useState<
@@ -90,6 +101,12 @@ export function AppDetail() {
 	useEffect(() => {
 		if (activeTab === "domains" && name) {
 			fetchDomains();
+		}
+	}, [activeTab, name]);
+
+	useEffect(() => {
+		if (activeTab === "ssl" && name) {
+			fetchSSLStatus();
 		}
 	}, [activeTab, name]);
 
@@ -379,6 +396,59 @@ export function AppDetail() {
 			});
 			setShowDomainRemoveDialog(false);
 			setPendingRemoveDomain(null);
+		}
+	};
+
+	const fetchSSLStatus = async () => {
+		if (!name) return;
+
+		setSslLoading(true);
+		setSslError(null);
+		try {
+			const ssl = await apiFetch<SSLStatus>(`/apps/${name}/ssl`);
+			setSslStatus(ssl);
+		} catch (err) {
+			setSslError(err instanceof Error ? err.message : "Failed to load SSL status");
+		} finally {
+			setSslLoading(false);
+		}
+	};
+
+	const handleEnableSSL = async () => {
+		if (!name) return;
+
+		try {
+			const result = await apiFetch<CommandResult>(`/apps/${name}/ssl/enable`, {
+				method: "POST",
+			});
+			setActionResult(result);
+			fetchSSLStatus();
+		} catch (err) {
+			setActionResult({
+				command: `dokku letsencrypt:enable ${name}`,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Failed to enable SSL",
+			});
+		}
+	};
+
+	const handleRenewSSL = async () => {
+		if (!name) return;
+
+		try {
+			const result = await apiFetch<CommandResult>(`/apps/${name}/ssl/renew`, {
+				method: "POST",
+			});
+			setActionResult(result);
+			fetchSSLStatus();
+		} catch (err) {
+			setActionResult({
+				command: `dokku letsencrypt:auto-renew ${name}`,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Failed to renew SSL",
+			});
 		}
 	};
 
@@ -994,7 +1064,116 @@ export function AppDetail() {
 
 			{activeTab === "ssl" && (
 				<div className="bg-white rounded-lg shadow p-6">
-					<p className="text-gray-500">SSL - Coming Soon</p>
+					<div className="flex justify-between items-center mb-4">
+						<h2 className="text-lg font-semibold">SSL Certificate</h2>
+						{actionResult && activeTab === "ssl" && (
+							<button
+								onClick={() => setActionResult(null)}
+								className="text-blue-600 hover:underline text-sm"
+							>
+								Hide Output
+							</button>
+						)}
+					</div>
+
+					{sslLoading ? (
+						<div className="flex justify-center py-8">
+							<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+						</div>
+					) : sslError ? (
+						<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+							{sslError}
+						</div>
+					) : (
+						<>
+							<div className="space-y-4">
+								<div className="flex items-center justify-between p-4 bg-gray-50 rounded">
+									<div>
+										<strong className="text-gray-700">Status:</strong>{" "}
+										{sslStatus?.active ? (
+											<span className="ml-2 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+												Active
+											</span>
+										) : (
+											<span className="ml-2 px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+												Inactive
+											</span>
+										)}
+									</div>
+									{sslStatus?.certProvider && (
+										<div>
+											<strong className="text-gray-700">Provider:</strong>{" "}
+											<span className="ml-2 text-sm">{sslStatus.certProvider}</span>
+										</div>
+									)}
+								</div>
+
+								{sslStatus?.expiryDate && (
+									<div className="flex items-center p-4 bg-gray-50 rounded">
+										<strong className="text-gray-700">Expiry Date:</strong>
+										<span className="ml-2 text-sm">{sslStatus.expiryDate}</span>
+									</div>
+								)}
+
+								<div className="pt-4 border-t">
+									{sslStatus?.active ? (
+										<button
+											onClick={handleRenewSSL}
+											className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+										>
+											Renew Certificate
+										</button>
+									) : (
+										<button
+											onClick={handleEnableSSL}
+											className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+										>
+											Enable Let's Encrypt
+										</button>
+									)}
+								</div>
+							</div>
+						</>
+					)}
+
+					{actionResult && activeTab === "ssl" && (
+						<div className="mt-6 bg-gray-100 rounded p-4">
+							<h3 className="font-semibold mb-2">Command Output</h3>
+							<div className="text-sm">
+								<div className="mb-2">
+									<strong>Command:</strong> {actionResult.command}
+								</div>
+								<div className="mb-2">
+									<strong>Exit Code:</strong>{" "}
+									<span className={actionResult.exitCode === 0 ? "text-green-600" : "text-red-600"}>
+										{actionResult.exitCode}
+									</span>
+								</div>
+								{actionResult.stdout && (
+									<div className="mb-2">
+										<strong>Output:</strong>
+										<pre className="bg-white p-2 rounded mt-1 overflow-x-auto">
+											{actionResult.stdout}
+										</pre>
+									</div>
+								)}
+								{actionResult.stderr && (
+									<div>
+										<strong>Error:</strong>
+										<pre className="bg-red-50 p-2 rounded mt-1 overflow-x-auto text-red-800">
+											{actionResult.stderr}
+										</pre>
+									</div>
+								)}
+							</div>
+							<button
+								onClick={() => setActionResult(null)}
+								className="mt-4 text-blue-600 hover:underline"
+							>
+								Close
+							</button>
+						</div>
+					)}
 				</div>
 			)}
 		</div>

@@ -16,6 +16,7 @@ import {
 	unlinkDatabase,
 	destroyDatabase,
 } from "./lib/databases.js";
+import { getSSL, enableSSL, renewSSL } from "./lib/ssl.js";
 import { setupLogStreaming } from "./lib/websocket.js";
 
 const app = express();
@@ -167,6 +168,24 @@ app.delete("/api/databases/:name", async (req, res) => {
 	const { name } = req.params;
 	const { confirmName } = req.body;
 	const result = await destroyDatabase(name, confirmName);
+	res.json(result);
+});
+
+app.get("/api/apps/:name/ssl", async (req, res) => {
+	const { name } = req.params;
+	const ssl = await getSSL(name);
+	res.json(ssl);
+});
+
+app.post("/api/apps/:name/ssl/enable", async (req, res) => {
+	const { name } = req.params;
+	const result = await enableSSL(name);
+	res.json(result);
+});
+
+app.post("/api/apps/:name/ssl/renew", async (req, res) => {
+	const { name } = req.params;
+	const result = await renewSSL(name);
 	res.json(result);
 });
 
