@@ -62,25 +62,28 @@ export async function setConfig(
 		};
 	}
 
-	// Sanitize inputs to prevent shell injection
+	// Key must be alphanumeric + underscore (env var convention)
 	const sanitizedKey = key.replace(/[^a-zA-Z0-9_]/g, "");
-	const sanitizedValue = value.replace(/['"`$()|<>\\]/g, "");
+	if (sanitizedKey !== key) {
+		return { error: "Invalid characters in key", command: "", exitCode: 400 };
+	}
 
-	if (sanitizedKey !== key || sanitizedValue !== value) {
+	// Value: block shell injection but allow common chars like quotes, @, #, etc.
+	if (/[`$;|<>\\]/.test(value)) {
 		return {
-			error: "Invalid characters in key or value",
+			error: "Value contains unsafe shell characters. Remove: ` $ ; | < > \\",
 			command: "",
 			exitCode: 400,
 		};
 	}
 
 	try {
-		return executeCommand(`dokku config:set ${name} ${sanitizedKey}=${sanitizedValue}`);
+		return executeCommand(`dokku config:set ${name} ${sanitizedKey}='${value}'`);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku config:set ${name} ${sanitizedKey}=${sanitizedValue}`,
+			command: `dokku config:set ${name} ${sanitizedKey}='${value}'`,
 			exitCode: 1,
 		};
 	}

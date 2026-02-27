@@ -33,7 +33,7 @@ export async function getApps(): Promise<
 		const appNames = listResult.stdout
 			.split("\n")
 			.map((line) => line.trim())
-			.filter((line) => line.length > 0);
+			.filter((line) => line.length > 0 && !line.startsWith("="));
 
 		if (appNames.length === 0) {
 			return [];
