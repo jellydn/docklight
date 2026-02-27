@@ -18,10 +18,12 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 COPY server/package*.json ./server/
-COPY server/bun.lock ./server/
 RUN cd server && npm install --production
 COPY --from=server-build /app/server/dist ./server/dist
 COPY --from=client-build /app/client/dist ./client/dist
+
+# Create data directory for SQLite
+RUN mkdir -p /app/data
 
 # Expose port from environment or default to 3001
 ENV PORT=3001
