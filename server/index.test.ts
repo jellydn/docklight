@@ -41,6 +41,10 @@ vi.mock("./lib/domains.js", () => ({
 	removeDomain: vi.fn(),
 }));
 
+vi.mock("./lib/plugins.js", () => ({
+	installPlugin: vi.fn(),
+}));
+
 vi.mock("./lib/logger.js", () => ({
 	logger: {
 		info: vi.fn(),
@@ -86,6 +90,7 @@ import {
 } from "./lib/databases.js";
 import { getRecentCommands } from "./lib/db.js";
 import { getDomains, addDomain, removeDomain } from "./lib/domains.js";
+import { installPlugin } from "./lib/plugins.js";
 import { getServerHealth } from "./lib/server.js";
 import { enableSSL, getSSL, renewSSL } from "./lib/ssl.js";
 
@@ -242,6 +247,12 @@ function createTestApp(): Express {
 		const { name } = req.params;
 		const { plugin, confirmName } = req.body;
 		const result = await destroyDatabase(plugin, name, confirmName);
+		res.json(result);
+	}));
+
+	app.post("/api/plugins/install", withAuth(async (req, res) => {
+		const { repository, name } = req.body;
+		const result = await installPlugin(repository, name);
 		res.json(result);
 	}));
 
@@ -593,6 +604,18 @@ describe("API Routes", () => {
 
 			expect(response.status).toBe(200);
 			expect(createDatabase).toHaveBeenCalledWith("postgres", "newdb");
+		});
+
+		it("POST /api/plugins/install - should install plugin", async () => {
+			const mockResult = { command: "dokku plugin:install x", exitCode: 0, stdout: "", stderr: "" };
+			vi.mocked(installPlugin).mockResolvedValue(mockResult as never);
+
+			const response = await request(app)
+				.post("/api/plugins/install")
+				.send({ repository: "dokku/dokku-postgres", name: "dokku-postgres" });
+
+			expect(response.status).toBe(200);
+			expect(installPlugin).toHaveBeenCalledWith("dokku/dokku-postgres", "dokku-postgres");
 		});
 	});
 

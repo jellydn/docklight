@@ -16,6 +16,7 @@ import {
 import { getRecentCommands } from "./lib/db.js";
 import { addDomain, getDomains, removeDomain } from "./lib/domains.js";
 import { logger } from "./lib/logger.js";
+import { installPlugin } from "./lib/plugins.js";
 import { getServerHealth } from "./lib/server.js";
 import { enableSSL, getSSL, renewSSL } from "./lib/ssl.js";
 import { setupLogStreaming } from "./lib/websocket.js";
@@ -171,6 +172,12 @@ app.delete("/api/databases/:name", async (req, res) => {
 	const { name } = req.params;
 	const { plugin, confirmName } = req.body;
 	const result = await destroyDatabase(plugin, name, confirmName);
+	res.json(result);
+});
+
+app.post("/api/plugins/install", async (req, res) => {
+	const { repository, name } = req.body;
+	const result = await installPlugin(repository, name);
 	res.json(result);
 });
 
