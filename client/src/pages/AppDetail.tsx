@@ -80,7 +80,7 @@ export function AppDetail() {
 		if (name) {
 			fetchAppDetail();
 		}
-	}, [name]);
+	}, [name, fetchAppDetail]);
 
 	useEffect(() => {
 		if (activeTab === "logs" && name) {
@@ -90,31 +90,31 @@ export function AppDetail() {
 		return () => {
 			disconnectWebSocket();
 		};
-	}, [activeTab, name, lineCount]);
+	}, [activeTab, name, disconnectWebSocket, connectWebSocket]);
 
 	useEffect(() => {
 		if (activeTab === "config" && name) {
 			fetchConfigVars();
 		}
-	}, [activeTab, name]);
+	}, [activeTab, name, fetchConfigVars]);
 
 	useEffect(() => {
 		if (activeTab === "domains" && name) {
 			fetchDomains();
 		}
-	}, [activeTab, name]);
+	}, [activeTab, name, fetchDomains]);
 
 	useEffect(() => {
 		if (activeTab === "ssl" && name) {
 			fetchSSLStatus();
 		}
-	}, [activeTab, name]);
+	}, [activeTab, name, fetchSSLStatus]);
 
 	useEffect(() => {
 		if (autoScroll && logsEndRef.current) {
 			logsEndRef.current.scrollTop = logsEndRef.current.scrollHeight;
 		}
-	}, [logs, autoScroll]);
+	}, [autoScroll]);
 
 	const connectWebSocket = () => {
 		const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
