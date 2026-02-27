@@ -15,12 +15,14 @@ Docklight is a minimal, self-hosted web UI for managing a Dokku server.
 ```bash
 cd server
 bun install          # Install dependencies
-bun run dev          # Dev server with hot reload
-bun run typecheck    # Type check
-bun run build        # Build for production
+bun run dev          # Dev server (tsx watch)
+bun run typecheck    # Type check (tsc --noEmit)
+bun run build        # Build for production (tsc)
 bun start            # Start production server
 bun run lint         # Lint (biome)
 bun run format       # Format (biome)
+bun test             # Run tests (vitest run)
+bun run test:watch   # Watch mode
 ```
 
 ### Client
@@ -29,10 +31,10 @@ bun run format       # Format (biome)
 cd client
 bun install
 bun run dev          # Dev server (port 5173)
-bun run build
-bun run typecheck
-bun run lint
-bun run format
+bun run build        # Build (tsc -b && vite build)
+bun run typecheck    # Type check (tsc -b)
+bun run lint         # Lint (biome)
+bun run format       # Format (biome)
 bun run preview      # Preview production build
 ```
 
@@ -40,31 +42,12 @@ bun run preview      # Preview production build
 
 ```bash
 cd .agents/skills/dev-browser
-bun install
 bun test             # Run all tests
 bun run test:watch   # Watch mode
-
-# Single test file
-npx vitest run src/snapshot/index.test.ts
-
-# Single test by name
-npx vitest run -t "test name"
-
-bun run start-server     # Start Docklight server (integration tests)
-bun run start-extension  # Start browser extension relay
-```
-
-### Justfile Shortcuts
-
-```bash
-just                           # List all recipes
-just install                   # Install all deps
-just server-dev/client-dev    # Run dev servers
-just server-typecheck         # Type check all
-just lint                     # Lint all
-just format                   # Format all
-just build                    # Build all
-just browser-test             # Run browser tests
+bun run start-server     # Start Docklight server
+bun run start-extension # Start browser extension relay
+npx vitest run src/snapshot/index.test.ts  # Single test file
+npx vitest run -t "test name"              # Single test by name
 ```
 
 ## Code Style Guidelines
@@ -78,12 +61,12 @@ just browser-test             # Run browser tests
 
 ### Naming Conventions
 
-| Type                     | Convention              | Example                   |
-| ------------------------ | ----------------------- | ------------------------- |
-| Files                    | kebab-case              | `command-executor.ts`     |
-| Functions                | camelCase + verb prefix | `getData`, `isActive`     |
-| Classes/Interfaces/Types | PascalCase              | `UserService`, `AppState` |
-| Constants                | SCREAMING_SNAKE_CASE    | `MAX_RETRIES`             |
+| Type               | Convention           | Example               |
+| ------------------ | -------------------- | --------------------- |
+| Files              | kebab-case           | `command-executor.ts` |
+| Functions          | camelCase            | `getData`, `isActive` |
+| Classes/Interfaces | PascalCase           | `UserService`         |
+| Constants          | SCREAMING_SNAKE_CASE | `MAX_RETRIES`         |
 
 ### Imports
 
@@ -100,17 +83,37 @@ import type { Data } from "./lib/types.js";
 
 ### Formatting (biome)
 
-- Indent: tabs (2 spaces)
-- Strings: double quotes
-- Trailing commas: es5
-- Line width: 100
-- Semicolons: always
+- Indent: tabs (2 spaces), Strings: double quotes
+- Trailing commas: es5, Line width: 100, Semicolons: always
+
+### React Conventions
+
+- Use functional components with hooks
+- Use `class-variance-authority` (cva) for component variants
+- Use `clsx` + `tailwind-merge` for conditional classes
+- Prefer Radix UI primitives for accessible components
+
+```typescript
+import { cva } from "class-variance-authority";
+import { clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+const buttonVariants = cva("base", {
+  variants: {
+    variant: { primary: "primary-classes", secondary: "secondary" },
+    size: { sm: "sm", md: "md" },
+  },
+});
+
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
+```
 
 ### Error Handling
 
 - Use try-catch for async operations
 - Return `{ exitCode, stderr }` rather than throwing
-- Log errors with `console.error`
 
 ```typescript
 try {
@@ -136,8 +139,7 @@ try {
 
 ### Testing (Vitest)
 
-- Test files: `*.test.ts`
-- Use descriptive test names
+- Test files: `*.test.ts`, use descriptive test names
 - Mock external dependencies
 
 ```typescript
@@ -158,4 +160,3 @@ Browser → React SPA → Express API → Shell Exec → Dokku CLI → Docker
 
 - API runs on same VPS as Dokku
 - Commands restricted to predefined allowlist
-- All commands show exit code and output for transparency
