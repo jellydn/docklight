@@ -66,16 +66,25 @@ git push dokku main
 
 ```bash
 # Install dependencies
-bun install
-
-# Start backend (port 3001)
-bun run dev:server
-
-# Start frontend (port 5173, proxies /api to backend)
-bun run dev:client
+cd server && bun install && cd ..
+cd client && bun install && cd ..
 
 # Set admin password
 export DOCKLIGHT_PASSWORD=dev
+
+# Start backend (port 3001)
+cd server && bun run dev
+
+# Start frontend (port 5173, proxies /api to backend) — in another terminal
+cd client && bun run dev
+```
+
+Or with [just](https://github.com/casey/just):
+
+```bash
+just install
+just server-dev    # terminal 1
+just client-dev    # terminal 2
 ```
 
 ### Environment Variables
