@@ -5,6 +5,7 @@ import path from "path";
 import pinoHttp from "pino-http";
 import { getAppDetail, getApps, rebuildApp, restartApp, scaleApp } from "./lib/apps.js";
 import { authMiddleware, clearAuthCookie, login, setAuthCookie } from "./lib/auth.js";
+import { clearPrefix, get, set } from "./lib/cache.js";
 import { getConfig, setConfig, unsetConfig } from "./lib/config.js";
 import {
 	createDatabase,
@@ -19,6 +20,7 @@ import { logger } from "./lib/logger.js";
 import { disablePlugin, enablePlugin, getPlugins, installPlugin, uninstallPlugin } from "./lib/plugins.js";
 import { getServerHealth } from "./lib/server.js";
 import { enableSSL, getSSL, renewSSL } from "./lib/ssl.js";
+import { authRateLimiter } from "./lib/rate-limiter.js";
 import { setupLogStreaming } from "./lib/websocket.js";
 
 const app = express();
@@ -27,6 +29,7 @@ const CLIENT_DIST = path.resolve(__dirname, "..", "..", "client", "dist");
 
 app.use(cookieParser());
 app.use(express.json());
+app.set("trust proxy", true);
 app.use(pinoHttp({ logger }));
 
 // Serve static files from client
@@ -36,7 +39,7 @@ app.get("/api/health", (_req, res) => {
 	res.json({ status: "ok" });
 });
 
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/auth/login", authRateLimiter, (req, res) => {
 	const { password } = req.body;
 
 	if (login(password)) {
@@ -65,6 +68,14 @@ app.get("/api/commands", (req, res) => {
 });
 
 app.get("/api/apps", async (_req, res) => {
+	const cacheKey = "apps:list";
+	const cached = get(cacheKey);
+
+	if (cached) {
+		res.json(cached);
+		return;
+	}
+
 	const apps = await getApps();
 	if (!Array.isArray(apps)) {
 		logger.error({ apps }, "Failed to fetch apps");
@@ -72,6 +83,7 @@ app.get("/api/apps", async (_req, res) => {
 		return;
 	}
 
+	set(cacheKey, apps);
 	res.json(apps);
 });
 
@@ -84,12 +96,14 @@ app.get("/api/apps/:name", async (req, res) => {
 app.post("/api/apps/:name/restart", async (req, res) => {
 	const { name } = req.params;
 	const result = await restartApp(name);
+	clearPrefix("apps:");
 	res.json(result);
 });
 
 app.post("/api/apps/:name/rebuild", async (req, res) => {
 	const { name } = req.params;
 	const result = await rebuildApp(name);
+	clearPrefix("apps:");
 	res.json(result);
 });
 
@@ -97,6 +111,7 @@ app.post("/api/apps/:name/scale", async (req, res) => {
 	const { name } = req.params;
 	const { processType, count } = req.body;
 	const result = await scaleApp(name, processType, count);
+	clearPrefix("apps:");
 	res.json(result);
 });
 
@@ -115,12 +130,14 @@ app.post("/api/apps/:name/config", async (req, res) => {
 	const { name } = req.params;
 	const { key, value } = req.body;
 	const result = await setConfig(name, key, value);
+	clearPrefix("apps:");
 	res.json(result);
 });
 
 app.delete("/api/apps/:name/config/:key", async (req, res) => {
 	const { name, key } = req.params;
 	const result = await unsetConfig(name, key);
+	clearPrefix("apps:");
 	res.json(result);
 });
 
@@ -134,23 +151,41 @@ app.post("/api/apps/:name/domains", async (req, res) => {
 	const { name } = req.params;
 	const { domain } = req.body;
 	const result = await addDomain(name, domain);
+	clearPrefix("apps:");
 	res.json(result);
 });
 
 app.delete("/api/apps/:name/domains/:domain", async (req, res) => {
 	const { name, domain } = req.params;
 	const result = await removeDomain(name, domain);
+	clearPrefix("apps:");
 	res.json(result);
 });
 
 app.get("/api/databases", async (_req, res) => {
+	const cacheKey = "databases:list";
+	const cached = get(cacheKey);
+
+	if (cached) {
+		res.json(cached);
+		return;
+	}
+
 	const databases = await getDatabases();
+	if (!Array.isArray(databases)) {
+		logger.error({ databases }, "Failed to fetch databases");
+		res.status(databases.exitCode >= 400 ? databases.exitCode : 500).json(databases);
+		return;
+	}
+
+	set(cacheKey, databases);
 	res.json(databases);
 });
 
 app.post("/api/databases", async (req, res) => {
 	const { plugin, name } = req.body;
 	const result = await createDatabase(plugin, name);
+	clearPrefix("databases:");
 	res.json(result);
 });
 
@@ -158,6 +193,7 @@ app.post("/api/databases/:name/link", async (req, res) => {
 	const { name } = req.params;
 	const { plugin, app } = req.body;
 	const result = await linkDatabase(plugin, name, app);
+	clearPrefix("databases:");
 	res.json(result);
 });
 
@@ -165,6 +201,7 @@ app.post("/api/databases/:name/unlink", async (req, res) => {
 	const { name } = req.params;
 	const { plugin, app } = req.body;
 	const result = await unlinkDatabase(plugin, name, app);
+	clearPrefix("databases:");
 	res.json(result);
 });
 
@@ -172,6 +209,7 @@ app.delete("/api/databases/:name", async (req, res) => {
 	const { name } = req.params;
 	const { plugin, confirmName } = req.body;
 	const result = await destroyDatabase(plugin, name, confirmName);
+	clearPrefix("databases:");
 	res.json(result);
 });
 
@@ -238,7 +276,7 @@ app.post("/api/apps/:name/ssl/renew", async (req, res) => {
 });
 
 // SPA fallback for client-side routing (must be after all API routes)
-app.get("*", (_req, res) => {
+app.get("/{*path}", (_req, res) => {
 	res.sendFile(path.join(CLIENT_DIST, "index.html"));
 });
 
