@@ -51,6 +51,12 @@ export function AppDetail() {
 	const [confirmDeleteName, setConfirmDeleteName] = useState("");
 	const [deleting, setDeleting] = useState(false);
 
+	// Stop/Start app state
+	const [showStopDialog, setShowStopDialog] = useState(false);
+	const [showStartDialog, setShowStartDialog] = useState(false);
+	const [stopping, setStopping] = useState(false);
+	const [starting, setStarting] = useState(false);
+
 	// Domains state
 	const [domains, setDomains] = useState<string[]>([]);
 	const [domainsLoading, setDomainsLoading] = useState(false);
@@ -390,6 +396,64 @@ export function AppDetail() {
 		}
 	};
 
+	const handleStopApp = () => {
+		setShowStopDialog(true);
+	};
+
+	const confirmStopApp = async () => {
+		if (!name) return;
+
+		setStopping(true);
+		try {
+			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/stop`, CommandResultSchema, {
+				method: "POST",
+			});
+			addToast(result.exitCode === 0 ? "success" : "error", "App stopped", result);
+			setShowStopDialog(false);
+			fetchAppDetail();
+		} catch (err) {
+			const errorResult: CommandResult = {
+				command: `dokku ps:stop ${name}`,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Failed to stop app",
+			};
+			addToast("error", "Failed to stop app", errorResult);
+			setShowStopDialog(false);
+		} finally {
+			setStopping(false);
+		}
+	};
+
+	const handleStartApp = () => {
+		setShowStartDialog(true);
+	};
+
+	const confirmStartApp = async () => {
+		if (!name) return;
+
+		setStarting(true);
+		try {
+			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/start`, CommandResultSchema, {
+				method: "POST",
+			});
+			addToast(result.exitCode === 0 ? "success" : "error", "App started", result);
+			setShowStartDialog(false);
+			fetchAppDetail();
+		} catch (err) {
+			const errorResult: CommandResult = {
+				command: `dokku ps:start ${name}`,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Failed to start app",
+			};
+			addToast("error", "Failed to start app", errorResult);
+			setShowStartDialog(false);
+		} finally {
+			setStarting(false);
+		}
+	};
+
 	const fetchDomains = async () => {
 		if (!name) return;
 
@@ -561,6 +625,22 @@ export function AppDetail() {
 				</div>
 				{activeTab === "overview" && (
 					<div className="flex gap-2">
+						{app.status === "running" && (
+							<button
+								onClick={handleStopApp}
+								className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700"
+							>
+								Stop
+							</button>
+						)}
+						{app.status === "stopped" && (
+							<button
+								onClick={handleStartApp}
+								className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+							>
+								Start
+							</button>
+						)}
 						<button
 							onClick={() => handleAction("restart")}
 							className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -735,6 +815,59 @@ export function AppDetail() {
 								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 							>
 								{deleting ? "Deleting..." : "Delete App"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{showStopDialog && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4 text-orange-600">Stop App</h2>
+						<p className="mb-6">
+							Are you sure you want to stop <strong>{name}</strong>? The app will not serve requests until started
+							again.
+						</p>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => setShowStopDialog(false)}
+								className="px-4 py-2 border rounded hover:bg-gray-100"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmStopApp}
+								disabled={stopping}
+								className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+							>
+								{stopping ? "Stopping..." : "Stop App"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{showStartDialog && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4 text-green-600">Start App</h2>
+						<p className="mb-6">
+							Are you sure you want to start <strong>{name}</strong>?
+						</p>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => setShowStartDialog(false)}
+								className="px-4 py-2 border rounded hover:bg-gray-100"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmStartApp}
+								disabled={starting}
+								className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+							>
+								{starting ? "Starting..." : "Start App"}
 							</button>
 						</div>
 					</div>
