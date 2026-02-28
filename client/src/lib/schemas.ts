@@ -54,7 +54,7 @@ export const CommandHistorySchema = z.object({
 	exitCode: z.number(),
 	stdout: z.string(),
 	stderr: z.string(),
-	createdAt: z.string().datetime({ message: "Invalid datetime string" }),
+	createdAt: z.string(),
 });
 
 export type CommandHistory = z.infer<typeof CommandHistorySchema>;
