@@ -238,7 +238,7 @@ app.post("/api/apps/:name/ssl/renew", async (req, res) => {
 });
 
 // SPA fallback for client-side routing (must be after all API routes)
-app.get("*", (_req, res) => {
+app.get("/{*path}", (_req, res) => {
 	res.sendFile(path.join(CLIENT_DIST, "index.html"));
 });
 
