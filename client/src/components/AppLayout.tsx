@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import { logger } from "../lib/logger";
 
 export function AppLayout() {
 	const navigate = useNavigate();
+	const [sidebarOpen, setSidebarOpen] = useState(false);
 
 	const handleLogout = async () => {
 		try {
@@ -16,23 +18,60 @@ export function AppLayout() {
 		}
 	};
 
+	const closeSidebar = () => setSidebarOpen(false);
+
 	return (
 		<div className="flex min-h-screen bg-gray-100">
-			<aside className="w-64 bg-gray-900 text-white">
-				<div className="p-4">
+			{/* Mobile overlay */}
+			{sidebarOpen && (
+				<button
+					type="button"
+					className="fixed inset-0 z-20 bg-black bg-opacity-50 md:hidden"
+					onClick={closeSidebar}
+					aria-label="Close menu"
+				/>
+			)}
+
+			{/* Sidebar */}
+			<aside
+				className={`fixed inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:z-auto ${
+					sidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
+				}`}
+				aria-hidden={!sidebarOpen}
+			>
+				<div className="flex items-center justify-between p-4">
 					<h1 className="text-xl font-bold">Docklight</h1>
+					<button
+						onClick={closeSidebar}
+						className="md:hidden text-gray-400 hover:text-white"
+						aria-label="Close menu"
+					>
+						✕
+					</button>
 				</div>
 				<nav className="mt-4">
-					<Link to="/dashboard" className="block px-4 py-2 hover:bg-gray-800">
+					<Link
+						to="/dashboard"
+						className="block px-4 py-2 hover:bg-gray-800"
+						onClick={closeSidebar}
+					>
 						Dashboard
 					</Link>
-					<Link to="/apps" className="block px-4 py-2 hover:bg-gray-800">
+					<Link to="/apps" className="block px-4 py-2 hover:bg-gray-800" onClick={closeSidebar}>
 						Apps
 					</Link>
-					<Link to="/databases" className="block px-4 py-2 hover:bg-gray-800">
+					<Link
+						to="/databases"
+						className="block px-4 py-2 hover:bg-gray-800"
+						onClick={closeSidebar}
+					>
 						Databases
 					</Link>
-					<Link to="/plugins" className="block px-4 py-2 hover:bg-gray-800">
+					<Link
+						to="/plugins"
+						className="block px-4 py-2 hover:bg-gray-800"
+						onClick={closeSidebar}
+					>
 						Plugins
 					</Link>
 					<button
@@ -43,9 +82,24 @@ export function AppLayout() {
 					</button>
 				</nav>
 			</aside>
-			<main className="flex-1 p-6">
-				<Outlet />
-			</main>
+
+			<div className="flex flex-col flex-1 min-w-0">
+				{/* Mobile top bar */}
+				<header className="md:hidden flex items-center px-4 py-3 bg-gray-900 text-white">
+					<button
+						onClick={() => setSidebarOpen(true)}
+						className="text-gray-400 hover:text-white mr-3"
+						aria-label="Open menu"
+					>
+						☰
+					</button>
+					<h1 className="text-lg font-bold">Docklight</h1>
+				</header>
+
+				<main className="flex-1 p-4 md:p-6">
+					<Outlet />
+				</main>
+			</div>
 		</div>
 	);
 }

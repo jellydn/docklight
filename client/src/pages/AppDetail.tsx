@@ -513,13 +513,13 @@ export function AppDetail() {
 
 	return (
 		<div>
-			<div className="flex justify-between items-center mb-6">
+			<div className="flex flex-wrap gap-3 justify-between items-center mb-6">
 				<div>
 					<h1 className="text-2xl font-bold">{app.name}</h1>
 					<div className="mt-2">{getStatusBadge()}</div>
 				</div>
 				{activeTab === "overview" && (
-					<div className="space-x-2">
+					<div className="flex gap-2">
 						<button
 							onClick={() => handleAction("restart")}
 							className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -657,8 +657,8 @@ export function AppDetail() {
 				</div>
 			)}
 
-			<div className="border-b mb-4">
-				<nav className="flex space-x-4">
+			<div className="border-b mb-4 overflow-x-auto">
+				<nav className="flex space-x-4 min-w-max">
 					<button
 						onClick={() => setActiveTab("overview")}
 						className={`pb-2 px-2 ${activeTab === "overview" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
@@ -764,9 +764,9 @@ export function AppDetail() {
 
 			{activeTab === "logs" && (
 				<div className="bg-white rounded-lg shadow p-6">
-					<div className="flex justify-between items-center mb-4">
+					<div className="flex flex-wrap gap-3 justify-between items-center mb-4">
 						<h2 className="text-lg font-semibold">Logs</h2>
-						<div className="flex items-center space-x-4">
+						<div className="flex flex-wrap items-center gap-3">
 							{getConnectionStatusBadge()}
 							<select
 								value={lineCount}
@@ -815,7 +815,7 @@ export function AppDetail() {
 						<>
 							<div className="mb-6">
 								<h3 className="text-sm font-medium text-gray-700 mb-2">Add New Variable</h3>
-								<div className="flex space-x-2">
+								<div className="flex flex-col sm:flex-row gap-2">
 									<input
 										type="text"
 										placeholder="Key"
@@ -841,16 +841,17 @@ export function AppDetail() {
 							</div>
 
 							{Object.keys(configVars).length > 0 ? (
-								<table className="min-w-full divide-y divide-gray-200">
-									<thead>
-										<tr>
-											<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Key</th>
-											<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
-												Value
-											</th>
-											<th className="px-4 py-2"></th>
-										</tr>
-									</thead>
+								<div className="overflow-x-auto">
+									<table className="min-w-full divide-y divide-gray-200">
+										<thead>
+											<tr>
+												<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Key</th>
+												<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
+													Value
+												</th>
+												<th className="px-4 py-2"></th>
+											</tr>
+										</thead>
 									<tbody className="divide-y divide-gray-200">
 										{Object.entries(configVars).map(([key, value]) => (
 											<tr key={key}>
@@ -877,7 +878,8 @@ export function AppDetail() {
 											</tr>
 										))}
 									</tbody>
-								</table>
+									</table>
+								</div>
 							) : (
 								<p className="text-gray-500">No environment variables configured.</p>
 							)}
@@ -904,7 +906,7 @@ export function AppDetail() {
 						<>
 							<div className="mb-6">
 								<h3 className="text-sm font-medium text-gray-700 mb-2">Add New Domain</h3>
-								<div className="flex space-x-2">
+								<div className="flex flex-col sm:flex-row gap-2">
 									<input
 										type="text"
 										placeholder="example.com"
