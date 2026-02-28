@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { Databases } from "./Databases";
+import { Databases } from "./Databases.js";
 import type { Database, App } from "../lib/schemas.js";
 
 vi.mock("../lib/api.js", () => ({
@@ -13,7 +13,7 @@ const mockToastContext = {
 	addToast: vi.fn(),
 };
 
-vi.mock("../components/ToastProvider", () => ({
+vi.mock("../components/ToastProvider.js", () => ({
 	useToast: () => mockToastContext,
 }));
 
@@ -277,13 +277,12 @@ describe("Databases", () => {
 		});
 
 		const unlinkButtons = screen.getAllByText("Unlink");
-		if (unlinkButtons.length > 0) {
-			await user.click(unlinkButtons[0]);
+		expect(unlinkButtons.length).toBeGreaterThan(0);
+		await user.click(unlinkButtons[0]);
 
-			await vi.waitFor(() => {
-				expect(screen.getByText("Confirm Unlink")).toBeInTheDocument();
-			});
-		}
+		await vi.waitFor(() => {
+			expect(screen.getByText("Confirm Unlink")).toBeInTheDocument();
+		});
 	});
 
 	it("should open destroy confirmation dialog", async () => {
@@ -306,12 +305,11 @@ describe("Databases", () => {
 		});
 
 		const destroyButtons = screen.getAllByText("Destroy Database");
-		if (destroyButtons.length > 0) {
-			await user.click(destroyButtons[0]);
+		expect(destroyButtons.length).toBeGreaterThan(0);
+		await user.click(destroyButtons[0]);
 
-			await vi.waitFor(() => {
-				expect(screen.getByText("Confirm Destroy")).toBeInTheDocument();
-			});
-		}
+		await vi.waitFor(() => {
+			expect(screen.getByText("Confirm Destroy")).toBeInTheDocument();
+		});
 	});
 });

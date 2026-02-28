@@ -66,5 +66,3 @@ jobs:
             } catch (error) {
               core.warning(`Skipping staging comment: ${error.message}`);
             }
-        env:
-          DOKKU_HOST: ${{ secrets.DOKKU_HOST }}

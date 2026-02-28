@@ -50,7 +50,7 @@ describe("Login", () => {
 		});
 	});
 
-	it("should clear error when user starts typing", async () => {
+	it("should keep error visible until next form submit", async () => {
 		apiFetchMock.mockRejectedValue(new Error("Invalid password"));
 
 		const user = userEvent.setup();

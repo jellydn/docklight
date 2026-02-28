@@ -16,22 +16,23 @@ function createDomainError(message: string): ValidationError {
 	};
 }
 
-function isValidDomain(domain: string): boolean {
+function validateDomain(domain: string): string | null {
 	const sanitizedDomain = domain.trim();
 
 	if (!sanitizedDomain || sanitizedDomain.length === 0) {
-		return false;
+		return "Domain cannot be empty";
+	}
+
+	// Explicitly reject shell metacharacters before format checks.
+	if (/[;&$()|<>`'"\\]/.test(sanitizedDomain)) {
+		return "Domain contains invalid characters";
 	}
 
 	if (!/^[a-zA-Z0-9.-]+$/.test(sanitizedDomain)) {
-		return false;
+		return "Invalid domain format";
 	}
 
-	if (/[;&$()|<>`'"\\]/.test(sanitizedDomain)) {
-		return false;
-	}
-
-	return true;
+	return null;
 }
 
 export async function getDomains(
@@ -99,11 +100,9 @@ export async function addDomain(
 		return createDomainError("Invalid app name");
 	}
 
-	if (!isValidDomain(domain)) {
-		const sanitizedDomain = domain.trim();
-		if (!sanitizedDomain) return createDomainError("Domain cannot be empty");
-		if (!/^[a-zA-Z0-9.-]+$/.test(sanitizedDomain)) return createDomainError("Invalid domain format");
-		return createDomainError("Domain contains invalid characters");
+	const domainValidationError = validateDomain(domain);
+	if (domainValidationError) {
+		return createDomainError(domainValidationError);
 	}
 
 	const sanitizedDomain = domain.trim();
@@ -128,11 +127,9 @@ export async function removeDomain(
 		return createDomainError("Invalid app name");
 	}
 
-	if (!isValidDomain(domain)) {
-		const sanitizedDomain = domain.trim();
-		if (!sanitizedDomain) return createDomainError("Domain cannot be empty");
-		if (!/^[a-zA-Z0-9.-]+$/.test(sanitizedDomain)) return createDomainError("Invalid domain format");
-		return createDomainError("Domain contains invalid characters");
+	const domainValidationError = validateDomain(domain);
+	if (domainValidationError) {
+		return createDomainError(domainValidationError);
 	}
 
 	const sanitizedDomain = domain.trim();

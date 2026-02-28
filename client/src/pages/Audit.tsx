@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { z } from "zod";
 import { apiFetch } from "../lib/api.js";
 import { CommandHistorySchema } from "../lib/schemas.js";
@@ -227,8 +227,8 @@ export function Audit() {
 							</thead>
 							<tbody className="bg-white divide-y divide-gray-200">
 								{logs.map((log) => (
-									<>
-										<tr key={log.id} className="hover:bg-gray-50">
+									<Fragment key={log.id}>
+										<tr className="hover:bg-gray-50">
 											<td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
 												{formatTimestamp(log.createdAt)}
 											</td>
@@ -250,7 +250,7 @@ export function Audit() {
 											</td>
 										</tr>
 										{expandedRows.has(log.id) && (
-											<tr key={`${log.id}-details`} className="bg-gray-50">
+											<tr className="bg-gray-50">
 												<td colSpan={4} className="px-4 py-4">
 													<div className="space-y-3">
 														<div>
@@ -281,7 +281,7 @@ export function Audit() {
 												</td>
 											</tr>
 										)}
-									</>
+									</Fragment>
 								))}
 							</tbody>
 						</table>
@@ -299,7 +299,7 @@ export function Audit() {
 									Previous
 								</button>
 								<button
-									onClick={() => setOffset(Math.min(total - ITEMS_PER_PAGE, offset + ITEMS_PER_PAGE))}
+									onClick={() => setOffset(offset + ITEMS_PER_PAGE)}
 									disabled={offset + ITEMS_PER_PAGE >= total}
 									className="ml-3 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
 								>
@@ -327,7 +327,7 @@ export function Audit() {
 											Page {currentPage} of {totalPages}
 										</span>
 										<button
-											onClick={() => setOffset(Math.min(total - ITEMS_PER_PAGE, offset + ITEMS_PER_PAGE))}
+											onClick={() => setOffset(offset + ITEMS_PER_PAGE)}
 											disabled={offset + ITEMS_PER_PAGE >= total}
 											className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
 										>

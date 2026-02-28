@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { Plugins } from "./Plugins";
+import { Plugins } from "./Plugins.js";
 import type { PluginInfo } from "../lib/schemas.js";
 
 vi.mock("../lib/api.js", () => ({
@@ -13,7 +13,7 @@ const mockToastContext = {
 	addToast: vi.fn(),
 };
 
-vi.mock("../components/ToastProvider", () => ({
+vi.mock("../components/ToastProvider.js", () => ({
 	useToast: () => mockToastContext,
 }));
 
