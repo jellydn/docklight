@@ -43,6 +43,7 @@ import {
 	getDockerOptions,
 	removeDockerOption,
 } from "./lib/docker-options.js";
+import { getNetworkReport, setNetworkProperty, clearNetworkProperty } from "./lib/network.js";
 import {
 	disablePlugin,
 	enablePlugin,
@@ -489,6 +490,54 @@ app.delete("/api/apps/:name/docker-options/all", async (req, res) => {
 	}
 
 	const result = await clearDockerOptions(name, phase);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.get("/api/apps/:name/network", async (req, res) => {
+	const { name } = req.params;
+	const networkReport = await getNetworkReport(name);
+	res.json(networkReport);
+});
+
+app.put("/api/apps/:name/network", async (req, res) => {
+	const { name } = req.params;
+	const { key, value } = req.body;
+
+	if (!key || typeof key !== "string") {
+		res.status(400).json({ error: "Network property key is required" });
+		return;
+	}
+
+	const result = await setNetworkProperty(name, key, value ?? "");
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/network", async (req, res) => {
+	const { name } = req.params;
+	const { key } = req.body;
+
+	if (!key || typeof key !== "string") {
+		res.status(400).json({ error: "Network property key is required" });
+		return;
+	}
+
+	const result = await clearNetworkProperty(name, key);
 
 	if (result.exitCode !== 0) {
 		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;

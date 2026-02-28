@@ -217,4 +217,19 @@ Started: Sat Feb 28 18:28:47 +08 2026
   - Use stripAnsi() to clean CLI output
   - Use optional chain (?.) when accessing regex match groups to satisfy biome lint
   - Docker options are space-separated in the CLI output
+---
+
+## [Date/Time] - US-005
+- Implemented Network configuration API endpoints (server/lib/network.ts, server/index.ts)
+- Created getNetworkReport, setNetworkProperty, clearNetworkProperty functions
+- Added routes: GET /api/apps/:name/network, PUT /api/apps/:name/network, DELETE /api/apps/:name/network
+- Validates app name with isValidAppName()
+- Validates network property key against known properties: attach-post-create, attach-post-deploy, bind-all-interfaces, initial-network, static-web-listener, tls-internal
+- Clear cache after mutations (only on success)
+- Typecheck and lint pass
+- Files changed: server/lib/network.ts (new), server/index.ts
+- **Learnings for future iterations:**
+  - Follow same pattern as buildpacks.ts and docker-options.ts for consistency
+  - Use stripAnsi() to clean CLI output
+  - Network properties are hyphenated in Dokku CLI (convert to camelCase for JS object keys)
 
