@@ -2,12 +2,14 @@ import fs from "fs";
 import path from "path";
 import type { CommandResult } from "./executor.js";
 
+type Statement = {
+	run: (...args: unknown[]) => void;
+	all: (...args: unknown[]) => unknown[];
+	get: (...args: unknown[]) => unknown;
+};
+
 type Database = {
-	prepare: (sql: string) => {
-		run: (...args: unknown[]) => void;
-		all: (...args: unknown[]) => CommandHistory[];
-		get: (...args: unknown[]) => { count: number } | null;
-	};
+	prepare: (sql: string) => Statement;
 	exec: (sql: string) => void;
 };
 
@@ -33,6 +35,16 @@ function getDb(): Database {
 		exitCode INTEGER NOT NULL,
 		stdout TEXT,
 		stderr TEXT,
+		createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+	  )
+	`);
+
+	newDb.exec(`
+	  CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		username TEXT UNIQUE NOT NULL,
+		password_hash TEXT NOT NULL,
+		role TEXT NOT NULL DEFAULT 'viewer',
 		createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
 	  )
 	`);
@@ -144,4 +156,80 @@ export function getAuditLogs(filters: AuditLogFilters = {}): AuditLogResult {
 		limit,
 		offset,
 	};
+}
+
+// ---- User management ----
+
+export type UserRole = "admin" | "operator" | "viewer";
+
+export interface User {
+	id: number;
+	username: string;
+	password_hash: string;
+	role: UserRole;
+	createdAt: string;
+}
+
+export interface SafeUser {
+	id: number;
+	username: string;
+	role: UserRole;
+	createdAt: string;
+}
+
+export function createUser(username: string, passwordHash: string, role: UserRole): SafeUser {
+	const stmt = getDb().prepare(
+		"INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)"
+	);
+	stmt.run(username, passwordHash, role);
+	const user = getDb()
+		.prepare("SELECT id, username, role, createdAt FROM users WHERE username = ?")
+		.get(username) as SafeUser;
+	return user;
+}
+
+export function getUserByUsername(username: string): User | null {
+	const stmt = getDb().prepare(
+		"SELECT id, username, password_hash, role, createdAt FROM users WHERE username = ?"
+	);
+	return (stmt.get(username) as User) ?? null;
+}
+
+export function getUserById(id: number): SafeUser | null {
+	const stmt = getDb().prepare(
+		"SELECT id, username, role, createdAt FROM users WHERE id = ?"
+	);
+	return (stmt.get(id) as SafeUser) ?? null;
+}
+
+export function getAllUsers(): SafeUser[] {
+	const stmt = getDb().prepare(
+		"SELECT id, username, role, createdAt FROM users ORDER BY createdAt ASC"
+	);
+	return stmt.all() as SafeUser[];
+}
+
+export function updateUser(id: number, updates: { role?: UserRole; passwordHash?: string }): void {
+	if (updates.role !== undefined && updates.passwordHash !== undefined) {
+		getDb()
+			.prepare("UPDATE users SET role = ?, password_hash = ? WHERE id = ?")
+			.run(updates.role, updates.passwordHash, id);
+	} else if (updates.role !== undefined) {
+		getDb().prepare("UPDATE users SET role = ? WHERE id = ?").run(updates.role, id);
+	} else if (updates.passwordHash !== undefined) {
+		getDb()
+			.prepare("UPDATE users SET password_hash = ? WHERE id = ?")
+			.run(updates.passwordHash, id);
+	}
+}
+
+export function deleteUser(id: number): void {
+	getDb().prepare("DELETE FROM users WHERE id = ?").run(id);
+}
+
+export function getUserCount(): number {
+	const result = getDb().prepare("SELECT COUNT(*) as count FROM users").get() as {
+		count: number;
+	};
+	return result.count;
 }

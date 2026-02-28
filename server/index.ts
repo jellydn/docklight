@@ -14,7 +14,16 @@ import {
 	stopApp,
 	startApp,
 } from "./lib/apps.js";
-import { authMiddleware, clearAuthCookie, login, setAuthCookie } from "./lib/auth.js";
+import {
+	authMiddleware,
+	clearAuthCookie,
+	hashPassword,
+	login,
+	loginWithCredentials,
+	setAuthCookie,
+	requireAdmin,
+	requireOperator,
+} from "./lib/auth.js";
 import { clearPrefix, get, set } from "./lib/cache.js";
 import { getConfig, setConfig, unsetConfig } from "./lib/config.js";
 import {
@@ -24,7 +33,17 @@ import {
 	linkDatabase,
 	unlinkDatabase,
 } from "./lib/databases.js";
-import { getAuditLogs, getRecentCommands } from "./lib/db.js";
+import {
+	getAuditLogs,
+	getRecentCommands,
+	getAllUsers,
+	createUser,
+	getUserById,
+	updateUser,
+	deleteUser,
+	getUserCount,
+	type UserRole,
+} from "./lib/db.js";
 import { addDomain, getDomains, removeDomain } from "./lib/domains.js";
 import { logger } from "./lib/logger.js";
 import {
@@ -60,7 +79,7 @@ import {
 } from "./lib/plugins.js";
 import { getServerHealth } from "./lib/server.js";
 import { enableSSL, getSSL, renewSSL } from "./lib/ssl.js";
-import { authRateLimiter } from "./lib/rate-limiter.js";
+import { authRateLimiter, authCheckRateLimiter } from "./lib/rate-limiter.js";
 import { setupLogStreaming } from "./lib/websocket.js";
 import type { CommandResult } from "./lib/executor.js";
 
@@ -93,14 +112,26 @@ app.get("/api/health", (_req, res) => {
 	res.json({ status: "ok" });
 });
 
-app.post("/api/auth/login", authRateLimiter, (req, res) => {
-	const { password } = req.body;
+app.post("/api/auth/login", authRateLimiter, async (req, res) => {
+	const { username, password } = req.body;
 
-	if (login(password)) {
-		setAuthCookie(res);
-		res.json({ success: true });
+	if (username) {
+		// Multi-user mode: validate against users table
+		const user = await loginWithCredentials(username, password);
+		if (user) {
+			setAuthCookie(res, user);
+			res.json({ success: true });
+		} else {
+			res.status(401).json({ error: "Invalid credentials" });
+		}
 	} else {
-		res.status(401).json({ error: "Invalid password" });
+		// Legacy mode: validate against DOCKLIGHT_PASSWORD env var
+		if (login(password)) {
+			setAuthCookie(res);
+			res.json({ success: true });
+		} else {
+			res.status(401).json({ error: "Invalid password" });
+		}
 	}
 });
 
@@ -109,11 +140,118 @@ app.post("/api/auth/logout", (_req, res) => {
 	res.json({ success: true });
 });
 
-app.get("/api/auth/me", authMiddleware, (_req, res) => {
-	res.json({ authenticated: true });
+app.get("/api/auth/me", authCheckRateLimiter, authMiddleware, (req, res) => {
+	const user = req.user;
+	res.json({
+		authenticated: true,
+		user:
+			user?.userId !== undefined
+				? { id: user.userId, username: user.username, role: user.role }
+				: undefined,
+	});
+});
+
+// Bootstrap: expose whether multi-user mode is active (no auth required)
+app.get("/api/auth/mode", authCheckRateLimiter, (_req, res) => {
+	res.json({ multiUser: getUserCount() > 0 });
 });
 
 app.use("/api", authMiddleware);
+
+app.get("/api/users", requireAdmin, (_req, res) => {
+	const users = getAllUsers();
+	res.json(users);
+});
+
+app.post("/api/users", requireAdmin, async (req, res) => {
+	const { username, password, role } = req.body;
+
+	if (!username || typeof username !== "string") {
+		res.status(400).json({ error: "Username is required" });
+		return;
+	}
+	if (!password || typeof password !== "string") {
+		res.status(400).json({ error: "Password is required" });
+		return;
+	}
+	if (!role || !["admin", "operator", "viewer"].includes(role)) {
+		res.status(400).json({ error: "Role must be 'admin', 'operator', or 'viewer'" });
+		return;
+	}
+
+	try {
+		const passwordHash = await hashPassword(password);
+		const user = createUser(username, passwordHash, role);
+		res.status(201).json(user);
+	} catch (_err) {
+		res.status(409).json({ error: "Username already exists" });
+	}
+});
+
+app.put("/api/users/:id", requireAdmin, async (req, res) => {
+	const id = parseInt(req.params.id as string);
+	const { role, password } = req.body;
+
+	if (Number.isNaN(id)) {
+		res.status(400).json({ error: "Invalid user ID" });
+		return;
+	}
+
+	const existing = getUserById(id);
+	if (!existing) {
+		res.status(404).json({ error: "User not found" });
+		return;
+	}
+
+	const updates: { role?: UserRole; passwordHash?: string } = {};
+
+	if (role !== undefined) {
+		if (!["admin", "operator", "viewer"].includes(role)) {
+			res.status(400).json({ error: "Role must be 'admin', 'operator', or 'viewer'" });
+			return;
+		}
+		updates.role = role;
+	}
+
+	if (password !== undefined) {
+		if (typeof password !== "string" || password.length === 0) {
+			res.status(400).json({ error: "Password must be a non-empty string" });
+			return;
+		}
+		updates.passwordHash = await hashPassword(password);
+	}
+
+	updateUser(id, updates);
+	res.json(getUserById(id));
+});
+
+app.delete("/api/users/:id", requireAdmin, (req, res) => {
+	const id = parseInt(req.params.id as string);
+
+	if (Number.isNaN(id)) {
+		res.status(400).json({ error: "Invalid user ID" });
+		return;
+	}
+
+	const existing = getUserById(id);
+	if (!existing) {
+		res.status(404).json({ error: "User not found" });
+		return;
+	}
+
+	// Prevent deleting the last admin
+	if (existing.role === "admin") {
+		const users = getAllUsers();
+		const adminCount = users.filter((u) => u.role === "admin").length;
+		if (adminCount <= 1) {
+			res.status(400).json({ error: "Cannot delete the last admin user" });
+			return;
+		}
+	}
+
+	deleteUser(id);
+	res.json({ success: true });
+});
 
 app.get("/api/commands", (req, res) => {
 	const limit = parseInt(req.query.limit as string) || 20;
@@ -268,22 +406,23 @@ app.get("/api/server/health", async (_req, res) => {
 	res.json(health);
 });
 
-app.get("/api/apps/:name/config", async (req, res) => {
-	const { name } = req.params;
+app.get("/api/apps/:name/config", requireAdmin, async (req, res) => {
+	const name = req.params.name as string;
 	const config = await getConfig(name);
 	res.json(config);
 });
 
-app.post("/api/apps/:name/config", async (req, res) => {
-	const { name } = req.params;
+app.post("/api/apps/:name/config", requireAdmin, async (req, res) => {
+	const name = req.params.name as string;
 	const { key, value } = req.body;
 	const result = await setConfig(name, key, value);
 	clearPrefix("apps:");
 	res.json(result);
 });
 
-app.delete("/api/apps/:name/config/:key", async (req, res) => {
-	const { name, key } = req.params;
+app.delete("/api/apps/:name/config/:key", requireAdmin, async (req, res) => {
+	const name = req.params.name as string;
+	const key = req.params.key as string;
 	const result = await unsetConfig(name, key);
 	clearPrefix("apps:");
 	res.json(result);
