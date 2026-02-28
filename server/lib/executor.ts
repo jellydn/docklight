@@ -1,5 +1,6 @@
 import { exec } from "child_process";
 import { promisify } from "util";
+import { NodeSSH } from "node-ssh";
 import { isCommandAllowed } from "./allowlist.js";
 import { saveCommand } from "./db.js";
 
@@ -22,6 +23,29 @@ function shellQuote(value: string): string {
 	return `'${value.replace(/'/g, "'\"'\"'")}'`;
 }
 
+function buildSudoCommand(command: string, password?: string): string {
+	if (!password) {
+		return `sudo -n ${command}`;
+	}
+	const trimmed = password.trim();
+	if (trimmed === "") {
+		return `sudo -n ${command}`;
+	}
+	return `printf '%s\\n' ${shellQuote(trimmed)} | sudo -S -p '' ${command}`;
+}
+
+function getSshTarget(options?: ExecuteCommandOptions): string | undefined {
+	const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
+	const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
+	const shouldPreferRootTarget = options?.preferRootTarget !== false;
+	return options?.asRoot && shouldPreferRootTarget ? rootTarget || defaultTarget : defaultTarget;
+}
+
+function getErrorMessage(error: unknown): string {
+	const err = error as { message?: string };
+	return err.message || "Unknown error";
+}
+
 function getSshUser(target: string): string | null {
 	const atIndex = target.indexOf("@");
 	if (atIndex <= 0) return null;
@@ -39,18 +63,113 @@ function isSshWarningOnly(stderr: string): boolean {
 	);
 }
 
+/** @description Parses "user@host" or "user@host:port". Note: IPv6 not supported. */
+function parseTarget(target: string): { host: string; username: string; port: number } | null {
+	const atIndex = target.indexOf("@");
+	if (atIndex <= 0) return null;
+	const username = target.slice(0, atIndex).trim();
+	const hostPart = target.slice(atIndex + 1).trim();
+	const colonIndex = hostPart.lastIndexOf(":");
+	if (colonIndex >= 0) {
+		const parsedPort = Number(hostPart.slice(colonIndex + 1));
+		if (Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort <= 65535) {
+			return { host: hostPart.slice(0, colonIndex), username, port: parsedPort };
+		}
+	}
+	return { host: hostPart, username, port: 22 };
+}
+
+function buildRemoteCommand(command: string, options?: ExecuteCommandOptions): string {
+	return options?.asRoot ? buildSudoCommand(command, options?.sudoPassword) : command;
+}
+
+const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+/** @description Maintains persistent SSH connections to avoid per-command handshake overhead. */
+export class SSHPool {
+	private connections = new Map<string, NodeSSH>();
+	private timers = new Map<string, ReturnType<typeof setTimeout>>();
+	private pending = new Map<string, Promise<NodeSSH>>();
+
+	async getConnection(target: string, keyPath?: string): Promise<NodeSSH> {
+		const existing = this.connections.get(target);
+		if (existing?.isConnected()) {
+			this.resetIdleTimer(target);
+			return existing;
+		}
+		if (existing) {
+			this.closeConnection(target);
+		}
+
+		const pendingConn = this.pending.get(target);
+		if (pendingConn) {
+			return pendingConn;
+		}
+
+		const parsed = parseTarget(target);
+		if (!parsed) {
+			throw new Error(`Invalid SSH target: ${target}`);
+		}
+
+		const ssh = new NodeSSH();
+		const connectPromise = ssh
+			.connect({
+				host: parsed.host,
+				port: parsed.port,
+				username: parsed.username,
+				privateKeyPath: keyPath || undefined,
+				readyTimeout: 10000,
+			})
+			.then(() => {
+				this.pending.delete(target);
+				this.connections.set(target, ssh);
+				this.resetIdleTimer(target);
+				return ssh;
+			})
+			.catch((err) => {
+				this.pending.delete(target);
+				throw err;
+			});
+
+		this.pending.set(target, connectPromise);
+		await connectPromise;
+		return ssh;
+	}
+
+	private resetIdleTimer(target: string): void {
+		const existing = this.timers.get(target);
+		if (existing) clearTimeout(existing);
+		const timer = setTimeout(() => this.closeConnection(target), IDLE_TIMEOUT_MS);
+		timer.unref();
+		this.timers.set(target, timer);
+	}
+
+	closeConnection(target: string): void {
+		this.pending.delete(target);
+		const conn = this.connections.get(target);
+		if (conn) {
+			conn.dispose();
+			this.connections.delete(target);
+		}
+		const timer = this.timers.get(target);
+		if (timer) {
+			clearTimeout(timer);
+			this.timers.delete(target);
+		}
+	}
+
+	closeAll(): void {
+		for (const target of [...this.connections.keys()]) {
+			this.closeConnection(target);
+		}
+	}
+}
+
+export const sshPool = new SSHPool();
+
 export function buildRuntimeCommand(command: string, options?: ExecuteCommandOptions): string {
-	const trimmedPassword = options?.sudoPassword?.trim();
-	const baseCommand = options?.asRoot
-		? trimmedPassword
-			? `printf '%s\\n' ${shellQuote(trimmedPassword)} | sudo -S -p '' ${command}`
-			: `sudo -n ${command}`
-		: command;
-	const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
-	const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
-	const shouldPreferRootTarget = options?.preferRootTarget !== false;
-	const target =
-		options?.asRoot && shouldPreferRootTarget ? rootTarget || defaultTarget : defaultTarget;
+	const baseCommand = options?.asRoot ? buildSudoCommand(command, options?.sudoPassword) : command;
+	const target = getSshTarget(options);
 	if (!target || !command.startsWith("dokku ")) {
 		return baseCommand;
 	}
@@ -61,6 +180,98 @@ export function buildRuntimeCommand(command: string, options?: ExecuteCommandOpt
 		"-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10";
 	const keyOption = keyPath ? `-i ${shellQuote(keyPath)}` : "";
 	return `ssh ${sshOptions} ${keyOption} ${shellQuote(target)} ${shellQuote(baseCommand)}`.trim();
+}
+
+async function executeViaPool(
+	command: string,
+	target: string,
+	timeout: number,
+	options?: ExecuteCommandOptions
+): Promise<CommandResult> {
+	const keyPath = process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim() || undefined;
+	const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
+	const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
+	const remoteCommand = buildRemoteCommand(command, options);
+
+	let ssh: NodeSSH;
+	try {
+		ssh = await sshPool.getConnection(target, keyPath);
+	} catch (connError) {
+		const connErrMessage = getErrorMessage(connError);
+		const isRootTargetAuthError =
+			options?.asRoot &&
+			options?.preferRootTarget !== false &&
+			Boolean(rootTarget) &&
+			Boolean(defaultTarget) &&
+			/auth|permission denied/i.test(connErrMessage);
+
+		if (isRootTargetAuthError) {
+			return executeCommand(command, timeout, {
+				asRoot: true,
+				sudoPassword: options?.sudoPassword,
+				preferRootTarget: false,
+			});
+		}
+
+		sshPool.closeConnection(target);
+		try {
+			ssh = await sshPool.getConnection(target, keyPath);
+		} catch (retryError) {
+			const retryErrMessage = getErrorMessage(retryError);
+			const result: CommandResult = {
+				command,
+				exitCode: 1,
+				stdout: "",
+				stderr: `SSH connection failed (initial: ${connErrMessage}, retry: ${retryErrMessage})`,
+			};
+			saveCommand(result);
+			return result;
+		}
+	}
+
+	let execResult: { stdout: string; stderr: string; code: number | null };
+	try {
+		let timeoutId: ReturnType<typeof setTimeout> | null = null;
+		const timeoutPromise = new Promise<never>((_, reject) => {
+			timeoutId = setTimeout(
+				() => reject(new Error(`Command timed out after ${timeout}ms: ${command}`)),
+				timeout
+			);
+		});
+		try {
+			execResult = await Promise.race([ssh.execCommand(remoteCommand), timeoutPromise]);
+		} finally {
+			if (timeoutId) clearTimeout(timeoutId);
+		}
+	} catch (execError) {
+		const execErrMessage = getErrorMessage(execError);
+		const result: CommandResult = {
+			command,
+			exitCode: 1,
+			stdout: "",
+			stderr: execErrMessage || "SSH command execution failed",
+		};
+		saveCommand(result);
+		return result;
+	}
+
+	const exitCode = execResult.code ?? 1;
+	let stderr = execResult.stderr.trim();
+
+	if (exitCode !== 0 && options?.asRoot) {
+		if (/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty/i.test(stderr)) {
+			stderr = `${stderr}\nHint: configure passwordless sudo for Dokku commands or set DOCKLIGHT_DOKKU_SSH_TARGET to a root SSH user.`;
+		}
+	}
+
+	const result: CommandResult = {
+		command,
+		exitCode,
+		stdout: execResult.stdout.trim(),
+		stderr,
+	};
+	saveCommand(result);
+	return result;
 }
 
 export async function executeCommand(
@@ -93,6 +304,11 @@ export async function executeCommand(
 		return result;
 	}
 
+	const sshTarget = getSshTarget(options);
+	if (sshTarget && command.startsWith("dokku ")) {
+		return executeViaPool(command, sshTarget, timeout, options);
+	}
+
 	try {
 		const runtimeCommand = buildRuntimeCommand(command, options);
 		const { stdout, stderr } = await execAsync(runtimeCommand, { timeout });
@@ -123,8 +339,6 @@ export async function executeCommand(
 			saveCommand(result);
 			return result;
 		}
-		const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
-		const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
 		const isRootTargetAuthError =
 			options?.asRoot &&
 			options?.preferRootTarget !== false &&
