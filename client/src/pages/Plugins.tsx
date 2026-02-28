@@ -2,11 +2,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useToast } from "../components/ToastProvider";
 import { apiFetch } from "../lib/api.js";
-import {
-	CommandResultSchema,
-	PluginInfoSchema,
-	type PluginInfo,
-} from "../lib/schemas.js";
+import { CommandResultSchema, PluginInfoSchema, type PluginInfo } from "../lib/schemas.js";
 
 const POPULAR_PLUGIN_REPOS = [
 	{ label: "Postgres", repository: "dokku/dokku-postgres", name: "dokku-postgres" },

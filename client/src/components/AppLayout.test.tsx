@@ -24,7 +24,7 @@ describe("AppLayout", () => {
 		render(
 			<MemoryRouter initialEntries={["/dashboard"]}>
 				<AppLayout />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		// "Docklight" appears twice (sidebar + mobile header), so use getAllByText
@@ -40,7 +40,7 @@ describe("AppLayout", () => {
 		render(
 			<MemoryRouter initialEntries={["/dashboard"]}>
 				<AppLayout />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		// Mobile menu button (hamburger)
@@ -53,7 +53,7 @@ describe("AppLayout", () => {
 		render(
 			<MemoryRouter initialEntries={["/dashboard"]}>
 				<AppLayout />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		// Initially, the sidebar should be hidden (translated off screen)
@@ -71,7 +71,7 @@ describe("AppLayout", () => {
 		render(
 			<MemoryRouter initialEntries={["/dashboard"]}>
 				<AppLayout />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		// Outlet renders child content, in this case empty for the test

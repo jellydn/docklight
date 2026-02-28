@@ -130,10 +130,14 @@ export function Databases() {
 		if (!linkDbName || !linkAppName) return;
 
 		try {
-			const result = await apiFetch(`/databases/${encodeURIComponent(linkDbName)}/link`, CommandResultSchema, {
-				method: "POST",
-				body: JSON.stringify({ plugin: getDbPlugin(linkDbName), app: linkAppName }),
-			});
+			const result = await apiFetch(
+				`/databases/${encodeURIComponent(linkDbName)}/link`,
+				CommandResultSchema,
+				{
+					method: "POST",
+					body: JSON.stringify({ plugin: getDbPlugin(linkDbName), app: linkAppName }),
+				}
+			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Database linked", result);
 			setLinkDbName("");
 			setLinkAppName("");
@@ -159,10 +163,14 @@ export function Databases() {
 		if (!pendingUnlinkDb || !pendingUnlinkApp) return;
 
 		try {
-			const result = await apiFetch(`/databases/${encodeURIComponent(pendingUnlinkDb)}/unlink`, CommandResultSchema, {
-				method: "POST",
-				body: JSON.stringify({ plugin: getDbPlugin(pendingUnlinkDb), app: pendingUnlinkApp }),
-			});
+			const result = await apiFetch(
+				`/databases/${encodeURIComponent(pendingUnlinkDb)}/unlink`,
+				CommandResultSchema,
+				{
+					method: "POST",
+					body: JSON.stringify({ plugin: getDbPlugin(pendingUnlinkDb), app: pendingUnlinkApp }),
+				}
+			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Database unlinked", result);
 			setShowUnlinkDialog(false);
 			setPendingUnlinkDb("");
@@ -192,13 +200,17 @@ export function Databases() {
 		if (!pendingDestroyDb || confirmDestroyName !== pendingDestroyDb) return;
 
 		try {
-			const result = await apiFetch(`/databases/${encodeURIComponent(pendingDestroyDb)}`, CommandResultSchema, {
-				method: "DELETE",
-				body: JSON.stringify({
-					plugin: getDbPlugin(pendingDestroyDb),
-					confirmName: confirmDestroyName,
-				}),
-			});
+			const result = await apiFetch(
+				`/databases/${encodeURIComponent(pendingDestroyDb)}`,
+				CommandResultSchema,
+				{
+					method: "DELETE",
+					body: JSON.stringify({
+						plugin: getDbPlugin(pendingDestroyDb),
+						confirmName: confirmDestroyName,
+					}),
+				}
+			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Database destroyed", result);
 			setShowDestroyDialog(false);
 			setPendingDestroyDb("");

@@ -21,6 +21,10 @@ export function AppLayout() {
 
 	const closeSidebar = () => setSidebarOpen(false);
 
+	const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:z-auto md:pointer-events-auto ${
+		sidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
+	}`;
+
 	return (
 		<div className="flex min-h-screen bg-gray-100">
 			{/* Mobile overlay */}
@@ -34,11 +38,7 @@ export function AppLayout() {
 			)}
 
 			{/* Sidebar */}
-			<aside
-				className={`fixed inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:z-auto md:pointer-events-auto ${
-					sidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
-				}`}
-			>
+			<aside className={sidebarClasses}>
 				<div className="flex items-center justify-between p-4">
 					<h1 className="text-xl font-bold">Docklight</h1>
 					<button
@@ -69,6 +69,9 @@ export function AppLayout() {
 					</Link>
 					<Link to="/plugins" className="block px-4 py-2 hover:bg-gray-800" onClick={closeSidebar}>
 						Plugins
+					</Link>
+					<Link to="/audit" className="block px-4 py-2 hover:bg-gray-800" onClick={closeSidebar}>
+						Audit Logs
 					</Link>
 					<button
 						onClick={handleLogout}

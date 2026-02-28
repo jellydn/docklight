@@ -1,4 +1,5 @@
 import { type CommandResult, executeCommand } from "./executor.js";
+import { stripAnsi } from "./ansi.js";
 
 export interface App {
 	name: string;
@@ -15,11 +16,13 @@ export interface AppDetail {
 	processes: Record<string, number>;
 }
 
-function stripAnsi(value: string): string {
-	return value.replaceAll("\u001b", "").replace(/\[[0-9;]*m/g, "");
-}
-
 const UNKNOWN_ERROR = "Unknown error";
+const INVALID_NAME_ERROR = {
+	error: "Invalid app name",
+	command: "",
+	exitCode: 400,
+	stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
+};
 
 function withRuntimeHint(command: string, stderr: string): string {
 	const lowerStderr = stderr.toLowerCase();
@@ -28,6 +31,10 @@ function withRuntimeHint(command: string, stderr: string): string {
 		return `${stderr}. Dokku CLI is unavailable in this runtime`;
 	}
 	return stderr;
+}
+
+function createValidationError(commandName: string): typeof INVALID_NAME_ERROR {
+	return { ...INVALID_NAME_ERROR, command: `${commandName}-validation` };
 }
 
 export async function getApps(): Promise<
@@ -185,12 +192,7 @@ export async function getAppDetail(
 	name: string
 ): Promise<AppDetail | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
-		return {
-			error: "Invalid app name",
-			command: "",
-			exitCode: 400,
-			stderr: "App name must contain only lowercase letters, numbers, and hyphens",
-		};
+		return createValidationError("get-app-detail");
 	}
 
 	try {
@@ -265,12 +267,7 @@ export async function createApp(
 	name: string
 ): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
-		return {
-			error: "Invalid app name",
-			command: "create-app-validation",
-			exitCode: 400,
-			stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
-		};
+		return createValidationError("create-app");
 	}
 
 	const result = await executeCommand(`dokku apps:create ${name}`);
@@ -282,12 +279,7 @@ export async function destroyApp(
 	confirmName: string
 ): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
-		return {
-			error: "Invalid app name",
-			command: "destroy-app-validation",
-			exitCode: 400,
-			stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
-		};
+		return createValidationError("destroy-app");
 	}
 
 	if (confirmName !== name) {
@@ -307,12 +299,7 @@ export async function restartApp(
 	name: string
 ): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
-		return {
-			error: "Invalid app name",
-			command: "restart-app-validation",
-			exitCode: 400,
-			stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
-		};
+		return createValidationError("restart-app");
 	}
 
 	return executeCommand(`dokku ps:restart ${name}`);
@@ -322,12 +309,7 @@ export async function stopApp(
 	name: string
 ): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
-		return {
-			error: "Invalid app name",
-			command: "stop-app-validation",
-			exitCode: 400,
-			stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
-		};
+		return createValidationError("stop-app");
 	}
 
 	return executeCommand(`dokku ps:stop ${name}`);
@@ -337,12 +319,7 @@ export async function startApp(
 	name: string
 ): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
-		return {
-			error: "Invalid app name",
-			command: "start-app-validation",
-			exitCode: 400,
-			stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
-		};
+		return createValidationError("start-app");
 	}
 
 	return executeCommand(`dokku ps:start ${name}`);
@@ -352,12 +329,7 @@ export async function rebuildApp(
 	name: string
 ): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
-		return {
-			error: "Invalid app name",
-			command: "rebuild-app-validation",
-			exitCode: 400,
-			stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
-		};
+		return createValidationError("rebuild-app");
 	}
 
 	return executeCommand(`dokku ps:rebuild ${name}`);

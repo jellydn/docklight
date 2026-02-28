@@ -6,14 +6,12 @@ Docklight is a minimal, self-hosted web UI for managing a Dokku server.
 
 - **server/** - Express backend with TypeScript (port 3001)
 - **client/** - React + Vite frontend (port 5173)
-- **.agents/skills/dev-browser/** - Browser automation for testing
 
 ## Commands
 
-### Server
+### Server (workdir: server/)
 
 ```bash
-cd server
 bun install              # Install dependencies
 bun run dev              # Dev server (tsx watch)
 bun run typecheck        # Type check (tsc --noEmit)
@@ -24,15 +22,14 @@ bun run format           # Format (biome)
 bun test                 # Run tests (vitest run)
 bun run test:watch       # Watch mode
 bun run test:coverage    # Run with coverage
-vitest run src/single-test.test.ts  # Single test file
-vitest run -t "test name"            # Single test by name
+vitest run src/single-test.test.ts        # Single test file
+vitest run -t "test name"                  # Single test by name
 vitest run src/hooks/use-app.test.ts -t "should fetch app"  # Single test in file
 ```
 
-### Client
+### Client (workdir: client/)
 
 ```bash
-cd client
 bun install
 bun run dev          # Dev server (port 5173)
 bun run build        # Build (tsc -b && vite build)
@@ -45,19 +42,6 @@ bun run test:watch   # Watch mode
 bun run test:coverage # Run with coverage
 vitest run src/hooks/use-app.test.ts        # Single test file
 vitest run -t "should display apps"         # Single test by name
-```
-
-### Dev Browser (Testing)
-
-```bash
-cd .agents/skills/dev-browser
-bun test             # Run all tests
-bun run test:watch   # Watch mode
-bun run test:coverage # Run with coverage
-bun run start-server     # Start Docklight server
-bun run start-extension # Start browser extension relay
-npx vitest run src/snapshot/index.test.ts  # Single test file
-npx vitest run -t "test name"              # Single test by name
 ```
 
 ## Code Style Guidelines
