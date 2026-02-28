@@ -259,6 +259,17 @@ Started: Sat Feb 28 18:28:47 +08 2026
 - Added DockerOptionsSchema
 - Added NetworkReportSchema
 - Added DeploymentSettingsSchema
-- All schemas exported with proper TypeScript types
+  - All schemas exported with proper TypeScript types
 - Typecheck and lint pass
 - Files changed: client/src/lib/schemas.ts
+---
+
+## [Date/Time] - US-008
+- Implemented Settings tab structure in AppDetail (client/src/pages/AppDetail.tsx)
+- Added 'settings' to TabType union
+- Added Settings tab button after SSL tab
+- Added vertically stacked layout with 5 placeholder sections: Deployment, Ports & Proxy, Buildpacks, Docker Options, Network
+- Typecheck and lint pass
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - ChromeDevTools MCP not configured - skipped browser verification

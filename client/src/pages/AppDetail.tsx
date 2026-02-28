@@ -16,7 +16,7 @@ import {
 	SSLStatusSchema,
 } from "../lib/schemas.js";
 
-type TabType = "overview" | "config" | "domains" | "logs" | "ssl";
+type TabType = "overview" | "config" | "domains" | "logs" | "ssl" | "settings";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface ScaleChange {
@@ -998,6 +998,12 @@ export function AppDetail() {
 					>
 						SSL
 					</button>
+					<button
+						onClick={() => setActiveTab("settings")}
+						className={`pb-2 px-2 ${activeTab === "settings" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+					>
+						Settings
+					</button>
 				</nav>
 			</div>
 
@@ -1371,6 +1377,35 @@ export function AppDetail() {
 							</div>
 						</div>
 					)}
+				</div>
+			)}
+
+			{activeTab === "settings" && (
+				<div className="space-y-6">
+					<div className="bg-white rounded-lg shadow p-6">
+						<h2 className="text-lg font-semibold mb-4">Deployment Settings</h2>
+						<p className="text-gray-500">Configure deploy branch, build directory, and builder.</p>
+					</div>
+
+					<div className="bg-white rounded-lg shadow p-6">
+						<h2 className="text-lg font-semibold mb-4">Ports & Proxy</h2>
+						<p className="text-gray-500">Manage port mappings and proxy settings.</p>
+					</div>
+
+					<div className="bg-white rounded-lg shadow p-6">
+						<h2 className="text-lg font-semibold mb-4">Buildpacks</h2>
+						<p className="text-gray-500">Manage buildpacks for your app.</p>
+					</div>
+
+					<div className="bg-white rounded-lg shadow p-6">
+						<h2 className="text-lg font-semibold mb-4">Docker Options</h2>
+						<p className="text-gray-500">Configure Docker runtime options.</p>
+					</div>
+
+					<div className="bg-white rounded-lg shadow p-6">
+						<h2 className="text-lg font-semibold mb-4">Network</h2>
+						<p className="text-gray-500">Configure network settings.</p>
+					</div>
 				</div>
 			)}
 		</div>
