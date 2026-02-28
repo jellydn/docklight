@@ -14,15 +14,18 @@ Docklight is a minimal, self-hosted web UI for managing a Dokku server.
 
 ```bash
 cd server
-bun install          # Install dependencies
-bun run dev          # Dev server (tsx watch)
-bun run typecheck    # Type check (tsc --noEmit)
-bun run build        # Build for production (tsc)
-bun start            # Start production server
-bun run lint         # Lint (biome)
-bun run format       # Format (biome)
-bun test             # Run tests (vitest run)
-bun run test:watch   # Watch mode
+bun install              # Install dependencies
+bun run dev              # Dev server (tsx watch)
+bun run typecheck        # Type check (tsc --noEmit)
+bun run build            # Build for production (tsc)
+bun start                # Start production server
+bun run lint             # Lint (biome)
+bun run format           # Format (biome)
+bun test                 # Run tests (vitest run)
+bun run test:watch       # Watch mode
+bun run test:coverage    # Run with coverage
+vitest run src/single-test.test.ts  # Single test file
+vitest run -t "test name"            # Single test by name
 ```
 
 ### Client
@@ -36,6 +39,9 @@ bun run typecheck    # Type check (tsc -b)
 bun run lint         # Lint (biome)
 bun run format       # Format (biome)
 bun run preview      # Preview production build
+bun test             # Run tests (vitest run)
+bun run test:watch   # Watch mode
+bun run test:coverage # Run with coverage
 ```
 
 ### Dev Browser (Testing)
@@ -44,6 +50,7 @@ bun run preview      # Preview production build
 cd .agents/skills/dev-browser
 bun test             # Run all tests
 bun run test:watch   # Watch mode
+bun run test:coverage # Run with coverage
 bun run start-server     # Start Docklight server
 bun run start-extension # Start browser extension relay
 npx vitest run src/snapshot/index.test.ts  # Single test file
