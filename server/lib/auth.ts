@@ -16,6 +16,11 @@ if (!PASSWORD) {
 }
 
 if (!process.env.DOCKLIGHT_SECRET) {
+	if (process.env.NODE_ENV === "production") {
+		throw new Error(
+			"DOCKLIGHT_SECRET environment variable must be set in production. Aborting startup."
+		);
+	}
 	logger.warn("DOCKLIGHT_SECRET environment variable not set. Using default secret is insecure!");
 }
 
