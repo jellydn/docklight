@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ export function Apps() {
 	const [error, setError] = useState<string | null>(null);
 	const [createAppOpen, setCreateAppOpen] = useState(false);
 
-	const fetchApps = async () => {
+	const fetchApps = useCallback(async () => {
 		try {
 			const appsData = await apiFetch("/apps", z.array(AppSchema));
 			setApps(Array.isArray(appsData) ? appsData : []);
@@ -22,11 +22,11 @@ export function Apps() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, []);
 
 	useEffect(() => {
 		fetchApps();
-	}, []);
+	}, [fetchApps]);
 
 	const getStatusBadge = (status: string) => {
 		const color = status === "running" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";

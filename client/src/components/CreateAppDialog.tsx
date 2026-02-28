@@ -19,7 +19,7 @@ interface CreateAppDialogProps {
 	onCreated?: (appName: string) => void;
 }
 
-const APP_NAME_REGEX = /^[a-z0-9-]+$/;
+const APP_NAME_REGEX = /^[a-z][a-z0-9-]*[a-z0-9]$|^[a-z]$/;
 
 export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDialogProps) {
 	const [appName, setAppName] = useState("");
@@ -37,7 +37,7 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 		}
 
 		if (!APP_NAME_REGEX.test(appName)) {
-			setError("App name must contain only lowercase letters, numbers, and hyphens");
+			setError("App name must start with a letter, contain only lowercase letters, numbers, and hyphens, and not end with a hyphen");
 			return;
 		}
 
@@ -58,9 +58,17 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 		}
 	};
 
-	const handleCopyRemote = () => {
+	const [copySuccess, setCopySuccess] = useState(false);
+
+	const handleCopyRemote = async () => {
 		const remoteUrl = `dokku@${hostname}:${createdAppName}`;
-		navigator.clipboard.writeText(remoteUrl);
+		try {
+			await navigator.clipboard.writeText(remoteUrl);
+			setCopySuccess(true);
+			setTimeout(() => setCopySuccess(false), 2000);
+		} catch {
+			// Fallback: user can manually copy
+		}
 	};
 
 	const handleGoToApp = () => {
@@ -92,7 +100,7 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 						<DialogHeader>
 							<DialogTitle>Create New App</DialogTitle>
 							<DialogDescription>
-								Enter a name for your new Dokku application. The name must contain only lowercase letters, numbers, and hyphens.
+								Enter a name for your new Dokku application. The name must start with a letter, contain only lowercase letters, numbers, and hyphens, and not end with a hyphen.
 							</DialogDescription>
 						</DialogHeader>
 						<div className="grid gap-4 py-4">
@@ -149,7 +157,7 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 											onClick={handleCopyRemote}
 											title="Copy to clipboard"
 										>
-											Copy
+											{copySuccess ? "Copied!" : "Copy"}
 										</button>
 									</code>
 									<p>2. Push your code to Dokku:</p>
