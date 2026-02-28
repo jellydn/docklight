@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { Databases } from "./Databases.js";
@@ -310,6 +310,243 @@ describe("Databases", () => {
 
 		await waitFor(() => {
 			expect(screen.getByText("Confirm Destroy")).toBeInTheDocument();
+		});
+	});
+
+	describe("with submitting states", () => {
+		it("should disable create button during database creation", async () => {
+			const user = userEvent.setup();
+			let createResolver: () => void;
+			const createPromise = new Promise<void>((resolve) => {
+				createResolver = resolve;
+			});
+
+			apiFetchMock.mockImplementation((endpoint: string, _schema?: any, options?: any) => {
+				if (endpoint === "/databases" && options?.method === "POST") {
+					return createPromise;
+				}
+				if (endpoint === "/databases") return Promise.resolve([]);
+				if (endpoint === "/apps") return Promise.resolve(mockApps);
+				return Promise.reject(new Error("Unknown endpoint"));
+			});
+
+			render(
+				<MemoryRouter>
+					<Databases />
+				</MemoryRouter>
+			);
+
+			await waitFor(() => {
+				expect(screen.getByText("Create New Database")).toBeInTheDocument();
+			});
+
+			// Select plugin
+			const selectElement = screen.getByText("Select plugin").closest("select");
+			await user.selectOptions(selectElement!, "postgres");
+
+			// Type database name
+			const nameInput = screen.getByPlaceholderText("Database name");
+			await user.type(nameInput, "test-db");
+
+			// Click create button
+			const createButton = screen.getByText("Create").closest("button");
+			await user.click(createButton!);
+
+			await waitFor(() => {
+				expect(createButton).toBeDisabled();
+			});
+
+			// Cleanup: resolve pending state update inside act
+			await act(async () => {
+				createResolver!();
+				await Promise.resolve();
+			});
+		});
+
+		it("should disable install plugin button during installation", async () => {
+			const user = userEvent.setup();
+			apiFetchMock.mockImplementation((endpoint: string) => {
+				if (endpoint === "/databases") return Promise.resolve([]);
+				if (endpoint === "/apps") return Promise.resolve([]);
+				if (endpoint.includes("plugins/install")) return new Promise(() => {}); // Never resolves
+				return Promise.reject(new Error("Unknown endpoint"));
+			});
+
+			render(
+				<MemoryRouter>
+					<Databases />
+				</MemoryRouter>
+			);
+
+			await waitFor(() => {
+				expect(screen.getByText("Install Dokku Plugin")).toBeInTheDocument();
+			});
+
+			const repoInput = screen.getByPlaceholderText("Repository URL or owner/repo");
+			await user.type(repoInput, "dokku/dokku-postgres");
+
+			const installButton = screen.getByText("Install Plugin").closest("button");
+			await user.click(installButton!);
+
+			await waitFor(() => {
+				expect(installButton).toBeDisabled();
+			});
+		});
+
+		it("should disable link button during database linking", async () => {
+			const user = userEvent.setup();
+			let linkResolver: () => void;
+			const linkPromise = new Promise<void>((resolve) => {
+				linkResolver = resolve;
+			});
+
+			apiFetchMock.mockImplementation((endpoint: string, _schema?: any, options?: any) => {
+				if (endpoint === "/databases") return Promise.resolve(mockDatabases);
+				if (endpoint === "/apps") return Promise.resolve(mockApps);
+				if (endpoint.includes("/link") && options?.method === "POST") {
+					return linkPromise;
+				}
+				return Promise.reject(new Error("Unknown endpoint"));
+			});
+
+			render(
+				<MemoryRouter>
+					<Databases />
+				</MemoryRouter>
+			);
+
+			await waitFor(() => {
+				expect(screen.getByText("redis-cache")).toBeInTheDocument();
+			});
+
+			// Find the link app select for redis-cache (which has no linked apps)
+			// The select should be within the redis-cache database section
+			const redisSection = screen.getByText("redis-cache").closest(".border.rounded.p-4.mb-4");
+			expect(redisSection).toBeInTheDocument();
+			if (!redisSection) return;
+			const redisSectionEl = redisSection as HTMLElement;
+
+			const linkSelect = redisSectionEl.querySelector("select");
+			expect(linkSelect).toBeInTheDocument();
+			if (!linkSelect) return;
+
+			await user.selectOptions(linkSelect as HTMLSelectElement, "my-app");
+			const linkButton = within(redisSectionEl).getByRole("button", { name: "Link" });
+			await waitFor(() => {
+				expect(linkButton).not.toBeDisabled();
+			});
+			await user.click(linkButton);
+
+			await waitFor(() => {
+				expect(linkButton).toBeDisabled();
+			});
+
+			// Cleanup: resolve pending state update inside act
+			await act(async () => {
+				linkResolver!();
+				await Promise.resolve();
+			});
+		});
+
+		it("should disable unlink button during unlink operation", async () => {
+			const user = userEvent.setup();
+			let unlinkResolver: () => void;
+			const unlinkPromise = new Promise<void>((resolve) => {
+				unlinkResolver = resolve;
+			});
+
+			apiFetchMock.mockImplementation((endpoint: string, _schema?: any, options?: any) => {
+				if (endpoint === "/databases") return Promise.resolve(mockDatabases);
+				if (endpoint === "/apps") return Promise.resolve(mockApps);
+				if (endpoint.includes("/unlink") && options?.method === "POST") {
+					return unlinkPromise;
+				}
+				return Promise.reject(new Error("Unknown endpoint"));
+			});
+
+			render(
+				<MemoryRouter>
+					<Databases />
+				</MemoryRouter>
+			);
+
+			await waitFor(() => {
+				expect(screen.getByText("postgres-test-db")).toBeInTheDocument();
+			});
+
+			const unlinkButtons = screen.getAllByText("Unlink");
+			await user.click(unlinkButtons[0]);
+
+			await waitFor(() => {
+				expect(screen.getByText("Confirm Unlink")).toBeInTheDocument();
+			});
+
+			const unlinkDialog = screen.getByText("Confirm Unlink").closest(".bg-white");
+			expect(unlinkDialog).toBeInTheDocument();
+			if (!unlinkDialog) return;
+			const unlinkDialogEl = unlinkDialog as HTMLElement;
+			const confirmButton = within(unlinkDialogEl).getByRole("button", { name: "Unlink" });
+
+			// Click the confirm button
+			await user.click(confirmButton);
+
+			// The dialog should stay open during the operation
+			await waitFor(
+				() => {
+					expect(within(unlinkDialogEl).getByRole("button", { name: /Unlink/ })).toBeDisabled();
+				},
+				{ timeout: 3000 }
+			);
+
+			// Cleanup: resolve pending state update inside act
+			await act(async () => {
+				unlinkResolver!();
+				await Promise.resolve();
+			});
+		});
+
+		it("should disable destroy button during destroy operation", async () => {
+			const user = userEvent.setup();
+			apiFetchMock.mockImplementation((endpoint: string) => {
+				if (endpoint === "/databases") return Promise.resolve(mockDatabases);
+				if (endpoint === "/apps") return Promise.resolve(mockApps);
+				if (
+					endpoint === "/databases/postgres-test-db" &&
+					!endpoint.includes("/link") &&
+					!endpoint.includes("/unlink")
+				) {
+					return new Promise(() => {}); // Never resolves
+				}
+				return Promise.reject(new Error("Unknown endpoint"));
+			});
+
+			render(
+				<MemoryRouter>
+					<Databases />
+				</MemoryRouter>
+			);
+
+			await waitFor(() => {
+				const destroyButtons = screen.getAllByText("Destroy Database");
+				expect(destroyButtons.length).toBeGreaterThan(0);
+			});
+
+			const destroyButtons = screen.getAllByText("Destroy Database");
+			await user.click(destroyButtons[0]);
+
+			await waitFor(() => {
+				expect(screen.getByText("Confirm Destroy")).toBeInTheDocument();
+			});
+
+			const confirmInput = screen.getByPlaceholderText(/postgres-test-db/);
+			await user.type(confirmInput, "postgres-test-db");
+
+			const destroyButton = screen.getByText("Destroy").closest("button");
+			await user.click(destroyButton!);
+
+			await waitFor(() => {
+				expect(destroyButton).toBeDisabled();
+			});
 		});
 	});
 });
