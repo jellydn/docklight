@@ -372,7 +372,11 @@ function createTestApp(): Express {
 		"/api/apps/:name/ssl/enable",
 		withAuth(async (req, res) => {
 			const { name } = req.params;
-			const result = await enableSSL(name);
+			const { email } = req.body ?? {};
+			const result =
+				typeof email === "string" && email.trim().length > 0
+					? await enableSSL(name, email)
+					: await enableSSL(name);
 			res.json(result);
 		})
 	);
@@ -804,6 +808,18 @@ describe("API Routes", () => {
 
 			expect(response.status).toBe(200);
 			expect(enableSSL).toHaveBeenCalledWith("my-app");
+		});
+
+		it("POST /api/apps/:name/ssl/enable - should pass email when provided", async () => {
+			const mockResult = { enabled: true };
+			vi.mocked(enableSSL).mockResolvedValue(mockResult as never);
+
+			const response = await request(app)
+				.post("/api/apps/my-app/ssl/enable")
+				.send({ email: "ops@example.com" });
+
+			expect(response.status).toBe(200);
+			expect(enableSSL).toHaveBeenCalledWith("my-app", "ops@example.com");
 		});
 
 		it("POST /api/apps/:name/ssl/renew - should renew SSL", async () => {

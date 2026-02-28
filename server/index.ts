@@ -347,7 +347,11 @@ app.get("/api/apps/:name/ssl", async (req, res) => {
 
 app.post("/api/apps/:name/ssl/enable", async (req, res) => {
 	const { name } = req.params;
-	const result = await enableSSL(name);
+	const { email } = req.body ?? {};
+	const result =
+		typeof email === "string" && email.trim().length > 0
+			? await enableSSL(name, email)
+			: await enableSSL(name);
 	res.json(result);
 });
 

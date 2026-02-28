@@ -7,6 +7,12 @@ export interface SSLStatus {
 	certProvider?: string;
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isValidEmail(email: string): boolean {
+	return EMAIL_PATTERN.test(email);
+}
+
 function stripAnsi(value: string): string {
 	return value.replaceAll("\u001b", "").replace(/\[[0-9;]*m/g, "");
 }
@@ -190,7 +196,8 @@ export async function getSSL(
 }
 
 export async function enableSSL(
-	appName: string
+	appName: string,
+	email?: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
 	if (!isValidAppName(appName)) {
 		return {
@@ -198,6 +205,24 @@ export async function enableSSL(
 			command: "",
 			exitCode: 400,
 		};
+	}
+
+	const normalizedEmail = typeof email === "string" ? email.trim() : "";
+	if (normalizedEmail.length > 0) {
+		if (!isValidEmail(normalizedEmail)) {
+			return {
+				error: "Invalid email address",
+				command: "",
+				exitCode: 400,
+			};
+		}
+
+		const setEmailResult = await executeCommand(
+			`dokku letsencrypt:set ${appName} email ${normalizedEmail}`
+		);
+		if (setEmailResult.exitCode !== 0) {
+			return setEmailResult;
+		}
 	}
 
 	return executeCommand(`dokku letsencrypt:enable ${appName}`);

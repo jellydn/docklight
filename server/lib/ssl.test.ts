@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getSSL } from "./ssl.js";
+import { enableSSL, getSSL } from "./ssl.js";
 import { executeCommand } from "./executor.js";
 
 vi.mock("./executor.js", () => ({
@@ -83,5 +83,48 @@ describe("getSSL", () => {
 			certProvider: "custom",
 			expiryDate: "2026-12-31",
 		});
+	});
+});
+
+describe("enableSSL", () => {
+	const mockExecuteCommand = executeCommand as ReturnType<typeof vi.fn>;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("should set email before enabling SSL when email is provided", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku letsencrypt:set my-app email ops@example.com",
+				exitCode: 0,
+				stdout: "",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku letsencrypt:enable my-app",
+				exitCode: 0,
+				stdout: "",
+				stderr: "",
+			});
+
+		const result = await enableSSL("my-app", "ops@example.com");
+
+		expect(result.exitCode).toBe(0);
+		expect(mockExecuteCommand).toHaveBeenNthCalledWith(
+			1,
+			"dokku letsencrypt:set my-app email ops@example.com"
+		);
+		expect(mockExecuteCommand).toHaveBeenNthCalledWith(2, "dokku letsencrypt:enable my-app");
+	});
+
+	it("should return validation error for invalid email", async () => {
+		const result = await enableSSL("my-app", "not-an-email");
+
+		expect(result).toMatchObject({
+			error: "Invalid email address",
+			exitCode: 400,
+		});
+		expect(mockExecuteCommand).not.toHaveBeenCalled();
 	});
 });
