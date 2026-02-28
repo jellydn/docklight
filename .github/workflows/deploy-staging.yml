@@ -15,6 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
       - name: Setup SSH
@@ -27,7 +28,7 @@ jobs:
       - name: Push to Dokku staging
         run: |
           git remote add staging dokku@${{ secrets.DOKKU_HOST }}:docklight-staging
-          git push staging ${{ github.head_ref }}:main --force
+          git push staging HEAD:main --force
 
       - name: Comment staging URL
         uses: actions/github-script@v8
