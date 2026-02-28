@@ -93,7 +93,9 @@ app.get("/api/audit/logs", (req, res) => {
 
 	// Validate exitCode filter
 	if (exitCode !== "all" && exitCode !== "success" && exitCode !== "error") {
-		res.status(400).json({ error: "Invalid exitCode filter. Must be 'all', 'success', or 'error'" });
+		res
+			.status(400)
+			.json({ error: "Invalid exitCode filter. Must be 'all', 'success', or 'error'" });
 		return;
 	}
 

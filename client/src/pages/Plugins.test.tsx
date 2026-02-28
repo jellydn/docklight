@@ -56,7 +56,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		const spinner = document.querySelector(".animate-spin");
@@ -69,7 +69,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -83,7 +83,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -97,7 +97,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -111,7 +111,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -128,7 +128,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -145,7 +145,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -164,7 +164,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -179,7 +179,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -194,7 +194,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -209,7 +209,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -228,7 +228,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -251,7 +251,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -267,7 +267,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {

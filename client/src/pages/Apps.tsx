@@ -64,17 +64,28 @@ export function Apps() {
 							<table className="min-w-full">
 								<thead>
 									<tr className="border-b bg-gray-50">
-										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Name</th>
-										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Status</th>
-										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Domains</th>
-										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Last Deploy</th>
+										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
+											Name
+										</th>
+										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
+											Status
+										</th>
+										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
+											Domains
+										</th>
+										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
+											Last Deploy
+										</th>
 									</tr>
 								</thead>
 								<tbody>
 									{apps.map((app) => (
 										<tr key={app.name} className="border-b hover:bg-gray-50">
 											<td className="py-3 px-4">
-												<Link to={`/apps/${app.name}`} className="text-blue-600 hover:underline font-medium">
+												<Link
+													to={`/apps/${app.name}`}
+													className="text-blue-600 hover:underline font-medium"
+												>
 													{app.name}
 												</Link>
 											</td>
@@ -83,14 +94,18 @@ export function Apps() {
 												{app.domains.length > 0 ? (
 													<ul className="list-disc list-inside">
 														{app.domains.map((domain) => (
-															<li key={domain} className="text-sm">{domain}</li>
+															<li key={domain} className="text-sm">
+																{domain}
+															</li>
 														))}
 													</ul>
 												) : (
 													<span className="text-gray-400">-</span>
 												)}
 											</td>
-											<td className="py-3 px-4 text-sm text-gray-600">{app.lastDeployTime || "-"}</td>
+											<td className="py-3 px-4 text-sm text-gray-600">
+												{app.lastDeployTime || "-"}
+											</td>
 										</tr>
 									))}
 								</tbody>

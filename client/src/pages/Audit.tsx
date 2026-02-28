@@ -92,10 +92,7 @@ export function Audit() {
 	};
 
 	const getExitCodeBadge = (exitCode: number) => {
-		const color =
-			exitCode === 0
-				? "bg-green-100 text-green-800"
-				: "bg-red-100 text-red-800";
+		const color = exitCode === 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
 		return (
 			<span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>
 				{exitCode === 0 ? "Success" : `Error (${exitCode})`}
@@ -254,9 +251,7 @@ export function Audit() {
 												<td colSpan={4} className="px-4 py-4">
 													<div className="space-y-3">
 														<div>
-															<h4 className="text-sm font-medium text-gray-700 mb-1">
-																Stdout
-															</h4>
+															<h4 className="text-sm font-medium text-gray-700 mb-1">Stdout</h4>
 															{log.stdout ? (
 																<pre className="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-x-auto max-h-40 overflow-y-auto">
 																	{log.stdout}
@@ -266,9 +261,7 @@ export function Audit() {
 															)}
 														</div>
 														<div>
-															<h4 className="text-sm font-medium text-gray-700 mb-1">
-																Stderr
-															</h4>
+															<h4 className="text-sm font-medium text-gray-700 mb-1">Stderr</h4>
 															{log.stderr ? (
 																<pre className="bg-gray-900 text-red-400 p-3 rounded text-xs overflow-x-auto max-h-40 overflow-y-auto">
 																	{log.stderr}
@@ -310,8 +303,8 @@ export function Audit() {
 								<div>
 									<p className="text-sm text-gray-700">
 										Showing <span className="font-medium">{offset + 1}</span> to{" "}
-										<span className="font-medium">{Math.min(offset + ITEMS_PER_PAGE, total)}</span> of{" "}
-										<span className="font-medium">{total}</span> results
+										<span className="font-medium">{Math.min(offset + ITEMS_PER_PAGE, total)}</span>{" "}
+										of <span className="font-medium">{total}</span> results
 									</p>
 								</div>
 								<div>

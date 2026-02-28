@@ -48,7 +48,7 @@ describe("AppDetail", () => {
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
 				</Routes>
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		const spinner = document.querySelector(".animate-spin");
@@ -63,7 +63,7 @@ describe("AppDetail", () => {
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
 				</Routes>
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -81,7 +81,7 @@ describe("AppDetail", () => {
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
 				</Routes>
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -97,7 +97,7 @@ describe("AppDetail", () => {
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
 				</Routes>
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -118,7 +118,7 @@ describe("AppDetail", () => {
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
 				</Routes>
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -136,7 +136,7 @@ describe("AppDetail", () => {
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
 				</Routes>
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -154,7 +154,7 @@ describe("AppDetail", () => {
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
 				</Routes>
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -167,7 +167,7 @@ describe("AppDetail", () => {
 			const confirmHeading = screen.getByText("Confirm Action");
 			expect(confirmHeading).toBeInTheDocument();
 			expect(confirmHeading.parentElement).toHaveTextContent(
-				"Are you sure you want to restart test-app?",
+				"Are you sure you want to restart test-app?"
 			);
 		});
 	});
@@ -180,7 +180,7 @@ describe("AppDetail", () => {
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
 				</Routes>
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -198,7 +198,7 @@ describe("AppDetail", () => {
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
 				</Routes>
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -216,7 +216,7 @@ describe("AppDetail", () => {
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
 				</Routes>
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -231,7 +231,7 @@ describe("AppDetail", () => {
 			expect(
 				screen.getByRole("heading", {
 					name: "Delete App",
-				}),
+				})
 			).toBeInTheDocument();
 			expect(screen.getByText(/and all its data will be permanently deleted/i)).toBeInTheDocument();
 		});
@@ -246,7 +246,7 @@ describe("AppDetail", () => {
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
 				</Routes>
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -269,7 +269,7 @@ describe("AppDetail", () => {
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
 				</Routes>
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -286,7 +286,7 @@ describe("AppDetail", () => {
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
 				</Routes>
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {

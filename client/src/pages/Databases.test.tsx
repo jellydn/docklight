@@ -62,7 +62,7 @@ describe("Databases", () => {
 		render(
 			<MemoryRouter>
 				<Databases />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		const spinner = document.querySelector(".animate-spin");
@@ -79,7 +79,7 @@ describe("Databases", () => {
 		render(
 			<MemoryRouter>
 				<Databases />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -97,7 +97,7 @@ describe("Databases", () => {
 		render(
 			<MemoryRouter>
 				<Databases />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -111,7 +111,7 @@ describe("Databases", () => {
 		render(
 			<MemoryRouter>
 				<Databases />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -129,7 +129,7 @@ describe("Databases", () => {
 		render(
 			<MemoryRouter>
 				<Databases />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -148,7 +148,7 @@ describe("Databases", () => {
 		render(
 			<MemoryRouter>
 				<Databases />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -168,7 +168,7 @@ describe("Databases", () => {
 		render(
 			<MemoryRouter>
 				<Databases />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -189,7 +189,7 @@ describe("Databases", () => {
 		render(
 			<MemoryRouter>
 				<Databases />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -210,7 +210,7 @@ describe("Databases", () => {
 		render(
 			<MemoryRouter>
 				<Databases />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -229,7 +229,7 @@ describe("Databases", () => {
 		render(
 			<MemoryRouter>
 				<Databases />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -248,7 +248,7 @@ describe("Databases", () => {
 		render(
 			<MemoryRouter>
 				<Databases />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -269,7 +269,7 @@ describe("Databases", () => {
 		render(
 			<MemoryRouter>
 				<Databases />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -296,7 +296,7 @@ describe("Databases", () => {
 		render(
 			<MemoryRouter>
 				<Databases />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {

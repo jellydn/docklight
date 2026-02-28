@@ -39,7 +39,7 @@ describe("Apps", () => {
 		render(
 			<MemoryRouter>
 				<Apps />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		const spinner = document.querySelector(".animate-spin");
@@ -52,7 +52,7 @@ describe("Apps", () => {
 		render(
 			<MemoryRouter>
 				<Apps />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -71,7 +71,7 @@ describe("Apps", () => {
 		render(
 			<MemoryRouter>
 				<Apps />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -86,7 +86,7 @@ describe("Apps", () => {
 		render(
 			<MemoryRouter>
 				<Apps />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -100,7 +100,7 @@ describe("Apps", () => {
 		render(
 			<MemoryRouter>
 				<Apps />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -121,7 +121,7 @@ describe("Apps", () => {
 		render(
 			<MemoryRouter>
 				<Apps />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -137,7 +137,7 @@ describe("Apps", () => {
 		render(
 			<MemoryRouter>
 				<Apps />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -151,7 +151,7 @@ describe("Apps", () => {
 		render(
 			<MemoryRouter>
 				<Apps />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -166,7 +166,7 @@ describe("Apps", () => {
 		render(
 			<MemoryRouter>
 				<Apps />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {

@@ -69,7 +69,7 @@ describe("Dashboard", () => {
 		render(
 			<MemoryRouter>
 				<Dashboard />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		const spinner = document.querySelector(".animate-spin");
@@ -87,7 +87,7 @@ describe("Dashboard", () => {
 		render(
 			<MemoryRouter>
 				<Dashboard />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -107,7 +107,7 @@ describe("Dashboard", () => {
 		render(
 			<MemoryRouter>
 				<Dashboard />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -132,7 +132,7 @@ describe("Dashboard", () => {
 		render(
 			<MemoryRouter>
 				<Dashboard />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -153,7 +153,7 @@ describe("Dashboard", () => {
 		render(
 			<MemoryRouter>
 				<Dashboard />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -174,7 +174,7 @@ describe("Dashboard", () => {
 		render(
 			<MemoryRouter>
 				<Dashboard />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -193,7 +193,7 @@ describe("Dashboard", () => {
 		render(
 			<MemoryRouter>
 				<Dashboard />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -207,7 +207,7 @@ describe("Dashboard", () => {
 		render(
 			<MemoryRouter>
 				<Dashboard />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -232,7 +232,7 @@ describe("Dashboard", () => {
 		render(
 			<MemoryRouter>
 				<Dashboard />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -259,7 +259,7 @@ describe("Dashboard", () => {
 		render(
 			<MemoryRouter>
 				<Dashboard />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -279,7 +279,7 @@ describe("Dashboard", () => {
 		render(
 			<MemoryRouter>
 				<Dashboard />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {

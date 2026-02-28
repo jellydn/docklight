@@ -29,13 +29,14 @@ describe("stripAnsi", () => {
 	});
 
 	it("should remove multiple ANSI sequences from same string", () => {
-		expect(stripAnsi("\u001b[31mRed\u001b[0m \u001b[32mGreen\u001b[0m \u001b[34mBlue\u001b[0m")).toBe(
-			"Red Green Blue"
-		);
+		expect(
+			stripAnsi("\u001b[31mRed\u001b[0m \u001b[32mGreen\u001b[0m \u001b[34mBlue\u001b[0m")
+		).toBe("Red Green Blue");
 	});
 
 	it("should handle common Dokku output patterns", () => {
-		const dokkuOutput = "\u001b[0m\u001b[32m=====> test-app deployed state:\u001b[0m \u001b[32mrunning\u001b[0m";
+		const dokkuOutput =
+			"\u001b[0m\u001b[32m=====> test-app deployed state:\u001b[0m \u001b[32mrunning\u001b[0m";
 		expect(stripAnsi(dokkuOutput)).toBe("=====> test-app deployed state: running");
 	});
 

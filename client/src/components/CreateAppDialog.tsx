@@ -37,7 +37,9 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 		}
 
 		if (!APP_NAME_REGEX.test(appName)) {
-			setError("App name must start with a letter, contain only lowercase letters, numbers, and hyphens, and not end with a hyphen");
+			setError(
+				"App name must start with a letter, contain only lowercase letters, numbers, and hyphens, and not end with a hyphen"
+			);
 			return;
 		}
 
@@ -90,17 +92,21 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={(isOpen) => {
-			if (!isOpen) resetDialog();
-			onOpenChange(isOpen);
-		}}>
+		<Dialog
+			open={open}
+			onOpenChange={(isOpen) => {
+				if (!isOpen) resetDialog();
+				onOpenChange(isOpen);
+			}}
+		>
 			<DialogContent className="sm:max-w-[500px]">
 				{!createdAppName ? (
 					<>
 						<DialogHeader>
 							<DialogTitle>Create New App</DialogTitle>
 							<DialogDescription>
-								Enter a name for your new Dokku application. The name must start with a letter, contain only lowercase letters, numbers, and hyphens, and not end with a hyphen.
+								Enter a name for your new Dokku application. The name must start with a letter,
+								contain only lowercase letters, numbers, and hyphens, and not end with a hyphen.
 							</DialogDescription>
 						</DialogHeader>
 						<div className="grid gap-4 py-4">

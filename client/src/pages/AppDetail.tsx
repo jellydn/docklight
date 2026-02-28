@@ -190,9 +190,13 @@ export function AppDetail() {
 		if (!pendingAction || !name) return;
 
 		try {
-			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/${encodeURIComponent(pendingAction)}`, CommandResultSchema, {
-				method: "POST",
-			});
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/${encodeURIComponent(pendingAction)}`,
+				CommandResultSchema,
+				{
+					method: "POST",
+				}
+			);
 			addToast(result.exitCode === 0 ? "success" : "error", `${pendingAction} completed`, result);
 			setShowActionDialog(false);
 			setPendingAction(null);
@@ -244,13 +248,17 @@ export function AppDetail() {
 
 		for (const change of pendingScaleChanges) {
 			try {
-				const result = await apiFetch(`/apps/${encodeURIComponent(name)}/scale`, CommandResultSchema, {
-					method: "POST",
-					body: JSON.stringify({
-						processType: change.processType,
-						count: change.count,
-					}),
-				});
+				const result = await apiFetch(
+					`/apps/${encodeURIComponent(name)}/scale`,
+					CommandResultSchema,
+					{
+						method: "POST",
+						body: JSON.stringify({
+							processType: change.processType,
+							count: change.count,
+						}),
+					}
+				);
 				addToast(
 					result.exitCode === 0 ? "success" : "error",
 					`Scale ${change.processType} to ${change.count}`,
@@ -292,10 +300,14 @@ export function AppDetail() {
 		if (!name || !newConfigKey || !newConfigValue) return;
 
 		try {
-			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/config`, CommandResultSchema, {
-				method: "POST",
-				body: JSON.stringify({ key: newConfigKey, value: newConfigValue }),
-			});
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/config`,
+				CommandResultSchema,
+				{
+					method: "POST",
+					body: JSON.stringify({ key: newConfigKey, value: newConfigValue }),
+				}
+			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Config var set", result);
 			setNewConfigKey("");
 			setNewConfigValue("");
@@ -431,9 +443,13 @@ export function AppDetail() {
 
 		setStarting(true);
 		try {
-			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/start`, CommandResultSchema, {
-				method: "POST",
-			});
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/start`,
+				CommandResultSchema,
+				{
+					method: "POST",
+				}
+			);
 			addToast(result.exitCode === 0 ? "success" : "error", "App started", result);
 			setShowStartDialog(false);
 			fetchAppDetail();
@@ -457,7 +473,10 @@ export function AppDetail() {
 		setDomainsLoading(true);
 		setDomainsError(null);
 		try {
-			const domainsData = await apiFetch(`/apps/${encodeURIComponent(name)}/domains`, z.array(z.string()));
+			const domainsData = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/domains`,
+				z.array(z.string())
+			);
 			setDomains(domainsData);
 		} catch (err) {
 			setDomainsError(err instanceof Error ? err.message : "Failed to load domains");
@@ -470,10 +489,14 @@ export function AppDetail() {
 		if (!name || !newDomain) return;
 
 		try {
-			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/domains`, CommandResultSchema, {
-				method: "POST",
-				body: JSON.stringify({ domain: newDomain }),
-			});
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/domains`,
+				CommandResultSchema,
+				{
+					method: "POST",
+					body: JSON.stringify({ domain: newDomain }),
+				}
+			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Domain added", result);
 			setNewDomain("");
 			fetchDomains();
@@ -561,10 +584,14 @@ export function AppDetail() {
 		}
 
 		try {
-			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/ssl/enable`, CommandResultSchema, {
-				method: "POST",
-				body: JSON.stringify({ email: normalizedEmail }),
-			});
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/ssl/enable`,
+				CommandResultSchema,
+				{
+					method: "POST",
+					body: JSON.stringify({ email: normalizedEmail }),
+				}
+			);
 			addToast(result.exitCode === 0 ? "success" : "error", "SSL enabled", result);
 			fetchSSLStatus();
 		} catch (err) {
@@ -582,9 +609,13 @@ export function AppDetail() {
 		if (!name) return;
 
 		try {
-			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/ssl/renew`, CommandResultSchema, {
-				method: "POST",
-			});
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/ssl/renew`,
+				CommandResultSchema,
+				{
+					method: "POST",
+				}
+			);
 			addToast(result.exitCode === 0 ? "success" : "error", "SSL renewed", result);
 			fetchSSLStatus();
 		} catch (err) {
@@ -802,11 +833,14 @@ export function AppDetail() {
 					<div className="bg-white rounded p-6 max-w-md w-full">
 						<h2 className="text-lg font-semibold mb-4 text-red-600">Delete App</h2>
 						<p className="mb-4">
-							This action is <strong>irreversible</strong>. The app <strong>{name}</strong> and all its data will be
-							permanently deleted.
+							This action is <strong>irreversible</strong>. The app <strong>{name}</strong> and all
+							its data will be permanently deleted.
 						</p>
 						<div className="mb-4">
-							<label htmlFor="confirmDeleteName" className="block text-sm font-medium text-gray-700 mb-2">
+							<label
+								htmlFor="confirmDeleteName"
+								className="block text-sm font-medium text-gray-700 mb-2"
+							>
 								Type <strong>{name}</strong> to confirm
 							</label>
 							<input
@@ -845,8 +879,8 @@ export function AppDetail() {
 					<div className="bg-white rounded p-6 max-w-md w-full">
 						<h2 className="text-lg font-semibold mb-4 text-orange-600">Stop App</h2>
 						<p className="mb-6">
-							Are you sure you want to stop <strong>{name}</strong>? The app will not serve requests until started
-							again.
+							Are you sure you want to stop <strong>{name}</strong>? The app will not serve requests
+							until started again.
 						</p>
 						<div className="flex justify-end space-x-2">
 							<button
@@ -999,8 +1033,8 @@ export function AppDetail() {
 							<div className="border border-red-300 rounded-lg p-4 bg-red-50">
 								<h3 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h3>
 								<p className="text-sm text-red-600 mb-4">
-									Deleting an app is irreversible. All data, logs, and configurations will be permanently
-									removed.
+									Deleting an app is irreversible. All data, logs, and configurations will be
+									permanently removed.
 								</p>
 								<button
 									onClick={handleDeleteApp}

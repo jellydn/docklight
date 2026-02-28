@@ -58,7 +58,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		const spinner = document.querySelector(".animate-spin");
@@ -71,7 +71,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -90,7 +90,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -104,7 +104,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -118,7 +118,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -136,7 +136,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -152,7 +152,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -167,7 +167,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -181,7 +181,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -200,7 +200,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -215,7 +215,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -239,7 +239,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -270,7 +270,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -291,7 +291,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -305,7 +305,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {
@@ -327,7 +327,7 @@ describe("Audit", () => {
 		render(
 			<MemoryRouter>
 				<Audit />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await vi.waitFor(() => {

@@ -21,7 +21,7 @@ describe("Login", () => {
 		render(
 			<MemoryRouter>
 				<Login />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		expect(screen.getByText("Docklight Login")).toBeInTheDocument();
@@ -36,7 +36,7 @@ describe("Login", () => {
 		render(
 			<MemoryRouter>
 				<Login />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		const passwordInput = screen.getByLabelText("Password");
@@ -57,7 +57,7 @@ describe("Login", () => {
 		render(
 			<MemoryRouter>
 				<Login />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		const passwordInput = screen.getByLabelText("Password");
@@ -82,7 +82,7 @@ describe("Login", () => {
 		render(
 			<MemoryRouter>
 				<Login />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		const passwordInput = screen.getByLabelText("Password");
@@ -98,7 +98,7 @@ describe("Login", () => {
 				expect.objectContaining({
 					method: "POST",
 					body: JSON.stringify({ password: "correct-password" }),
-				}),
+				})
 			);
 		});
 	});

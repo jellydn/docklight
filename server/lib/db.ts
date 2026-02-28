@@ -124,9 +124,7 @@ export function getAuditLogs(filters: AuditLogFilters = {}): AuditLogResult {
 	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
 	// Get total count
-	const countStmt = getDb().prepare(
-		`SELECT COUNT(*) as count FROM command_history ${whereClause}`
-	);
+	const countStmt = getDb().prepare(`SELECT COUNT(*) as count FROM command_history ${whereClause}`);
 	const countResult = countStmt.get(...params) as { count: number };
 	const total = countResult.count;
 
