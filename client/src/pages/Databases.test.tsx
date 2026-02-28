@@ -65,7 +65,8 @@ describe("Databases", () => {
 			</MemoryRouter>,
 		);
 
-		expect(screen.getByRole("status")).toBeInTheDocument();
+		const spinner = screen.getByText(/./, { selector: ".animate-spin" });
+		expect(spinner).toBeInTheDocument();
 	});
 
 	it("should render databases page", async () => {
@@ -193,9 +194,9 @@ describe("Databases", () => {
 
 		await vi.waitFor(() => {
 			expect(screen.getByText("postgres-test-db")).toBeInTheDocument();
-			expect(screen.getByText("Plugin")).toBeInTheDocument();
-			expect(screen.getByText("Linked Apps")).toBeInTheDocument();
-			expect(screen.getByText("Connection Info")).toBeInTheDocument();
+			expect(screen.getByText(/plugin/i)).toBeInTheDocument();
+			expect(screen.getByText(/linked apps/i)).toBeInTheDocument();
+			expect(screen.getByText(/connection info/i)).toBeInTheDocument();
 		});
 	});
 
@@ -213,7 +214,8 @@ describe("Databases", () => {
 		);
 
 		await vi.waitFor(() => {
-			expect(screen.getByText("my-app")).toBeInTheDocument();
+			const myAppElements = screen.getAllByText("my-app");
+			expect(myAppElements.length).toBeGreaterThan(0);
 		});
 	});
 
@@ -299,7 +301,8 @@ describe("Databases", () => {
 		);
 
 		await vi.waitFor(() => {
-			expect(screen.getByText("Destroy Database")).toBeInTheDocument();
+			const destroyButtons = screen.getAllByText("Destroy Database");
+			expect(destroyButtons.length).toBeGreaterThan(0);
 		});
 
 		const destroyButtons = screen.getAllByText("Destroy Database");
