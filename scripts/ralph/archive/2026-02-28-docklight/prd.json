@@ -1,0 +1,166 @@
+{
+  "project": "Docklight",
+  "branchName": "ralph/app-management",
+  "description": "Add full app lifecycle management to the web UI: create, destroy, stop, and start apps. Includes a dedicated Apps listing page, post-creation next-steps dialog, danger zone with type-to-confirm destroy, and stop/start controls.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create App API endpoint",
+      "description": "As a developer, I need a server endpoint to create Dokku apps so the frontend can trigger app creation.",
+      "acceptanceCriteria": [
+        "Add createApp(name) function in server/lib/apps.ts that runs 'dokku apps:create <name>'",
+        "Validate app name with existing isValidAppName() (lowercase, numbers, hyphens only)",
+        "Add POST /api/apps route in server/index.ts that accepts { name: string }",
+        "Return { success: true, name } on success, or error with stderr on failure",
+        "Clear apps cache (clearPrefix('apps:')) after creation",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Destroy App API endpoint",
+      "description": "As a developer, I need a server endpoint to destroy Dokku apps with safety validation.",
+      "acceptanceCriteria": [
+        "Add destroyApp(name, confirmName) function in server/lib/apps.ts that runs 'dokku apps:destroy <name> --force'",
+        "Validate that confirmName matches name before executing the command",
+        "Add DELETE /api/apps/:name route in server/index.ts that accepts { confirmName: string } in the request body",
+        "Return { success: true } on success, or error with stderr on failure",
+        "Clear apps cache after destruction",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Stop and Start App API endpoints",
+      "description": "As a developer, I need server endpoints to stop and start Dokku apps.",
+      "acceptanceCriteria": [
+        "Add stopApp(name) function in server/lib/apps.ts that runs 'dokku ps:stop <name>'",
+        "Add startApp(name) function in server/lib/apps.ts that runs 'dokku ps:start <name>'",
+        "Add POST /api/apps/:name/stop route in server/index.ts",
+        "Add POST /api/apps/:name/start route in server/index.ts",
+        "Both endpoints validate app name with isValidAppName()",
+        "Clear apps cache after each action",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Create App dialog component",
+      "description": "As a user, I want a reusable Create App dialog so I can create new apps from anywhere in the UI.",
+      "acceptanceCriteria": [
+        "Create a CreateAppDialog component that can be used from both Dashboard and Apps pages",
+        "Dialog uses existing Radix Dialog component from client/src/components/ui/dialog.tsx",
+        "Contains an app name input field",
+        "Inline validation error shown if name contains invalid characters (must match /^[a-z0-9-]+$/)",
+        "Create button calls POST /api/apps with { name } and shows loading state",
+        "On error, show error message in the dialog",
+        "On success, transition to a 'Next Steps' view within the same dialog (see US-005)",
+        "Dialog accepts an onCreated callback prop to notify parent",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Next Steps view after app creation",
+      "description": "As a user, after creating an app I want to see deployment instructions so I know how to push my code.",
+      "acceptanceCriteria": [
+        "After successful creation in CreateAppDialog, dialog content changes to 'Next Steps' view",
+        "Show the git remote URL: dokku@<hostname>:<app-name> where hostname is derived from window.location.hostname",
+        "Show step-by-step instructions: 1) git remote add dokku dokku@<host>:<app>, 2) git push dokku main",
+        "Include a copy button next to the git remote add command that copies it to clipboard",
+        "Include a 'Go to App' button that navigates to /apps/<name>",
+        "Include a 'Close' button to dismiss and stay on the current page",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Add Create App button to Dashboard",
+      "description": "As a user, I want to create a new app from the Dashboard so I can quickly spin up apps without leaving the main page.",
+      "acceptanceCriteria": [
+        "Add 'Create App' button next to the 'Apps' section header (h2) on Dashboard.tsx",
+        "Clicking opens the CreateAppDialog component",
+        "After successful creation, refresh the apps list on Dashboard",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Dedicated Apps listing page",
+      "description": "As a user, I want a proper Apps page at /apps that lists all my apps and lets me create new ones.",
+      "acceptanceCriteria": [
+        "Replace the Navigate redirect in client/src/pages/Apps.tsx with a full apps listing page",
+        "Show a table of apps with Name, Status, Domains, and Last Deploy columns (same layout as Dashboard apps table)",
+        "Add 'Create App' button in the page header that opens CreateAppDialog",
+        "App names link to /apps/:name detail page",
+        "Empty state: show friendly message with 'Create your first app' call-to-action button that opens CreateAppDialog",
+        "Loading spinner while fetching",
+        "Error state with message if API fails",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Destroy App from App Detail page",
+      "description": "As a user, I want to destroy an app from its detail page with a safe confirmation flow.",
+      "acceptanceCriteria": [
+        "Add a 'Danger Zone' section at the bottom of the App Detail Overview tab",
+        "Style with red border and warning text",
+        "Delete App button opens a confirmation dialog",
+        "Dialog requires typing the app name to confirm (must match exactly)",
+        "Delete button is disabled until the typed name matches",
+        "On success, navigate to /apps and show success toast",
+        "On error, show error message in the dialog",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Stop and Start controls on App Detail page",
+      "description": "As a user, I want to stop and start my app from the detail page alongside the existing restart/rebuild controls.",
+      "acceptanceCriteria": [
+        "Add 'Stop' button visible in action bar when app status is 'running'",
+        "Add 'Start' button visible in action bar when app status is 'stopped'",
+        "'Stop' button opens a confirmation dialog before executing",
+        "Buttons call POST /api/apps/:name/stop or /start respectively",
+        "Show loading state during the action",
+        "Refresh app detail after action completes",
+        "Show success/error toast notification using existing ToastProvider",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
