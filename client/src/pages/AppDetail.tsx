@@ -1013,44 +1013,32 @@ export function AppDetail() {
 	const handleSaveDeployment = async () => {
 		if (!name || deploymentSubmitting) return;
 
+		const changes: Partial<DeploymentSettings> = {};
+		if (deployBranch !== (deploymentSettings?.deployBranch || "")) {
+			changes.deployBranch = deployBranch;
+		}
+		if (buildDir !== (deploymentSettings?.buildDir || "")) {
+			changes.buildDir = buildDir;
+		}
+		if (builder !== (deploymentSettings?.builder || "")) {
+			changes.builder = builder;
+		}
+
+		if (Object.keys(changes).length === 0) {
+			return;
+		}
+
 		setDeploymentSubmitting(true);
 		try {
-			if (deployBranch !== (deploymentSettings?.deployBranch || "")) {
-				const result = await apiFetch(
-					`/apps/${encodeURIComponent(name)}/deployment`,
-					CommandResultSchema,
-					{
-						method: "PUT",
-						body: JSON.stringify({ deployBranch }),
-					}
-				);
-				addToast(result.exitCode === 0 ? "success" : "error", "Deploy branch updated", result);
-			}
-
-			if (buildDir !== (deploymentSettings?.buildDir || "")) {
-				const result = await apiFetch(
-					`/apps/${encodeURIComponent(name)}/deployment`,
-					CommandResultSchema,
-					{
-						method: "PUT",
-						body: JSON.stringify({ buildDir }),
-					}
-				);
-				addToast(result.exitCode === 0 ? "success" : "error", "Build directory updated", result);
-			}
-
-			if (builder !== (deploymentSettings?.builder || "")) {
-				const result = await apiFetch(
-					`/apps/${encodeURIComponent(name)}/deployment`,
-					CommandResultSchema,
-					{
-						method: "PUT",
-						body: JSON.stringify({ builder }),
-					}
-				);
-				addToast(result.exitCode === 0 ? "success" : "error", "Builder updated", result);
-			}
-
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/deployment`,
+				CommandResultSchema,
+				{
+					method: "PUT",
+					body: JSON.stringify(changes),
+				}
+			);
+			addToast(result.exitCode === 0 ? "success" : "error", "Deployment settings updated", result);
 			fetchDeploymentSettings();
 		} catch (err) {
 			addToast("error", "Failed to save deployment settings", createErrorResult("", err));
