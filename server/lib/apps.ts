@@ -41,7 +41,7 @@ export async function getApps(): Promise<
 	App[] | { error: string; command: string; exitCode: number; stderr: string }
 > {
 	try {
-		const listCommands = ["dokku apps:list --quiet", "dokku --quiet apps:list", "dokku apps:list"];
+		const listCommands = ["dokku --quiet apps:list", "dokku apps:list"];
 		let listResult: CommandResult | undefined;
 
 		for (const command of listCommands) {
