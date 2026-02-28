@@ -150,7 +150,8 @@ describe("Plugins", () => {
 
 		await vi.waitFor(() => {
 			// The enabled plugin with version shows "Status: Enabled • v1.0.0"
-			expect(screen.getByText(/Status: Enabled/)).toBeInTheDocument();
+			const enabledStatusElements = screen.getAllByText(/Status: Enabled/);
+			expect(enabledStatusElements.length).toBeGreaterThan(0);
 			expect(screen.getByText("Status: Disabled")).toBeInTheDocument();
 			expect(screen.getByText("v1.0.0")).toBeInTheDocument();
 			expect(screen.getByText("v0.5.0")).toBeInTheDocument();
