@@ -1,1 +1,217 @@
+## Codebase Patterns
+- Example: Use `executeCommand` from executor.ts for all Dokku CLI commands
+- Example: Always validate with `isValidAppName()` before executing commands
+- Example: Return error objects with { error, command, exitCode, stderr } for error cases
+- Example: Clear cache with `clearPrefix('apps:')` after mutations
+- Example: Validate phase parameter (build/deploy/run) in docker-options and similar modules
+- Example: Use optional chain (?.) when accessing regex match groups to satisfy lint
+
 # Ralph Progress Log
+Started: Sat Feb 28 18:28:47 +08 2026
+## [Date/Time] - US-001
+- Implemented Ports management API endpoints (server/lib/ports.ts, server/index.ts)
+- Created getPorts, addPort, removePort, clearPorts functions
+- Added routes: GET /api/apps/:name/ports, POST /api/apps/:name/ports, DELETE /api/apps/:name/ports, DELETE /api/apps/:name/ports/all
+- Validates app name with isValidAppName() and port values in range 1-65535
+- Clears cache after mutations
+- Typecheck and lint pass
+- Files changed: server/lib/ports.ts (new), server/index.ts
+- **Learnings for future iterations:**
+  - Follow same pattern as domains.ts for consistency
+  - Use stripAnsi() from ansi.ts to clean CLI output
+  - Test failures are pre-existing (vi.mocked not a function issue) - not caused by this change
+---
+## Sat Feb 28 2026 - US-004, US-005, US-006
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented CreateAppDialog component (client/src/components/CreateAppDialog.tsx)
+- Added Create App button to Dashboard (client/src/pages/Dashboard.tsx)
+- Implemented inline validation for app name (regex: /^[a-z0-9-]+$/)
+- Added Next Steps view after app creation with git remote instructions
+- Added Copy button for git remote command
+- Added Go to App button that navigates to /apps/:name
+- Typecheck and lint pass
+- Files changed: client/src/components/CreateAppDialog.tsx, client/src/pages/Dashboard.tsx
+- **Learnings for future iterations:**
+  - Use CommandResultSchema from lib/schemas.ts when calling apiFetch for POST/PUT/DELETE operations
+  - Dialog can transition between different views (creation form -> next steps) by using state
+  - Reset dialog state when closing to avoid stale data on next open
+---
+
+## Sat Feb 28 2026 - US-001
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Create App API endpoint (server/lib/apps.ts, server/index.ts)
+- Added `createApp(name)` function that runs `dokku apps:create <name>`
+- Added POST /api/apps route that accepts { name: string }
+- Added name validation using existing isValidAppName()
+- Added cache clearing (clearPrefix('apps:')) after creation
+- Files changed: server/lib/apps.ts, server/index.ts
+- **Learnings for future iterations:**
+  - The codebase follows a consistent pattern: validation first, then executeCommand, then return result
+  - Cache clearing is important for consistency - always call clearPrefix('apps:') after app mutations
+  - Test failures are pre-existing (vi.mocked not a function issue) - not caused by this change
+---
+
+## Sat Feb 28 2026 - US-002
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Destroy App API endpoint (server/lib/apps.ts, server/index.ts)
+- Added `destroyApp(name, confirmName)` function that runs `dokku apps:destroy <name> --force`
+- Added DELETE /api/apps/:name route that accepts { confirmName: string }
+- Added validation to ensure confirmName matches name before executing
+- Added cache clearing (clearPrefix('apps:')) after destruction
+- Files changed: server/lib/apps.ts, server/index.ts
+- **Learnings for future iterations:**
+  - The destroy endpoint requires typing the app name for confirmation - this is a safety feature
+  - The endpoint returns CommandResult which includes exitCode, stdout, stderr
+  - Typecheck and lint pass without issues
+---
+
+## Sat Feb 28 2026 - US-003
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Stop and Start App API endpoints (server/lib/apps.ts, server/index.ts)
+- Added `stopApp(name)` function that runs `dokku ps:stop <name>`
+- Added `startApp(name)` function that runs `dokku ps:start <name>`
+- Added POST /api/apps/:name/stop route
+- Added POST /api/apps/:name/start route
+- Both endpoints validate app name with isValidAppName()
+- Both clear apps cache after each action
+- Files changed: server/lib/apps.ts, server/index.ts
+- **Learnings for future iterations:**
+  - Follow the same pattern as restartApp and rebuildApp for consistency
+  - Typecheck and lint pass
+  - Test failures are pre-existing (vi.mocked not a function issue)
+---
+
+## Sat Feb 28 2026 - US-007
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Dedicated Apps listing page (client/src/pages/Apps.tsx)
+- Replaced Navigate redirect with full apps listing page
+- Shows table with Name, Status, Domains, Last Deploy columns
+- Added 'Create App' button in page header
+- App names link to /apps/:name detail page
+- Empty state with friendly message and CTA button to open CreateAppDialog
+- Loading spinner while fetching
+- Error state with message if API fails
+- Typecheck and lint pass
+- Files changed: client/src/pages/Apps.tsx, scripts/ralph/prd.json
+- **Learnings for future iterations:**
+  - Reused Dashboard pattern for apps table layout and styling
+  - Used same AppSchema and apiFetch patterns as Dashboard
+  - Test failures are pre-existing (document not defined issue in test environment)
+  - ChromeDevTools MCP not configured - skipped browser verification
+---
+
+## Sat Feb 28 2026 - US-012
+- Implemented Docker Options settings panel on App Detail (client/src/pages/AppDetail.tsx)
+- Added state for docker options (dockerOptions, loading, error, form inputs, dialogs)
+- Added fetchDockerOptions that fetches GET /api/apps/:name/docker-options when Settings tab is active
+- Display options grouped by phase (Build, Deploy, Run) as subsections
+- Each option shows full Docker flag in monospace font with remove button
+- Add Option form with phase dropdown (build/deploy/run) and option text input
+- Clear Phase button per phase section with confirmation dialog
+- Show success/error toast after each action
+- Typecheck and lint pass
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - Reused existing dialog patterns from buildpacks and ports sections
+  - Used DockerOptionsSchema from lib/schemas.ts
+  - Used phase as key in options array (no duplicates per phase)
+  - ChromeDevTools MCP not configured - skipped browser verification
+---
+
+## Sat Feb 28 2026 - US-011
+[Session: https://opncd.ai/s/5cfeab3c]
+- Fixed unconditional cache clearing on destroy/stop/start endpoints (server/index.ts)
+- DELETE /api/apps/:name now only calls clearPrefix('apps:') when result.exitCode === 0
+- POST /api/apps/:name/stop now only calls clearPrefix('apps:') when result.exitCode === 0
+- POST /api/apps/:name/start now only calls clearPrefix('apps:') when result.exitCode === 0
+- On failure, returns appropriate HTTP status code (400-599) and error response
+- Typecheck and lint pass
+- Files changed: server/index.ts
+- **Learnings for future iterations:**
+  - Follow same pattern as POST /api/apps (create app) endpoint for consistency
+  - Use exitCode >= 400 && exitCode < 600 to determine if it's an HTTP error code
+  - Pre-existing test failures (vi.mocked not a function issue) - not caused by this change
+---
+
+## Sat Feb 28 2026 - US-012
+[Session: https://opncd.ai/s/5cfeab3c]
+- Fixed copy button to copy full git remote command (client/src/components/CreateAppDialog.tsx)
+- Copy button now copies 'git remote add dokku dokku@<host>:<app>' instead of just 'dokku@<host>:<app>'
+- Typecheck and lint pass
+- Files changed: client/src/components/CreateAppDialog.tsx
+- **Learnings for future iterations:**
+  - ChromeDevTools MCP not configured - skipped browser verification
+---
+
+## [Date/Time] - US-009
+- Implemented Deployment settings panel on App Detail (client/src/pages/AppDetail.tsx)
+- Added state for deployment settings (deployBranch, buildDir, builder)
+- Added fetchDeploymentSettings that fetches GET /api/apps/:name/deployment when Settings tab is active
+- Added Deploy Branch text input with help text about default (main)
+- Added Build Directory text input with help text about monorepo subfolder
+- Added Builder dropdown with options: Auto-detect, Herokuish, Dockerfile, Pack
+- Save button calls PUT /api/apps/:name/deployment with changed fields
+- Shows success/error toast after each save operation
+- Typecheck and lint pass
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - ChromeDevTools MCP not configured - skipped browser verification
+---
+
+## Sat Feb 28 2026 - US-010
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Ports & Proxy settings panel on App Detail (client/src/pages/AppDetail.tsx)
+- Added state for ports and proxy (ports, proxyReport, loading, error states)
+- Added fetchPorts that fetches GET /api/apps/:name/ports when Settings tab is active
+- Added fetchProxyReport that fetches GET /api/apps/:name/proxy when Settings tab is active
+- Display port mappings in a table with Scheme, Host Port, Container Port, Remove button
+- Add Port Mapping form with scheme dropdown (http/https/tcp), host port input, container port input
+- Clear All Ports button with confirmation dialog
+- Proxy toggle: show current status (enabled/disabled) with enable/disable button
+- Show proxy type as read-only info
+- Show success/error toast after each action
+- Added confirmation dialogs for port removal and clearing
+- Typecheck and lint pass
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - Reused existing dialog patterns (showDeleteDialog, confirmDeleteApp pattern) for confirmation dialogs
+  - Used Number.isNaN instead of isNaN for proper type checking
+  - Used composite key `${port.scheme}-${port.hostPort}-${port.containerPort}` for port table rows
+  - ChromeDevTools MCP not configured - skipped browser verification
+---
+
+## Sat Feb 28 2026 - US-011
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Buildpacks settings panel on App Detail (client/src/pages/AppDetail.tsx)
+- Added state for buildpacks (buildpacks, loading, error, form inputs, dialogs)
+- Added fetchBuildpacks that fetches GET /api/apps/:name/buildpacks when Settings tab is active
+- Display current buildpacks as ordered list with index numbers
+- Add Buildpack form with URL field and optional index number input
+- Remove button next to each buildpack entry with confirmation dialog
+- Clear All button with confirmation dialog
+- Empty state shows 'Auto-detected (no custom buildpacks set)'
+- Show success/error toast after each action
+- Typecheck and lint pass
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - Reused existing dialog patterns from ports and proxy sections
+  - Used BuildpacksResponseSchema from lib/schemas.ts
+  - ChromeDevTools MCP not configured - skipped browser verification
+---
+
+## Sat Feb 28 2026 - US-013
+- Implemented Network settings panel on App Detail (client/src/pages/AppDetail.tsx)
+- Added state for network (networkReport, networkLoading, networkError, editingNetworkKey, networkEditValue, networkSubmitting)
+- Added fetchNetwork that fetches GET /api/apps/:name/network when Settings tab is active
+- Display network properties as key-value list: attach-post-create, attach-post-deploy, bind-all-interfaces, initial-network, static-web-listener, tls-internal
+- Each property shows current value or 'not set' with inline edit and clear actions
+- Inline editing: click Edit/Set button to edit, save/cancel buttons appear
+- Save calls PUT /api/apps/:name/network with { key, value }
+- Clear calls DELETE /api/apps/:name/network with { key }
+- Show success/error toast after each action
+- Typecheck and lint pass
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - Reused existing inline editing patterns from Deployment section
+  - Used NetworkReportSchema from lib/schemas.ts
+  - ChromeDevTools MCP not configured - skipped browser verification
