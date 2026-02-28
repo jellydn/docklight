@@ -98,7 +98,7 @@ import { disablePlugin, enablePlugin, getPlugins, installPlugin, uninstallPlugin
 import { getServerHealth } from "./lib/server.js";
 import { enableSSL, getSSL, renewSSL } from "./lib/ssl.js";
 
-type AsyncHandler = (req: Request, res: Response) => Promise<void>;
+type AsyncHandler = (req: Request<Record<string, string>>, res: Response) => Promise<void>;
 
 function createTestApp(): Express {
 	const app = express();
@@ -139,7 +139,7 @@ function createTestApp(): Express {
 				req,
 				res,
 				() => {
-					handler(req, res).catch(next);
+					handler(req as Request<Record<string, string>>, res).catch(next);
 				}
 			);
 		};
