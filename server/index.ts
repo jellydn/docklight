@@ -3,7 +3,7 @@ import express from "express";
 import http from "http";
 import path from "path";
 import pinoHttp from "pino-http";
-import { getAppDetail, getApps, rebuildApp, restartApp, scaleApp } from "./lib/apps.js";
+import { getAppDetail, getApps, rebuildApp, restartApp, scaleApp, createApp } from "./lib/apps.js";
 import { authMiddleware, clearAuthCookie, login, setAuthCookie } from "./lib/auth.js";
 import { clearPrefix, get, set } from "./lib/cache.js";
 import { getConfig, setConfig, unsetConfig } from "./lib/config.js";
@@ -85,6 +85,18 @@ app.get("/api/apps", async (_req, res) => {
 
 	set(cacheKey, apps);
 	res.json(apps);
+});
+
+app.post("/api/apps", async (req, res) => {
+	const { name } = req.body;
+	if (!name || typeof name !== "string") {
+		res.status(400).json({ error: "App name is required" });
+		return;
+	}
+
+	const result = await createApp(name);
+	clearPrefix("apps:");
+	res.json(result);
 });
 
 app.get("/api/apps/:name", async (req, res) => {

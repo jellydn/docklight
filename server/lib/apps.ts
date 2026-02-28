@@ -265,6 +265,21 @@ function parseProcesses(stdout: string): Record<string, number> {
 	return processes;
 }
 
+export async function createApp(
+	name: string
+): Promise<CommandResult | { error: string; exitCode: number }> {
+	if (!isValidAppName(name)) {
+		return {
+			error: "Invalid app name",
+			command: "",
+			exitCode: 400,
+		};
+	}
+
+	const result = await executeCommand(`dokku apps:create ${name}`);
+	return result;
+}
+
 export async function restartApp(
 	name: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
