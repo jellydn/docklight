@@ -41,7 +41,9 @@ export async function getDomains(
 			const domainList = vhostsMatch[1]
 				.split(/\s+/)
 				.map((domain) => domain.trim())
-				.filter((domain) => domain.length > 0 && domain !== "-" && domain.toLowerCase() !== "(none)");
+				.filter(
+					(domain) => domain.length > 0 && domain !== "-" && domain.toLowerCase() !== "(none)"
+				);
 
 			for (const domain of domainList) {
 				domains.add(domain);

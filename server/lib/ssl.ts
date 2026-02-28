@@ -85,7 +85,10 @@ function parseCertsReport(stdout: string): SSLStatus | null {
 
 		const { key, value } = parsed;
 		const boolValue = parseBoolean(value);
-		if (boolValue !== null && /(ssl.*enabled|certificate.*enabled|certificates.*enabled)/.test(key)) {
+		if (
+			boolValue !== null &&
+			/(ssl.*enabled|certificate.*enabled|certificates.*enabled)/.test(key)
+		) {
 			active = boolValue;
 		}
 

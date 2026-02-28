@@ -38,10 +38,13 @@ export const authRateLimiter: RequestHandler = rateLimit({
 			"Rate limit exceeded for authentication endpoint"
 		);
 
-		res.status(429).set("Retry-After", String(retryAfter)).json({
-			error: "Too many login attempts. Please try again later.",
-			retryAfter: `${retryAfter} seconds`,
-		});
+		res
+			.status(429)
+			.set("Retry-After", String(retryAfter))
+			.json({
+				error: "Too many login attempts. Please try again later.",
+				retryAfter: `${retryAfter} seconds`,
+			});
 	},
 
 	/**
@@ -54,7 +57,10 @@ export const authRateLimiter: RequestHandler = rateLimit({
 			return ipKeyGenerator(req.ip);
 		}
 
-		logger.warn({ path: req.path }, "Could not determine IP for rate limiting. Using random key as fallback.");
+		logger.warn(
+			{ path: req.path },
+			"Could not determine IP for rate limiting. Using random key as fallback."
+		);
 		return randomUUID();
 	},
 });

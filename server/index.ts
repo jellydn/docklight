@@ -3,7 +3,17 @@ import express from "express";
 import http from "http";
 import path from "path";
 import pinoHttp from "pino-http";
-import { getAppDetail, getApps, rebuildApp, restartApp, scaleApp, createApp, destroyApp, stopApp, startApp } from "./lib/apps.js";
+import {
+	getAppDetail,
+	getApps,
+	rebuildApp,
+	restartApp,
+	scaleApp,
+	createApp,
+	destroyApp,
+	stopApp,
+	startApp,
+} from "./lib/apps.js";
 import { authMiddleware, clearAuthCookie, login, setAuthCookie } from "./lib/auth.js";
 import { clearPrefix, get, set } from "./lib/cache.js";
 import { getConfig, setConfig, unsetConfig } from "./lib/config.js";
@@ -17,7 +27,13 @@ import {
 import { getRecentCommands } from "./lib/db.js";
 import { addDomain, getDomains, removeDomain } from "./lib/domains.js";
 import { logger } from "./lib/logger.js";
-import { disablePlugin, enablePlugin, getPlugins, installPlugin, uninstallPlugin } from "./lib/plugins.js";
+import {
+	disablePlugin,
+	enablePlugin,
+	getPlugins,
+	installPlugin,
+	uninstallPlugin,
+} from "./lib/plugins.js";
 import { getServerHealth } from "./lib/server.js";
 import { enableSSL, getSSL, renewSSL } from "./lib/ssl.js";
 import { authRateLimiter } from "./lib/rate-limiter.js";
