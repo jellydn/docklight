@@ -15,6 +15,7 @@ export interface CommandResult {
 interface ExecuteCommandOptions {
 	asRoot?: boolean;
 	sudoPassword?: string;
+	preferRootTarget?: boolean;
 }
 
 function shellQuote(value: string): string {
@@ -36,7 +37,9 @@ export function buildRuntimeCommand(command: string, options?: ExecuteCommandOpt
 		: command;
 	const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
 	const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
-	const target = options?.asRoot ? rootTarget || defaultTarget : defaultTarget;
+	const shouldPreferRootTarget = options?.preferRootTarget !== false;
+	const target =
+		options?.asRoot && shouldPreferRootTarget ? rootTarget || defaultTarget : defaultTarget;
 	if (!target || !command.startsWith("dokku ")) {
 		return baseCommand;
 	}
@@ -93,6 +96,21 @@ export async function executeCommand(
 	} catch (error: unknown) {
 		const err = error as { code?: number; stdout?: string; stderr?: string; message?: string };
 		let stderr = err.stderr || err.message || "";
+		const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
+		const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
+		const isRootTargetAuthError =
+			options?.asRoot &&
+			options?.preferRootTarget !== false &&
+			Boolean(rootTarget) &&
+			Boolean(defaultTarget) &&
+			/permission denied/i.test(stderr);
+		if (isRootTargetAuthError) {
+			return executeCommand(command, timeout, {
+				asRoot: true,
+				sudoPassword: options?.sudoPassword,
+				preferRootTarget: false,
+			});
+		}
 		if (
 			options?.asRoot &&
 			/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty/i.test(stderr)
