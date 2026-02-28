@@ -58,38 +58,20 @@ export async function getPorts(
 		const ports: PortMapping[] = [];
 		const lines = result.stdout.split("\n").map((line) => stripAnsi(line));
 
+		let inMappingsSection = false;
 		for (const line of lines) {
-			const portInfoMatch = line.match(/port info:\s*(.+)$/i);
-			if (!portInfoMatch) {
+			if (line.includes("Port mappings for")) {
+				inMappingsSection = true;
 				continue;
 			}
+			if (!inMappingsSection) continue;
 
-			const portInfo = portInfoMatch[1].trim();
-			const httpMatch = portInfo.match(/http\s+(\d+):(\d+)/i);
-			const httpsMatch = portInfo.match(/https\s+(\d+):(\d+)/i);
-			const tcpMatch = portInfo.match(/tcp\s+(\d+):(\d+)/i);
-
-			if (httpMatch) {
+			const match = line.trim().match(/^(http|https|tcp):(\d+):(\d+)$/);
+			if (match) {
 				ports.push({
-					scheme: "http",
-					hostPort: Number.parseInt(httpMatch[1], 10),
-					containerPort: Number.parseInt(httpMatch[2], 10),
-				});
-			}
-
-			if (httpsMatch) {
-				ports.push({
-					scheme: "https",
-					hostPort: Number.parseInt(httpsMatch[1], 10),
-					containerPort: Number.parseInt(httpsMatch[2], 10),
-				});
-			}
-
-			if (tcpMatch) {
-				ports.push({
-					scheme: "tcp",
-					hostPort: Number.parseInt(tcpMatch[1], 10),
-					containerPort: Number.parseInt(tcpMatch[2], 10),
+					scheme: match[1],
+					hostPort: Number.parseInt(match[2], 10),
+					containerPort: Number.parseInt(match[3], 10),
 				});
 			}
 		}

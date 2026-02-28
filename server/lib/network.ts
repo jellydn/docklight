@@ -75,7 +75,7 @@ export async function getNetworkReport(
 
 		for (const line of lines) {
 			for (const prop of NETWORK_PROPERTIES) {
-				const regex = new RegExp(`^\\s*${prop.replace(/-/g, "(?:.*-)*")}:\\s*(.*)$`, "i");
+				const regex = new RegExp(`^\\s*${prop}:\\s*(.*)$`, "i");
 				const match = line.match(regex);
 				if (match) {
 					report[prop] = match[1]?.trim() ?? "";

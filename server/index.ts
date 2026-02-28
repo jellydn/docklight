@@ -62,8 +62,22 @@ import { getServerHealth } from "./lib/server.js";
 import { enableSSL, getSSL, renewSSL } from "./lib/ssl.js";
 import { authRateLimiter } from "./lib/rate-limiter.js";
 import { setupLogStreaming } from "./lib/websocket.js";
+import type { CommandResult } from "./lib/executor.js";
 
 const app = express();
+
+type CommandResultLike =
+	| CommandResult
+	| { error: string; exitCode: number; command?: string; stdout?: string; stderr?: string };
+
+function handleCommandResult(res: express.Response, result: CommandResultLike): boolean {
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return false;
+	}
+	return true;
+}
 const PORT = process.env.PORT || 3001;
 const CLIENT_DIST = path.resolve(__dirname, "..", "..", "client", "dist");
 
@@ -306,17 +320,9 @@ app.post("/api/apps/:name/ports", async (req, res) => {
 	const { name } = req.params;
 	const { scheme, hostPort, containerPort } = req.body;
 
-	if (!scheme || typeof scheme !== "string") {
-		res.status(400).json({ error: "Scheme is required" });
-		return;
-	}
-
-	if (typeof hostPort !== "number" || typeof containerPort !== "number") {
-		res.status(400).json({ error: "Host port and container port are required" });
-		return;
-	}
-
 	const result = await addPort(name, scheme, hostPort, containerPort);
+	if (!handleCommandResult(res, result)) return;
+
 	clearPrefix("apps:");
 	res.json(result);
 });
@@ -325,17 +331,9 @@ app.delete("/api/apps/:name/ports", async (req, res) => {
 	const { name } = req.params;
 	const { scheme, hostPort, containerPort } = req.body;
 
-	if (!scheme || typeof scheme !== "string") {
-		res.status(400).json({ error: "Scheme is required" });
-		return;
-	}
-
-	if (typeof hostPort !== "number" || typeof containerPort !== "number") {
-		res.status(400).json({ error: "Host port and container port are required" });
-		return;
-	}
-
 	const result = await removePort(name, scheme, hostPort, containerPort);
+	if (!handleCommandResult(res, result)) return;
+
 	clearPrefix("apps:");
 	res.json(result);
 });
@@ -377,18 +375,8 @@ app.post("/api/apps/:name/buildpacks", async (req, res) => {
 	const { name } = req.params;
 	const { url, index } = req.body;
 
-	if (!url || typeof url !== "string") {
-		res.status(400).json({ error: "Buildpack URL is required" });
-		return;
-	}
-
 	const result = await addBuildpack(name, url, index);
-
-	if (result.exitCode !== 0) {
-		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
-		res.status(statusCode).json(result);
-		return;
-	}
+	if (!handleCommandResult(res, result)) return;
 
 	clearPrefix("apps:");
 	res.json(result);
@@ -398,18 +386,8 @@ app.delete("/api/apps/:name/buildpacks", async (req, res) => {
 	const { name } = req.params;
 	const { url } = req.body;
 
-	if (!url || typeof url !== "string") {
-		res.status(400).json({ error: "Buildpack URL is required" });
-		return;
-	}
-
 	const result = await removeBuildpack(name, url);
-
-	if (result.exitCode !== 0) {
-		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
-		res.status(statusCode).json(result);
-		return;
-	}
+	if (!handleCommandResult(res, result)) return;
 
 	clearPrefix("apps:");
 	res.json(result);
@@ -418,12 +396,7 @@ app.delete("/api/apps/:name/buildpacks", async (req, res) => {
 app.delete("/api/apps/:name/buildpacks/all", async (req, res) => {
 	const { name } = req.params;
 	const result = await clearBuildpacks(name);
-
-	if (result.exitCode !== 0) {
-		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
-		res.status(statusCode).json(result);
-		return;
-	}
+	if (!handleCommandResult(res, result)) return;
 
 	clearPrefix("apps:");
 	res.json(result);
@@ -439,23 +412,8 @@ app.post("/api/apps/:name/docker-options", async (req, res) => {
 	const { name } = req.params;
 	const { phase, option } = req.body;
 
-	if (!phase || typeof phase !== "string") {
-		res.status(400).json({ error: "Phase is required (build, deploy, or run)" });
-		return;
-	}
-
-	if (!option || typeof option !== "string") {
-		res.status(400).json({ error: "Docker option is required" });
-		return;
-	}
-
 	const result = await addDockerOption(name, phase, option);
-
-	if (result.exitCode !== 0) {
-		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
-		res.status(statusCode).json(result);
-		return;
-	}
+	if (!handleCommandResult(res, result)) return;
 
 	clearPrefix("apps:");
 	res.json(result);
@@ -465,23 +423,8 @@ app.delete("/api/apps/:name/docker-options", async (req, res) => {
 	const { name } = req.params;
 	const { phase, option } = req.body;
 
-	if (!phase || typeof phase !== "string") {
-		res.status(400).json({ error: "Phase is required (build, deploy, or run)" });
-		return;
-	}
-
-	if (!option || typeof option !== "string") {
-		res.status(400).json({ error: "Docker option is required" });
-		return;
-	}
-
 	const result = await removeDockerOption(name, phase, option);
-
-	if (result.exitCode !== 0) {
-		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
-		res.status(statusCode).json(result);
-		return;
-	}
+	if (!handleCommandResult(res, result)) return;
 
 	clearPrefix("apps:");
 	res.json(result);
@@ -491,18 +434,8 @@ app.delete("/api/apps/:name/docker-options/all", async (req, res) => {
 	const { name } = req.params;
 	const { phase } = req.body;
 
-	if (!phase || typeof phase !== "string") {
-		res.status(400).json({ error: "Phase is required (build, deploy, or run)" });
-		return;
-	}
-
 	const result = await clearDockerOptions(name, phase);
-
-	if (result.exitCode !== 0) {
-		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
-		res.status(statusCode).json(result);
-		return;
-	}
+	if (!handleCommandResult(res, result)) return;
 
 	clearPrefix("apps:");
 	res.json(result);
@@ -518,18 +451,8 @@ app.put("/api/apps/:name/network", async (req, res) => {
 	const { name } = req.params;
 	const { key, value } = req.body;
 
-	if (!key || typeof key !== "string") {
-		res.status(400).json({ error: "Network property key is required" });
-		return;
-	}
-
 	const result = await setNetworkProperty(name, key, value ?? "");
-
-	if (result.exitCode !== 0) {
-		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
-		res.status(statusCode).json(result);
-		return;
-	}
+	if (!handleCommandResult(res, result)) return;
 
 	clearPrefix("apps:");
 	res.json(result);
@@ -539,18 +462,8 @@ app.delete("/api/apps/:name/network", async (req, res) => {
 	const { name } = req.params;
 	const { key } = req.body;
 
-	if (!key || typeof key !== "string") {
-		res.status(400).json({ error: "Network property key is required" });
-		return;
-	}
-
 	const result = await clearNetworkProperty(name, key);
-
-	if (result.exitCode !== 0) {
-		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
-		res.status(statusCode).json(result);
-		return;
-	}
+	if (!handleCommandResult(res, result)) return;
 
 	clearPrefix("apps:");
 	res.json(result);
@@ -565,33 +478,39 @@ app.get("/api/apps/:name/deployment", async (req, res) => {
 app.put("/api/apps/:name/deployment", async (req, res) => {
 	const { name } = req.params;
 	const { deployBranch, buildDir, builder } = req.body;
-
-	let result: Awaited<ReturnType<typeof setDeployBranch>>;
+	const promises: Promise<CommandResultLike>[] = [];
 
 	if (deployBranch !== undefined) {
-		result = await setDeployBranch(name, deployBranch);
-	} else if (buildDir !== undefined) {
-		result =
-			buildDir === "" || buildDir === null
-				? await clearBuildDir(name)
-				: await setBuildDir(name, buildDir);
-	} else if (builder !== undefined) {
-		result = await setBuilder(name, builder ?? "");
-	} else {
+		promises.push(setDeployBranch(name, deployBranch));
+	}
+	if (buildDir !== undefined) {
+		promises.push(
+			buildDir === "" || buildDir === null ? clearBuildDir(name) : setBuildDir(name, buildDir)
+		);
+	}
+	if (builder !== undefined) {
+		promises.push(setBuilder(name, builder ?? ""));
+	}
+
+	if (promises.length === 0) {
 		res
 			.status(400)
 			.json({ error: "At least one of deployBranch, buildDir, or builder is required" });
 		return;
 	}
 
-	if (result.exitCode !== 0) {
-		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
-		res.status(statusCode).json(result);
+	const results = await Promise.all(promises);
+	const firstError = results.find((r) => r.exitCode !== 0);
+
+	if (firstError) {
+		const statusCode =
+			firstError.exitCode >= 400 && firstError.exitCode < 600 ? firstError.exitCode : 500;
+		res.status(statusCode).json(firstError);
 		return;
 	}
 
 	clearPrefix("apps:");
-	res.json(result);
+	res.json(results[results.length - 1]);
 });
 
 app.get("/api/databases", async (_req, res) => {
