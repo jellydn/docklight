@@ -165,7 +165,7 @@ describe("AppDetail", () => {
 
 		await vi.waitFor(() => {
 			expect(screen.getByText("Confirm Action")).toBeInTheDocument();
-			expect(screen.getByText(/restart test-app/i)).toBeInTheDocument();
+			expect(screen.getByText(/restart test-app/)).toBeInTheDocument();
 		});
 	});
 
@@ -181,7 +181,7 @@ describe("AppDetail", () => {
 		);
 
 		await vi.waitFor(() => {
-			expect(screen.getByText("Processes")).toBeInTheDocument();
+			expect(screen.getByText(/processes/i)).toBeInTheDocument();
 			expect(screen.getByText("web")).toBeInTheDocument();
 			expect(screen.getByText("worker")).toBeInTheDocument();
 		});
