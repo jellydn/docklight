@@ -36,6 +36,9 @@ export function Login() {
 	return (
 		<div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
 			<div className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
+				<div className="flex justify-center mb-4">
+					<img src="/logo.svg" alt="Docklight logo" className="h-12 w-12" />
+				</div>
 				<h1 className="text-2xl font-bold mb-6 text-center">Docklight Login</h1>
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>
