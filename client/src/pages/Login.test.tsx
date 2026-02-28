@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { Login } from "./Login";
@@ -17,14 +17,14 @@ describe("Login", () => {
 		apiFetchMock = apiFetch as any;
 	});
 
-	it("should render the login form", () => {
+	it("should render the login form", async () => {
 		render(
 			<MemoryRouter>
 				<Login />
 			</MemoryRouter>
 		);
 
-		expect(screen.getByText("Docklight Login")).toBeInTheDocument();
+		expect(await screen.findByText("Docklight Login")).toBeInTheDocument();
 		expect(screen.getByLabelText("Password")).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "Login" })).toBeInTheDocument();
 	});
@@ -45,7 +45,7 @@ describe("Login", () => {
 		await user.type(passwordInput, "wrong-password");
 		await user.click(loginButton);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Invalid password")).toBeInTheDocument();
 		});
 	});
@@ -66,7 +66,7 @@ describe("Login", () => {
 		await user.type(passwordInput, "wrong");
 		await user.click(loginButton);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Invalid password")).toBeInTheDocument();
 		});
 
@@ -91,7 +91,7 @@ describe("Login", () => {
 		await user.type(passwordInput, "correct-password");
 		await user.click(loginButton);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(apiFetchMock).toHaveBeenCalledWith(
 				"/auth/login",
 				expect.any(Object),

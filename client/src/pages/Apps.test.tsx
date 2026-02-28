@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { Apps } from "./Apps";
@@ -55,7 +55,7 @@ describe("Apps", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("my-app")).toBeInTheDocument();
 			expect(screen.getByText("another-app")).toBeInTheDocument();
 		});
@@ -74,7 +74,7 @@ describe("Apps", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("No apps found")).toBeInTheDocument();
 			expect(screen.getByText("Create your first app")).toBeInTheDocument();
 		});
@@ -89,7 +89,7 @@ describe("Apps", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Failed to load")).toBeInTheDocument();
 		});
 	});
@@ -103,14 +103,14 @@ describe("Apps", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Create App")).toBeInTheDocument();
 		});
 
 		const createButton = screen.getAllByText("Create App")[0];
 		await userEvent.click(createButton);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Create New App")).toBeInTheDocument();
 		});
 	});
@@ -124,7 +124,7 @@ describe("Apps", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const appLink = screen.getByRole("link", { name: "my-app" });
 			expect(appLink).toBeInTheDocument();
 			expect(appLink).toHaveAttribute("href", "/apps/my-app");
@@ -140,7 +140,7 @@ describe("Apps", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("my-app.example.com")).toBeInTheDocument();
 		});
 	});
@@ -154,7 +154,7 @@ describe("Apps", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const dashes = screen.getAllByText("-");
 			expect(dashes.length).toBeGreaterThan(0);
 		});
@@ -169,7 +169,7 @@ describe("Apps", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText(/2024-01-15/)).toBeInTheDocument();
 		});
 	});

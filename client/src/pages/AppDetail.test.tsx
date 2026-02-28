@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AppDetail } from "./AppDetail";
@@ -66,7 +66,7 @@ describe("AppDetail", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("test-app")).toBeInTheDocument();
 			const runningBadges = screen.getAllByText("running");
 			expect(runningBadges.length).toBeGreaterThan(0);
@@ -84,7 +84,7 @@ describe("AppDetail", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("App not found")).toBeInTheDocument();
 		});
 	});
@@ -100,7 +100,7 @@ describe("AppDetail", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const overviewTabs = screen.getAllByText("Overview");
 			expect(overviewTabs.length).toBeGreaterThan(0);
 			expect(screen.getByText("Config")).toBeInTheDocument();
@@ -121,7 +121,7 @@ describe("AppDetail", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Stop")).toBeInTheDocument();
 			expect(screen.queryByText("Start")).not.toBeInTheDocument();
 		});
@@ -139,7 +139,7 @@ describe("AppDetail", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Start")).toBeInTheDocument();
 			expect(screen.queryByText("Stop")).not.toBeInTheDocument();
 		});
@@ -157,13 +157,13 @@ describe("AppDetail", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Restart")).toBeInTheDocument();
 		});
 
 		await user.click(screen.getByText("Restart"));
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const confirmHeading = screen.getByText("Confirm Action");
 			expect(confirmHeading).toBeInTheDocument();
 			expect(confirmHeading.parentElement).toHaveTextContent(
@@ -183,7 +183,7 @@ describe("AppDetail", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText(/processes/i)).toBeInTheDocument();
 			expect(screen.getByText("web")).toBeInTheDocument();
 			expect(screen.getByText("worker")).toBeInTheDocument();
@@ -201,7 +201,7 @@ describe("AppDetail", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Danger Zone")).toBeInTheDocument();
 			expect(screen.getByText("Delete App")).toBeInTheDocument();
 		});
@@ -219,7 +219,7 @@ describe("AppDetail", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const deleteButtons = screen.getAllByText("Delete App");
 			expect(deleteButtons.length).toBeGreaterThan(0);
 		});
@@ -227,7 +227,7 @@ describe("AppDetail", () => {
 		const deleteButtons = screen.getAllByText("Delete App");
 		await user.click(deleteButtons[0]);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(
 				screen.getByRole("heading", {
 					name: "Delete App",
@@ -249,14 +249,14 @@ describe("AppDetail", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const overviewTabs = screen.getAllByText("Overview");
 			expect(overviewTabs.length).toBeGreaterThan(0);
 		});
 
 		await user.click(screen.getByText("Config"));
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Environment Variables")).toBeInTheDocument();
 		});
 	});
@@ -272,7 +272,7 @@ describe("AppDetail", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText(/git remote/i)).toBeInTheDocument();
 			expect(screen.getByText("dokku@test-app.example.com")).toBeInTheDocument();
 		});
@@ -289,7 +289,7 @@ describe("AppDetail", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("test-app.example.com")).toBeInTheDocument();
 		});
 	});

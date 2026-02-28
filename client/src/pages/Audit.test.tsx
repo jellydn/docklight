@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { Audit } from "./Audit";
@@ -74,7 +74,7 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Audit Logs")).toBeInTheDocument();
 		});
 	});
@@ -93,7 +93,7 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("No audit logs found matching your filters.")).toBeInTheDocument();
 		});
 	});
@@ -107,7 +107,7 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Failed to fetch audit logs")).toBeInTheDocument();
 		});
 	});
@@ -121,7 +121,7 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Filters")).toBeInTheDocument();
 			expect(screen.getByLabelText("Start Date")).toBeInTheDocument();
 			expect(screen.getByLabelText("End Date")).toBeInTheDocument();
@@ -139,7 +139,7 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("dokku apps:create my-app")).toBeInTheDocument();
 			expect(screen.getByText("dokku ps:restart my-app")).toBeInTheDocument();
 			expect(screen.getByText("dokku domains:add my-app invalid-domain")).toBeInTheDocument();
@@ -155,7 +155,7 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const successBadges = screen.getAllByText("Success");
 			expect(successBadges.length).toBeGreaterThan(0);
 		});
@@ -170,7 +170,7 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Error (1)")).toBeInTheDocument();
 		});
 	});
@@ -184,7 +184,7 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("3 logs found")).toBeInTheDocument();
 		});
 	});
@@ -203,7 +203,7 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("1 log found")).toBeInTheDocument();
 		});
 	});
@@ -218,7 +218,7 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const viewButtons = screen.getAllByText("View Details");
 			expect(viewButtons.length).toBeGreaterThan(0);
 		});
@@ -226,7 +226,7 @@ describe("Audit", () => {
 		const viewButtons = screen.getAllByText("View Details");
 		await user.click(viewButtons[0]);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Stdout")).toBeInTheDocument();
 			expect(screen.getByText("Stderr")).toBeInTheDocument();
 		});
@@ -242,7 +242,7 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const viewButtons = screen.getAllByText("View Details");
 			expect(viewButtons.length).toBeGreaterThan(0);
 		});
@@ -250,7 +250,7 @@ describe("Audit", () => {
 		const viewButtons = screen.getAllByText("View Details");
 		await user.click(viewButtons[0]);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const hideButtons = screen.getAllByText("Hide Details");
 			expect(hideButtons.length).toBeGreaterThan(0);
 		});
@@ -258,7 +258,7 @@ describe("Audit", () => {
 		const hideButtons = screen.getAllByText("Hide Details");
 		await user.click(hideButtons[0]);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.queryByText("Stdout")).not.toBeInTheDocument();
 		});
 	});
@@ -273,14 +273,14 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByLabelText("Command Search")).toBeInTheDocument();
 		});
 
 		const searchInput = screen.getByLabelText("Command Search");
 		await user.type(searchInput, "create");
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(searchInput).toHaveValue("create");
 		});
 	});
@@ -294,7 +294,7 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Reset Filters")).toBeInTheDocument();
 		});
 	});
@@ -308,7 +308,7 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const viewButtons = screen.getAllByText("View Details");
 			expect(viewButtons.length).toBeGreaterThan(0);
 		});
@@ -316,7 +316,7 @@ describe("Audit", () => {
 		const viewButtons = screen.getAllByText("View Details");
 		await userEvent.click(viewButtons[2]); // Click the one with empty stdout
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("No output")).toBeInTheDocument();
 		});
 	});
@@ -330,7 +330,7 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const viewButtons = screen.getAllByText("View Details");
 			expect(viewButtons.length).toBeGreaterThan(0);
 		});
@@ -338,7 +338,7 @@ describe("Audit", () => {
 		const viewButtons = screen.getAllByText("View Details");
 		await userEvent.click(viewButtons[0]); // Click the one with empty stderr
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("No errors")).toBeInTheDocument();
 		});
 	});

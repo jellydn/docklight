@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { Plugins } from "./Plugins.js";
@@ -72,7 +72,7 @@ describe("Plugins", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Plugins")).toBeInTheDocument();
 		});
 	});
@@ -86,7 +86,7 @@ describe("Plugins", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("No plugins found")).toBeInTheDocument();
 		});
 	});
@@ -100,7 +100,7 @@ describe("Plugins", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Failed to load plugins")).toBeInTheDocument();
 		});
 	});
@@ -114,7 +114,7 @@ describe("Plugins", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Install Plugin")).toBeInTheDocument();
 			expect(screen.getByPlaceholderText("Repository URL or owner/repo")).toBeInTheDocument();
 			expect(screen.getByPlaceholderText("Plugin name (optional)")).toBeInTheDocument();
@@ -131,7 +131,7 @@ describe("Plugins", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Installed Plugins")).toBeInTheDocument();
 			expect(screen.getByText("dokku-postgres")).toBeInTheDocument();
 			expect(screen.getByText("dokku-redis")).toBeInTheDocument();
@@ -148,7 +148,7 @@ describe("Plugins", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			// The enabled plugin with version shows "Status: Enabled • v1.0.0"
 			const enabledStatusElements = screen.getAllByText(/Status: Enabled/);
 			expect(enabledStatusElements.length).toBeGreaterThan(0);
@@ -167,7 +167,7 @@ describe("Plugins", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const disableButtons = screen.getAllByText("Disable");
 			expect(disableButtons.length).toBeGreaterThan(0);
 		});
@@ -182,7 +182,7 @@ describe("Plugins", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const enableButtons = screen.getAllByText("Enable");
 			expect(enableButtons.length).toBeGreaterThan(0);
 		});
@@ -197,7 +197,7 @@ describe("Plugins", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const uninstallButtons = screen.getAllByText("Uninstall");
 			expect(uninstallButtons.length).toBe(3);
 		});
@@ -212,7 +212,7 @@ describe("Plugins", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Postgres")).toBeInTheDocument();
 			expect(screen.getByText("Redis")).toBeInTheDocument();
 			expect(screen.getByText("MySQL")).toBeInTheDocument();
@@ -231,13 +231,13 @@ describe("Plugins", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Postgres")).toBeInTheDocument();
 		});
 
 		await user.click(screen.getByText("Postgres"));
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const repoInput = screen.getByPlaceholderText("Repository URL or owner/repo");
 			const nameInput = screen.getByPlaceholderText("Plugin name (optional)");
 			expect(repoInput).toHaveValue("dokku/dokku-postgres");
@@ -254,7 +254,7 @@ describe("Plugins", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const installButton = screen.getByText("Install").closest("button");
 			expect(installButton).toBeDisabled();
 		});
@@ -270,7 +270,7 @@ describe("Plugins", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const installButton = screen.getByText("Install").closest("button");
 			expect(installButton).toBeDisabled();
 		});
@@ -278,7 +278,7 @@ describe("Plugins", () => {
 		const repoInput = screen.getByPlaceholderText("Repository URL or owner/repo");
 		await user.type(repoInput, "dokku/dokku-postgres");
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const installButton = screen.getByText("Install").closest("button");
 			expect(installButton).not.toBeDisabled();
 		});

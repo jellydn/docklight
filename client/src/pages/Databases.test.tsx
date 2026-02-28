@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { Databases } from "./Databases.js";
@@ -82,7 +82,7 @@ describe("Databases", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Databases")).toBeInTheDocument();
 		});
 	});
@@ -100,7 +100,7 @@ describe("Databases", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("No databases found")).toBeInTheDocument();
 		});
 	});
@@ -114,7 +114,7 @@ describe("Databases", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Failed to load data")).toBeInTheDocument();
 		});
 	});
@@ -132,7 +132,7 @@ describe("Databases", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Install Dokku Plugin")).toBeInTheDocument();
 			expect(screen.getByPlaceholderText("Repository URL or owner/repo")).toBeInTheDocument();
 		});
@@ -151,7 +151,7 @@ describe("Databases", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Create New Database")).toBeInTheDocument();
 			expect(screen.getByText("Select plugin")).toBeInTheDocument();
 			expect(screen.getByPlaceholderText("Database name")).toBeInTheDocument();
@@ -171,7 +171,7 @@ describe("Databases", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("postgres Databases")).toBeInTheDocument();
 			expect(screen.getByText("redis Databases")).toBeInTheDocument();
 			expect(screen.getByText("postgres-test-db")).toBeInTheDocument();
@@ -192,7 +192,7 @@ describe("Databases", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("postgres-test-db")).toBeInTheDocument();
 			expect(screen.getAllByText(/plugin/i).length).toBeGreaterThan(0);
 			expect(screen.getAllByText(/linked apps/i).length).toBeGreaterThan(0);
@@ -213,7 +213,7 @@ describe("Databases", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const myAppElements = screen.getAllByText("my-app");
 			expect(myAppElements.length).toBeGreaterThan(0);
 		});
@@ -232,7 +232,7 @@ describe("Databases", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const noLinkedApps = screen.getAllByText("No linked apps");
 			expect(noLinkedApps.length).toBeGreaterThan(0);
 		});
@@ -251,7 +251,7 @@ describe("Databases", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Postgres")).toBeInTheDocument();
 			expect(screen.getByText("Redis")).toBeInTheDocument();
 			expect(screen.getByText("MySQL")).toBeInTheDocument();
@@ -272,7 +272,7 @@ describe("Databases", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getAllByText("my-app").length).toBeGreaterThan(0);
 		});
 
@@ -280,7 +280,7 @@ describe("Databases", () => {
 		expect(unlinkButtons.length).toBeGreaterThan(0);
 		await user.click(unlinkButtons[0]);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Confirm Unlink")).toBeInTheDocument();
 		});
 	});
@@ -299,7 +299,7 @@ describe("Databases", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const destroyButtons = screen.getAllByText("Destroy Database");
 			expect(destroyButtons.length).toBeGreaterThan(0);
 		});
@@ -308,7 +308,7 @@ describe("Databases", () => {
 		expect(destroyButtons.length).toBeGreaterThan(0);
 		await user.click(destroyButtons[0]);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Confirm Destroy")).toBeInTheDocument();
 		});
 	});

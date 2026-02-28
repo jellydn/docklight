@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { Dashboard } from "./Dashboard";
@@ -54,13 +54,8 @@ describe("Dashboard", () => {
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
-		vi.useFakeTimers();
 		const { apiFetch } = await import("../lib/api.js");
 		apiFetchMock = apiFetch as any;
-	});
-
-	afterEach(() => {
-		vi.useRealTimers();
 	});
 
 	it("should render loading state", () => {
@@ -90,7 +85,7 @@ describe("Dashboard", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Dashboard")).toBeInTheDocument();
 			expect(screen.getByText("Server Health")).toBeInTheDocument();
 		});
@@ -110,7 +105,7 @@ describe("Dashboard", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("CPU")).toBeInTheDocument();
 			expect(screen.getByText("Memory")).toBeInTheDocument();
 			expect(screen.getByText("Disk")).toBeInTheDocument();
@@ -135,7 +130,7 @@ describe("Dashboard", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Apps")).toBeInTheDocument();
 			expect(screen.getByText("my-app")).toBeInTheDocument();
 			expect(screen.getByText("another-app")).toBeInTheDocument();
@@ -156,7 +151,7 @@ describe("Dashboard", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Recent Activity")).toBeInTheDocument();
 			expect(screen.getByText("dokku apps:list")).toBeInTheDocument();
 			expect(screen.getByText("dokku ps:restart my-app")).toBeInTheDocument();
@@ -177,7 +172,7 @@ describe("Dashboard", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("No apps found")).toBeInTheDocument();
 		});
 	});
@@ -196,7 +191,7 @@ describe("Dashboard", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("No recent activity")).toBeInTheDocument();
 		});
 	});
@@ -210,13 +205,12 @@ describe("Dashboard", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("Failed to load data")).toBeInTheDocument();
 		});
 	});
 
 	it("should refresh data when refresh button is clicked", async () => {
-		vi.useRealTimers();
 		const user = userEvent.setup();
 		let fetchCount = 0;
 		apiFetchMock.mockImplementation((endpoint: string) => {
@@ -235,7 +229,7 @@ describe("Dashboard", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("45.5%")).toBeInTheDocument();
 		});
 
@@ -243,7 +237,7 @@ describe("Dashboard", () => {
 		const refreshButton = screen.getByText("Refresh");
 		await user.click(refreshButton);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(fetchCount).toBeGreaterThan(initialCallCount);
 		});
 	});
@@ -262,7 +256,7 @@ describe("Dashboard", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			const createButtons = screen.getAllByText("Create App");
 			expect(createButtons.length).toBeGreaterThan(0);
 		});
@@ -282,7 +276,7 @@ describe("Dashboard", () => {
 			</MemoryRouter>
 		);
 
-		await vi.waitFor(() => {
+		await waitFor(() => {
 			expect(screen.getByText("running")).toBeInTheDocument();
 			expect(screen.getByText("stopped")).toBeInTheDocument();
 		});
