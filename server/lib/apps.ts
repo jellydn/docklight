@@ -266,13 +266,14 @@ function parseProcesses(stdout: string): Record<string, number> {
 }
 
 export async function createApp(
-	name: string
-): Promise<CommandResult | { error: string; exitCode: number }> {
+	name: string,
+): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
 		return {
 			error: "Invalid app name",
-			command: "",
+			command: "create-app-validation",
 			exitCode: 400,
+			stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
 		};
 	}
 

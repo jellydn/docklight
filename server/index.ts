@@ -95,8 +95,15 @@ app.post("/api/apps", async (req, res) => {
 	}
 
 	const result = await createApp(name);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
 	clearPrefix("apps:");
-	res.json(result);
+	res.status(201).json({ success: true, name });
 });
 
 app.get("/api/apps/:name", async (req, res) => {
