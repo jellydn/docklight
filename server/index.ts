@@ -170,6 +170,12 @@ app.get("/api/databases", async (_req, res) => {
 	}
 
 	const databases = await getDatabases();
+	if (!Array.isArray(databases)) {
+		logger.error({ databases }, "Failed to fetch databases");
+		res.status(databases.exitCode >= 400 ? databases.exitCode : 500).json(databases);
+		return;
+	}
+
 	set(cacheKey, databases);
 	res.json(databases);
 });

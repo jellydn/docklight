@@ -2,7 +2,9 @@
  * Simple in-memory cache with TTL support
  */
 
-const CACHE_TTL = Number.parseInt(process.env.CACHE_TTL ?? "30000", 10);
+const DEFAULT_TTL = 30000;
+const parsed = Number.parseInt(process.env.CACHE_TTL ?? "", 10);
+const CACHE_TTL = Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_TTL;
 
 interface CacheEntry<T> {
 	value: T;
@@ -69,15 +71,17 @@ export function clearPrefix(prefix: string): void {
  * Get cache statistics (useful for debugging).
  */
 export function getStats(): { size: number; keys: string[] } {
-	// Clean expired entries first
+	const activeKeys: string[] = [];
 	for (const [key, entry] of cache.entries()) {
 		if (isExpired(entry)) {
 			cache.delete(key);
+		} else {
+			activeKeys.push(key);
 		}
 	}
 
 	return {
-		size: cache.size,
-		keys: [...cache.keys()],
+		size: activeKeys.length,
+		keys: activeKeys,
 	};
 }
