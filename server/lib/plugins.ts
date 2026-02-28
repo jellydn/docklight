@@ -93,7 +93,7 @@ export async function getPlugins(): Promise<PluginInfo[] | PluginInputError> {
 	const result = await executeCommand("dokku plugin:list");
 	if (result.exitCode !== 0) {
 		return {
-			error: "Failed to list plugins",
+			error: "Failed to list plugins. Check that DOCKLIGHT_DOKKU_SSH_TARGET is configured correctly. See https://github.com/jellydn/docklight/blob/main/docs/deployment.md",
 			command: result.command,
 			exitCode: result.exitCode,
 			stderr: result.stderr,
@@ -117,6 +117,8 @@ export async function installPlugin(
 			error: "Plugin repository is required",
 			command: "",
 			exitCode: 400,
+			stdout: "",
+			stderr: "",
 		};
 	}
 
@@ -125,6 +127,8 @@ export async function installPlugin(
 			error: "Plugin repository contains invalid characters",
 			command: "",
 			exitCode: 400,
+			stdout: "",
+			stderr: "",
 		};
 	}
 
@@ -134,6 +138,8 @@ export async function installPlugin(
 			error: "Plugin name contains invalid characters",
 			command: "",
 			exitCode: 400,
+			stdout: "",
+			stderr: "",
 		};
 	}
 
@@ -141,7 +147,27 @@ export async function installPlugin(
 		? `dokku plugin:install ${normalizedRepository} ${normalizedName}`
 		: `dokku plugin:install ${normalizedRepository}`;
 
-	return executeCommandAsRoot(command, 30000, sudoPassword);
+	return executePluginCommand(command, sudoPassword);
+}
+
+async function executePluginCommand(
+	command: string,
+	sudoPassword?: string
+): Promise<CommandResult | PluginInputError> {
+	const result = await executeCommandAsRoot(command, 30000, sudoPassword);
+
+	// Add helpful error message for sudo-related failures
+	if (
+		result.exitCode !== 0 &&
+		/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty|Root-required command cannot run/i.test(
+			result.stderr
+		)
+	) {
+		result.stderr +=
+			"\n\nPlugin commands require root access. See https://github.com/jellydn/docklight/blob/main/docs/deployment.md#plugin-management-sudo-errors";
+	}
+
+	return result;
 }
 
 export async function uninstallPlugin(
@@ -150,7 +176,7 @@ export async function uninstallPlugin(
 ): Promise<CommandResult | PluginInputError> {
 	const validationError = validatePluginName(name);
 	if (validationError) return validationError;
-	return executeCommandAsRoot(`dokku plugin:uninstall ${name.trim()}`, 30000, sudoPassword);
+	return executePluginCommand(`dokku plugin:uninstall ${name.trim()}`, sudoPassword);
 }
 
 export async function enablePlugin(
@@ -159,7 +185,7 @@ export async function enablePlugin(
 ): Promise<CommandResult | PluginInputError> {
 	const validationError = validatePluginName(name);
 	if (validationError) return validationError;
-	return executeCommandAsRoot(`dokku plugin:enable ${name.trim()}`, 30000, sudoPassword);
+	return executePluginCommand(`dokku plugin:enable ${name.trim()}`, sudoPassword);
 }
 
 export async function disablePlugin(
@@ -168,5 +194,5 @@ export async function disablePlugin(
 ): Promise<CommandResult | PluginInputError> {
 	const validationError = validatePluginName(name);
 	if (validationError) return validationError;
-	return executeCommandAsRoot(`dokku plugin:disable ${name.trim()}`, 30000, sudoPassword);
+	return executePluginCommand(`dokku plugin:disable ${name.trim()}`, sudoPassword);
 }
