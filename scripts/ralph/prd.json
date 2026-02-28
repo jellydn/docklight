@@ -189,8 +189,8 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": false,
-      "notes": "Same pattern issue that was fixed for POST /api/apps in PR review but not applied to destroy/stop/start endpoints."
+      "passes": true,
+      "notes": "Fixed. Now destroy, stop, and start endpoints only clear cache on success (exitCode === 0)."
     },
     {
       "id": "US-012",

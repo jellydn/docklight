@@ -113,3 +113,29 @@ Started: Sat Feb 28 12:43:28 +08 2026
   - Stop confirmation dialog explains the app will not serve requests until started again
   - ChromeDevTools MCP not configured - skipped browser verification
 ---
+
+## Sat Feb 28 2026 - US-010
+- Fixed CreateAppDialog Zod validation error on success (client/src/components/CreateAppDialog.tsx, client/src/lib/schemas.ts)
+- Added CreateAppResultSchema in schemas.ts (z.object({ success: z.boolean(), name: z.string() }))
+- Updated CreateAppDialog to use CreateAppResultSchema instead of CommandResultSchema for POST /api/apps call
+- Typecheck and lint pass
+- Files changed: client/src/components/CreateAppDialog.tsx, client/src/lib/schemas.ts, scripts/ralph/prd.json
+- **Learnings for future iterations:**
+  - POST /api/apps returns { success, name } but other endpoints return CommandResult - need different schemas
+  - ChromeDevTools MCP not configured - skipped browser verification
+---
+
+## Sat Feb 28 2026 - US-011
+[Session: https://opncd.ai/s/5cfeab3c]
+- Fixed unconditional cache clearing on destroy/stop/start endpoints (server/index.ts)
+- DELETE /api/apps/:name now only calls clearPrefix('apps:') when result.exitCode === 0
+- POST /api/apps/:name/stop now only calls clearPrefix('apps:') when result.exitCode === 0
+- POST /api/apps/:name/start now only calls clearPrefix('apps:') when result.exitCode === 0
+- On failure, returns appropriate HTTP status code (400-599) and error response
+- Typecheck and lint pass
+- Files changed: server/index.ts
+- **Learnings for future iterations:**
+  - Follow same pattern as POST /api/apps (create app) endpoint for consistency
+  - Use exitCode >= 400 && exitCode < 600 to determine if it's an HTTP error code
+  - Pre-existing test failures (vi.mocked not a function issue) - not caused by this change
+---

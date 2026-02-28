@@ -129,6 +129,13 @@ app.post("/api/apps/:name/rebuild", async (req, res) => {
 app.post("/api/apps/:name/stop", async (req, res) => {
 	const { name } = req.params;
 	const result = await stopApp(name);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
 	clearPrefix("apps:");
 	res.json(result);
 });
@@ -136,6 +143,13 @@ app.post("/api/apps/:name/stop", async (req, res) => {
 app.post("/api/apps/:name/start", async (req, res) => {
 	const { name } = req.params;
 	const result = await startApp(name);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
 	clearPrefix("apps:");
 	res.json(result);
 });
@@ -156,6 +170,13 @@ app.delete("/api/apps/:name", async (req, res) => {
 		return;
 	}
 	const result = await destroyApp(name, confirmName);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
 	clearPrefix("apps:");
 	res.json(result);
 });
