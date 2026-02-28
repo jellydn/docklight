@@ -5,6 +5,7 @@ import { logger } from "./logger.js";
 
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const AUTH_MAX_REQUESTS = 5;
+const AUTH_CHECK_MAX_REQUESTS = 300; // lenient limit for status-check endpoints
 
 /**
  * Rate limiter configuration for authentication endpoints.
@@ -61,6 +62,24 @@ export const authRateLimiter: RequestHandler = rateLimit({
 			{ path: req.path },
 			"Could not determine IP for rate limiting. Using random key as fallback."
 		);
+		return randomUUID();
+	},
+});
+
+/**
+ * Rate limiter for auth status-check endpoints (e.g. /auth/me, /auth/mode).
+ * Allows up to 300 requests per 15-minute window to avoid impacting normal usage
+ * while still preventing enumeration or abuse.
+ */
+export const authCheckRateLimiter: RequestHandler = rateLimit({
+	windowMs: WINDOW_MS,
+	max: AUTH_CHECK_MAX_REQUESTS,
+	standardHeaders: true,
+	legacyHeaders: false,
+	keyGenerator: (req) => {
+		if (req.ip) {
+			return ipKeyGenerator(req.ip);
+		}
 		return randomUUID();
 	},
 });

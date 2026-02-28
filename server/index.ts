@@ -33,7 +33,17 @@ import {
 	linkDatabase,
 	unlinkDatabase,
 } from "./lib/databases.js";
-import { getAuditLogs, getRecentCommands, getAllUsers, createUser, getUserById, updateUser, deleteUser, getUserCount } from "./lib/db.js";
+import {
+	getAuditLogs,
+	getRecentCommands,
+	getAllUsers,
+	createUser,
+	getUserById,
+	updateUser,
+	deleteUser,
+	getUserCount,
+	type UserRole,
+} from "./lib/db.js";
 import { addDomain, getDomains, removeDomain } from "./lib/domains.js";
 import { logger } from "./lib/logger.js";
 import {
@@ -69,7 +79,7 @@ import {
 } from "./lib/plugins.js";
 import { getServerHealth } from "./lib/server.js";
 import { enableSSL, getSSL, renewSSL } from "./lib/ssl.js";
-import { authRateLimiter } from "./lib/rate-limiter.js";
+import { authRateLimiter, authCheckRateLimiter } from "./lib/rate-limiter.js";
 import { setupLogStreaming } from "./lib/websocket.js";
 import type { CommandResult } from "./lib/executor.js";
 
@@ -130,7 +140,7 @@ app.post("/api/auth/logout", (_req, res) => {
 	res.json({ success: true });
 });
 
-app.get("/api/auth/me", authMiddleware, (req, res) => {
+app.get("/api/auth/me", authCheckRateLimiter, authMiddleware, (req, res) => {
 	const user = req.user;
 	res.json({
 		authenticated: true,
@@ -142,7 +152,7 @@ app.get("/api/auth/me", authMiddleware, (req, res) => {
 });
 
 // Bootstrap: expose whether multi-user mode is active (no auth required)
-app.get("/api/auth/mode", (_req, res) => {
+app.get("/api/auth/mode", authCheckRateLimiter, (_req, res) => {
 	res.json({ multiUser: getUserCount() > 0 });
 });
 
@@ -193,7 +203,7 @@ app.put("/api/users/:id", requireAdmin, async (req, res) => {
 		return;
 	}
 
-	const updates: { role?: "admin" | "operator" | "viewer"; passwordHash?: string } = {};
+	const updates: { role?: UserRole; passwordHash?: string } = {};
 
 	if (role !== undefined) {
 		if (!["admin", "operator", "viewer"].includes(role)) {

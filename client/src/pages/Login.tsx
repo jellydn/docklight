@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { apiFetch } from "../lib/api.js";
+import { AuthModeSchema } from "../lib/schemas.js";
 
 export function Login() {
 	const [username, setUsername] = useState("");
@@ -21,7 +22,7 @@ export function Login() {
 
 		const checkMode = async () => {
 			try {
-				const result = await apiFetch<{ multiUser: boolean }>("/auth/mode");
+				const result = await apiFetch("/auth/mode", AuthModeSchema);
 				setMultiUser(result.multiUser);
 			} catch {
 				setMultiUser(false);

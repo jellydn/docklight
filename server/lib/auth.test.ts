@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Request, Response, NextFunction } from "express";
 
 vi.mock("./db.js", () => ({
@@ -135,7 +135,7 @@ describe("generateToken / verifyToken", () => {
 
 describe("authMiddleware", () => {
 	it("should reject request without cookie", () => {
-		const req = { cookies: {} } as Request;
+		const req = { cookies: {} } as unknown as Request;
 		const res = {
 			status: vi.fn().mockReturnThis(),
 			json: vi.fn(),
@@ -149,7 +149,7 @@ describe("authMiddleware", () => {
 	});
 
 	it("should reject request with invalid token", () => {
-		const req = { cookies: { session: "badtoken" } } as Request;
+		const req = { cookies: { session: "badtoken" } } as unknown as Request;
 		const res = {
 			status: vi.fn().mockReturnThis(),
 			json: vi.fn(),
@@ -164,21 +164,24 @@ describe("authMiddleware", () => {
 
 	it("should call next() and attach user for valid token", () => {
 		const token = generateToken({ id: 1, username: "alice", role: "admin" });
-		const req = { cookies: { session: token } } as Request;
+		const req = { cookies: { session: token } } as unknown as Request;
 		const res = {} as Response;
 		const next = vi.fn() as NextFunction;
 
 		authMiddleware(req, res, next);
 
 		expect(next).toHaveBeenCalled();
-		expect((req as Request & { user?: JWTPayload }).user?.username).toBe("alice");
+		expect((req as unknown as { user?: JWTPayload }).user?.username).toBe("alice");
 	});
 });
 
 describe("requireRole", () => {
 	it("should allow legacy token (no role) through", () => {
 		const token = generateToken(); // no user → no role
-		const req = { cookies: { session: token }, user: { authenticated: true } } as Request;
+		const req = {
+			cookies: { session: token },
+			user: { authenticated: true },
+		} as unknown as Request;
 		const res = {
 			status: vi.fn().mockReturnThis(),
 			json: vi.fn(),
@@ -193,7 +196,7 @@ describe("requireRole", () => {
 	it("should allow matching role", () => {
 		const req = {
 			user: { authenticated: true, userId: 1, username: "alice", role: "admin" },
-		} as Request;
+		} as unknown as Request;
 		const res = {
 			status: vi.fn().mockReturnThis(),
 			json: vi.fn(),
@@ -208,7 +211,7 @@ describe("requireRole", () => {
 	it("should reject insufficient role", () => {
 		const req = {
 			user: { authenticated: true, userId: 2, username: "bob", role: "viewer" },
-		} as Request;
+		} as unknown as Request;
 		const res = {
 			status: vi.fn().mockReturnThis(),
 			json: vi.fn(),
