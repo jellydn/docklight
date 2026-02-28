@@ -9,7 +9,10 @@
     "typecheck": "tsc -b",
     "lint": "biome lint .",
     "format": "biome format --write .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -27,11 +30,17 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "@vitest/ui": "^4.0.18",
     "autoprefixer": "^10.4.27",
+    "happy-dom": "^20.7.0",
+    "jsdom": "^28.1.0",
     "postcss": "^8.5.6",
     "tailwindcss": "4",
     "typescript": "~5.9.3",
