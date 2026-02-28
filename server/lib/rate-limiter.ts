@@ -2,6 +2,8 @@ import type { RequestHandler } from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { logger } from "./logger.js";
 
+const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
 /**
  * Rate limiter configuration for authentication endpoints.
  *
@@ -11,7 +13,7 @@ import { logger } from "./logger.js";
  * - Returns 429 status with retry-after header when limit exceeded
  */
 export const authRateLimiter: RequestHandler = rateLimit({
-	windowMs: 15 * 60 * 1000, // 15 minutes
+	windowMs: WINDOW_MS,
 	max: 5, // 5 attempts per window
 	standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
 	legacyHeaders: false, // Disable `X-RateLimit-*` headers
@@ -23,7 +25,7 @@ export const authRateLimiter: RequestHandler = rateLimit({
 	 * Logs the rate limit event and returns a 429 status with retry-after header.
 	 */
 	handler: (_req, res) => {
-		const retryAfter = Math.ceil(15 * 60); // 15 minutes in seconds
+		const retryAfter = Math.ceil(WINDOW_MS / 1000);
 
 		logger.warn(
 			{
