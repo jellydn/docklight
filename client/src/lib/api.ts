@@ -1,4 +1,4 @@
-import type { ZodSchema, ZodError } from "zod";
+import { ZodError, type ZodSchema } from "zod";
 import { logger } from "./logger.js";
 import type { ApiError } from "./schemas.js";
 
@@ -66,20 +66,22 @@ export async function apiFetch<T>(
 		try {
 			return schema.parse(data);
 		} catch (err) {
-			const zodError = err as ZodError<unknown>;
-			const errorDetails = zodError.issues
-				.map((issue) => {
-					const path = issue.path.join(".");
-					return `${path}: ${issue.message}`;
-				})
-				.join(", ");
+			if (err instanceof ZodError) {
+				const errorDetails = err.issues
+					.map((issue) => {
+						const path = issue.path.join(".");
+						return `${path}: ${issue.message}`;
+					})
+					.join(", ");
 
-			logger.error({ zodError, url }, `API response validation failed: ${errorDetails}`);
+				logger.error({ zodError: err, url }, `API response validation failed: ${errorDetails}`);
 
-			throw new ValidationError(
-				zodError,
-				`API response validation failed for ${path}: ${errorDetails}`
-			);
+				throw new ValidationError(
+					err,
+					`API response validation failed for ${path}: ${errorDetails}`
+				);
+			}
+			throw err;
 		}
 	}
 

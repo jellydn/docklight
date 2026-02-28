@@ -42,7 +42,7 @@ export const AppSchema = z.object({
 	name: z.string(),
 	status: AppStatusSchema,
 	domains: z.array(z.string()),
-	lastDeployTime: z.string().optional(),
+	lastDeployTime: z.string().datetime({ message: "Invalid datetime string" }).optional(),
 });
 
 export type App = z.infer<typeof AppSchema>;
@@ -54,7 +54,7 @@ export const CommandHistorySchema = z.object({
 	exitCode: z.number(),
 	stdout: z.string(),
 	stderr: z.string(),
-	createdAt: z.string(),
+	createdAt: z.string().datetime({ message: "Invalid datetime string" }),
 });
 
 export type CommandHistory = z.infer<typeof CommandHistorySchema>;
@@ -73,7 +73,7 @@ export type AppDetail = z.infer<typeof AppDetailSchema>;
 // SSL status schema
 export const SSLStatusSchema = z.object({
 	active: z.boolean(),
-	expiryDate: z.string().optional(),
+	expiryDate: z.string().datetime({ message: "Invalid datetime string" }).optional(),
 	certProvider: z.string().optional(),
 });
 
@@ -102,14 +102,3 @@ export const PluginInfoSchema = z.object({
 });
 
 export type PluginInfo = z.infer<typeof PluginInfoSchema>;
-
-// Helper type for API responses
-export type ApiResponse<T> =
-	| {
-			success: true;
-			data: T;
-	  }
-	| {
-			success: false;
-			error: ApiError;
-	  };

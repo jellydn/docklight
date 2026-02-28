@@ -160,8 +160,9 @@ export function AppDetail() {
 	};
 
 	const fetchAppDetail = async () => {
+		if (!name) return;
 		try {
-			const appData = await apiFetch(`/apps/${name}`, AppDetailSchema);
+			const appData = await apiFetch(`/apps/${encodeURIComponent(name)}`, AppDetailSchema);
 			setApp(appData);
 			setLoading(false);
 			setError(null);
@@ -180,7 +181,7 @@ export function AppDetail() {
 		if (!pendingAction || !name) return;
 
 		try {
-			const result = await apiFetch(`/apps/${name}/${pendingAction}`, CommandResultSchema, {
+			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/${encodeURIComponent(pendingAction)}`, CommandResultSchema, {
 				method: "POST",
 			});
 			addToast(result.exitCode === 0 ? "success" : "error", `${pendingAction} completed`, result);
@@ -234,7 +235,7 @@ export function AppDetail() {
 
 		for (const change of pendingScaleChanges) {
 			try {
-				const result = await apiFetch(`/apps/${name}/scale`, CommandResultSchema, {
+				const result = await apiFetch(`/apps/${encodeURIComponent(name)}/scale`, CommandResultSchema, {
 					method: "POST",
 					body: JSON.stringify({
 						processType: change.processType,
@@ -269,7 +270,7 @@ export function AppDetail() {
 		setConfigLoading(true);
 		setConfigError(null);
 		try {
-			const config = await apiFetch(`/apps/${name}/config`, ConfigVarsSchema);
+			const config = await apiFetch(`/apps/${encodeURIComponent(name)}/config`, ConfigVarsSchema);
 			setConfigVars(config);
 		} catch (err) {
 			setConfigError(err instanceof Error ? err.message : "Failed to load config vars");
@@ -282,7 +283,7 @@ export function AppDetail() {
 		if (!name || !newConfigKey || !newConfigValue) return;
 
 		try {
-			const result = await apiFetch(`/apps/${name}/config`, CommandResultSchema, {
+			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/config`, CommandResultSchema, {
 				method: "POST",
 				body: JSON.stringify({ key: newConfigKey, value: newConfigValue }),
 			});
@@ -311,7 +312,7 @@ export function AppDetail() {
 
 		try {
 			const result = await apiFetch(
-				`/apps/${name}/config/${pendingRemoveKey}`,
+				`/apps/${encodeURIComponent(name)}/config/${encodeURIComponent(pendingRemoveKey)}`,
 				CommandResultSchema,
 				{
 					method: "DELETE",
@@ -352,7 +353,7 @@ export function AppDetail() {
 		setDomainsLoading(true);
 		setDomainsError(null);
 		try {
-			const domainsData = await apiFetch(`/apps/${name}/domains`, z.array(z.string()));
+			const domainsData = await apiFetch(`/apps/${encodeURIComponent(name)}/domains`, z.array(z.string()));
 			setDomains(domainsData);
 		} catch (err) {
 			setDomainsError(err instanceof Error ? err.message : "Failed to load domains");
@@ -365,7 +366,7 @@ export function AppDetail() {
 		if (!name || !newDomain) return;
 
 		try {
-			const result = await apiFetch(`/apps/${name}/domains`, CommandResultSchema, {
+			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/domains`, CommandResultSchema, {
 				method: "POST",
 				body: JSON.stringify({ domain: newDomain }),
 			});
@@ -422,7 +423,7 @@ export function AppDetail() {
 		setSslLoading(true);
 		setSslError(null);
 		try {
-			const ssl = await apiFetch(`/apps/${name}/ssl`, SSLStatusSchema);
+			const ssl = await apiFetch(`/apps/${encodeURIComponent(name)}/ssl`, SSLStatusSchema);
 			setSslStatus(ssl);
 		} catch (err) {
 			setSslError(err instanceof Error ? err.message : "Failed to load SSL status");
@@ -435,7 +436,7 @@ export function AppDetail() {
 		if (!name) return;
 
 		try {
-			const result = await apiFetch(`/apps/${name}/ssl/enable`, CommandResultSchema, {
+			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/ssl/enable`, CommandResultSchema, {
 				method: "POST",
 			});
 			addToast(result.exitCode === 0 ? "success" : "error", "SSL enabled", result);
@@ -455,7 +456,7 @@ export function AppDetail() {
 		if (!name) return;
 
 		try {
-			const result = await apiFetch(`/apps/${name}/ssl/renew`, CommandResultSchema, {
+			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/ssl/renew`, CommandResultSchema, {
 				method: "POST",
 			});
 			addToast(result.exitCode === 0 ? "success" : "error", "SSL renewed", result);

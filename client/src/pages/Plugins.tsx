@@ -89,8 +89,8 @@ export function Plugins() {
 		try {
 			const result = await apiFetch(
 				action === "uninstall"
-					? `/plugins/${pluginNameValue}`
-					: `/plugins/${pluginNameValue}/${action}`,
+					? `/plugins/${encodeURIComponent(pluginNameValue)}`
+					: `/plugins/${encodeURIComponent(pluginNameValue)}/${action}`,
 				CommandResultSchema,
 				{
 					method: action === "uninstall" ? "DELETE" : "POST",

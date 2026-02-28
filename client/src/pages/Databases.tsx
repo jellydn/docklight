@@ -130,7 +130,7 @@ export function Databases() {
 		if (!linkDbName || !linkAppName) return;
 
 		try {
-			const result = await apiFetch(`/databases/${linkDbName}/link`, CommandResultSchema, {
+			const result = await apiFetch(`/databases/${encodeURIComponent(linkDbName)}/link`, CommandResultSchema, {
 				method: "POST",
 				body: JSON.stringify({ plugin: getDbPlugin(linkDbName), app: linkAppName }),
 			});
@@ -159,7 +159,7 @@ export function Databases() {
 		if (!pendingUnlinkDb || !pendingUnlinkApp) return;
 
 		try {
-			const result = await apiFetch(`/databases/${pendingUnlinkDb}/unlink`, CommandResultSchema, {
+			const result = await apiFetch(`/databases/${encodeURIComponent(pendingUnlinkDb)}/unlink`, CommandResultSchema, {
 				method: "POST",
 				body: JSON.stringify({ plugin: getDbPlugin(pendingUnlinkDb), app: pendingUnlinkApp }),
 			});
@@ -192,7 +192,7 @@ export function Databases() {
 		if (!pendingDestroyDb || confirmDestroyName !== pendingDestroyDb) return;
 
 		try {
-			const result = await apiFetch(`/databases/${pendingDestroyDb}`, CommandResultSchema, {
+			const result = await apiFetch(`/databases/${encodeURIComponent(pendingDestroyDb)}`, CommandResultSchema, {
 				method: "DELETE",
 				body: JSON.stringify({
 					plugin: getDbPlugin(pendingDestroyDb),
