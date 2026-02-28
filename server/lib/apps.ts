@@ -284,19 +284,20 @@ export async function createApp(
 export async function destroyApp(
 	name: string,
 	confirmName: string
-): Promise<CommandResult | { error: string; exitCode: number }> {
+): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
 		return {
 			error: "Invalid app name",
-			command: "",
+			command: "destroy-app-validation",
 			exitCode: 400,
+			stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
 		};
 	}
 
 	if (confirmName !== name) {
 		return {
 			error: "App name confirmation does not match",
-			command: "",
+			command: "destroy-app-validation",
 			exitCode: 400,
 			stderr: "App name confirmation does not match",
 		};
@@ -308,12 +309,13 @@ export async function destroyApp(
 
 export async function restartApp(
 	name: string
-): Promise<CommandResult | { error: string; exitCode: number }> {
+): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
 		return {
 			error: "Invalid app name",
-			command: "",
+			command: "restart-app-validation",
 			exitCode: 400,
+			stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
 		};
 	}
 
@@ -322,12 +324,13 @@ export async function restartApp(
 
 export async function stopApp(
 	name: string
-): Promise<CommandResult | { error: string; exitCode: number }> {
+): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
 		return {
 			error: "Invalid app name",
-			command: "",
+			command: "stop-app-validation",
 			exitCode: 400,
+			stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
 		};
 	}
 
@@ -336,12 +339,13 @@ export async function stopApp(
 
 export async function startApp(
 	name: string
-): Promise<CommandResult | { error: string; exitCode: number }> {
+): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
 		return {
 			error: "Invalid app name",
-			command: "",
+			command: "start-app-validation",
 			exitCode: 400,
+			stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
 		};
 	}
 
@@ -350,12 +354,13 @@ export async function startApp(
 
 export async function rebuildApp(
 	name: string
-): Promise<CommandResult | { error: string; exitCode: number }> {
+): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
 		return {
 			error: "Invalid app name",
-			command: "",
+			command: "rebuild-app-validation",
 			exitCode: 400,
+			stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
 		};
 	}
 
