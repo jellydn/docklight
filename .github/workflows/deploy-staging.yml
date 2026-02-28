@@ -30,7 +30,7 @@ jobs:
           git push staging ${{ github.head_ref }}:main --force
 
       - name: Comment staging URL
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const body = `🚀 Deployed to staging: https://docklight-staging.${process.env.DOKKU_HOST}`;
