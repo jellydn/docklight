@@ -79,9 +79,7 @@ export function AppConfig({
 								<thead>
 									<tr>
 										<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Key</th>
-										<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
-											Value
-										</th>
+										<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Value</th>
 										<th className="px-4 py-2" />
 									</tr>
 								</thead>

@@ -111,9 +111,7 @@ export function AppOverview({
 												min="0"
 												max="100"
 												defaultValue={count}
-												onChange={(e) =>
-													onScaleChange(type, parseInt(e.target.value, 10), count)
-												}
+												onChange={(e) => onScaleChange(type, parseInt(e.target.value, 10), count)}
 												className="w-20 border rounded px-2 py-1"
 											/>
 										</div>

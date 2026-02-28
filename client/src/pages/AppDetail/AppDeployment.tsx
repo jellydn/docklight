@@ -43,10 +43,7 @@ export function AppDeployment({
 			) : (
 				<div className="space-y-4">
 					<div>
-						<label
-							htmlFor="deploy-branch"
-							className="block text-sm font-medium text-gray-700 mb-1"
-						>
+						<label htmlFor="deploy-branch" className="block text-sm font-medium text-gray-700 mb-1">
 							Deploy Branch
 						</label>
 						<input
@@ -57,16 +54,11 @@ export function AppDeployment({
 							placeholder="main"
 							className="w-full max-w-md border rounded px-3 py-2"
 						/>
-						<p className="mt-1 text-sm text-gray-500">
-							The branch to deploy (default: main)
-						</p>
+						<p className="mt-1 text-sm text-gray-500">The branch to deploy (default: main)</p>
 					</div>
 
 					<div>
-						<label
-							htmlFor="build-dir"
-							className="block text-sm font-medium text-gray-700 mb-1"
-						>
+						<label htmlFor="build-dir" className="block text-sm font-medium text-gray-700 mb-1">
 							Build Directory
 						</label>
 						<input
@@ -83,10 +75,7 @@ export function AppDeployment({
 					</div>
 
 					<div>
-						<label
-							htmlFor="builder"
-							className="block text-sm font-medium text-gray-700 mb-1"
-						>
+						<label htmlFor="builder" className="block text-sm font-medium text-gray-700 mb-1">
 							Builder
 						</label>
 						<select
@@ -100,9 +89,7 @@ export function AppDeployment({
 							<option value="dockerfile">Dockerfile</option>
 							<option value="pack">Cloud Native Buildpacks (pack)</option>
 						</select>
-						<p className="mt-1 text-sm text-gray-500">
-							The build strategy to use for this app
-						</p>
+						<p className="mt-1 text-sm text-gray-500">The build strategy to use for this app</p>
 					</div>
 
 					<div className="pt-4">

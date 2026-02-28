@@ -48,9 +48,7 @@ export function AppDockerOptions({
 						return (
 							<div key={phase} className="border rounded-lg p-4">
 								<div className="flex justify-between items-center mb-3">
-									<h3 className="text-sm font-medium text-gray-700 capitalize">
-										{phase} Phase
-									</h3>
+									<h3 className="text-sm font-medium text-gray-700 capitalize">{phase} Phase</h3>
 									{options.length > 0 && (
 										<button
 											onClick={() => onClearPhase(phase)}
@@ -83,9 +81,7 @@ export function AppDockerOptions({
 										))}
 									</ul>
 								) : (
-									<p className="text-gray-500 text-sm mb-4">
-										No {phase} options configured.
-									</p>
+									<p className="text-gray-500 text-sm mb-4">No {phase} options configured.</p>
 								)}
 							</div>
 						);

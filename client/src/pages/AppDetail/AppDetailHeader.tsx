@@ -9,11 +9,8 @@ export function AppDetailHeader({
 	onRebuild,
 }: AppDetailHeaderProps) {
 	const getStatusBadge = () => {
-		const color =
-			status === "running" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
-		return (
-			<span className={`px-3 py-1 rounded-full text-sm font-medium ${color}`}>{status}</span>
-		);
+		const color = status === "running" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
+		return <span className={`px-3 py-1 rounded-full text-sm font-medium ${color}`}>{status}</span>;
 	};
 
 	return (

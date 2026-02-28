@@ -1454,8 +1454,7 @@ export function AppDetail() {
 				confirmText="Remove"
 			>
 				<p>
-					Are you sure you want to remove environment variable{" "}
-					<strong>{pendingRemoveKey}</strong>?
+					Are you sure you want to remove environment variable <strong>{pendingRemoveKey}</strong>?
 				</p>
 			</ConfirmDialog>
 
@@ -1483,8 +1482,8 @@ export function AppDetail() {
 				confirmText="Stop App"
 			>
 				<p>
-					Are you sure you want to stop <strong>{name}</strong>? The app will not serve
-					requests until started again.
+					Are you sure you want to stop <strong>{name}</strong>? The app will not serve requests
+					until started again.
 				</p>
 			</ConfirmDialog>
 
@@ -1497,7 +1496,9 @@ export function AppDetail() {
 				submitting={starting}
 				confirmText="Start App"
 			>
-				<p>Are you sure you want to start <strong>{name}</strong>?</p>
+				<p>
+					Are you sure you want to start <strong>{name}</strong>?
+				</p>
 			</ConfirmDialog>
 
 			{/* Domain Remove Dialog */}
@@ -1555,8 +1556,8 @@ export function AppDetail() {
 				confirmText="Clear All"
 			>
 				<p>
-					Are you sure you want to remove all port mappings for <strong>{name}</strong>? This
-					will remove all custom port configurations.
+					Are you sure you want to remove all port mappings for <strong>{name}</strong>? This will
+					remove all custom port configurations.
 				</p>
 			</ConfirmDialog>
 
@@ -1575,8 +1576,7 @@ export function AppDetail() {
 					confirmText="Remove"
 				>
 					<p>
-						Are you sure you want to remove buildpack{" "}
-						<strong>{pendingRemoveBuildpack.url}</strong>?
+						Are you sure you want to remove buildpack <strong>{pendingRemoveBuildpack.url}</strong>?
 					</p>
 				</ConfirmDialog>
 			)}
@@ -1592,8 +1592,8 @@ export function AppDetail() {
 				confirmText="Clear All"
 			>
 				<p>
-					Are you sure you want to remove all custom buildpacks for <strong>{name}</strong>?
-					This will revert to auto-detected buildpacks.
+					Are you sure you want to remove all custom buildpacks for <strong>{name}</strong>? This
+					will revert to auto-detected buildpacks.
 				</p>
 			</ConfirmDialog>
 

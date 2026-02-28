@@ -85,8 +85,8 @@ export function DeleteAppDialog({
 			<div className="bg-white rounded p-6 max-w-md w-full">
 				<h2 className="text-lg font-semibold mb-4 text-red-600">Delete App</h2>
 				<p className="mb-4">
-					This action is <strong>irreversible</strong>. The app <strong>{appName}</strong> and
-					all its data will be permanently deleted.
+					This action is <strong>irreversible</strong>. The app <strong>{appName}</strong> and all
+					its data will be permanently deleted.
 				</p>
 				<div className="mb-4">
 					<label

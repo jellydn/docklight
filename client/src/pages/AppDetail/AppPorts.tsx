@@ -75,9 +75,7 @@ export function AppPorts({
 									</thead>
 									<tbody className="divide-y divide-gray-200">
 										{ports.map((port) => (
-											<tr
-												key={`${port.scheme}-${port.hostPort}-${port.containerPort}`}
-											>
+											<tr key={`${port.scheme}-${port.hostPort}-${port.containerPort}`}>
 												<td className="px-3 py-2">
 													<code className="bg-gray-100 px-2 py-1 rounded text-sm">
 														{port.scheme}
@@ -167,9 +165,7 @@ export function AppPorts({
 										</span>
 									)}
 									{proxyReport?.type && (
-										<span className="ml-4 text-sm text-gray-500">
-											Type: {proxyReport.type}
-										</span>
+										<span className="ml-4 text-sm text-gray-500">Type: {proxyReport.type}</span>
 									)}
 								</div>
 								<div className="flex gap-2">
