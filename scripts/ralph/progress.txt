@@ -171,105 +171,57 @@ Started: Sat Feb 28 18:28:47 +08 2026
   - ChromeDevTools MCP not configured - skipped browser verification
 ---
 
-## Sat Feb 28 2026 - US-002
-- Implemented Proxy management API endpoints (server/lib/ports.ts, server/index.ts)
-- Added getProxyReport(name) that runs 'dokku proxy:report <name>' and parses enabled status and proxy type
-- Added enableProxy(name) that runs 'dokku proxy:enable <name>'
-- Added disableProxy(name) that runs 'dokku proxy:disable <name>'
-- Added routes: GET /api/apps/:name/proxy, POST /api/apps/:name/proxy/enable, POST /api/apps/:name/proxy/disable
-- Validates app name with isValidAppName()
-- Typecheck and lint pass
-- Files changed: server/lib/ports.ts, server/index.ts
-- **Learnings for future iterations:**
-  - Follow same pattern as ports.ts functions for consistency
-  - Use stripAnsi() to clean CLI output
-  - ProxyReport interface: { enabled: boolean, type: string }
----
-
-## [Date/Time] - US-003
-- Implemented Buildpacks management API endpoints (server/lib/buildpacks.ts, server/index.ts)
-- Created getBuildpacks, addBuildpack, removeBuildpack, clearBuildpacks functions
-- Added routes: GET /api/apps/:name/buildpacks, POST /api/apps/:name/buildpacks, DELETE /api/apps/:name/buildpacks, DELETE /api/apps/:name/buildpacks/all
-- Validates app name with isValidAppName()
-- Added optional index parameter for addBuildpack with --index flag
-- Clear cache after mutations (only on success)
-- Typecheck and lint pass
-- Files changed: server/lib/buildpacks.ts (new), server/index.ts
-- **Learnings for future iterations:**
-  - Follow same pattern as ports.ts for consistency
-  - Use stripAnsi() to clean CLI output
-  - Cache clearing only happens on successful operations (exitCode === 0)
-  - Buildpack index is 1-based in Dokku CLI output
----
-
-## Sat Feb 28 2026 - US-004
-[Session: https://opncd.ai/s/5cfeab3c]
-- Implemented Docker Options management API endpoints (server/lib/docker-options.ts, server/index.ts)
-- Created getDockerOptions, addDockerOption, removeDockerOption, clearDockerOptions functions
-- Added routes: GET /api/apps/:name/docker-options, POST /api/apps/:name/docker-options, DELETE /api/apps/:name/docker-options, DELETE /api/apps/:name/docker-options/all
-- Validates phase is one of: build, deploy, run
-- Validates app name with isValidAppName()
-- Clear cache after mutations (only on success)
-- Typecheck and lint pass
-- Files changed: server/lib/docker-options.ts (new), server/index.ts
-- **Learnings for future iterations:**
-  - Follow same pattern as buildpacks.ts for consistency
-  - Use stripAnsi() to clean CLI output
-  - Use optional chain (?.) when accessing regex match groups to satisfy biome lint
-  - Docker options are space-separated in the CLI output
----
-
-## [Date/Time] - US-005
-- Implemented Network configuration API endpoints (server/lib/network.ts, server/index.ts)
-- Created getNetworkReport, setNetworkProperty, clearNetworkProperty functions
-- Added routes: GET /api/apps/:name/network, PUT /api/apps/:name/network, DELETE /api/apps/:name/network
-- Validates app name with isValidAppName()
-- Validates network property key against known properties: attach-post-create, attach-post-deploy, bind-all-interfaces, initial-network, static-web-listener, tls-internal
-- Clear cache after mutations (only on success)
-- Typecheck and lint pass
-- Files changed: server/lib/network.ts (new), server/index.ts
-- **Learnings for future iterations:**
-  - Follow same pattern as buildpacks.ts and docker-options.ts for consistency
-  - Use stripAnsi() to clean CLI output
-  - Network properties are hyphenated in Dokku CLI (convert to camelCase for JS object keys)
----
-
-## [Date/Time] - US-006
-- Implemented Deployment settings API endpoints (server/lib/deployment.ts, server/index.ts)
-- Created getDeploymentSettings, setDeployBranch, setBuildDir, clearBuildDir, setBuilder functions
-- Added routes: GET /api/apps/:name/deployment, PUT /api/apps/:name/deployment
-- GET /api/apps/:name/deployment runs both dokku git:report and dokku builder:report in parallel
-- PUT /api/apps/:name/deployment handles deployBranch, buildDir, and builder as optional fields
-- Validates app name with isValidAppName()
-- Validates builder is one of: herokuish, dockerfile, pack, or empty string for auto-detect
-- Clear cache after mutations (only on success)
-- Typecheck and lint pass
-- Files changed: server/lib/deployment.ts (new), server/index.ts
-- **Learnings for future iterations:**
-  - Use Promise.all to run independent commands in parallel for better performance
-  - Builder value of empty string means auto-detect
-  - Build dir cleared by passing empty string or null
----
-
-## [Date/Time] - US-007
-- Implemented Zod schemas for new settings APIs (client/src/lib/schemas.ts)
-- Added PortMappingSchema and PortsResponseSchema
-- Added ProxyReportSchema
-- Added BuildpackSchema and BuildpacksResponseSchema
-- Added DockerOptionsSchema
-- Added NetworkReportSchema
-- Added DeploymentSettingsSchema
-  - All schemas exported with proper TypeScript types
-- Typecheck and lint pass
-- Files changed: client/src/lib/schemas.ts
----
-
-## [Date/Time] - US-008
-- Implemented Settings tab structure in AppDetail (client/src/pages/AppDetail.tsx)
-- Added 'settings' to TabType union
-- Added Settings tab button after SSL tab
-- Added vertically stacked layout with 5 placeholder sections: Deployment, Ports & Proxy, Buildpacks, Docker Options, Network
+## [Date/Time] - US-009
+- Implemented Deployment settings panel on App Detail (client/src/pages/AppDetail.tsx)
+- Added state for deployment settings (deployBranch, buildDir, builder)
+- Added fetchDeploymentSettings that fetches GET /api/apps/:name/deployment when Settings tab is active
+- Added Deploy Branch text input with help text about default (main)
+- Added Build Directory text input with help text about monorepo subfolder
+- Added Builder dropdown with options: Auto-detect, Herokuish, Dockerfile, Pack
+- Save button calls PUT /api/apps/:name/deployment with changed fields
+- Shows success/error toast after each save operation
 - Typecheck and lint pass
 - Files changed: client/src/pages/AppDetail.tsx
 - **Learnings for future iterations:**
+  - ChromeDevTools MCP not configured - skipped browser verification
+---
+
+## Sat Feb 28 2026 - US-010
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Ports & Proxy settings panel on App Detail (client/src/pages/AppDetail.tsx)
+- Added state for ports and proxy (ports, proxyReport, loading, error states)
+- Added fetchPorts that fetches GET /api/apps/:name/ports when Settings tab is active
+- Added fetchProxyReport that fetches GET /api/apps/:name/proxy when Settings tab is active
+- Display port mappings in a table with Scheme, Host Port, Container Port, Remove button
+- Add Port Mapping form with scheme dropdown (http/https/tcp), host port input, container port input
+- Clear All Ports button with confirmation dialog
+- Proxy toggle: show current status (enabled/disabled) with enable/disable button
+- Show proxy type as read-only info
+- Show success/error toast after each action
+- Added confirmation dialogs for port removal and clearing
+- Typecheck and lint pass
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - Reused existing dialog patterns (showDeleteDialog, confirmDeleteApp pattern) for confirmation dialogs
+  - Used Number.isNaN instead of isNaN for proper type checking
+  - Used composite key `${port.scheme}-${port.hostPort}-${port.containerPort}` for port table rows
+  - ChromeDevTools MCP not configured - skipped browser verification
+---
+
+## Sat Feb 28 2026 - US-011
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Buildpacks settings panel on App Detail (client/src/pages/AppDetail.tsx)
+- Added state for buildpacks (buildpacks, loading, error, form inputs, dialogs)
+- Added fetchBuildpacks that fetches GET /api/apps/:name/buildpacks when Settings tab is active
+- Display current buildpacks as ordered list with index numbers
+- Add Buildpack form with URL field and optional index number input
+- Remove button next to each buildpack entry with confirmation dialog
+- Clear All button with confirmation dialog
+- Empty state shows 'Auto-detected (no custom buildpacks set)'
+- Show success/error toast after each action
+- Typecheck and lint pass
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - Reused existing dialog patterns from ports and proxy sections
+  - Used BuildpacksResponseSchema from lib/schemas.ts
   - ChromeDevTools MCP not configured - skipped browser verification

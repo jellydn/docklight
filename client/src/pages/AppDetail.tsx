@@ -8,10 +8,18 @@ import { logger } from "../lib/logger.js";
 import {
 	type AppDetail as AppDetailData,
 	AppDetailSchema,
+	type Buildpack,
+	BuildpacksResponseSchema,
 	type CommandResult,
 	CommandResultSchema,
 	type ConfigVars,
 	ConfigVarsSchema,
+	type DeploymentSettings,
+	DeploymentSettingsSchema,
+	type PortMapping,
+	PortsResponseSchema,
+	type ProxyReport,
+	ProxyReportSchema,
 	type SSLStatus,
 	SSLStatusSchema,
 } from "../lib/schemas.js";
@@ -80,6 +88,48 @@ export function AppDetail() {
 	const [sslEmail, setSslEmail] = useState("");
 	const [sslSubmitting, setSslSubmitting] = useState(false);
 
+	// Deployment settings state
+	const [deploymentSettings, setDeploymentSettings] = useState<DeploymentSettings | null>(null);
+	const [deploymentLoading, setDeploymentLoading] = useState(false);
+	const [deploymentError, setDeploymentError] = useState<string | null>(null);
+	const [deployBranch, setDeployBranch] = useState("");
+	const [buildDir, setBuildDir] = useState("");
+	const [builder, setBuilder] = useState("");
+	const [deploymentSubmitting, setDeploymentSubmitting] = useState(false);
+
+	// Ports state
+	const [ports, setPorts] = useState<PortMapping[]>([]);
+	const [portsLoading, setPortsLoading] = useState(false);
+	const [portsError, setPortsError] = useState<string | null>(null);
+	const [newPortScheme, setNewPortScheme] = useState("http");
+	const [newHostPort, setNewHostPort] = useState("");
+	const [newContainerPort, setNewContainerPort] = useState("");
+	const [portAddSubmitting, setPortAddSubmitting] = useState(false);
+	const [showClearPortsDialog, setShowClearPortsDialog] = useState(false);
+	const [clearPortsSubmitting, setClearPortsSubmitting] = useState(false);
+	const [showRemovePortDialog, setShowRemovePortDialog] = useState(false);
+	const [pendingRemovePort, setPendingRemovePort] = useState<PortMapping | null>(null);
+	const [portRemoveSubmitting, setPortRemoveSubmitting] = useState(false);
+
+	// Proxy state
+	const [proxyReport, setProxyReport] = useState<ProxyReport | null>(null);
+	const [proxyLoading, setProxyLoading] = useState(false);
+	const [proxyError, setProxyError] = useState<string | null>(null);
+	const [proxySubmitting, setProxySubmitting] = useState(false);
+
+	// Buildpacks state
+	const [buildpacks, setBuildpacks] = useState<Buildpack[]>([]);
+	const [buildpacksLoading, setBuildpacksLoading] = useState(false);
+	const [buildpacksError, setBuildpacksError] = useState<string | null>(null);
+	const [newBuildpackUrl, setNewBuildpackUrl] = useState("");
+	const [newBuildpackIndex, setNewBuildpackIndex] = useState("");
+	const [buildpackAddSubmitting, setBuildpackAddSubmitting] = useState(false);
+	const [showClearBuildpacksDialog, setShowClearBuildpacksDialog] = useState(false);
+	const [clearBuildpacksSubmitting, setClearBuildpacksSubmitting] = useState(false);
+	const [showRemoveBuildpackDialog, setShowRemoveBuildpackDialog] = useState(false);
+	const [pendingRemoveBuildpack, setPendingRemoveBuildpack] = useState<Buildpack | null>(null);
+	const [buildpackRemoveSubmitting, setBuildpackRemoveSubmitting] = useState(false);
+
 	// Log viewer state
 	const [logs, setLogs] = useState<string[]>([]);
 	const [connectionStatus, setConnectionStatus] = useState<
@@ -121,6 +171,15 @@ export function AppDetail() {
 	useEffect(() => {
 		if (activeTab === "ssl" && name) {
 			fetchSSLStatus();
+		}
+	}, [activeTab, name]);
+
+	useEffect(() => {
+		if (activeTab === "settings" && name) {
+			fetchDeploymentSettings();
+			fetchPorts();
+			fetchProxyReport();
+			fetchBuildpacks();
 		}
 	}, [activeTab, name]);
 
@@ -576,6 +635,395 @@ export function AppDetail() {
 		}
 	};
 
+	const fetchDeploymentSettings = async () => {
+		if (!name) return;
+
+		setDeploymentLoading(true);
+		setDeploymentError(null);
+		try {
+			const settings = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/deployment`,
+				DeploymentSettingsSchema
+			);
+			setDeploymentSettings(settings);
+			setDeployBranch(settings.deployBranch || "");
+			setBuildDir(settings.buildDir || "");
+			setBuilder(settings.builder || "");
+		} catch (err) {
+			setDeploymentError(err instanceof Error ? err.message : "Failed to load deployment settings");
+		} finally {
+			setDeploymentLoading(false);
+		}
+	};
+
+	const fetchPorts = async () => {
+		if (!name) return;
+
+		setPortsLoading(true);
+		setPortsError(null);
+		try {
+			const response = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/ports`,
+				PortsResponseSchema
+			);
+			setPorts(response.ports);
+		} catch (err) {
+			setPortsError(err instanceof Error ? err.message : "Failed to load ports");
+		} finally {
+			setPortsLoading(false);
+		}
+	};
+
+	const fetchProxyReport = async () => {
+		if (!name) return;
+
+		setProxyLoading(true);
+		setProxyError(null);
+		try {
+			const proxy = await apiFetch(`/apps/${encodeURIComponent(name)}/proxy`, ProxyReportSchema);
+			setProxyReport(proxy);
+		} catch (err) {
+			setProxyError(err instanceof Error ? err.message : "Failed to load proxy status");
+		} finally {
+			setProxyLoading(false);
+		}
+	};
+
+	const handleAddPort = async () => {
+		if (!name || !newHostPort || !newContainerPort || portAddSubmitting) return;
+
+		const hostPortNum = parseInt(newHostPort, 10);
+		const containerPortNum = parseInt(newContainerPort, 10);
+
+		if (Number.isNaN(hostPortNum) || hostPortNum < 1 || hostPortNum > 65535) {
+			addToast("error", "Invalid host port", {
+				command: "",
+				exitCode: 1,
+				stdout: "",
+				stderr: "Host port must be between 1 and 65535",
+			});
+			return;
+		}
+
+		if (Number.isNaN(containerPortNum) || containerPortNum < 1 || containerPortNum > 65535) {
+			addToast("error", "Invalid container port", {
+				command: "",
+				exitCode: 1,
+				stdout: "",
+				stderr: "Container port must be between 1 and 65535",
+			});
+			return;
+		}
+
+		setPortAddSubmitting(true);
+		try {
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/ports`,
+				CommandResultSchema,
+				{
+					method: "POST",
+					body: JSON.stringify({
+						scheme: newPortScheme,
+						hostPort: hostPortNum,
+						containerPort: containerPortNum,
+					}),
+				}
+			);
+			addToast(result.exitCode === 0 ? "success" : "error", "Port added", result);
+			if (result.exitCode === 0) {
+				setNewHostPort("");
+				setNewContainerPort("");
+				fetchPorts();
+			}
+		} catch (err) {
+			addToast("error", "Failed to add port", createErrorResult(`dokku ports:add ${name}`, err));
+		} finally {
+			setPortAddSubmitting(false);
+		}
+	};
+
+	const handleRemovePort = (port: PortMapping) => {
+		setPendingRemovePort(port);
+		setShowRemovePortDialog(true);
+	};
+
+	const confirmRemovePort = async () => {
+		if (!name || !pendingRemovePort || portRemoveSubmitting) return;
+
+		setPortRemoveSubmitting(true);
+		try {
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/ports`,
+				CommandResultSchema,
+				{
+					method: "DELETE",
+					body: JSON.stringify({
+						scheme: pendingRemovePort.scheme,
+						hostPort: pendingRemovePort.hostPort,
+						containerPort: pendingRemovePort.containerPort,
+					}),
+				}
+			);
+			addToast(result.exitCode === 0 ? "success" : "error", "Port removed", result);
+			setShowRemovePortDialog(false);
+			setPendingRemovePort(null);
+			fetchPorts();
+		} catch (err) {
+			addToast(
+				"error",
+				"Failed to remove port",
+				createErrorResult(`dokku ports:remove ${name}`, err)
+			);
+			setShowRemovePortDialog(false);
+			setPendingRemovePort(null);
+		} finally {
+			setPortRemoveSubmitting(false);
+		}
+	};
+
+	const confirmClearPorts = async () => {
+		if (!name || clearPortsSubmitting) return;
+
+		setClearPortsSubmitting(true);
+		try {
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/ports/all`,
+				CommandResultSchema,
+				{
+					method: "DELETE",
+				}
+			);
+			addToast(result.exitCode === 0 ? "success" : "error", "All ports cleared", result);
+			setShowClearPortsDialog(false);
+			fetchPorts();
+		} catch (err) {
+			addToast(
+				"error",
+				"Failed to clear ports",
+				createErrorResult(`dokku ports:clear ${name}`, err)
+			);
+			setShowClearPortsDialog(false);
+		} finally {
+			setClearPortsSubmitting(false);
+		}
+	};
+
+	const handleEnableProxy = async () => {
+		if (!name || proxySubmitting) return;
+
+		setProxySubmitting(true);
+		try {
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/proxy/enable`,
+				CommandResultSchema,
+				{
+					method: "POST",
+				}
+			);
+			addToast(result.exitCode === 0 ? "success" : "error", "Proxy enabled", result);
+			fetchProxyReport();
+		} catch (err) {
+			addToast(
+				"error",
+				"Failed to enable proxy",
+				createErrorResult(`dokku proxy:enable ${name}`, err)
+			);
+		} finally {
+			setProxySubmitting(false);
+		}
+	};
+
+	const handleDisableProxy = async () => {
+		if (!name || proxySubmitting) return;
+
+		setProxySubmitting(true);
+		try {
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/proxy/disable`,
+				CommandResultSchema,
+				{
+					method: "POST",
+				}
+			);
+			addToast(result.exitCode === 0 ? "success" : "error", "Proxy disabled", result);
+			fetchProxyReport();
+		} catch (err) {
+			addToast(
+				"error",
+				"Failed to disable proxy",
+				createErrorResult(`dokku proxy:disable ${name}`, err)
+			);
+		} finally {
+			setProxySubmitting(false);
+		}
+	};
+
+	const fetchBuildpacks = async () => {
+		if (!name) return;
+
+		setBuildpacksLoading(true);
+		setBuildpacksError(null);
+		try {
+			const response = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/buildpacks`,
+				BuildpacksResponseSchema
+			);
+			setBuildpacks(response.buildpacks);
+		} catch (err) {
+			setBuildpacksError(err instanceof Error ? err.message : "Failed to load buildpacks");
+		} finally {
+			setBuildpacksLoading(false);
+		}
+	};
+
+	const handleAddBuildpack = async () => {
+		if (!name || !newBuildpackUrl || buildpackAddSubmitting) return;
+
+		setBuildpackAddSubmitting(true);
+		try {
+			const body: { url: string; index?: number } = { url: newBuildpackUrl };
+			if (newBuildpackIndex) {
+				const idx = parseInt(newBuildpackIndex, 10);
+				if (!Number.isNaN(idx) && idx > 0) {
+					body.index = idx;
+				}
+			}
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/buildpacks`,
+				CommandResultSchema,
+				{
+					method: "POST",
+					body: JSON.stringify(body),
+				}
+			);
+			addToast(result.exitCode === 0 ? "success" : "error", "Buildpack added", result);
+			if (result.exitCode === 0) {
+				setNewBuildpackUrl("");
+				setNewBuildpackIndex("");
+				fetchBuildpacks();
+			}
+		} catch (err) {
+			addToast(
+				"error",
+				"Failed to add buildpack",
+				createErrorResult(`dokku buildpacks:add ${name}`, err)
+			);
+		} finally {
+			setBuildpackAddSubmitting(false);
+		}
+	};
+
+	const handleRemoveBuildpack = (buildpack: Buildpack) => {
+		setPendingRemoveBuildpack(buildpack);
+		setShowRemoveBuildpackDialog(true);
+	};
+
+	const confirmRemoveBuildpack = async () => {
+		if (!name || !pendingRemoveBuildpack || buildpackRemoveSubmitting) return;
+
+		setBuildpackRemoveSubmitting(true);
+		try {
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/buildpacks`,
+				CommandResultSchema,
+				{
+					method: "DELETE",
+					body: JSON.stringify({ url: pendingRemoveBuildpack.url }),
+				}
+			);
+			addToast(result.exitCode === 0 ? "success" : "error", "Buildpack removed", result);
+			setShowRemoveBuildpackDialog(false);
+			setPendingRemoveBuildpack(null);
+			fetchBuildpacks();
+		} catch (err) {
+			addToast(
+				"error",
+				"Failed to remove buildpack",
+				createErrorResult(`dokku buildpacks:remove ${name}`, err)
+			);
+			setShowRemoveBuildpackDialog(false);
+			setPendingRemoveBuildpack(null);
+		} finally {
+			setBuildpackRemoveSubmitting(false);
+		}
+	};
+
+	const confirmClearBuildpacks = async () => {
+		if (!name || clearBuildpacksSubmitting) return;
+
+		setClearBuildpacksSubmitting(true);
+		try {
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/buildpacks/all`,
+				CommandResultSchema,
+				{
+					method: "DELETE",
+				}
+			);
+			addToast(result.exitCode === 0 ? "success" : "error", "All buildpacks cleared", result);
+			setShowClearBuildpacksDialog(false);
+			fetchBuildpacks();
+		} catch (err) {
+			addToast(
+				"error",
+				"Failed to clear buildpacks",
+				createErrorResult(`dokku buildpacks:clear ${name}`, err)
+			);
+			setShowClearBuildpacksDialog(false);
+		} finally {
+			setClearBuildpacksSubmitting(false);
+		}
+	};
+
+	const handleSaveDeployment = async () => {
+		if (!name || deploymentSubmitting) return;
+
+		setDeploymentSubmitting(true);
+		try {
+			if (deployBranch !== (deploymentSettings?.deployBranch || "")) {
+				const result = await apiFetch(
+					`/apps/${encodeURIComponent(name)}/deployment`,
+					CommandResultSchema,
+					{
+						method: "PUT",
+						body: JSON.stringify({ deployBranch }),
+					}
+				);
+				addToast(result.exitCode === 0 ? "success" : "error", "Deploy branch updated", result);
+			}
+
+			if (buildDir !== (deploymentSettings?.buildDir || "")) {
+				const result = await apiFetch(
+					`/apps/${encodeURIComponent(name)}/deployment`,
+					CommandResultSchema,
+					{
+						method: "PUT",
+						body: JSON.stringify({ buildDir }),
+					}
+				);
+				addToast(result.exitCode === 0 ? "success" : "error", "Build directory updated", result);
+			}
+
+			if (builder !== (deploymentSettings?.builder || "")) {
+				const result = await apiFetch(
+					`/apps/${encodeURIComponent(name)}/deployment`,
+					CommandResultSchema,
+					{
+						method: "PUT",
+						body: JSON.stringify({ builder }),
+					}
+				);
+				addToast(result.exitCode === 0 ? "success" : "error", "Builder updated", result);
+			}
+
+			fetchDeploymentSettings();
+		} catch (err) {
+			addToast("error", "Failed to save deployment settings", createErrorResult("", err));
+		} finally {
+			setDeploymentSubmitting(false);
+		}
+	};
+
 	const handleEnableSSL = async () => {
 		if (!name || sslSubmitting) return;
 
@@ -960,6 +1408,128 @@ export function AppDetail() {
 								className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 							>
 								{starting ? "Starting..." : "Start App"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{showRemovePortDialog && pendingRemovePort && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4">Confirm Remove Port</h2>
+						<p className="mb-6">
+							Are you sure you want to remove port mapping{" "}
+							<strong>
+								{pendingRemovePort.scheme}:{pendingRemovePort.hostPort}:
+								{pendingRemovePort.containerPort}
+							</strong>
+							?
+						</p>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => {
+									setShowRemovePortDialog(false);
+									setPendingRemovePort(null);
+								}}
+								disabled={portRemoveSubmitting}
+								className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmRemovePort}
+								disabled={portRemoveSubmitting}
+								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+							>
+								Remove
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{showClearPortsDialog && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4 text-red-600">Clear All Ports</h2>
+						<p className="mb-6">
+							Are you sure you want to remove all port mappings for <strong>{name}</strong>? This
+							will remove all custom port configurations.
+						</p>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => setShowClearPortsDialog(false)}
+								disabled={clearPortsSubmitting}
+								className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmClearPorts}
+								disabled={clearPortsSubmitting}
+								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+							>
+								{clearPortsSubmitting ? "Clearing..." : "Clear All"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{showRemoveBuildpackDialog && pendingRemoveBuildpack && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4">Confirm Remove Buildpack</h2>
+						<p className="mb-6">
+							Are you sure you want to remove buildpack{" "}
+							<strong>{pendingRemoveBuildpack.url}</strong>?
+						</p>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => {
+									setShowRemoveBuildpackDialog(false);
+									setPendingRemoveBuildpack(null);
+								}}
+								disabled={buildpackRemoveSubmitting}
+								className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmRemoveBuildpack}
+								disabled={buildpackRemoveSubmitting}
+								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+							>
+								Remove
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{showClearBuildpacksDialog && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4 text-red-600">Clear All Buildpacks</h2>
+						<p className="mb-6">
+							Are you sure you want to remove all custom buildpacks for <strong>{name}</strong>?
+							This will revert to auto-detected buildpacks.
+						</p>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => setShowClearBuildpacksDialog(false)}
+								disabled={clearBuildpacksSubmitting}
+								className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmClearBuildpacks}
+								disabled={clearBuildpacksSubmitting}
+								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+							>
+								{clearBuildpacksSubmitting ? "Clearing..." : "Clear All"}
 							</button>
 						</div>
 					</div>
@@ -1384,17 +1954,330 @@ export function AppDetail() {
 				<div className="space-y-6">
 					<div className="bg-white rounded-lg shadow p-6">
 						<h2 className="text-lg font-semibold mb-4">Deployment Settings</h2>
-						<p className="text-gray-500">Configure deploy branch, build directory, and builder.</p>
+
+						{deploymentLoading ? (
+							<div className="flex justify-center py-8">
+								<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+							</div>
+						) : deploymentError ? (
+							<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+								{deploymentError}
+							</div>
+						) : (
+							<div className="space-y-4">
+								<div>
+									<label
+										htmlFor="deploy-branch"
+										className="block text-sm font-medium text-gray-700 mb-1"
+									>
+										Deploy Branch
+									</label>
+									<input
+										id="deploy-branch"
+										type="text"
+										value={deployBranch}
+										onChange={(e) => setDeployBranch(e.target.value)}
+										placeholder="main"
+										className="w-full max-w-md border rounded px-3 py-2"
+									/>
+									<p className="mt-1 text-sm text-gray-500">The branch to deploy (default: main)</p>
+								</div>
+
+								<div>
+									<label
+										htmlFor="build-dir"
+										className="block text-sm font-medium text-gray-700 mb-1"
+									>
+										Build Directory
+									</label>
+									<input
+										id="build-dir"
+										type="text"
+										value={buildDir}
+										onChange={(e) => setBuildDir(e.target.value)}
+										placeholder="e.g., apps/api"
+										className="w-full max-w-md border rounded px-3 py-2"
+									/>
+									<p className="mt-1 text-sm text-gray-500">
+										Set a subdirectory to deploy from when using a monorepo
+									</p>
+								</div>
+
+								<div>
+									<label htmlFor="builder" className="block text-sm font-medium text-gray-700 mb-1">
+										Builder
+									</label>
+									<select
+										id="builder"
+										value={builder}
+										onChange={(e) => setBuilder(e.target.value)}
+										className="w-full max-w-md border rounded px-3 py-2"
+									>
+										<option value="">Auto-detect</option>
+										<option value="herokuish">Herokuish</option>
+										<option value="dockerfile">Dockerfile</option>
+										<option value="pack">Cloud Native Buildpacks (pack)</option>
+									</select>
+									<p className="mt-1 text-sm text-gray-500">
+										The build strategy to use for this app
+									</p>
+								</div>
+
+								<div className="pt-4">
+									<button
+										onClick={handleSaveDeployment}
+										disabled={deploymentSubmitting}
+										className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+									>
+										{deploymentSubmitting ? "Saving..." : "Save Settings"}
+									</button>
+								</div>
+							</div>
+						)}
 					</div>
 
 					<div className="bg-white rounded-lg shadow p-6">
 						<h2 className="text-lg font-semibold mb-4">Ports & Proxy</h2>
-						<p className="text-gray-500">Manage port mappings and proxy settings.</p>
+
+						{portsLoading || proxyLoading ? (
+							<div className="flex justify-center py-8">
+								<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+							</div>
+						) : portsError || proxyError ? (
+							<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+								{portsError || proxyError}
+							</div>
+						) : (
+							<div className="space-y-6">
+								<div>
+									<h3 className="text-sm font-medium text-gray-700 mb-3">Port Mappings</h3>
+
+									{ports.length > 0 ? (
+										<div className="overflow-x-auto mb-4">
+											<table className="min-w-full divide-y divide-gray-200">
+												<thead>
+													<tr>
+														<th className="px-3 py-2 text-left text-sm font-medium text-gray-700">
+															Scheme
+														</th>
+														<th className="px-3 py-2 text-left text-sm font-medium text-gray-700">
+															Host Port
+														</th>
+														<th className="px-3 py-2 text-left text-sm font-medium text-gray-700">
+															Container Port
+														</th>
+														<th className="px-3 py-2"></th>
+													</tr>
+												</thead>
+												<tbody className="divide-y divide-gray-200">
+													{ports.map((port) => (
+														<tr key={`${port.scheme}-${port.hostPort}-${port.containerPort}`}>
+															<td className="px-3 py-2">
+																<code className="bg-gray-100 px-2 py-1 rounded text-sm">
+																	{port.scheme}
+																</code>
+															</td>
+															<td className="px-3 py-2">{port.hostPort}</td>
+															<td className="px-3 py-2">{port.containerPort}</td>
+															<td className="px-3 py-2 text-right">
+																<button
+																	onClick={() => handleRemovePort(port)}
+																	className="text-red-600 hover:text-red-800"
+																	title="Remove"
+																>
+																	🗑️
+																</button>
+															</td>
+														</tr>
+													))}
+												</tbody>
+											</table>
+										</div>
+									) : (
+										<p className="text-gray-500 mb-4">No port mappings configured.</p>
+									)}
+
+									<div className="flex flex-col sm:flex-row gap-2 mb-4">
+										<select
+											value={newPortScheme}
+											onChange={(e) => setNewPortScheme(e.target.value)}
+											className="border rounded px-3 py-2"
+										>
+											<option value="http">http</option>
+											<option value="https">https</option>
+											<option value="tcp">tcp</option>
+										</select>
+										<input
+											type="number"
+											placeholder="Host Port"
+											value={newHostPort}
+											onChange={(e) => setNewHostPort(e.target.value)}
+											min="1"
+											max="65535"
+											className="w-32 border rounded px-3 py-2"
+										/>
+										<input
+											type="number"
+											placeholder="Container Port"
+											value={newContainerPort}
+											onChange={(e) => setNewContainerPort(e.target.value)}
+											min="1"
+											max="65535"
+											className="w-40 border rounded px-3 py-2"
+										/>
+										<button
+											onClick={handleAddPort}
+											disabled={!newHostPort || !newContainerPort || portAddSubmitting}
+											className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+										>
+											Add Port
+										</button>
+									</div>
+
+									{ports.length > 0 && (
+										<button
+											onClick={() => setShowClearPortsDialog(true)}
+											className="text-red-600 hover:text-red-800 text-sm"
+										>
+											Clear All Ports
+										</button>
+									)}
+								</div>
+
+								<div className="pt-4 border-t">
+									<h3 className="text-sm font-medium text-gray-700 mb-3">Proxy</h3>
+									<div className="flex items-center justify-between p-4 bg-gray-50 rounded">
+										<div>
+											<strong className="text-gray-700">Status:</strong>{" "}
+											{proxyReport?.enabled ? (
+												<span className="ml-2 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+													Enabled
+												</span>
+											) : (
+												<span className="ml-2 px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+													Disabled
+												</span>
+											)}
+											{proxyReport?.type && (
+												<span className="ml-4 text-sm text-gray-500">Type: {proxyReport.type}</span>
+											)}
+										</div>
+										<div className="flex gap-2">
+											{proxyReport?.enabled ? (
+												<button
+													onClick={handleDisableProxy}
+													disabled={proxySubmitting}
+													className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+												>
+													Disable
+												</button>
+											) : (
+												<button
+													onClick={handleEnableProxy}
+													disabled={proxySubmitting}
+													className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+												>
+													Enable
+												</button>
+											)}
+										</div>
+									</div>
+								</div>
+							</div>
+						)}
 					</div>
 
 					<div className="bg-white rounded-lg shadow p-6">
 						<h2 className="text-lg font-semibold mb-4">Buildpacks</h2>
-						<p className="text-gray-500">Manage buildpacks for your app.</p>
+
+						{buildpacksLoading ? (
+							<div className="flex justify-center py-8">
+								<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+							</div>
+						) : buildpacksError ? (
+							<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+								{buildpacksError}
+							</div>
+						) : (
+							<div className="space-y-4">
+								{buildpacks.length > 0 ? (
+									<>
+										<div className="overflow-x-auto mb-4">
+											<table className="min-w-full divide-y divide-gray-200">
+												<thead>
+													<tr>
+														<th className="px-3 py-2 text-left text-sm font-medium text-gray-700">
+															#
+														</th>
+														<th className="px-3 py-2 text-left text-sm font-medium text-gray-700">
+															URL
+														</th>
+														<th className="px-3 py-2"></th>
+													</tr>
+												</thead>
+												<tbody className="divide-y divide-gray-200">
+													{buildpacks.map((buildpack) => (
+														<tr key={buildpack.url}>
+															<td className="px-3 py-2 text-gray-600">{buildpack.index}</td>
+															<td className="px-3 py-2">
+																<code className="bg-gray-100 px-2 py-1 rounded text-sm">
+																	{buildpack.url}
+																</code>
+															</td>
+															<td className="px-3 py-2 text-right">
+																<button
+																	onClick={() => handleRemoveBuildpack(buildpack)}
+																	className="text-red-600 hover:text-red-800"
+																	title="Remove"
+																>
+																	🗑️
+																</button>
+															</td>
+														</tr>
+													))}
+												</tbody>
+											</table>
+										</div>
+										<button
+											onClick={() => setShowClearBuildpacksDialog(true)}
+											className="text-red-600 hover:text-red-800 text-sm"
+										>
+											Clear All
+										</button>
+									</>
+								) : (
+									<p className="text-gray-500">Auto-detected (no custom buildpacks set)</p>
+								)}
+
+								<div className="pt-4 border-t">
+									<h3 className="text-sm font-medium text-gray-700 mb-3">Add Buildpack</h3>
+									<div className="flex flex-col sm:flex-row gap-2 mb-2">
+										<input
+											type="text"
+											placeholder="Buildpack URL (e.g., https://github.com/heroku/heroku-buildpack-nodejs)"
+											value={newBuildpackUrl}
+											onChange={(e) => setNewBuildpackUrl(e.target.value)}
+											className="flex-1 border rounded px-3 py-2"
+										/>
+										<input
+											type="number"
+											placeholder="Index (optional)"
+											value={newBuildpackIndex}
+											onChange={(e) => setNewBuildpackIndex(e.target.value)}
+											min="1"
+											className="w-32 border rounded px-3 py-2"
+										/>
+										<button
+											onClick={handleAddBuildpack}
+											disabled={!newBuildpackUrl || buildpackAddSubmitting}
+											className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+										>
+											Add
+										</button>
+									</div>
+								</div>
+							</div>
+						)}
 					</div>
 
 					<div className="bg-white rounded-lg shadow p-6">
