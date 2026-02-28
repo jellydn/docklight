@@ -40,7 +40,7 @@ jobs:
         with:
           script: |
             try {
-              const body = `🚀 Deployed to staging: https://docklight-staging.${process.env.DOKKU_HOST}`;
+              const body = `🚀 Deployed to staging: https://docklight-staging.itman.fyi`;
               const { data: comments } = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
