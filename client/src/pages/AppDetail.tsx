@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { useToast } from "../components/ToastProvider";
 import { apiFetch } from "../lib/api.js";
+import { createErrorResult } from "../lib/command-utils.js";
 import { logger } from "../lib/logger.js";
 import {
 	type AppDetail as AppDetailData,
@@ -383,13 +384,13 @@ export function AppDetail() {
 
 	const toggleValueVisibility = (key: string) => {
 		setVisibleValues((prev) => {
-			const newSet = new Set(prev);
-			if (newSet.has(key)) {
-				newSet.delete(key);
+			const next = new Set(prev);
+			if (next.has(key)) {
+				next.delete(key);
 			} else {
-				newSet.add(key);
+				next.add(key);
 			}
-			return newSet;
+			return next;
 		});
 	};
 
@@ -416,13 +417,11 @@ export function AppDetail() {
 			setShowDeleteDialog(false);
 			setConfirmDeleteName("");
 		} catch (err) {
-			const errorResult: CommandResult = {
-				command: `dokku apps:destroy ${name} --force`,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Failed to delete app",
-			};
-			addToast("error", "Failed to delete app", errorResult);
+			addToast(
+				"error",
+				"Failed to delete app",
+				createErrorResult(`dokku apps:destroy ${name} --force`, err)
+			);
 			setShowDeleteDialog(false);
 			setConfirmDeleteName("");
 		} finally {
@@ -576,13 +575,6 @@ export function AppDetail() {
 			setSslLoading(false);
 		}
 	};
-
-	const createErrorResult = (command: string, error: unknown): CommandResult => ({
-		command,
-		exitCode: 1,
-		stdout: "",
-		stderr: error instanceof Error ? error.message : "Command failed",
-	});
 
 	const handleEnableSSL = async () => {
 		if (!name || sslSubmitting) return;
@@ -766,7 +758,7 @@ export function AppDetail() {
 								disabled={actionSubmitting}
 								className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 							>
-								Confirm
+								{actionSubmitting ? "Confirming..." : "Confirm"}
 							</button>
 						</div>
 					</div>
@@ -805,7 +797,7 @@ export function AppDetail() {
 								disabled={scaleSubmitting}
 								className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 							>
-								Confirm
+								{scaleSubmitting ? "Applying..." : "Confirm"}
 							</button>
 						</div>
 					</div>

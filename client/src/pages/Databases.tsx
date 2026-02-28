@@ -2,30 +2,17 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useToast } from "../components/ToastProvider";
 import { apiFetch } from "../lib/api.js";
+import { createErrorResult } from "../lib/command-utils.js";
+import { POPULAR_PLUGIN_REPOS } from "../lib/plugin-constants.js";
 import {
 	type App,
 	AppSchema,
-	type CommandResult,
 	CommandResultSchema,
 	type Database,
 	DatabaseSchema,
 } from "../lib/schemas.js";
 
 const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"];
-
-const createErrorResult = (command: string, error: unknown): CommandResult => ({
-	command,
-	exitCode: 1,
-	stdout: "",
-	stderr: error instanceof Error ? error.message : "Command failed",
-});
-const POPULAR_PLUGIN_REPOS = [
-	{ label: "Postgres", repository: "dokku/dokku-postgres", name: "dokku-postgres" },
-	{ label: "Redis", repository: "dokku/dokku-redis", name: "dokku-redis" },
-	{ label: "MySQL", repository: "dokku/dokku-mysql", name: "dokku-mysql" },
-	{ label: "MariaDB", repository: "dokku/dokku-mariadb", name: "dokku-mariadb" },
-	{ label: "Mongo", repository: "dokku/dokku-mongo", name: "dokku-mongo" },
-];
 
 export function Databases() {
 	const { addToast } = useToast();
@@ -74,8 +61,8 @@ export function Databases() {
 				apiFetch("/databases", z.array(DatabaseSchema)),
 				apiFetch("/apps", z.array(AppSchema)),
 			]);
-			setDatabases(Array.isArray(databasesData) ? databasesData : []);
-			setApps(Array.isArray(appsData) ? appsData : []);
+			setDatabases(databasesData);
+			setApps(appsData);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to load data");
 		} finally {
@@ -97,7 +84,11 @@ export function Databases() {
 			setNewDbName("");
 			fetchData();
 		} catch (err) {
-			addToast("error", "Failed to create database", createErrorResult(`dokku ${newDbPlugin}:create ${newDbName}`, err));
+			addToast(
+				"error",
+				"Failed to create database",
+				createErrorResult(`dokku ${newDbPlugin}:create ${newDbName}`, err)
+			);
 		} finally {
 			setCreateDbSubmitting(false);
 		}
@@ -151,7 +142,11 @@ export function Databases() {
 			setLinkAppName("");
 			fetchData();
 		} catch (err) {
-			addToast("error", "Failed to link database", createErrorResult(`dokku ${getDbPlugin(linkDbName)}:link ${linkDbName} ${linkAppName}`, err));
+			addToast(
+				"error",
+				"Failed to link database",
+				createErrorResult(`dokku ${getDbPlugin(linkDbName)}:link ${linkDbName} ${linkAppName}`, err)
+			);
 		} finally {
 			setLinkSubmitting(false);
 		}
@@ -186,7 +181,14 @@ export function Databases() {
 			closeUnlinkDialog();
 			fetchData();
 		} catch (err) {
-			addToast("error", "Failed to unlink database", createErrorResult(`dokku ${getDbPlugin(pendingUnlinkDb)}:unlink ${pendingUnlinkDb} ${pendingUnlinkApp}`, err));
+			addToast(
+				"error",
+				"Failed to unlink database",
+				createErrorResult(
+					`dokku ${getDbPlugin(pendingUnlinkDb)}:unlink ${pendingUnlinkDb} ${pendingUnlinkApp}`,
+					err
+				)
+			);
 			closeUnlinkDialog();
 		} finally {
 			setUnlinkSubmitting(false);
@@ -225,7 +227,14 @@ export function Databases() {
 			closeDestroyDialog();
 			fetchData();
 		} catch (err) {
-			addToast("error", "Failed to destroy database", createErrorResult(`dokku ${getDbPlugin(pendingDestroyDb)}:destroy ${pendingDestroyDb} --force`, err));
+			addToast(
+				"error",
+				"Failed to destroy database",
+				createErrorResult(
+					`dokku ${getDbPlugin(pendingDestroyDb)}:destroy ${pendingDestroyDb} --force`,
+					err
+				)
+			);
 			closeDestroyDialog();
 		} finally {
 			setDestroySubmitting(false);
@@ -234,13 +243,9 @@ export function Databases() {
 
 	const toggleConnectionVisibility = (dbName: string) => {
 		setVisibleConnections((prev) => {
-			const newSet = new Set(prev);
-			if (newSet.has(dbName)) {
-				newSet.delete(dbName);
-			} else {
-				newSet.add(dbName);
-			}
-			return newSet;
+			const next = new Set(prev);
+			next.has(dbName) ? next.delete(dbName) : next.add(dbName);
+			return next;
 		});
 	};
 
@@ -483,7 +488,7 @@ export function Databases() {
 								disabled={unlinkSubmitting}
 								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 							>
-								Unlink
+								{unlinkSubmitting ? "Unlinking..." : "Unlink"}
 							</button>
 						</div>
 					</div>
@@ -525,7 +530,7 @@ export function Databases() {
 								disabled={confirmDestroyName !== pendingDestroyDb || destroySubmitting}
 								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 							>
-								Destroy
+								{destroySubmitting ? "Destroying..." : "Destroy"}
 							</button>
 						</div>
 					</div>

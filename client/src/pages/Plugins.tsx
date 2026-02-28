@@ -2,27 +2,9 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useToast } from "../components/ToastProvider";
 import { apiFetch } from "../lib/api.js";
-import {
-	type CommandResult,
-	CommandResultSchema,
-	type PluginInfo,
-	PluginInfoSchema,
-} from "../lib/schemas.js";
-
-const createErrorResult = (command: string, error: unknown): CommandResult => ({
-	command,
-	exitCode: 1,
-	stdout: "",
-	stderr: error instanceof Error ? error.message : "Command failed",
-});
-
-const POPULAR_PLUGIN_REPOS = [
-	{ label: "Postgres", repository: "dokku/dokku-postgres", name: "dokku-postgres" },
-	{ label: "Redis", repository: "dokku/dokku-redis", name: "dokku-redis" },
-	{ label: "MySQL", repository: "dokku/dokku-mysql", name: "dokku-mysql" },
-	{ label: "MariaDB", repository: "dokku/dokku-mariadb", name: "dokku-mariadb" },
-	{ label: "Mongo", repository: "dokku/dokku-mongo", name: "dokku-mongo" },
-];
+import { createErrorResult } from "../lib/command-utils.js";
+import { POPULAR_PLUGIN_REPOS } from "../lib/plugin-constants.js";
+import { CommandResultSchema, type PluginInfo, PluginInfoSchema } from "../lib/schemas.js";
 
 export function Plugins() {
 	const { addToast } = useToast();
@@ -40,7 +22,7 @@ export function Plugins() {
 		setError(null);
 		try {
 			const pluginData = await apiFetch("/plugins", z.array(PluginInfoSchema));
-			setPlugins(Array.isArray(pluginData) ? pluginData : []);
+			setPlugins(pluginData);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to load plugins");
 		} finally {
@@ -121,7 +103,11 @@ export function Plugins() {
 				fetchPlugins();
 			}
 		} catch (err) {
-			addToast("error", `Failed to ${action} plugin`, createErrorResult(getCommandForAction(action), err));
+			addToast(
+				"error",
+				`Failed to ${action} plugin`,
+				createErrorResult(getCommandForAction(action), err)
+			);
 		} finally {
 			setPluginActionSubmitting(null);
 		}
