@@ -113,7 +113,7 @@ describe("enableSSL", () => {
 		expect(result.exitCode).toBe(0);
 		expect(mockExecuteCommand).toHaveBeenNthCalledWith(
 			1,
-			"dokku letsencrypt:set my-app email ops@example.com"
+			"dokku letsencrypt:set 'my-app' email 'ops@example.com'"
 		);
 		expect(mockExecuteCommand).toHaveBeenNthCalledWith(2, "dokku letsencrypt:enable my-app");
 	});

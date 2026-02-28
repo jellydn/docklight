@@ -1,7 +1,8 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
-import { shellQuote, splitShellWords } from "./shell.js";
+import { splitShellWords } from "./shell.js";
+import { DokkuCommands } from "./dokku.js";
 
 export interface DockerOptions {
 	build: string[];
@@ -41,8 +42,10 @@ export async function getDockerOptions(
 		};
 	}
 
+	const command = DokkuCommands.dockerOptionsReport(name);
+
 	try {
-		const result = await executeCommand(`dokku docker-options:report ${name}`);
+		const result = await executeCommand(command);
 
 		if (result.exitCode !== 0) {
 			return {
@@ -83,7 +86,7 @@ export async function getDockerOptions(
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku docker-options:report ${name}`,
+			command,
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -108,15 +111,15 @@ export async function addDockerOption(
 		return createDockerOptionsError("Docker option is required");
 	}
 
+	const command = DokkuCommands.dockerOptionsAdd(name, phase, option);
+
 	try {
-		return executeCommand(
-			`dokku docker-options:add ${shellQuote(name)} ${shellQuote(phase)} ${shellQuote(option)}`
-		);
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku docker-options:add ${shellQuote(name)} ${shellQuote(phase)} ${shellQuote(option)}`,
+			command,
 			exitCode: 1,
 		};
 	}
@@ -140,15 +143,15 @@ export async function removeDockerOption(
 		return createDockerOptionsError("Docker option is required");
 	}
 
+	const command = DokkuCommands.dockerOptionsRemove(name, phase, option);
+
 	try {
-		return executeCommand(
-			`dokku docker-options:remove ${shellQuote(name)} ${shellQuote(phase)} ${shellQuote(option)}`
-		);
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku docker-options:remove ${shellQuote(name)} ${shellQuote(phase)} ${shellQuote(option)}`,
+			command,
 			exitCode: 1,
 		};
 	}
@@ -167,13 +170,15 @@ export async function clearDockerOptions(
 		return createDockerOptionsError(phaseValidationError);
 	}
 
+	const command = DokkuCommands.dockerOptionsClear(name, phase);
+
 	try {
-		return executeCommand(`dokku docker-options:clear ${shellQuote(name)} ${shellQuote(phase)}`);
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku docker-options:clear ${shellQuote(name)} ${shellQuote(phase)}`,
+			command,
 			exitCode: 1,
 		};
 	}

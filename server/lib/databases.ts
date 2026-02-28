@@ -1,4 +1,5 @@
 import { executeCommand, type CommandResult } from "./executor.js";
+import { DokkuCommands } from "./dokku.js";
 
 export interface Database {
 	name: string;
@@ -32,7 +33,7 @@ async function getInstalledPlugins(): Promise<
 	| { plugins: SupportedPlugin[] }
 	| { error: string; command: string; exitCode: number; stderr: string }
 > {
-	const pluginListResult = await executeCommand("dokku plugin:list");
+	const pluginListResult = await executeCommand(DokkuCommands.pluginList());
 
 	if (pluginListResult.exitCode !== 0) {
 		return {
@@ -49,6 +50,8 @@ async function getInstalledPlugins(): Promise<
 export async function getDatabases(): Promise<
 	Database[] | { error: string; command: string; exitCode: number; stderr: string }
 > {
+	const fallbackCommand = DokkuCommands.pluginList();
+
 	try {
 		const installedPluginsResult = await getInstalledPlugins();
 		if ("error" in installedPluginsResult) {
@@ -63,14 +66,14 @@ export async function getDatabases(): Promise<
 		// Fetch all plugins' databases in parallel
 		const pluginResults = await Promise.all(
 			installedPlugins.map(async (plugin) => {
-				const listResult = await executeCommand(`dokku ${plugin}:list`);
+				const listResult = await executeCommand(DokkuCommands.dbList(plugin));
 				if (listResult.exitCode !== 0) return [];
 
 				const dbLines = listResult.stdout.split("\n").filter((line) => line.trim());
 
 				const dbs = await Promise.all(
 					dbLines.map(async (dbName) => {
-						const linkReportResult = await executeCommand(`dokku ${plugin}:links ${dbName}`);
+						const linkReportResult = await executeCommand(DokkuCommands.dbLinks(plugin, dbName));
 
 						let linkedApps: string[] = [];
 						if (linkReportResult.exitCode === 0) {
@@ -109,7 +112,7 @@ export async function getDatabases(): Promise<
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: "dokku plugin:list",
+			command: fallbackCommand,
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -149,6 +152,8 @@ export async function createDatabase(
 		};
 	}
 
+	const command = DokkuCommands.dbCreate(plugin, sanitizedName);
+
 	try {
 		const installedPluginsResult = await getInstalledPlugins();
 		if ("error" in installedPluginsResult) {
@@ -166,18 +171,18 @@ export async function createDatabase(
 				: "none";
 			return {
 				error: `Database plugin '${plugin}' is not installed`,
-				command: "dokku plugin:list",
+				command: DokkuCommands.pluginList(),
 				exitCode: 400,
 				stderr: `Installed database plugins: ${installed}`,
 			};
 		}
 
-		return executeCommand(`dokku ${plugin}:create ${sanitizedName}`);
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku ${plugin}:create ${sanitizedName}`,
+			command,
 			exitCode: 1,
 		};
 	}
@@ -227,13 +232,15 @@ export async function linkDatabase(
 		};
 	}
 
+	const command = DokkuCommands.dbLink(plugin, sanitizedName, sanitizedApp);
+
 	try {
-		return executeCommand(`dokku ${plugin}:link ${sanitizedName} ${sanitizedApp}`);
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku ${plugin}:link ${sanitizedName} ${sanitizedApp}`,
+			command,
 			exitCode: 1,
 		};
 	}
@@ -283,13 +290,15 @@ export async function unlinkDatabase(
 		};
 	}
 
+	const command = DokkuCommands.dbUnlink(plugin, sanitizedName, sanitizedApp);
+
 	try {
-		return executeCommand(`dokku ${plugin}:unlink ${sanitizedName} ${sanitizedApp}`);
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku ${plugin}:unlink ${sanitizedName} ${sanitizedApp}`,
+			command,
 			exitCode: 1,
 		};
 	}
@@ -338,13 +347,15 @@ export async function destroyDatabase(
 		};
 	}
 
+	const command = DokkuCommands.dbDestroy(plugin, sanitizedName);
+
 	try {
-		return executeCommand(`dokku ${plugin}:destroy ${sanitizedName} --force`);
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku ${plugin}:destroy ${sanitizedName} --force`,
+			command,
 			exitCode: 1,
 		};
 	}

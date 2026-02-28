@@ -1,5 +1,6 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
+import { DokkuCommands } from "./dokku.js";
 
 export async function getConfig(
 	name: string
@@ -15,8 +16,10 @@ export async function getConfig(
 		};
 	}
 
+	const command = DokkuCommands.configShow(name);
+
 	try {
-		const result = await executeCommand(`dokku config:show ${name}`);
+		const result = await executeCommand(command);
 
 		if (result.exitCode !== 0) {
 			return {
@@ -42,7 +45,7 @@ export async function getConfig(
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku config:show ${name}`,
+			command,
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -77,13 +80,15 @@ export async function setConfig(
 		};
 	}
 
+	const command = DokkuCommands.configSet(name, sanitizedKey, value);
+
 	try {
-		return executeCommand(`dokku config:set ${name} ${sanitizedKey}='${value}'`);
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku config:set ${name} ${sanitizedKey}='${value}'`,
+			command,
 			exitCode: 1,
 		};
 	}
@@ -112,13 +117,15 @@ export async function unsetConfig(
 		};
 	}
 
+	const command = DokkuCommands.configUnset(name, sanitizedKey);
+
 	try {
-		return executeCommand(`dokku config:unset ${name} ${sanitizedKey}`);
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku config:unset ${name} ${sanitizedKey}`,
+			command,
 			exitCode: 1,
 		};
 	}

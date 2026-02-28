@@ -1,6 +1,7 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
+import { DokkuCommands } from "./dokku.js";
 
 interface ValidationError {
 	error: string;
@@ -47,8 +48,10 @@ export async function getDomains(
 		};
 	}
 
+	const command = DokkuCommands.domainsReport(name);
+
 	try {
-		const result = await executeCommand(`dokku domains:report ${name}`);
+		const result = await executeCommand(command);
 
 		if (result.exitCode !== 0) {
 			return {
@@ -85,7 +88,7 @@ export async function getDomains(
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku domains:report ${name}`,
+			command,
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -106,14 +109,15 @@ export async function addDomain(
 	}
 
 	const sanitizedDomain = domain.trim();
+	const command = DokkuCommands.domainsAdd(name, sanitizedDomain);
 
 	try {
-		return executeCommand(`dokku domains:add ${name} ${sanitizedDomain}`);
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku domains:add ${name} ${sanitizedDomain}`,
+			command,
 			exitCode: 1,
 		};
 	}
@@ -133,14 +137,15 @@ export async function removeDomain(
 	}
 
 	const sanitizedDomain = domain.trim();
+	const command = DokkuCommands.domainsRemove(name, sanitizedDomain);
 
 	try {
-		return executeCommand(`dokku domains:remove ${name} ${sanitizedDomain}`);
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku domains:remove ${name} ${sanitizedDomain}`,
+			command,
 			exitCode: 1,
 		};
 	}

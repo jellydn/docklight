@@ -1,4 +1,5 @@
 import { executeCommand, executeCommandAsRoot, type CommandResult } from "./executor.js";
+import { DokkuCommands } from "./dokku.js";
 import { stripAnsi } from "./ansi.js";
 
 interface PluginInputError {
@@ -87,7 +88,7 @@ function validatePluginName(name: string): PluginInputError | null {
 }
 
 export async function getPlugins(): Promise<PluginInfo[] | PluginInputError> {
-	const result = await executeCommand("dokku plugin:list");
+	const result = await executeCommand(DokkuCommands.pluginList());
 	if (result.exitCode !== 0) {
 		return {
 			error:
@@ -141,9 +142,7 @@ export async function installPlugin(
 		};
 	}
 
-	const command = normalizedName
-		? `dokku plugin:install ${normalizedRepository} ${normalizedName}`
-		: `dokku plugin:install ${normalizedRepository}`;
+	const command = DokkuCommands.pluginInstall(normalizedRepository, normalizedName || undefined);
 
 	return executePluginCommand(command, sudoPassword);
 }
@@ -174,7 +173,7 @@ export async function uninstallPlugin(
 ): Promise<CommandResult | PluginInputError> {
 	const validationError = validatePluginName(name);
 	if (validationError) return validationError;
-	return executePluginCommand(`dokku plugin:uninstall ${name.trim()}`, sudoPassword);
+	return executePluginCommand(DokkuCommands.pluginUninstall(name.trim()), sudoPassword);
 }
 
 export async function enablePlugin(
@@ -183,7 +182,7 @@ export async function enablePlugin(
 ): Promise<CommandResult | PluginInputError> {
 	const validationError = validatePluginName(name);
 	if (validationError) return validationError;
-	return executePluginCommand(`dokku plugin:enable ${name.trim()}`, sudoPassword);
+	return executePluginCommand(DokkuCommands.pluginEnable(name.trim()), sudoPassword);
 }
 
 export async function disablePlugin(
@@ -192,5 +191,5 @@ export async function disablePlugin(
 ): Promise<CommandResult | PluginInputError> {
 	const validationError = validatePluginName(name);
 	if (validationError) return validationError;
-	return executePluginCommand(`dokku plugin:disable ${name.trim()}`, sudoPassword);
+	return executePluginCommand(DokkuCommands.pluginDisable(name.trim()), sudoPassword);
 }

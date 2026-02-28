@@ -1,6 +1,7 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
+import { DokkuCommands } from "./dokku.js";
 
 const INVALID_NAME_ERROR = {
 	error: "Invalid app name",
@@ -155,8 +156,10 @@ export async function getSSL(
 		return INVALID_NAME_ERROR;
 	}
 
+	const fallbackCommand = DokkuCommands.letsencryptLs();
+
 	try {
-		const letsencryptReportResult = await executeCommand(`dokku letsencrypt:report ${appName}`);
+		const letsencryptReportResult = await executeCommand(DokkuCommands.letsencryptReport(appName));
 		if (letsencryptReportResult.exitCode === 0) {
 			const reportStatus = parseLetsencryptReport(letsencryptReportResult.stdout);
 			if (reportStatus) {
@@ -164,7 +167,7 @@ export async function getSSL(
 			}
 		}
 
-		const letsencryptResult = await executeCommand("dokku letsencrypt:ls");
+		const letsencryptResult = await executeCommand(fallbackCommand);
 
 		if (letsencryptResult.exitCode === 0) {
 			const listStatus = parseLetsencryptList(letsencryptResult.stdout, appName);
@@ -173,7 +176,7 @@ export async function getSSL(
 			}
 		}
 
-		const certsResult = await executeCommand(`dokku certs:report ${appName}`);
+		const certsResult = await executeCommand(DokkuCommands.certsReport(appName));
 
 		if (certsResult.exitCode === 0) {
 			const certsStatus = parseCertsReport(certsResult.stdout);
@@ -187,7 +190,7 @@ export async function getSSL(
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku letsencrypt:ls`,
+			command: fallbackCommand,
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -213,14 +216,14 @@ export async function enableSSL(
 		}
 
 		const setEmailResult = await executeCommand(
-			`dokku letsencrypt:set ${appName} email ${normalizedEmail}`
+			DokkuCommands.letsencryptSetEmail(appName, normalizedEmail)
 		);
 		if (setEmailResult.exitCode !== 0) {
 			return setEmailResult;
 		}
 	}
 
-	return executeCommand(`dokku letsencrypt:enable ${appName}`);
+	return executeCommand(DokkuCommands.letsencryptEnable(appName));
 }
 
 export async function renewSSL(
@@ -230,5 +233,5 @@ export async function renewSSL(
 		return { error: "Invalid app name", exitCode: 400, command: "" };
 	}
 
-	return executeCommand(`dokku letsencrypt:auto-renew ${appName}`);
+	return executeCommand(DokkuCommands.letsencryptAutoRenew(appName));
 }
