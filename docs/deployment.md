@@ -66,6 +66,36 @@ dokku config:set docklight \
   DOCKLIGHT_DOKKU_SSH_KEY_PATH=/app/.ssh/id_ed25519
 ```
 
+### Step 2.6: Configure root access for plugin management (recommended)
+
+Plugin management commands (`plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`) require root privileges. The recommended approach is to authorize the same SSH key used for the `dokku` user to also work for the `root` user.
+
+```bash
+ssh root@<your-server-ip>
+
+# Authorize the SSH key created for the 'dokku' user in Step 2.5 to also be used by the 'root' user.
+# This allows a single key to be used for both regular and root-privileged commands.
+sudo sh -c 'cat /home/dokku/.ssh/docklight.pub >> /root/.ssh/authorized_keys'
+
+# Configure Docklight to use root SSH target for plugin commands
+dokku config:set docklight DOCKLIGHT_DOKKU_SSH_ROOT_TARGET=root@<your-server-ip>
+```
+
+With this configuration:
+
+- Normal commands (apps, config, logs, etc.) run as the `dokku` user via `DOCKLIGHT_DOKKU_SSH_TARGET`
+- Plugin commands run as root via `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET`
+
+**Alternative: Passwordless sudo**
+
+If you prefer not to use root SSH, configure passwordless sudo for the dokku user:
+
+```bash
+# On your Dokku server, as root
+echo "dokku ALL=(ALL) NOPASSWD: /usr/local/bin/dokku plugin:*" | sudo tee /etc/sudoers.d/docklight
+sudo chmod 0440 /etc/sudoers.d/docklight
+```
+
 ## Step 3: Configure domain (optional but recommended)
 
 ```bash
@@ -93,6 +123,7 @@ git push dokku main
 ```
 
 Dokku will:
+
 1. Detect the `Dockerfile`
 2. Build the multi-stage Docker image (client + server)
 3. Start the container
@@ -163,6 +194,39 @@ Dokku performs zero-downtime deploys by default.
 
 ## Troubleshooting
 
+### Plugin management sudo errors
+
+When installing, enabling, disabling, or uninstalling plugins, you may encounter errors like:
+
+```
+sudo: no password was provided
+sudo: a terminal is required to read the password
+sorry, you must have a tty to run sudo
+```
+
+These errors occur because plugin commands require root access, and the default `dokku` user cannot run sudo commands interactively.
+
+**Solution 1: Use DOCKLIGHT_DOKKU_SSH_ROOT_TARGET (Recommended)**
+
+Follow [Step 2.6](#step-26-configure-root-access-for-plugin-management-recommended) to configure a dedicated root SSH target.
+
+**Solution 2: Configure passwordless sudo**
+
+```bash
+# On your Dokku server, as root
+echo "dokku ALL=(ALL) NOPASSWD: /usr/local/bin/dokku plugin:*" | sudo tee /etc/sudoers.d/docklight
+sudo chmod 0440 /etc/sudoers.d/docklight
+```
+
+**Solution 3: Use root as DOCKLIGHT_DOKKU_SSH_TARGET**
+
+Not recommended for security reasons, but you can set both SSH targets to root:
+
+```bash
+dokku config:set docklight DOCKLIGHT_DOKKU_SSH_TARGET=root@<your-server-ip>
+dokku config:set docklight DOCKLIGHT_DOKKU_SSH_ROOT_TARGET=root@<your-server-ip>
+```
+
 ### "Permission denied" on git push
 
 Your SSH key isn't registered with Dokku:
@@ -189,6 +253,7 @@ dokku logs docklight --num 100
 ```
 
 Common issues:
+
 - `DOCKLIGHT_PASSWORD` not set → `dokku config:set docklight DOCKLIGHT_PASSWORD=...`
 - `dokku: not found` in dashboard → configure Step 2.5 (Dokku SSH access)
 - Port conflict → Dokku handles port mapping automatically, no manual config needed
@@ -196,6 +261,7 @@ Common issues:
 ### Build fails
 
 Check Docker build logs during `git push`. Common causes:
+
 - npm install fails → check `package.json` for issues
 - TypeScript compilation fails → run `bun run typecheck` locally first
 

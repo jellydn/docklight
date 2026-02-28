@@ -114,11 +114,46 @@ Docklight runs shell commands on your server. For production use:
 
 ### Plugin Management Note
 
-Plugin install/enable/disable/uninstall commands run with root privileges (`sudo ... dokku ...`).
-If plugin actions fail with sudo password/tty errors, either:
+Some Dokku plugin commands (`plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`) require root privileges to modify system-level files. These commands run with `sudo`.
 
-- Configure passwordless sudo for the Docklight runtime user, or
-- Set `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` to a root SSH target (for example `root@<server-ip>`).
+#### Why Root Access is Needed
+
+Plugin management commands write to directories like `/var/lib/dokku/plugins/` and may update system configurations. The `dokku` user doesn't have write permissions to these locations by default.
+
+#### Configuration Options
+
+**Option 1: Use a dedicated root SSH target (Recommended)**
+
+Set `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` to route root-required commands directly to root:
+
+```bash
+dokku config:set docklight DOCKLIGHT_DOKKU_SSH_TARGET=dokku@<server-ip>
+dokku config:set docklight DOCKLIGHT_DOKKU_SSH_ROOT_TARGET=root@<server-ip>
+dokku config:set docklight DOCKLIGHT_DOKKU_SSH_KEY_PATH=/app/.ssh/id_ed25519
+```
+
+This approach keeps normal commands running as the `dokku` user (more secure) while only elevating to root for plugin operations.
+
+**Option 2: Configure passwordless sudo**
+
+Allow the `dokku` user to run plugin commands without a password:
+
+```bash
+# On your Dokku server, as root
+echo "dokku ALL=(ALL) NOPASSWD: /usr/local/bin/dokku plugin:*" | sudo tee /etc/sudoers.d/docklight
+sudo chmod 0440 /etc/sudoers.d/docklight
+```
+
+Then use `dokku@<server-ip>` for `DOCKLIGHT_DOKKU_SSH_TARGET`.
+
+#### Troubleshooting
+
+If plugin commands fail with errors like:
+- `sudo: no password was provided`
+- `sudo: a terminal is required to read the password`
+- `sorry, you must have a tty to run sudo`
+
+See the [deployment guide troubleshooting section](docs/deployment.md#plugin-management-sudo-errors).
 
 ## Dokku Commands Coverage
 
