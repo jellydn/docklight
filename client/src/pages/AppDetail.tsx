@@ -18,6 +18,8 @@ import {
 	DeploymentSettingsSchema,
 	type DockerOptions,
 	DockerOptionsSchema,
+	type NetworkReport,
+	NetworkReportSchema,
 	type PortMapping,
 	PortsResponseSchema,
 	type ProxyReport,
@@ -153,6 +155,14 @@ export function AppDetail() {
 	} | null>(null);
 	const [dockerOptionRemoveSubmitting, setDockerOptionRemoveSubmitting] = useState(false);
 
+	// Network state
+	const [networkReport, setNetworkReport] = useState<NetworkReport | null>(null);
+	const [networkLoading, setNetworkLoading] = useState(false);
+	const [networkError, setNetworkError] = useState<string | null>(null);
+	const [editingNetworkKey, setEditingNetworkKey] = useState<string | null>(null);
+	const [networkEditValue, setNetworkEditValue] = useState("");
+	const [networkSubmitting, setNetworkSubmitting] = useState(false);
+
 	// Log viewer state
 	const [logs, setLogs] = useState<string[]>([]);
 	const [connectionStatus, setConnectionStatus] = useState<
@@ -204,6 +214,7 @@ export function AppDetail() {
 			fetchProxyReport();
 			fetchBuildpacks();
 			fetchDockerOptions();
+			fetchNetwork();
 		}
 	}, [activeTab, name]);
 
@@ -1169,6 +1180,100 @@ export function AppDetail() {
 			setPendingClearDockerPhase(null);
 		} finally {
 			setClearDockerPhaseSubmitting(false);
+		}
+	};
+
+	const fetchNetwork = async () => {
+		if (!name) return;
+
+		setNetworkLoading(true);
+		setNetworkError(null);
+		try {
+			const report = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/network`,
+				NetworkReportSchema
+			);
+			setNetworkReport(report);
+		} catch (err) {
+			setNetworkError(err instanceof Error ? err.message : "Failed to load network settings");
+		} finally {
+			setNetworkLoading(false);
+		}
+	};
+
+	const handleStartEditNetwork = (key: string, currentValue: string) => {
+		setEditingNetworkKey(key);
+		setNetworkEditValue(currentValue);
+	};
+
+	const handleCancelEditNetwork = () => {
+		setEditingNetworkKey(null);
+		setNetworkEditValue("");
+	};
+
+	const handleSaveNetworkProperty = async (key: string) => {
+		if (!name || networkSubmitting) return;
+
+		setNetworkSubmitting(true);
+		try {
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/network`,
+				CommandResultSchema,
+				{
+					method: "PUT",
+					body: JSON.stringify({ key, value: networkEditValue }),
+				}
+			);
+			addToast(
+				result.exitCode === 0 ? "success" : "error",
+				result.exitCode === 0 ? "Network setting saved" : "Failed to save network setting",
+				result
+			);
+			if (result.exitCode === 0) {
+				setEditingNetworkKey(null);
+				setNetworkEditValue("");
+				fetchNetwork();
+			}
+		} catch (err) {
+			addToast(
+				"error",
+				"Failed to save network setting",
+				createErrorResult(`dokku network:set ${name} ${key}`, err)
+			);
+		} finally {
+			setNetworkSubmitting(false);
+		}
+	};
+
+	const handleClearNetworkProperty = async (key: string) => {
+		if (!name || networkSubmitting) return;
+
+		setNetworkSubmitting(true);
+		try {
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/network`,
+				CommandResultSchema,
+				{
+					method: "DELETE",
+					body: JSON.stringify({ key }),
+				}
+			);
+			addToast(
+				result.exitCode === 0 ? "success" : "error",
+				result.exitCode === 0 ? "Network setting cleared" : "Failed to clear network setting",
+				result
+			);
+			if (result.exitCode === 0) {
+				fetchNetwork();
+			}
+		} catch (err) {
+			addToast(
+				"error",
+				"Failed to clear network setting",
+				createErrorResult(`dokku network:set ${name} ${key}`, err)
+			);
+		} finally {
+			setNetworkSubmitting(false);
 		}
 	};
 
@@ -2583,7 +2688,92 @@ export function AppDetail() {
 
 					<div className="bg-white rounded-lg shadow p-6">
 						<h2 className="text-lg font-semibold mb-4">Network</h2>
-						<p className="text-gray-500">Configure network settings.</p>
+
+						{networkLoading ? (
+							<div className="flex justify-center py-8">
+								<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+							</div>
+						) : networkError ? (
+							<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+								{networkError}
+							</div>
+						) : (
+							<div className="space-y-4">
+								<p className="text-sm text-gray-500 mb-4">
+									Configure network properties for this app. Click a value to edit, or use the clear
+									button to remove a setting.
+								</p>
+
+								{[
+									"attach-post-create",
+									"attach-post-deploy",
+									"bind-all-interfaces",
+									"initial-network",
+									"static-web-listener",
+									"tls-internal",
+								].map((key) => {
+									const value = networkReport?.[key] ?? "";
+									const isEditing = editingNetworkKey === key;
+									const isNotSet = !value || value === "";
+
+									return (
+										<div key={key} className="flex items-center justify-between py-2 border-b">
+											<div className="flex-1">
+												<span className="font-medium text-gray-700">{key}</span>
+												{isEditing ? (
+													<div className="flex items-center gap-2 mt-2">
+														<input
+															type="text"
+															value={networkEditValue}
+															onChange={(e) => setNetworkEditValue(e.target.value)}
+															placeholder="true/false or value"
+															className="border rounded px-3 py-1 text-sm"
+														/>
+														<button
+															onClick={() => handleSaveNetworkProperty(key)}
+															disabled={networkSubmitting}
+															className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 disabled:bg-gray-300"
+														>
+															Save
+														</button>
+														<button
+															onClick={handleCancelEditNetwork}
+															disabled={networkSubmitting}
+															className="text-gray-600 px-3 py-1 rounded text-sm hover:bg-gray-100"
+														>
+															Cancel
+														</button>
+													</div>
+												) : (
+													<div className="flex items-center gap-2 mt-1">
+														{isNotSet ? (
+															<span className="text-gray-400 italic">not set</span>
+														) : (
+															<span className="text-gray-800 font-mono text-sm">{value}</span>
+														)}
+														<button
+															onClick={() => handleStartEditNetwork(key, value)}
+															className="text-blue-600 hover:text-blue-800 text-sm"
+														>
+															{isNotSet ? "Set" : "Edit"}
+														</button>
+														{!isNotSet && (
+															<button
+																onClick={() => handleClearNetworkProperty(key)}
+																disabled={networkSubmitting}
+																className="text-red-600 hover:text-red-800 text-sm"
+															>
+																Clear
+															</button>
+														)}
+													</div>
+												)}
+											</div>
+										</div>
+									);
+								})}
+							</div>
+						)}
 					</div>
 				</div>
 			)}
