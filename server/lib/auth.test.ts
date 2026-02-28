@@ -1,176 +1,292 @@
-import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
-import type { Request, Response } from "express";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import type { Request, Response, NextFunction } from "express";
 
-describe("auth functions", () => {
-	beforeAll(() => {
-		vi.resetModules();
-		process.env.DOCKLIGHT_PASSWORD = "test-password";
-		process.env.DOCKLIGHT_SECRET = "test-secret-for-auth-module";
+// Mock db and logger before importing auth
+vi.mock("./db.js", () => ({
+	getUserByUsername: vi.fn(),
+}));
+
+vi.mock("./logger.js", () => ({
+	logger: {
+		info: vi.fn(),
+		error: vi.fn(),
+		warn: vi.fn(),
+	},
+}));
+
+import { getUserByUsername } from "./db.js";
+import {
+	hashPassword,
+	verifyPassword,
+	login,
+	loginWithCredentials,
+	generateToken,
+	verifyToken,
+	authMiddleware,
+	requireRole,
+} from "./auth.js";
+import type { JWTPayload } from "./auth.js";
+
+describe("hashPassword / verifyPassword", () => {
+	it("should hash and verify a correct password", async () => {
+		const hash = await hashPassword("mysecret");
+		expect(hash).toContain(":");
+		const valid = await verifyPassword("mysecret", hash);
+		expect(valid).toBe(true);
+	});
+
+	it("should reject an incorrect password", async () => {
+		const hash = await hashPassword("mysecret");
+		const valid = await verifyPassword("wrongpassword", hash);
+		expect(valid).toBe(false);
+	});
+
+	it("should return false for malformed hash", async () => {
+		const valid = await verifyPassword("password", "notahash");
+		expect(valid).toBe(false);
+	});
+});
+
+describe("login (legacy)", () => {
+	beforeEach(() => {
+		vi.stubEnv("DOCKLIGHT_PASSWORD", "testpassword");
+	});
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
+	it("should return true for correct password", () => {
+		expect(login("testpassword")).toBe(true);
+	});
+
+	it("should return false for incorrect password", () => {
+		expect(login("wrongpassword")).toBe(false);
+	});
+
+	it("should return false for non-string password", () => {
+		expect(login(123)).toBe(false);
+	});
+});
+
+describe("loginWithCredentials", () => {
+	it("should return null for non-string inputs", async () => {
+		const result = await loginWithCredentials(null, "pass");
+		expect(result).toBeNull();
+	});
+
+	it("should return null when user not found", async () => {
+		vi.mocked(getUserByUsername).mockReturnValue(null);
+		const result = await loginWithCredentials("alice", "pass");
+		expect(result).toBeNull();
+	});
+
+	it("should return null for wrong password", async () => {
+		const hash = await hashPassword("correctpassword");
+		vi.mocked(getUserByUsername).mockReturnValue({
+			id: 1,
+			username: "alice",
+			password_hash: hash,
+			role: "admin",
+			createdAt: new Date().toISOString(),
+		});
+		const result = await loginWithCredentials("alice", "wrongpassword");
+		expect(result).toBeNull();
+	});
+
+	it("should return user info for correct credentials", async () => {
+		const hash = await hashPassword("correctpassword");
+		vi.mocked(getUserByUsername).mockReturnValue({
+			id: 1,
+			username: "alice",
+			password_hash: hash,
+			role: "admin",
+			createdAt: new Date().toISOString(),
+		});
+		const result = await loginWithCredentials("alice", "correctpassword");
+		expect(result).toEqual({ id: 1, username: "alice", role: "admin" });
+	});
+});
+
+describe("generateToken / verifyToken", () => {
+	it("should generate a verifiable token without user info (legacy)", () => {
+		const token = generateToken();
+		const payload = verifyToken(token);
+		expect(payload?.authenticated).toBe(true);
+		expect(payload?.userId).toBeUndefined();
+	});
+
+	it("should include user info in token when provided", () => {
+		const token = generateToken({ id: 1, username: "bob", role: "operator" });
+		const payload = verifyToken(token) as JWTPayload;
+		expect(payload.authenticated).toBe(true);
+		expect(payload.userId).toBe(1);
+		expect(payload.username).toBe("bob");
+		expect(payload.role).toBe("operator");
+	});
+
+	it("should return null for invalid token", () => {
+		expect(verifyToken("notavalidtoken")).toBeNull();
+	});
+
+	it("should include iat and exp in payload", () => {
+		const token = generateToken();
+		const payload = verifyToken(token);
+		expect(payload?.iat).toBeDefined();
+		expect(payload?.exp).toBeDefined();
+	});
+});
+
+describe("authMiddleware", () => {
+	it("should reject request without cookie", () => {
+		const req = { cookies: {} } as unknown as Request;
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		} as unknown as Response;
+		const next = vi.fn() as NextFunction;
+
+		authMiddleware(req, res, next);
+
+		expect(res.status).toHaveBeenCalledWith(401);
+		expect(next).not.toHaveBeenCalled();
+	});
+
+	it("should reject request with invalid token", () => {
+		const req = { cookies: { session: "badtoken" } } as unknown as Request;
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		} as unknown as Response;
+		const next = vi.fn() as NextFunction;
+
+		authMiddleware(req, res, next);
+
+		expect(res.status).toHaveBeenCalledWith(401);
+		expect(next).not.toHaveBeenCalled();
+	});
+
+	it("should call next() and attach user for valid token", () => {
+		const token = generateToken({ id: 1, username: "alice", role: "admin" });
+		const req = { cookies: { session: token } } as unknown as Request;
+		const res = {} as Response;
+		const next = vi.fn() as NextFunction;
+
+		authMiddleware(req, res, next);
+
+		expect(next).toHaveBeenCalled();
+		expect((req as Request & { user?: JWTPayload }).user?.username).toBe("alice");
+	});
+});
+
+describe("requireRole", () => {
+	it("should allow legacy token (no role) through", () => {
+		const token = generateToken(); // no user → no role
+		const req = { cookies: { session: token }, user: { authenticated: true } } as Request;
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		} as unknown as Response;
+		const next = vi.fn() as NextFunction;
+
+		requireRole("admin")(req, res, next);
+
+		expect(next).toHaveBeenCalled();
+	});
+
+	it("should allow matching role", () => {
+		const req = {
+			user: { authenticated: true, userId: 1, username: "alice", role: "admin" },
+		} as Request;
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		} as unknown as Response;
+		const next = vi.fn() as NextFunction;
+
+		requireRole("admin", "operator")(req, res, next);
+
+		expect(next).toHaveBeenCalled();
+	});
+
+	it("should reject insufficient role", () => {
+		const req = {
+			user: { authenticated: true, userId: 2, username: "bob", role: "viewer" },
+		} as Request;
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		} as unknown as Response;
+		const next = vi.fn() as NextFunction;
+
+		requireRole("admin")(req, res, next);
+
+		expect(res.status).toHaveBeenCalledWith(403);
+		expect(next).not.toHaveBeenCalled();
+	});
+});
+
+describe("cookie management", () => {
+	it("should set auth cookie", () => {
+		const cookie = vi.fn();
+		const res = { cookie } as unknown as Response;
+
+		const { setAuthCookie } = require("./auth.js");
+		setAuthCookie(res);
+
+		expect(cookie).toHaveBeenCalledWith(
+			"session",
+			expect.any(String),
+			expect.objectContaining({
+				httpOnly: true,
+				sameSite: "strict",
+				maxAge: 24 * 60 * 60 * 1000,
+			})
+		);
+	});
+
+	it("should use secure flag in production", () => {
+		process.env.NODE_ENV = "production";
+
+		const cookie = vi.fn();
+		const res = { cookie } as unknown as Response;
+
+		const { setAuthCookie } = require("./auth.js");
+		setAuthCookie(res);
+
+		expect(cookie).toHaveBeenCalledWith(
+			"session",
+			expect.any(String),
+			expect.objectContaining({
+				secure: true,
+			})
+		);
+
 		process.env.NODE_ENV = "test";
 	});
 
-	beforeEach(() => {
-		vi.clearAllMocks();
+	it("should not use secure flag in development", () => {
+		process.env.NODE_ENV = "development";
+
+		const cookie = vi.fn();
+		const res = { cookie } as unknown as Response;
+
+		const { setAuthCookie } = require("./auth.js");
+		setAuthCookie(res);
+
+		const call = cookie.mock.calls[0];
+		expect(call[2]).toHaveProperty("secure", false);
+
+		process.env.NODE_ENV = "test";
 	});
 
-	describe("login", () => {
-		it("should return true for correct password", async () => {
-			const { login } = await import("./auth.js");
-			expect(login("test-password")).toBe(true);
-		});
+	it("should clear auth cookie", () => {
+		const clearCookie = vi.fn();
+		const res = { clearCookie } as unknown as Response;
 
-		it("should return false for incorrect password", async () => {
-			const { login } = await import("./auth.js");
-			expect(login("wrong-password")).toBe(false);
-		});
+		const { clearAuthCookie } = require("./auth.js");
+		clearAuthCookie(res);
 
-		it("should return false for non-string password", async () => {
-			const { login } = await import("./auth.js");
-			expect(login(null)).toBe(false);
-			expect(login(undefined)).toBe(false);
-			expect(login(123)).toBe(false);
-		});
-	});
-
-	describe("token generation and verification", () => {
-		it("should generate valid tokens", async () => {
-			const { generateToken } = await import("./auth.js");
-			const token = generateToken();
-			expect(typeof token).toBe("string");
-			expect(token.length).toBeGreaterThan(0);
-		});
-
-		it("should verify valid tokens", async () => {
-			const { generateToken, verifyToken } = await import("./auth.js");
-			const token = generateToken();
-			const payload = verifyToken(token);
-			expect(payload).not.toBeNull();
-			expect(payload?.authenticated).toBe(true);
-		});
-
-		it("should not verify invalid tokens", async () => {
-			const { verifyToken } = await import("./auth.js");
-			expect(verifyToken("invalid-token")).toBeNull();
-		});
-
-		it("should include iat and exp in payload", async () => {
-			const { generateToken, verifyToken } = await import("./auth.js");
-			const token = generateToken();
-			const payload = verifyToken(token);
-			expect(payload?.iat).toBeDefined();
-			expect(payload?.exp).toBeDefined();
-		});
-	});
-
-	describe("authMiddleware", () => {
-		it("should pass with valid token", async () => {
-			const { generateToken, authMiddleware } = await import("./auth.js");
-			const token = generateToken();
-			const req = { cookies: { session: token } } as unknown as Request;
-			const res = {
-				status: vi.fn().mockReturnThis(),
-				json: vi.fn(),
-			} as unknown as Response;
-			const next = vi.fn();
-
-			authMiddleware(req, res, next);
-
-			expect(next).toHaveBeenCalled();
-		});
-
-		it("should block without token", async () => {
-			const { authMiddleware } = await import("./auth.js");
-			const req = { cookies: {} } as unknown as Request;
-			const res = {
-				status: vi.fn().mockReturnThis(),
-				json: vi.fn(),
-			} as unknown as Response;
-			const next = vi.fn();
-
-			authMiddleware(req, res, next);
-
-			expect(next).not.toHaveBeenCalled();
-			expect(res.status).toHaveBeenCalledWith(401);
-		});
-
-		it("should block with invalid token", async () => {
-			const { authMiddleware } = await import("./auth.js");
-			const req = { cookies: { session: "invalid-token" } } as unknown as Request;
-			const res = {
-				status: vi.fn().mockReturnThis(),
-				json: vi.fn(),
-			} as unknown as Response;
-			const next = vi.fn();
-
-			authMiddleware(req, res, next);
-
-			expect(next).not.toHaveBeenCalled();
-			expect(res.status).toHaveBeenCalledWith(401);
-		});
-	});
-
-	describe("cookie management", () => {
-		it("should set auth cookie", async () => {
-			const { setAuthCookie } = await import("./auth.js");
-			const cookie = vi.fn();
-			const res = { cookie } as unknown as Response;
-
-			setAuthCookie(res);
-
-			expect(cookie).toHaveBeenCalledWith(
-				"session",
-				expect.any(String),
-				expect.objectContaining({
-					httpOnly: true,
-					sameSite: "strict",
-					maxAge: 24 * 60 * 60 * 1000,
-				})
-			);
-		});
-
-		it("should use secure flag in production", async () => {
-			process.env.NODE_ENV = "production";
-			const { setAuthCookie } = await import("./auth.js");
-
-			const cookie = vi.fn();
-			const res = { cookie } as unknown as Response;
-
-			setAuthCookie(res);
-
-			expect(cookie).toHaveBeenCalledWith(
-				"session",
-				expect.any(String),
-				expect.objectContaining({
-					secure: true,
-				})
-			);
-
-			process.env.NODE_ENV = "test";
-		});
-
-		it("should not use secure flag in development", async () => {
-			process.env.NODE_ENV = "development";
-			const { setAuthCookie } = await import("./auth.js");
-
-			const cookie = vi.fn();
-			const res = { cookie } as unknown as Response;
-
-			setAuthCookie(res);
-
-			const call = cookie.mock.calls[0];
-			expect(call[2]).toHaveProperty("secure", false);
-
-			process.env.NODE_ENV = "test";
-		});
-
-		it("should clear auth cookie", async () => {
-			const { clearAuthCookie } = await import("./auth.js");
-			const clearCookie = vi.fn();
-			const res = { clearCookie } as unknown as Response;
-
-			clearAuthCookie(res);
-
-			expect(clearCookie).toHaveBeenCalledWith("session");
-		});
+		expect(clearCookie).toHaveBeenCalledWith("session");
 	});
 });
