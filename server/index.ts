@@ -27,7 +27,16 @@ import {
 import { getAuditLogs, getRecentCommands } from "./lib/db.js";
 import { addDomain, getDomains, removeDomain } from "./lib/domains.js";
 import { logger } from "./lib/logger.js";
-import { addPort, clearPorts, getPorts, removePort } from "./lib/ports.js";
+import {
+	addPort,
+	clearPorts,
+	disableProxy,
+	enableProxy,
+	getPorts,
+	getProxyReport,
+	removePort,
+} from "./lib/ports.js";
+import { addBuildpack, clearBuildpacks, getBuildpacks, removeBuildpack } from "./lib/buildpacks.js";
 import {
 	disablePlugin,
 	enablePlugin,
@@ -320,6 +329,88 @@ app.delete("/api/apps/:name/ports", async (req, res) => {
 app.delete("/api/apps/:name/ports/all", async (req, res) => {
 	const { name } = req.params;
 	const result = await clearPorts(name);
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.get("/api/apps/:name/proxy", async (req, res) => {
+	const { name } = req.params;
+	const proxyReport = await getProxyReport(name);
+	res.json(proxyReport);
+});
+
+app.post("/api/apps/:name/proxy/enable", async (req, res) => {
+	const { name } = req.params;
+	const result = await enableProxy(name);
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.post("/api/apps/:name/proxy/disable", async (req, res) => {
+	const { name } = req.params;
+	const result = await disableProxy(name);
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.get("/api/apps/:name/buildpacks", async (req, res) => {
+	const { name } = req.params;
+	const buildpacks = await getBuildpacks(name);
+	res.json(buildpacks);
+});
+
+app.post("/api/apps/:name/buildpacks", async (req, res) => {
+	const { name } = req.params;
+	const { url, index } = req.body;
+
+	if (!url || typeof url !== "string") {
+		res.status(400).json({ error: "Buildpack URL is required" });
+		return;
+	}
+
+	const result = await addBuildpack(name, url, index);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/buildpacks", async (req, res) => {
+	const { name } = req.params;
+	const { url } = req.body;
+
+	if (!url || typeof url !== "string") {
+		res.status(400).json({ error: "Buildpack URL is required" });
+		return;
+	}
+
+	const result = await removeBuildpack(name, url);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/buildpacks/all", async (req, res) => {
+	const { name } = req.params;
+	const result = await clearBuildpacks(name);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
 	clearPrefix("apps:");
 	res.json(result);
 });

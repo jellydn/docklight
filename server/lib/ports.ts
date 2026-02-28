@@ -198,3 +198,106 @@ export async function clearPorts(
 		};
 	}
 }
+
+export interface ProxyReport {
+	enabled: boolean;
+	type: string;
+}
+
+export async function getProxyReport(
+	name: string
+): Promise<ProxyReport | { error: string; command: string; exitCode: number; stderr: string }> {
+	if (!isValidAppName(name)) {
+		return {
+			error: "Invalid app name",
+			command: "",
+			exitCode: 400,
+			stderr: "App name must contain only lowercase letters, numbers, and hyphens",
+		};
+	}
+
+	try {
+		const result = await executeCommand(`dokku proxy:report ${name}`);
+
+		if (result.exitCode !== 0) {
+			return {
+				error: "Failed to get proxy report",
+				command: result.command,
+				exitCode: result.exitCode,
+				stderr: result.stderr,
+			};
+		}
+
+		const lines = result.stdout.split("\n").map((line) => stripAnsi(line));
+		let enabled = false;
+		let proxyType = "unknown";
+
+		for (const line of lines) {
+			const enabledMatch = line.match(/^(?:proxy.*)?\s*Enabled:\s*(\w+)/i);
+			if (enabledMatch) {
+				enabled = enabledMatch[1].toLowerCase() === "true";
+			}
+
+			const typeMatch = line.match(/^(?:proxy.*)?\s*Type:\s*(\w+)/i);
+			if (typeMatch) {
+				proxyType = typeMatch[1];
+			}
+		}
+
+		return { enabled, type: proxyType };
+	} catch (error: unknown) {
+		const err = error as { message?: string };
+		return {
+			error: err.message || "Unknown error occurred",
+			command: `dokku proxy:report ${name}`,
+			exitCode: 1,
+			stderr: err.message || "",
+		};
+	}
+}
+
+export async function enableProxy(
+	name: string
+): Promise<CommandResult | { error: string; exitCode: number }> {
+	if (!isValidAppName(name)) {
+		return {
+			error: "Invalid app name",
+			command: "",
+			exitCode: 400,
+		};
+	}
+
+	try {
+		return executeCommand(`dokku proxy:enable ${name}`);
+	} catch (error: unknown) {
+		const err = error as { message?: string };
+		return {
+			error: err.message || "Unknown error occurred",
+			command: `dokku proxy:enable ${name}`,
+			exitCode: 1,
+		};
+	}
+}
+
+export async function disableProxy(
+	name: string
+): Promise<CommandResult | { error: string; exitCode: number }> {
+	if (!isValidAppName(name)) {
+		return {
+			error: "Invalid app name",
+			command: "",
+			exitCode: 400,
+		};
+	}
+
+	try {
+		return executeCommand(`dokku proxy:disable ${name}`);
+	} catch (error: unknown) {
+		const err = error as { message?: string };
+		return {
+			error: err.message || "Unknown error occurred",
+			command: `dokku proxy:disable ${name}`,
+			exitCode: 1,
+		};
+	}
+}

@@ -1,5 +1,24 @@
+## Codebase Patterns
+- Example: Use `executeCommand` from executor.ts for all Dokku CLI commands
+- Example: Always validate with `isValidAppName()` before executing commands
+- Example: Return error objects with { error, command, exitCode, stderr } for error cases
+- Example: Clear cache with `clearPrefix('apps:')` after mutations
+
 # Ralph Progress Log
-Started: Sat Feb 28 12:43:28 +08 2026
+Started: Sat Feb 28 18:28:47 +08 2026
+## [Date/Time] - US-001
+- Implemented Ports management API endpoints (server/lib/ports.ts, server/index.ts)
+- Created getPorts, addPort, removePort, clearPorts functions
+- Added routes: GET /api/apps/:name/ports, POST /api/apps/:name/ports, DELETE /api/apps/:name/ports, DELETE /api/apps/:name/ports/all
+- Validates app name with isValidAppName() and port values in range 1-65535
+- Clears cache after mutations
+- Typecheck and lint pass
+- Files changed: server/lib/ports.ts (new), server/index.ts
+- **Learnings for future iterations:**
+  - Follow same pattern as domains.ts for consistency
+  - Use stripAnsi() from ansi.ts to clean CLI output
+  - Test failures are pre-existing (vi.mocked not a function issue) - not caused by this change
+---
 ## Sat Feb 28 2026 - US-004, US-005, US-006
 [Session: https://opncd.ai/s/5cfeab3c]
 - Implemented CreateAppDialog component (client/src/components/CreateAppDialog.tsx)
@@ -149,3 +168,34 @@ Started: Sat Feb 28 12:43:28 +08 2026
 - **Learnings for future iterations:**
   - ChromeDevTools MCP not configured - skipped browser verification
 ---
+
+## Sat Feb 28 2026 - US-002
+- Implemented Proxy management API endpoints (server/lib/ports.ts, server/index.ts)
+- Added getProxyReport(name) that runs 'dokku proxy:report <name>' and parses enabled status and proxy type
+- Added enableProxy(name) that runs 'dokku proxy:enable <name>'
+- Added disableProxy(name) that runs 'dokku proxy:disable <name>'
+- Added routes: GET /api/apps/:name/proxy, POST /api/apps/:name/proxy/enable, POST /api/apps/:name/proxy/disable
+- Validates app name with isValidAppName()
+- Typecheck and lint pass
+- Files changed: server/lib/ports.ts, server/index.ts
+- **Learnings for future iterations:**
+  - Follow same pattern as ports.ts functions for consistency
+  - Use stripAnsi() to clean CLI output
+  - ProxyReport interface: { enabled: boolean, type: string }
+---
+
+## [Date/Time] - US-003
+- Implemented Buildpacks management API endpoints (server/lib/buildpacks.ts, server/index.ts)
+- Created getBuildpacks, addBuildpack, removeBuildpack, clearBuildpacks functions
+- Added routes: GET /api/apps/:name/buildpacks, POST /api/apps/:name/buildpacks, DELETE /api/apps/:name/buildpacks, DELETE /api/apps/:name/buildpacks/all
+- Validates app name with isValidAppName()
+- Added optional index parameter for addBuildpack with --index flag
+- Clear cache after mutations (only on success)
+- Typecheck and lint pass
+- Files changed: server/lib/buildpacks.ts (new), server/index.ts
+- **Learnings for future iterations:**
+  - Follow same pattern as ports.ts for consistency
+  - Use stripAnsi() to clean CLI output
+  - Cache clearing only happens on successful operations (exitCode === 0)
+  - Buildpack index is 1-based in Dokku CLI output
+
