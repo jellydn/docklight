@@ -139,3 +139,13 @@ Started: Sat Feb 28 12:43:28 +08 2026
   - Use exitCode >= 400 && exitCode < 600 to determine if it's an HTTP error code
   - Pre-existing test failures (vi.mocked not a function issue) - not caused by this change
 ---
+
+## Sat Feb 28 2026 - US-012
+[Session: https://opncd.ai/s/5cfeab3c]
+- Fixed copy button to copy full git remote command (client/src/components/CreateAppDialog.tsx)
+- Copy button now copies 'git remote add dokku dokku@<host>:<app>' instead of just 'dokku@<host>:<app>'
+- Typecheck and lint pass
+- Files changed: client/src/components/CreateAppDialog.tsx
+- **Learnings for future iterations:**
+  - ChromeDevTools MCP not configured - skipped browser verification
+---

@@ -61,9 +61,9 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 	const [copySuccess, setCopySuccess] = useState(false);
 
 	const handleCopyRemote = async () => {
-		const remoteUrl = `dokku@${hostname}:${createdAppName}`;
+		const gitRemoteCommand = `git remote add dokku dokku@${hostname}:${createdAppName}`;
 		try {
-			await navigator.clipboard.writeText(remoteUrl);
+			await navigator.clipboard.writeText(gitRemoteCommand);
 			setCopySuccess(true);
 			setTimeout(() => setCopySuccess(false), 2000);
 		} catch {

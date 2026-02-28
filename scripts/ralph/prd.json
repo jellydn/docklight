@@ -202,8 +202,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 12,
-      "passes": false,
-      "notes": "Currently copies only the remote URL, not the full command the user needs to run."
+      "passes": true,
+      "notes": "Fixed. Now copies full git remote add command."
     }
   ]
 }
