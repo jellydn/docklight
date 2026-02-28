@@ -124,44 +124,39 @@ export function AppDetail() {
 		const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 		const wsUrl = `${protocol}//${window.location.host}/api/apps/${name}/logs/stream`;
 
-		try {
-			const ws = new WebSocket(wsUrl);
-			wsRef.current = ws;
+		const ws = new WebSocket(wsUrl);
+		wsRef.current = ws;
 
-			ws.onopen = () => {
-				setConnectionStatus("connected");
-				setLogs([]);
-				ws.send(JSON.stringify({ lines: lineCount }));
-			};
+		ws.onopen = () => {
+			setConnectionStatus("connected");
+			setLogs([]);
+			ws.send(JSON.stringify({ lines: lineCount }));
+		};
 
-			ws.onmessage = (event) => {
-				try {
-					const data = JSON.parse(event.data);
-					if (data.line) {
-						setLogs((prev) => {
-							const next = [...prev, data.line];
-							return next.length > 10000 ? next.slice(-10000) : next;
-						});
-					}
-					if (data.error && !data.line) {
-						setConnectionStatus("disconnected");
-					}
-				} catch (err) {
-					logger.error({ err }, "Error parsing WebSocket message");
+		ws.onmessage = (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				if (data.line) {
+					setLogs((prev) => {
+						const next = [...prev, data.line];
+						return next.length > 10000 ? next.slice(-10000) : next;
+					});
 				}
-			};
+				if (data.error && !data.line) {
+					setConnectionStatus("disconnected");
+				}
+			} catch (err) {
+				logger.error({ err }, "Error parsing WebSocket message");
+			}
+		};
 
-			ws.onclose = () => {
-				setConnectionStatus("disconnected");
-			};
-
-			ws.onerror = () => {
-				setConnectionStatus("disconnected");
-			};
-		} catch (err) {
-			logger.error({ err }, "Failed to connect to WebSocket");
+		ws.onclose = () => {
 			setConnectionStatus("disconnected");
-		}
+		};
+
+		ws.onerror = () => {
+			setConnectionStatus("disconnected");
+		};
 	};
 
 	const disconnectWebSocket = () => {
