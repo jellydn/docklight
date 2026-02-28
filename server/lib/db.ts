@@ -37,6 +37,13 @@ function getDb(): Database {
 	  )
 	`);
 
+	// Create indexes for audit log query performance
+	newDb.exec(`
+	  CREATE INDEX IF NOT EXISTS idx_command_history_createdAt ON command_history(createdAt);
+	  CREATE INDEX IF NOT EXISTS idx_command_history_exitCode ON command_history(exitCode);
+	  CREATE INDEX IF NOT EXISTS idx_command_history_command ON command_history(command);
+	`);
+
 	db = newDb;
 	return newDb;
 }
