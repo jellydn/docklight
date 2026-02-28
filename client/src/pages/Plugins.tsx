@@ -2,7 +2,19 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useToast } from "../components/ToastProvider";
 import { apiFetch } from "../lib/api.js";
-import { CommandResultSchema, PluginInfoSchema, type PluginInfo } from "../lib/schemas.js";
+import {
+	type CommandResult,
+	CommandResultSchema,
+	type PluginInfo,
+	PluginInfoSchema,
+} from "../lib/schemas.js";
+
+const createErrorResult = (command: string, error: unknown): CommandResult => ({
+	command,
+	exitCode: 1,
+	stdout: "",
+	stderr: error instanceof Error ? error.message : "Command failed",
+});
 
 const POPULAR_PLUGIN_REPOS = [
 	{ label: "Postgres", repository: "dokku/dokku-postgres", name: "dokku-postgres" },
@@ -20,6 +32,8 @@ export function Plugins() {
 	const [pluginRepo, setPluginRepo] = useState("");
 	const [pluginName, setPluginName] = useState("");
 	const [sudoPassword, setSudoPassword] = useState("");
+	const [installSubmitting, setInstallSubmitting] = useState(false);
+	const [pluginActionSubmitting, setPluginActionSubmitting] = useState<string | null>(null);
 
 	const fetchPlugins = async () => {
 		setLoading(true);
@@ -39,8 +53,9 @@ export function Plugins() {
 	}, []);
 
 	const handleInstallPlugin = async () => {
-		if (!pluginRepo.trim()) return;
+		if (!pluginRepo.trim() || installSubmitting) return;
 
+		setInstallSubmitting(true);
 		try {
 			const body: { repository: string; name?: string; sudoPassword?: string } = {
 				repository: pluginRepo.trim(),
@@ -60,15 +75,13 @@ export function Plugins() {
 				fetchPlugins();
 			}
 		} catch (err) {
-			const command = pluginName.trim()
-				? `dokku plugin:install ${pluginRepo.trim()} ${pluginName.trim()}`
+			const trimmedName = pluginName.trim();
+			const command = trimmedName
+				? `dokku plugin:install ${pluginRepo.trim()} ${trimmedName}`
 				: `dokku plugin:install ${pluginRepo.trim()}`;
-			addToast("error", "Failed to install plugin", {
-				command,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Failed to install plugin",
-			});
+			addToast("error", "Failed to install plugin", createErrorResult(command, err));
+		} finally {
+			setInstallSubmitting(false);
 		}
 	};
 
@@ -76,12 +89,18 @@ export function Plugins() {
 		pluginNameValue: string,
 		action: "enable" | "disable" | "uninstall"
 	) => {
-		const commandMap = {
-			enable: `dokku plugin:enable ${pluginNameValue}`,
-			disable: `dokku plugin:disable ${pluginNameValue}`,
-			uninstall: `dokku plugin:uninstall ${pluginNameValue}`,
+		if (pluginActionSubmitting) return;
+
+		const getCommandForAction = (action: "enable" | "disable" | "uninstall"): string => {
+			const commands = {
+				enable: `dokku plugin:enable ${pluginNameValue}`,
+				disable: `dokku plugin:disable ${pluginNameValue}`,
+				uninstall: `dokku plugin:uninstall ${pluginNameValue}`,
+			};
+			return commands[action];
 		};
 
+		setPluginActionSubmitting(pluginNameValue);
 		try {
 			const result = await apiFetch(
 				action === "uninstall"
@@ -102,12 +121,9 @@ export function Plugins() {
 				fetchPlugins();
 			}
 		} catch (err) {
-			addToast("error", `Failed to ${action} plugin`, {
-				command: commandMap[action],
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : `Failed to ${action} plugin`,
-			});
+			addToast("error", `Failed to ${action} plugin`, createErrorResult(getCommandForAction(action), err));
+		} finally {
+			setPluginActionSubmitting(null);
 		}
 	};
 
@@ -154,7 +170,7 @@ export function Plugins() {
 					/>
 					<button
 						onClick={handleInstallPlugin}
-						disabled={!pluginRepo.trim()}
+						disabled={!pluginRepo.trim() || installSubmitting}
 						className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 					>
 						Install
@@ -176,11 +192,13 @@ export function Plugins() {
 					{POPULAR_PLUGIN_REPOS.map((plugin) => (
 						<button
 							key={plugin.name}
+							disabled={installSubmitting}
 							onClick={() => {
+								if (installSubmitting) return;
 								setPluginRepo(plugin.repository);
 								setPluginName(plugin.name);
 							}}
-							className="text-sm border rounded px-2 py-1 hover:bg-gray-50"
+							className="text-sm border rounded px-2 py-1 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
 						>
 							{plugin.label}
 						</button>
@@ -194,43 +212,49 @@ export function Plugins() {
 					<p className="text-gray-500">No plugins found</p>
 				) : (
 					<div className="space-y-3">
-						{plugins.map((plugin) => (
-							<div
-								key={plugin.name}
-								className="border rounded p-4 flex items-center justify-between gap-4"
-							>
-								<div>
-									<div className="font-medium">{plugin.name}</div>
-									<div className="text-sm text-gray-600">
-										Status: {plugin.enabled ? "Enabled" : "Disabled"}
-										{plugin.version ? ` • v${plugin.version}` : ""}
+						{plugins.map((plugin) => {
+							const isPluginActionBusy = pluginActionSubmitting === plugin.name;
+							return (
+								<div
+									key={plugin.name}
+									className="border rounded p-4 flex items-center justify-between gap-4"
+								>
+									<div>
+										<div className="font-medium">{plugin.name}</div>
+										<div className="text-sm text-gray-600">
+											Status: {plugin.enabled ? "Enabled" : "Disabled"}
+											{plugin.version ? ` • v${plugin.version}` : ""}
+										</div>
+									</div>
+									<div className="flex gap-2">
+										{plugin.enabled ? (
+											<button
+												onClick={() => runPluginAction(plugin.name, "disable")}
+												disabled={isPluginActionBusy}
+												className="border border-amber-500 text-amber-700 px-3 py-1 rounded hover:bg-amber-50 disabled:opacity-60 disabled:cursor-not-allowed"
+											>
+												Disable
+											</button>
+										) : (
+											<button
+												onClick={() => runPluginAction(plugin.name, "enable")}
+												disabled={isPluginActionBusy}
+												className="border border-green-500 text-green-700 px-3 py-1 rounded hover:bg-green-50 disabled:opacity-60 disabled:cursor-not-allowed"
+											>
+												Enable
+											</button>
+										)}
+										<button
+											onClick={() => handleUninstall(plugin.name)}
+											disabled={isPluginActionBusy}
+											className="border border-red-500 text-red-700 px-3 py-1 rounded hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed"
+										>
+											Uninstall
+										</button>
 									</div>
 								</div>
-								<div className="flex gap-2">
-									{plugin.enabled ? (
-										<button
-											onClick={() => runPluginAction(plugin.name, "disable")}
-											className="border border-amber-500 text-amber-700 px-3 py-1 rounded hover:bg-amber-50"
-										>
-											Disable
-										</button>
-									) : (
-										<button
-											onClick={() => runPluginAction(plugin.name, "enable")}
-											className="border border-green-500 text-green-700 px-3 py-1 rounded hover:bg-green-50"
-										>
-											Enable
-										</button>
-									)}
-									<button
-										onClick={() => handleUninstall(plugin.name)}
-										className="border border-red-500 text-red-700 px-3 py-1 rounded hover:bg-red-50"
-									>
-										Uninstall
-									</button>
-								</div>
-							</div>
-						))}
+							);
+						})}
 					</div>
 				)}
 			</div>

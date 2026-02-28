@@ -1,17 +1,24 @@
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { apiFetch } from "../lib/api.js";
 import { useToast } from "../components/ToastProvider";
+import { apiFetch } from "../lib/api.js";
 import {
-	CommandResultSchema,
-	type CommandResult,
-	DatabaseSchema,
-	type Database,
-	AppSchema,
 	type App,
+	AppSchema,
+	type CommandResult,
+	CommandResultSchema,
+	type Database,
+	DatabaseSchema,
 } from "../lib/schemas.js";
 
 const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"];
+
+const createErrorResult = (command: string, error: unknown): CommandResult => ({
+	command,
+	exitCode: 1,
+	stdout: "",
+	stderr: error instanceof Error ? error.message : "Command failed",
+});
 const POPULAR_PLUGIN_REPOS = [
 	{ label: "Postgres", repository: "dokku/dokku-postgres", name: "dokku-postgres" },
 	{ label: "Redis", repository: "dokku/dokku-redis", name: "dokku-redis" },
@@ -41,11 +48,16 @@ export function Databases() {
 	const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
 	const [pendingUnlinkDb, setPendingUnlinkDb] = useState("");
 	const [pendingUnlinkApp, setPendingUnlinkApp] = useState("");
+	const [unlinkSubmitting, setUnlinkSubmitting] = useState(false);
 
 	// Destroy database state
 	const [showDestroyDialog, setShowDestroyDialog] = useState(false);
 	const [pendingDestroyDb, setPendingDestroyDb] = useState("");
 	const [confirmDestroyName, setConfirmDestroyName] = useState("");
+	const [destroySubmitting, setDestroySubmitting] = useState(false);
+	const [createDbSubmitting, setCreateDbSubmitting] = useState(false);
+	const [installPluginSubmitting, setInstallPluginSubmitting] = useState(false);
+	const [linkSubmitting, setLinkSubmitting] = useState(false);
 
 	// Connection info visibility
 	const [visibleConnections, setVisibleConnections] = useState<Set<string>>(new Set());
@@ -72,8 +84,9 @@ export function Databases() {
 	};
 
 	const handleCreateDatabase = async () => {
-		if (!newDbPlugin || !newDbName) return;
+		if (!newDbPlugin || !newDbName || createDbSubmitting) return;
 
+		setCreateDbSubmitting(true);
 		try {
 			const result = await apiFetch("/databases", CommandResultSchema, {
 				method: "POST",
@@ -84,19 +97,16 @@ export function Databases() {
 			setNewDbName("");
 			fetchData();
 		} catch (err) {
-			const errorResult: CommandResult = {
-				command: `dokku ${newDbPlugin}:create ${newDbName}`,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Failed to create database",
-			};
-			addToast("error", "Failed to create database", errorResult);
+			addToast("error", "Failed to create database", createErrorResult(`dokku ${newDbPlugin}:create ${newDbName}`, err));
+		} finally {
+			setCreateDbSubmitting(false);
 		}
 	};
 
 	const handleInstallPlugin = async () => {
-		if (!pluginRepo.trim()) return;
+		if (!pluginRepo.trim() || installPluginSubmitting) return;
 
+		setInstallPluginSubmitting(true);
 		try {
 			const body: { repository: string; name?: string } = { repository: pluginRepo.trim() };
 			if (pluginName.trim()) body.name = pluginName.trim();
@@ -113,22 +123,20 @@ export function Databases() {
 				fetchData();
 			}
 		} catch (err) {
-			const command = pluginName.trim()
-				? `dokku plugin:install ${pluginRepo.trim()} ${pluginName.trim()}`
+			const trimmedName = pluginName.trim();
+			const command = trimmedName
+				? `dokku plugin:install ${pluginRepo.trim()} ${trimmedName}`
 				: `dokku plugin:install ${pluginRepo.trim()}`;
-			const errorResult: CommandResult = {
-				command,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Failed to install plugin",
-			};
-			addToast("error", "Failed to install plugin", errorResult);
+			addToast("error", "Failed to install plugin", createErrorResult(command, err));
+		} finally {
+			setInstallPluginSubmitting(false);
 		}
 	};
 
 	const handleLinkDatabase = async () => {
-		if (!linkDbName || !linkAppName) return;
+		if (!linkDbName || !linkAppName || linkSubmitting) return;
 
+		setLinkSubmitting(true);
 		try {
 			const result = await apiFetch(
 				`/databases/${encodeURIComponent(linkDbName)}/link`,
@@ -143,13 +151,9 @@ export function Databases() {
 			setLinkAppName("");
 			fetchData();
 		} catch (err) {
-			const errorResult: CommandResult = {
-				command: `dokku ${getDbPlugin(linkDbName)}:link ${linkDbName} ${linkAppName}`,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Failed to link database",
-			};
-			addToast("error", "Failed to link database", errorResult);
+			addToast("error", "Failed to link database", createErrorResult(`dokku ${getDbPlugin(linkDbName)}:link ${linkDbName} ${linkAppName}`, err));
+		} finally {
+			setLinkSubmitting(false);
 		}
 	};
 
@@ -160,8 +164,15 @@ export function Databases() {
 	};
 
 	const confirmUnlinkDatabase = async () => {
-		if (!pendingUnlinkDb || !pendingUnlinkApp) return;
+		if (!pendingUnlinkDb || !pendingUnlinkApp || unlinkSubmitting) return;
 
+		const closeUnlinkDialog = () => {
+			setShowUnlinkDialog(false);
+			setPendingUnlinkDb("");
+			setPendingUnlinkApp("");
+		};
+
+		setUnlinkSubmitting(true);
 		try {
 			const result = await apiFetch(
 				`/databases/${encodeURIComponent(pendingUnlinkDb)}/unlink`,
@@ -172,21 +183,13 @@ export function Databases() {
 				}
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Database unlinked", result);
-			setShowUnlinkDialog(false);
-			setPendingUnlinkDb("");
-			setPendingUnlinkApp("");
+			closeUnlinkDialog();
 			fetchData();
 		} catch (err) {
-			const errorResult: CommandResult = {
-				command: `dokku ${getDbPlugin(pendingUnlinkDb)}:unlink ${pendingUnlinkDb} ${pendingUnlinkApp}`,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Failed to unlink database",
-			};
-			addToast("error", "Failed to unlink database", errorResult);
-			setShowUnlinkDialog(false);
-			setPendingUnlinkDb("");
-			setPendingUnlinkApp("");
+			addToast("error", "Failed to unlink database", createErrorResult(`dokku ${getDbPlugin(pendingUnlinkDb)}:unlink ${pendingUnlinkDb} ${pendingUnlinkApp}`, err));
+			closeUnlinkDialog();
+		} finally {
+			setUnlinkSubmitting(false);
 		}
 	};
 
@@ -197,8 +200,15 @@ export function Databases() {
 	};
 
 	const confirmDestroyDatabase = async () => {
-		if (!pendingDestroyDb || confirmDestroyName !== pendingDestroyDb) return;
+		if (!pendingDestroyDb || confirmDestroyName !== pendingDestroyDb || destroySubmitting) return;
 
+		const closeDestroyDialog = () => {
+			setShowDestroyDialog(false);
+			setPendingDestroyDb("");
+			setConfirmDestroyName("");
+		};
+
+		setDestroySubmitting(true);
 		try {
 			const result = await apiFetch(
 				`/databases/${encodeURIComponent(pendingDestroyDb)}`,
@@ -212,21 +222,13 @@ export function Databases() {
 				}
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Database destroyed", result);
-			setShowDestroyDialog(false);
-			setPendingDestroyDb("");
-			setConfirmDestroyName("");
+			closeDestroyDialog();
 			fetchData();
 		} catch (err) {
-			const errorResult: CommandResult = {
-				command: `dokku ${getDbPlugin(pendingDestroyDb)}:destroy ${pendingDestroyDb} --force`,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Failed to destroy database",
-			};
-			addToast("error", "Failed to destroy database", errorResult);
-			setShowDestroyDialog(false);
-			setPendingDestroyDb("");
-			setConfirmDestroyName("");
+			addToast("error", "Failed to destroy database", createErrorResult(`dokku ${getDbPlugin(pendingDestroyDb)}:destroy ${pendingDestroyDb} --force`, err));
+			closeDestroyDialog();
+		} finally {
+			setDestroySubmitting(false);
 		}
 	};
 
@@ -298,7 +300,7 @@ export function Databases() {
 					/>
 					<button
 						onClick={handleInstallPlugin}
-						disabled={!pluginRepo.trim()}
+						disabled={!pluginRepo.trim() || installPluginSubmitting}
 						className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 					>
 						Install Plugin
@@ -345,7 +347,7 @@ export function Databases() {
 					/>
 					<button
 						onClick={handleCreateDatabase}
-						disabled={!newDbPlugin || !newDbName}
+						disabled={!newDbPlugin || !newDbName || createDbSubmitting}
 						className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 					>
 						Create
@@ -429,7 +431,7 @@ export function Databases() {
 												</select>
 												<button
 													onClick={handleLinkDatabase}
-													disabled={linkAppName === "" || linkDbName !== db.name}
+													disabled={linkAppName === "" || linkDbName !== db.name || linkSubmitting}
 													className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
 												>
 													Link
@@ -466,17 +468,20 @@ export function Databases() {
 						<div className="flex justify-end space-x-2">
 							<button
 								onClick={() => {
+									if (unlinkSubmitting) return;
 									setShowUnlinkDialog(false);
 									setPendingUnlinkDb("");
 									setPendingUnlinkApp("");
 								}}
-								className="px-4 py-2 border rounded hover:bg-gray-100"
+								disabled={unlinkSubmitting}
+								className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
 							>
 								Cancel
 							</button>
 							<button
 								onClick={confirmUnlinkDatabase}
-								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+								disabled={unlinkSubmitting}
+								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 							>
 								Unlink
 							</button>
@@ -505,17 +510,19 @@ export function Databases() {
 						<div className="flex justify-end space-x-2">
 							<button
 								onClick={() => {
+									if (destroySubmitting) return;
 									setShowDestroyDialog(false);
 									setPendingDestroyDb("");
 									setConfirmDestroyName("");
 								}}
-								className="px-4 py-2 border rounded hover:bg-gray-100"
+								disabled={destroySubmitting}
+								className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
 							>
 								Cancel
 							</button>
 							<button
 								onClick={confirmDestroyDatabase}
-								disabled={confirmDestroyName !== pendingDestroyDb}
+								disabled={confirmDestroyName !== pendingDestroyDb || destroySubmitting}
 								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 							>
 								Destroy

@@ -5,14 +5,14 @@ import { useToast } from "../components/ToastProvider";
 import { apiFetch } from "../lib/api.js";
 import { logger } from "../lib/logger.js";
 import {
-	CommandResultSchema,
-	type CommandResult,
-	AppDetailSchema,
 	type AppDetail as AppDetailData,
-	SSLStatusSchema,
-	type SSLStatus,
-	ConfigVarsSchema,
+	AppDetailSchema,
+	type CommandResult,
+	CommandResultSchema,
 	type ConfigVars,
+	ConfigVarsSchema,
+	type SSLStatus,
+	SSLStatusSchema,
 } from "../lib/schemas.js";
 
 type TabType = "overview" | "config" | "domains" | "logs" | "ssl";
@@ -32,8 +32,10 @@ export function AppDetail() {
 	const [error, setError] = useState<string | null>(null);
 	const [showActionDialog, setShowActionDialog] = useState(false);
 	const [pendingAction, setPendingAction] = useState<string | null>(null);
+	const [actionSubmitting, setActionSubmitting] = useState(false);
 	const [showScaleDialog, setShowScaleDialog] = useState(false);
 	const [pendingScaleChanges, setPendingScaleChanges] = useState<ScaleChange[]>([]);
+	const [scaleSubmitting, setScaleSubmitting] = useState(false);
 	const [scaleChanges, setScaleChanges] = useState<Record<string, number>>({});
 	const [activeTab, setActiveTab] = useState<TabType>("overview");
 
@@ -46,6 +48,8 @@ export function AppDetail() {
 	const [newConfigValue, setNewConfigValue] = useState("");
 	const [showRemoveDialog, setShowRemoveDialog] = useState(false);
 	const [pendingRemoveKey, setPendingRemoveKey] = useState<string | null>(null);
+	const [configAddSubmitting, setConfigAddSubmitting] = useState(false);
+	const [configRemoveSubmitting, setConfigRemoveSubmitting] = useState(false);
 
 	// Delete app state
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -65,12 +69,15 @@ export function AppDetail() {
 	const [newDomain, setNewDomain] = useState("");
 	const [showDomainRemoveDialog, setShowDomainRemoveDialog] = useState(false);
 	const [pendingRemoveDomain, setPendingRemoveDomain] = useState<string | null>(null);
+	const [domainAddSubmitting, setDomainAddSubmitting] = useState(false);
+	const [domainRemoveSubmitting, setDomainRemoveSubmitting] = useState(false);
 
 	// SSL state
 	const [sslStatus, setSslStatus] = useState<SSLStatus | null>(null);
 	const [sslLoading, setSslLoading] = useState(false);
 	const [sslError, setSslError] = useState<string | null>(null);
 	const [sslEmail, setSslEmail] = useState("");
+	const [sslSubmitting, setSslSubmitting] = useState(false);
 
 	// Log viewer state
 	const [logs, setLogs] = useState<string[]>([]);
@@ -186,9 +193,15 @@ export function AppDetail() {
 		setShowActionDialog(true);
 	};
 
-	const confirmAction = async () => {
-		if (!pendingAction || !name) return;
+	const resetActionDialog = () => {
+		setShowActionDialog(false);
+		setPendingAction(null);
+	};
 
+	const confirmAction = async () => {
+		if (!pendingAction || !name || actionSubmitting) return;
+
+		setActionSubmitting(true);
 		try {
 			const result = await apiFetch(
 				`/apps/${encodeURIComponent(name)}/${encodeURIComponent(pendingAction)}`,
@@ -198,19 +211,17 @@ export function AppDetail() {
 				}
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", `${pendingAction} completed`, result);
-			setShowActionDialog(false);
-			setPendingAction(null);
+			resetActionDialog();
 			fetchAppDetail();
 		} catch (err) {
-			const errorResult: CommandResult = {
-				command: `dokku ps:${pendingAction} ${name}`,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Action failed",
-			};
-			addToast("error", `${pendingAction} failed`, errorResult);
-			setShowActionDialog(false);
-			setPendingAction(null);
+			addToast(
+				"error",
+				`${pendingAction} failed`,
+				createErrorResult(`dokku ps:${pendingAction} ${name}`, err)
+			);
+			resetActionDialog();
+		} finally {
+			setActionSubmitting(false);
 		}
 	};
 
@@ -244,41 +255,46 @@ export function AppDetail() {
 	};
 
 	const confirmScale = async () => {
-		if (!name || pendingScaleChanges.length === 0) return;
+		if (!name || pendingScaleChanges.length === 0 || scaleSubmitting) return;
 
-		for (const change of pendingScaleChanges) {
-			try {
-				const result = await apiFetch(
-					`/apps/${encodeURIComponent(name)}/scale`,
-					CommandResultSchema,
-					{
-						method: "POST",
-						body: JSON.stringify({
-							processType: change.processType,
-							count: change.count,
-						}),
-					}
-				);
-				addToast(
-					result.exitCode === 0 ? "success" : "error",
-					`Scale ${change.processType} to ${change.count}`,
-					result
-				);
-			} catch (err) {
-				const errorResult: CommandResult = {
-					command: `dokku ps:scale ${name} ${change.processType}=${change.count}`,
-					exitCode: 1,
-					stdout: "",
-					stderr: err instanceof Error ? err.message : "Scale failed",
-				};
-				addToast("error", `Scale ${change.processType} failed`, errorResult);
+		setScaleSubmitting(true);
+		try {
+			for (const change of pendingScaleChanges) {
+				try {
+					const result = await apiFetch(
+						`/apps/${encodeURIComponent(name)}/scale`,
+						CommandResultSchema,
+						{
+							method: "POST",
+							body: JSON.stringify({
+								processType: change.processType,
+								count: change.count,
+							}),
+						}
+					);
+					addToast(
+						result.exitCode === 0 ? "success" : "error",
+						`Scale ${change.processType} to ${change.count}`,
+						result
+					);
+				} catch (err) {
+					const errorResult: CommandResult = {
+						command: `dokku ps:scale ${name} ${change.processType}=${change.count}`,
+						exitCode: 1,
+						stdout: "",
+						stderr: err instanceof Error ? err.message : "Scale failed",
+					};
+					addToast("error", `Scale ${change.processType} failed`, errorResult);
+				}
 			}
-		}
 
-		setShowScaleDialog(false);
-		setPendingScaleChanges([]);
-		setScaleChanges({});
-		fetchAppDetail();
+			setShowScaleDialog(false);
+			setPendingScaleChanges([]);
+			setScaleChanges({});
+			fetchAppDetail();
+		} finally {
+			setScaleSubmitting(false);
+		}
 	};
 
 	const fetchConfigVars = async () => {
@@ -296,9 +312,15 @@ export function AppDetail() {
 		}
 	};
 
-	const handleAddConfigVar = async () => {
-		if (!name || !newConfigKey || !newConfigValue) return;
+	const resetConfigForm = () => {
+		setNewConfigKey("");
+		setNewConfigValue("");
+	};
 
+	const handleAddConfigVar = async () => {
+		if (!name || !newConfigKey || !newConfigValue || configAddSubmitting) return;
+
+		setConfigAddSubmitting(true);
 		try {
 			const result = await apiFetch(
 				`/apps/${encodeURIComponent(name)}/config`,
@@ -309,17 +331,16 @@ export function AppDetail() {
 				}
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Config var set", result);
-			setNewConfigKey("");
-			setNewConfigValue("");
+			resetConfigForm();
 			fetchConfigVars();
 		} catch (err) {
-			const errorResult: CommandResult = {
-				command: `dokku config:set ${name} ${newConfigKey}=***`,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Failed to set config var",
-			};
-			addToast("error", "Failed to set config var", errorResult);
+			addToast(
+				"error",
+				"Failed to set config var",
+				createErrorResult(`dokku config:set ${name} ${newConfigKey}=***`, err)
+			);
+		} finally {
+			setConfigAddSubmitting(false);
 		}
 	};
 
@@ -329,8 +350,14 @@ export function AppDetail() {
 	};
 
 	const confirmRemoveConfigVar = async () => {
-		if (!name || !pendingRemoveKey) return;
+		if (!name || !pendingRemoveKey || configRemoveSubmitting) return;
 
+		const closeRemoveDialog = () => {
+			setShowRemoveDialog(false);
+			setPendingRemoveKey(null);
+		};
+
+		setConfigRemoveSubmitting(true);
 		try {
 			const result = await apiFetch(
 				`/apps/${encodeURIComponent(name)}/config/${encodeURIComponent(pendingRemoveKey)}`,
@@ -340,19 +367,17 @@ export function AppDetail() {
 				}
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Config var removed", result);
-			setShowRemoveDialog(false);
-			setPendingRemoveKey(null);
+			closeRemoveDialog();
 			fetchConfigVars();
 		} catch (err) {
-			const errorResult: CommandResult = {
-				command: `dokku config:unset ${name} ${pendingRemoveKey}`,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Failed to unset config var",
-			};
-			addToast("error", "Failed to unset config var", errorResult);
-			setShowRemoveDialog(false);
-			setPendingRemoveKey(null);
+			addToast(
+				"error",
+				"Failed to unset config var",
+				createErrorResult(`dokku config:unset ${name} ${pendingRemoveKey}`, err)
+			);
+			closeRemoveDialog();
+		} finally {
+			setConfigRemoveSubmitting(false);
 		}
 	};
 
@@ -421,13 +446,7 @@ export function AppDetail() {
 			setShowStopDialog(false);
 			fetchAppDetail();
 		} catch (err) {
-			const errorResult: CommandResult = {
-				command: `dokku ps:stop ${name}`,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Failed to stop app",
-			};
-			addToast("error", "Failed to stop app", errorResult);
+			addToast("error", "Failed to stop app", createErrorResult(`dokku ps:stop ${name}`, err));
 			setShowStopDialog(false);
 		} finally {
 			setStopping(false);
@@ -454,13 +473,7 @@ export function AppDetail() {
 			setShowStartDialog(false);
 			fetchAppDetail();
 		} catch (err) {
-			const errorResult: CommandResult = {
-				command: `dokku ps:start ${name}`,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Failed to start app",
-			};
-			addToast("error", "Failed to start app", errorResult);
+			addToast("error", "Failed to start app", createErrorResult(`dokku ps:start ${name}`, err));
 			setShowStartDialog(false);
 		} finally {
 			setStarting(false);
@@ -486,8 +499,9 @@ export function AppDetail() {
 	};
 
 	const handleAddDomain = async () => {
-		if (!name || !newDomain) return;
+		if (!name || !newDomain || domainAddSubmitting) return;
 
+		setDomainAddSubmitting(true);
 		try {
 			const result = await apiFetch(
 				`/apps/${encodeURIComponent(name)}/domains`,
@@ -501,13 +515,13 @@ export function AppDetail() {
 			setNewDomain("");
 			fetchDomains();
 		} catch (err) {
-			const errorResult: CommandResult = {
-				command: `dokku domains:add ${name} ${newDomain}`,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Failed to add domain",
-			};
-			addToast("error", "Failed to add domain", errorResult);
+			addToast(
+				"error",
+				"Failed to add domain",
+				createErrorResult(`dokku domains:add ${name} ${newDomain}`, err)
+			);
+		} finally {
+			setDomainAddSubmitting(false);
 		}
 	};
 
@@ -517,8 +531,14 @@ export function AppDetail() {
 	};
 
 	const confirmRemoveDomain = async () => {
-		if (!name || !pendingRemoveDomain) return;
+		if (!name || !pendingRemoveDomain || domainRemoveSubmitting) return;
 
+		const closeDomainRemoveDialog = () => {
+			setShowDomainRemoveDialog(false);
+			setPendingRemoveDomain(null);
+		};
+
+		setDomainRemoveSubmitting(true);
 		try {
 			const result = await apiFetch(
 				`/apps/${name}/domains/${encodeURIComponent(pendingRemoveDomain)}`,
@@ -528,19 +548,17 @@ export function AppDetail() {
 				}
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Domain removed", result);
-			setShowDomainRemoveDialog(false);
-			setPendingRemoveDomain(null);
+			closeDomainRemoveDialog();
 			fetchDomains();
 		} catch (err) {
-			const errorResult: CommandResult = {
-				command: `dokku domains:remove ${name} ${pendingRemoveDomain}`,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Failed to remove domain",
-			};
-			addToast("error", "Failed to remove domain", errorResult);
-			setShowDomainRemoveDialog(false);
-			setPendingRemoveDomain(null);
+			addToast(
+				"error",
+				"Failed to remove domain",
+				createErrorResult(`dokku domains:remove ${name} ${pendingRemoveDomain}`, err)
+			);
+			closeDomainRemoveDialog();
+		} finally {
+			setDomainRemoveSubmitting(false);
 		}
 	};
 
@@ -559,30 +577,44 @@ export function AppDetail() {
 		}
 	};
 
+	const createErrorResult = (command: string, error: unknown): CommandResult => ({
+		command,
+		exitCode: 1,
+		stdout: "",
+		stderr: error instanceof Error ? error.message : "Command failed",
+	});
+
 	const handleEnableSSL = async () => {
-		if (!name) return;
+		if (!name || sslSubmitting) return;
+
 		const normalizedEmail = sslEmail.trim();
-		if (normalizedEmail.length === 0) {
-			const errorResult: CommandResult = {
-				command: `dokku letsencrypt:set ${name} email <email>`,
-				exitCode: 1,
-				stdout: "",
-				stderr: "Email is required to enable Let's Encrypt",
-			};
-			addToast("error", "Failed to enable SSL", errorResult);
-			return;
-		}
-		if (!EMAIL_PATTERN.test(normalizedEmail)) {
-			const errorResult: CommandResult = {
-				command: `dokku letsencrypt:set ${name} email ${normalizedEmail}`,
-				exitCode: 1,
-				stdout: "",
-				stderr: "Invalid email address",
-			};
-			addToast("error", "Failed to enable SSL", errorResult);
+		const isValidEmail = EMAIL_PATTERN.test(normalizedEmail);
+
+		if (!normalizedEmail) {
+			addToast(
+				"error",
+				"Failed to enable SSL",
+				createErrorResult(
+					`dokku letsencrypt:set ${name} email <email>`,
+					"Email is required to enable Let's Encrypt"
+				)
+			);
 			return;
 		}
 
+		if (!isValidEmail) {
+			addToast(
+				"error",
+				"Failed to enable SSL",
+				createErrorResult(
+					`dokku letsencrypt:set ${name} email ${normalizedEmail}`,
+					"Invalid email address"
+				)
+			);
+			return;
+		}
+
+		setSslSubmitting(true);
 		try {
 			const result = await apiFetch(
 				`/apps/${encodeURIComponent(name)}/ssl/enable`,
@@ -595,19 +627,23 @@ export function AppDetail() {
 			addToast(result.exitCode === 0 ? "success" : "error", "SSL enabled", result);
 			fetchSSLStatus();
 		} catch (err) {
-			const errorResult: CommandResult = {
-				command: `dokku letsencrypt:set ${name} email ${normalizedEmail} && dokku letsencrypt:enable ${name}`,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Failed to enable SSL",
-			};
-			addToast("error", "Failed to enable SSL", errorResult);
+			addToast(
+				"error",
+				"Failed to enable SSL",
+				createErrorResult(
+					`dokku letsencrypt:set ${name} email ${normalizedEmail} && dokku letsencrypt:enable ${name}`,
+					err
+				)
+			);
+		} finally {
+			setSslSubmitting(false);
 		}
 	};
 
 	const handleRenewSSL = async () => {
-		if (!name) return;
+		if (!name || sslSubmitting) return;
 
+		setSslSubmitting(true);
 		try {
 			const result = await apiFetch(
 				`/apps/${encodeURIComponent(name)}/ssl/renew`,
@@ -619,13 +655,13 @@ export function AppDetail() {
 			addToast(result.exitCode === 0 ? "success" : "error", "SSL renewed", result);
 			fetchSSLStatus();
 		} catch (err) {
-			const errorResult: CommandResult = {
-				command: `dokku letsencrypt:auto-renew ${name}`,
-				exitCode: 1,
-				stdout: "",
-				stderr: err instanceof Error ? err.message : "Failed to renew SSL",
-			};
-			addToast("error", "Failed to renew SSL", errorResult);
+			addToast(
+				"error",
+				"Failed to renew SSL",
+				createErrorResult(`dokku letsencrypt:auto-renew ${name}`, err)
+			);
+		} finally {
+			setSslSubmitting(false);
 		}
 	};
 
@@ -720,13 +756,15 @@ export function AppDetail() {
 									setShowActionDialog(false);
 									setPendingAction(null);
 								}}
+								disabled={actionSubmitting}
 								className="px-4 py-2 border rounded hover:bg-gray-100"
 							>
 								Cancel
 							</button>
 							<button
 								onClick={confirmAction}
-								className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+								disabled={actionSubmitting}
+								className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 							>
 								Confirm
 							</button>
@@ -753,16 +791,19 @@ export function AppDetail() {
 							<button
 								type="button"
 								onClick={() => {
+									if (scaleSubmitting) return;
 									setShowScaleDialog(false);
 									setPendingScaleChanges([]);
 								}}
-								className="px-4 py-2 border rounded hover:bg-gray-100"
+								disabled={scaleSubmitting}
+								className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-300 disabled:cursor-not-allowed"
 							>
 								Cancel
 							</button>
 							<button
 								onClick={confirmScale}
-								className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+								disabled={scaleSubmitting}
+								className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 							>
 								Confirm
 							</button>
@@ -782,16 +823,19 @@ export function AppDetail() {
 						<div className="flex justify-end space-x-2">
 							<button
 								onClick={() => {
+									if (configRemoveSubmitting) return;
 									setShowRemoveDialog(false);
 									setPendingRemoveKey(null);
 								}}
-								className="px-4 py-2 border rounded hover:bg-gray-100"
+								disabled={configRemoveSubmitting}
+								className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
 							>
 								Cancel
 							</button>
 							<button
 								onClick={confirmRemoveConfigVar}
-								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+								disabled={configRemoveSubmitting}
+								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 							>
 								Remove
 							</button>
@@ -810,16 +854,19 @@ export function AppDetail() {
 						<div className="flex justify-end space-x-2">
 							<button
 								onClick={() => {
+									if (domainRemoveSubmitting) return;
 									setShowDomainRemoveDialog(false);
 									setPendingRemoveDomain(null);
 								}}
-								className="px-4 py-2 border rounded hover:bg-gray-100"
+								disabled={domainRemoveSubmitting}
+								className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
 							>
 								Cancel
 							</button>
 							<button
 								onClick={confirmRemoveDomain}
-								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+								disabled={domainRemoveSubmitting}
+								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 							>
 								Remove
 							</button>
@@ -1073,11 +1120,11 @@ export function AppDetail() {
 					</div>
 					<div className="bg-gray-900 rounded p-4 h-96 overflow-y-auto">
 						<pre ref={logsEndRef} className="text-green-400 font-mono text-sm whitespace-pre-wrap">
-							{logs.length > 0
-								? logs.join("\n")
-								: connectionStatus === "connected"
-									? "Waiting for logs..."
-									: "Not connected"}
+							{(() => {
+								if (logs.length > 0) return logs.join("\n");
+								if (connectionStatus === "connected") return "Waiting for logs...";
+								return "Not connected";
+							})()}
 						</pre>
 					</div>
 				</div>
@@ -1118,7 +1165,7 @@ export function AppDetail() {
 									/>
 									<button
 										onClick={handleAddConfigVar}
-										disabled={!newConfigKey || !newConfigValue}
+										disabled={!newConfigKey || !newConfigValue || configAddSubmitting}
 										className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 									>
 										Set
@@ -1204,7 +1251,7 @@ export function AppDetail() {
 									/>
 									<button
 										onClick={handleAddDomain}
-										disabled={!newDomain}
+										disabled={!newDomain || domainAddSubmitting}
 										className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 									>
 										Add
@@ -1297,7 +1344,8 @@ export function AppDetail() {
 								{sslStatus?.active ? (
 									<button
 										onClick={handleRenewSSL}
-										className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+										disabled={sslSubmitting}
+										className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 									>
 										Renew Certificate
 									</button>
@@ -1321,7 +1369,8 @@ export function AppDetail() {
 										</div>
 										<button
 											onClick={handleEnableSSL}
-											className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+											disabled={sslSubmitting}
+											className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 										>
 											Enable Let's Encrypt
 										</button>
