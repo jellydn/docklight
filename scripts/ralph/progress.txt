@@ -59,3 +59,39 @@ Started: Sat Feb 28 12:43:28 +08 2026
   - Typecheck and lint pass
   - Test failures are pre-existing (vi.mocked not a function issue)
 ---
+
+## Sat Feb 28 2026 - US-007
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Dedicated Apps listing page (client/src/pages/Apps.tsx)
+- Replaced Navigate redirect with full apps listing page
+- Shows table with Name, Status, Domains, Last Deploy columns
+- Added 'Create App' button in page header
+- App names link to /apps/:name detail page
+- Empty state with friendly message and CTA button to open CreateAppDialog
+- Loading spinner while fetching
+- Error state with message if API fails
+- Typecheck and lint pass
+- Files changed: client/src/pages/Apps.tsx, scripts/ralph/prd.json
+- **Learnings for future iterations:**
+  - Reused Dashboard pattern for apps table layout and styling
+  - Used same AppSchema and apiFetch patterns as Dashboard
+  - Test failures are pre-existing (document not defined issue in test environment)
+  - ChromeDevTools MCP not configured - skipped browser verification
+---
+
+## Sat Feb 28 2026 - US-008
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Destroy App from App Detail page (client/src/pages/AppDetail.tsx)
+- Added Danger Zone section at bottom of Overview tab with red border styling
+- Delete App button opens confirmation dialog requiring type-to-confirm
+- Delete button disabled until typed name matches exactly
+- On success, navigates to /apps and shows success toast
+- On error, shows error message in the dialog
+- Typecheck and lint pass
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - Reused existing dialog patterns in AppDetail.tsx (actionDialog, scaleDialog, removeDialog)
+  - Used navigate hook from react-router-dom for navigation after deletion
+  - Used existing ToastProvider for success/error notifications
+  - Pre-existing test failures in client tests (document not defined)
+---
