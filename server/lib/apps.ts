@@ -280,6 +280,31 @@ export async function createApp(
 	return result;
 }
 
+export async function destroyApp(
+	name: string,
+	confirmName: string
+): Promise<CommandResult | { error: string; exitCode: number }> {
+	if (!isValidAppName(name)) {
+		return {
+			error: "Invalid app name",
+			command: "",
+			exitCode: 400,
+		};
+	}
+
+	if (confirmName !== name) {
+		return {
+			error: "App name confirmation does not match",
+			command: "",
+			exitCode: 400,
+			stderr: "App name confirmation does not match",
+		};
+	}
+
+	const result = await executeCommand(`dokku apps:destroy ${name} --force`);
+	return result;
+}
+
 export async function restartApp(
 	name: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {

@@ -21,3 +21,17 @@ Started: Sat Feb 28 12:43:28 +08 2026
   - Cache clearing is important for consistency - always call clearPrefix('apps:') after app mutations
   - Test failures are pre-existing (vi.mocked not a function issue) - not caused by this change
 ---
+
+## Sat Feb 28 2026 - US-002
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Destroy App API endpoint (server/lib/apps.ts, server/index.ts)
+- Added `destroyApp(name, confirmName)` function that runs `dokku apps:destroy <name> --force`
+- Added DELETE /api/apps/:name route that accepts { confirmName: string }
+- Added validation to ensure confirmName matches name before executing
+- Added cache clearing (clearPrefix('apps:')) after destruction
+- Files changed: server/lib/apps.ts, server/index.ts
+- **Learnings for future iterations:**
+  - The destroy endpoint requires typing the app name for confirmation - this is a safety feature
+  - The endpoint returns CommandResult which includes exitCode, stdout, stderr
+  - Typecheck and lint pass without issues
+---

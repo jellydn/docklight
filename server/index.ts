@@ -3,7 +3,7 @@ import express from "express";
 import http from "http";
 import path from "path";
 import pinoHttp from "pino-http";
-import { getAppDetail, getApps, rebuildApp, restartApp, scaleApp, createApp } from "./lib/apps.js";
+import { getAppDetail, getApps, rebuildApp, restartApp, scaleApp, createApp, destroyApp } from "./lib/apps.js";
 import { authMiddleware, clearAuthCookie, login, setAuthCookie } from "./lib/auth.js";
 import { clearPrefix, get, set } from "./lib/cache.js";
 import { getConfig, setConfig, unsetConfig } from "./lib/config.js";
@@ -123,6 +123,18 @@ app.post("/api/apps/:name/scale", async (req, res) => {
 	const { name } = req.params;
 	const { processType, count } = req.body;
 	const result = await scaleApp(name, processType, count);
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name", async (req, res) => {
+	const { name } = req.params;
+	const { confirmName } = req.body;
+	if (!confirmName || typeof confirmName !== "string") {
+		res.status(400).json({ error: "App name confirmation is required" });
+		return;
+	}
+	const result = await destroyApp(name, confirmName);
 	clearPrefix("apps:");
 	res.json(result);
 });
