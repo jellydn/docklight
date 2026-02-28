@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AppLayout } from "./components/AppLayout";
 import { ToastProvider } from "./components/ToastProvider";
+import { Audit } from "./pages/Audit";
 import { AppDetail } from "./pages/AppDetail";
 import { Apps } from "./pages/Apps";
 import { Dashboard } from "./pages/Dashboard";
@@ -22,6 +23,7 @@ function App() {
 						<Route path="apps/:name" element={<AppDetail />} />
 						<Route path="databases" element={<Databases />} />
 						<Route path="plugins" element={<Plugins />} />
+						<Route path="audit" element={<Audit />} />
 					</Route>
 				</Routes>
 				<Toaster
