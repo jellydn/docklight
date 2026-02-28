@@ -51,6 +51,12 @@ export function AppDetail() {
 	const [scaleSubmitting, setScaleSubmitting] = useState(false);
 	const [scaleChanges, setScaleChanges] = useState<Record<string, number>>({});
 	const [activeTab, setActiveTab] = useState<TabType>("overview");
+	const [copySuccess, setCopySuccess] = useState<{ remote: boolean; push: boolean }>({
+		remote: false,
+		push: false,
+	});
+
+	const hostname = typeof window !== "undefined" ? window.location.hostname : "";
 
 	// Config vars state
 	const [configVars, setConfigVars] = useState<ConfigVars>({});
@@ -520,6 +526,29 @@ export function AppDetail() {
 			setConfirmDeleteName("");
 		} finally {
 			setDeleting(false);
+		}
+	};
+
+	const handleCopyRemote = async () => {
+		if (!app) return;
+		const gitRemoteCommand = `git remote add dokku dokku@${hostname}:${app.name}`;
+		try {
+			await navigator.clipboard.writeText(gitRemoteCommand);
+			setCopySuccess({ ...copySuccess, remote: true });
+			setTimeout(() => setCopySuccess({ ...copySuccess, remote: false }), 2000);
+		} catch {
+			// Fallback: user can manually copy
+		}
+	};
+
+	const handleCopyPush = async () => {
+		const gitPushCommand = "git push dokku main";
+		try {
+			await navigator.clipboard.writeText(gitPushCommand);
+			setCopySuccess({ ...copySuccess, push: true });
+			setTimeout(() => setCopySuccess({ ...copySuccess, push: false }), 2000);
+		} catch {
+			// Fallback: user can manually copy
 		}
 	};
 
@@ -1888,6 +1917,43 @@ export function AppDetail() {
 						<div>
 							<strong className="text-gray-700">Git Remote:</strong>{" "}
 							<code className="bg-gray-100 px-2 py-1 rounded text-sm">{app.gitRemote || "-"}</code>
+						</div>
+						<div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+							<p className="text-sm font-medium mb-3 text-gray-900">Manual Deployment</p>
+							<div className="space-y-3 text-sm">
+								<div>
+									<p className="text-gray-600 mb-1">1. Add the Dokku remote:</p>
+									<div className="flex items-center gap-2">
+										<code className="flex-1 bg-white px-3 py-2 rounded border text-xs break-all font-mono">
+											git remote add dokku dokku@{hostname}:{app.name}
+										</code>
+										<button
+											type="button"
+											onClick={handleCopyRemote}
+											className="text-blue-600 hover:text-blue-800 text-xs whitespace-nowrap px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+											title="Copy to clipboard"
+										>
+											{copySuccess.remote ? "Copied!" : "Copy"}
+										</button>
+									</div>
+								</div>
+								<div>
+									<p className="text-gray-600 mb-1">2. Push your code:</p>
+									<div className="flex items-center gap-2">
+										<code className="flex-1 bg-white px-3 py-2 rounded border text-xs font-mono">
+											git push dokku main
+										</code>
+										<button
+											type="button"
+											onClick={handleCopyPush}
+											className="text-blue-600 hover:text-blue-800 text-xs whitespace-nowrap px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+											title="Copy to clipboard"
+										>
+											{copySuccess.push ? "Copied!" : "Copy"}
+										</button>
+									</div>
+								</div>
+							</div>
 						</div>
 						<div>
 							<strong className="text-gray-700">Domains:</strong>
