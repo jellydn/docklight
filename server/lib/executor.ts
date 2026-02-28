@@ -63,8 +63,7 @@ function isSshWarningOnly(stderr: string): boolean {
 	);
 }
 
-// Parses "user@host" or "user@host:port" into its components.
-// Note: IPv6 addresses are not supported (e.g., "user@[::1]:2222" will not parse correctly).
+/** @description Parses "user@host" or "user@host:port". Note: IPv6 not supported. */
 function parseTarget(target: string): { host: string; username: string; port: number } | null {
 	const atIndex = target.indexOf("@");
 	if (atIndex <= 0) return null;
@@ -80,15 +79,13 @@ function parseTarget(target: string): { host: string; username: string; port: nu
 	return { host: hostPart, username, port: 22 };
 }
 
-// Builds the command to run on the remote host (without the SSH wrapper).
 function buildRemoteCommand(command: string, options?: ExecuteCommandOptions): string {
 	return options?.asRoot ? buildSudoCommand(command, options?.sudoPassword) : command;
 }
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
-// SSHPool maintains persistent SSH connections keyed by target string,
-// reusing them across commands to avoid per-command handshake overhead.
+/** @description Maintains persistent SSH connections to avoid per-command handshake overhead. */
 export class SSHPool {
 	private connections = new Map<string, NodeSSH>();
 	private timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -198,7 +195,6 @@ async function executeViaPool(
 			});
 		}
 
-		// Retry once after clearing the stale connection entry.
 		sshPool.closeConnection(target);
 		try {
 			ssh = await sshPool.getConnection(target, keyPath);
@@ -287,7 +283,6 @@ export async function executeCommand(
 		return result;
 	}
 
-	// Use the SSH pool when a target is configured and the command is a Dokku command.
 	const sshTarget = getSshTarget(options);
 	if (sshTarget && command.startsWith("dokku ")) {
 		return executeViaPool(command, sshTarget, timeout, options);
