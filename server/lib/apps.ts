@@ -319,6 +319,34 @@ export async function restartApp(
 	return executeCommand(`dokku ps:restart ${name}`);
 }
 
+export async function stopApp(
+	name: string
+): Promise<CommandResult | { error: string; exitCode: number }> {
+	if (!isValidAppName(name)) {
+		return {
+			error: "Invalid app name",
+			command: "",
+			exitCode: 400,
+		};
+	}
+
+	return executeCommand(`dokku ps:stop ${name}`);
+}
+
+export async function startApp(
+	name: string
+): Promise<CommandResult | { error: string; exitCode: number }> {
+	if (!isValidAppName(name)) {
+		return {
+			error: "Invalid app name",
+			command: "",
+			exitCode: 400,
+		};
+	}
+
+	return executeCommand(`dokku ps:start ${name}`);
+}
+
 export async function rebuildApp(
 	name: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {

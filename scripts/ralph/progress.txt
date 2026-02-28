@@ -35,3 +35,19 @@ Started: Sat Feb 28 12:43:28 +08 2026
   - The endpoint returns CommandResult which includes exitCode, stdout, stderr
   - Typecheck and lint pass without issues
 ---
+
+## Sat Feb 28 2026 - US-003
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Stop and Start App API endpoints (server/lib/apps.ts, server/index.ts)
+- Added `stopApp(name)` function that runs `dokku ps:stop <name>`
+- Added `startApp(name)` function that runs `dokku ps:start <name>`
+- Added POST /api/apps/:name/stop route
+- Added POST /api/apps/:name/start route
+- Both endpoints validate app name with isValidAppName()
+- Both clear apps cache after each action
+- Files changed: server/lib/apps.ts, server/index.ts
+- **Learnings for future iterations:**
+  - Follow the same pattern as restartApp and rebuildApp for consistency
+  - Typecheck and lint pass
+  - Test failures are pre-existing (vi.mocked not a function issue)
+---

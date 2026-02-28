@@ -3,7 +3,7 @@ import express from "express";
 import http from "http";
 import path from "path";
 import pinoHttp from "pino-http";
-import { getAppDetail, getApps, rebuildApp, restartApp, scaleApp, createApp, destroyApp } from "./lib/apps.js";
+import { getAppDetail, getApps, rebuildApp, restartApp, scaleApp, createApp, destroyApp, stopApp, startApp } from "./lib/apps.js";
 import { authMiddleware, clearAuthCookie, login, setAuthCookie } from "./lib/auth.js";
 import { clearPrefix, get, set } from "./lib/cache.js";
 import { getConfig, setConfig, unsetConfig } from "./lib/config.js";
@@ -115,6 +115,20 @@ app.post("/api/apps/:name/restart", async (req, res) => {
 app.post("/api/apps/:name/rebuild", async (req, res) => {
 	const { name } = req.params;
 	const result = await rebuildApp(name);
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.post("/api/apps/:name/stop", async (req, res) => {
+	const { name } = req.params;
+	const result = await stopApp(name);
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.post("/api/apps/:name/start", async (req, res) => {
+	const { name } = req.params;
+	const result = await startApp(name);
 	clearPrefix("apps:");
 	res.json(result);
 });
