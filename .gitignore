@@ -18,3 +18,7 @@
 data/docklight.db
 server/data/docklight.db
 .claude/settings.local.json
+node_modules/
+server/package-lock.json
+client/package-lock.json
+**/node_modules/

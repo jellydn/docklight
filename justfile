@@ -28,6 +28,18 @@ server-format:
 server-start:
     cd server && bun start
 
+# Test commands
+server-test:
+    cd server && bun run test
+
+client-test:
+    cd client && bun run test
+
+# Test all
+test:
+    cd server && bun run test
+    cd client && bun run test
+
 # Client commands
 client-dev:
     cd client && bun run dev

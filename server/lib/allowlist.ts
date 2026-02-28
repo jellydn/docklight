@@ -1,4 +1,4 @@
-export const ALLOWED_COMMANDS = ["dokku", "top", "free", "df", "grep", "awk"] as const;
+export const ALLOWED_COMMANDS = ["dokku", "top", "free", "df", "grep", "awk", "curl"] as const;
 
 export type AllowedCommand = (typeof ALLOWED_COMMANDS)[number];
 

@@ -1,18 +1,15 @@
 import { useEffect, useState } from "react";
-import { apiFetch } from "../lib/api";
+import { z } from "zod";
+import { apiFetch } from "../lib/api.js";
 import { useToast } from "../components/ToastProvider";
-import type { CommandResult } from "../components/types";
-
-interface Database {
-	name: string;
-	plugin: string;
-	linkedApps: string[];
-	connectionInfo: string;
-}
-
-interface App {
-	name: string;
-}
+import {
+	CommandResultSchema,
+	type CommandResult,
+	DatabaseSchema,
+	type Database,
+	AppSchema,
+	type App,
+} from "../lib/schemas.js";
 
 const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"];
 const POPULAR_PLUGIN_REPOS = [
@@ -62,8 +59,8 @@ export function Databases() {
 		setError(null);
 		try {
 			const [databasesData, appsData] = await Promise.all([
-				apiFetch<Database[]>("/databases"),
-				apiFetch<App[]>("/apps"),
+				apiFetch("/databases", z.array(DatabaseSchema)),
+				apiFetch("/apps", z.array(AppSchema)),
 			]);
 			setDatabases(Array.isArray(databasesData) ? databasesData : []);
 			setApps(Array.isArray(appsData) ? appsData : []);
@@ -78,7 +75,7 @@ export function Databases() {
 		if (!newDbPlugin || !newDbName) return;
 
 		try {
-			const result = await apiFetch<CommandResult>("/databases", {
+			const result = await apiFetch("/databases", CommandResultSchema, {
 				method: "POST",
 				body: JSON.stringify({ plugin: newDbPlugin, name: newDbName }),
 			});
@@ -104,7 +101,7 @@ export function Databases() {
 			const body: { repository: string; name?: string } = { repository: pluginRepo.trim() };
 			if (pluginName.trim()) body.name = pluginName.trim();
 
-			const result = await apiFetch<CommandResult>("/plugins/install", {
+			const result = await apiFetch("/plugins/install", CommandResultSchema, {
 				method: "POST",
 				body: JSON.stringify(body),
 			});
@@ -133,7 +130,7 @@ export function Databases() {
 		if (!linkDbName || !linkAppName) return;
 
 		try {
-			const result = await apiFetch<CommandResult>(`/databases/${linkDbName}/link`, {
+			const result = await apiFetch(`/databases/${encodeURIComponent(linkDbName)}/link`, CommandResultSchema, {
 				method: "POST",
 				body: JSON.stringify({ plugin: getDbPlugin(linkDbName), app: linkAppName }),
 			});
@@ -162,7 +159,7 @@ export function Databases() {
 		if (!pendingUnlinkDb || !pendingUnlinkApp) return;
 
 		try {
-			const result = await apiFetch<CommandResult>(`/databases/${pendingUnlinkDb}/unlink`, {
+			const result = await apiFetch(`/databases/${encodeURIComponent(pendingUnlinkDb)}/unlink`, CommandResultSchema, {
 				method: "POST",
 				body: JSON.stringify({ plugin: getDbPlugin(pendingUnlinkDb), app: pendingUnlinkApp }),
 			});
@@ -195,7 +192,7 @@ export function Databases() {
 		if (!pendingDestroyDb || confirmDestroyName !== pendingDestroyDb) return;
 
 		try {
-			const result = await apiFetch<CommandResult>(`/databases/${pendingDestroyDb}`, {
+			const result = await apiFetch(`/databases/${encodeURIComponent(pendingDestroyDb)}`, CommandResultSchema, {
 				method: "DELETE",
 				body: JSON.stringify({
 					plugin: getDbPlugin(pendingDestroyDb),

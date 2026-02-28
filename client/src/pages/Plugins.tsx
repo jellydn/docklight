@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
+import { z } from "zod";
 import { useToast } from "../components/ToastProvider";
-import type { CommandResult } from "../components/types";
-import { apiFetch } from "../lib/api";
-
-interface PluginInfo {
-	name: string;
-	enabled: boolean;
-	version?: string;
-}
+import { apiFetch } from "../lib/api.js";
+import {
+	CommandResultSchema,
+	PluginInfoSchema,
+	type PluginInfo,
+} from "../lib/schemas.js";
 
 const POPULAR_PLUGIN_REPOS = [
 	{ label: "Postgres", repository: "dokku/dokku-postgres", name: "dokku-postgres" },
@@ -30,7 +29,7 @@ export function Plugins() {
 		setLoading(true);
 		setError(null);
 		try {
-			const pluginData = await apiFetch<PluginInfo[]>("/plugins");
+			const pluginData = await apiFetch("/plugins", z.array(PluginInfoSchema));
 			setPlugins(Array.isArray(pluginData) ? pluginData : []);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to load plugins");
@@ -53,7 +52,7 @@ export function Plugins() {
 			if (pluginName.trim()) body.name = pluginName.trim();
 			if (sudoPassword.trim()) body.sudoPassword = sudoPassword;
 
-			const result = await apiFetch<CommandResult>("/plugins/install", {
+			const result = await apiFetch("/plugins/install", CommandResultSchema, {
 				method: "POST",
 				body: JSON.stringify(body),
 			});
@@ -77,7 +76,10 @@ export function Plugins() {
 		}
 	};
 
-	const runPluginAction = async (pluginNameValue: string, action: "enable" | "disable" | "uninstall") => {
+	const runPluginAction = async (
+		pluginNameValue: string,
+		action: "enable" | "disable" | "uninstall"
+	) => {
 		const commandMap = {
 			enable: `dokku plugin:enable ${pluginNameValue}`,
 			disable: `dokku plugin:disable ${pluginNameValue}`,
@@ -85,8 +87,11 @@ export function Plugins() {
 		};
 
 		try {
-			const result = await apiFetch<CommandResult>(
-				action === "uninstall" ? `/plugins/${pluginNameValue}` : `/plugins/${pluginNameValue}/${action}`,
+			const result = await apiFetch(
+				action === "uninstall"
+					? `/plugins/${encodeURIComponent(pluginNameValue)}`
+					: `/plugins/${encodeURIComponent(pluginNameValue)}/${action}`,
+				CommandResultSchema,
 				{
 					method: action === "uninstall" ? "DELETE" : "POST",
 					body: sudoPassword.trim() ? JSON.stringify({ sudoPassword }) : undefined,

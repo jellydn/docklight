@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install server dependencies
+        working-directory: server
+        run: bun install
+
+      - name: Typecheck server
+        working-directory: server
+        run: bun run typecheck
+
+      - name: Install client dependencies
+        working-directory: client
+        run: bun install
+
+      - name: Typecheck client
+        working-directory: client
+        run: bun run typecheck
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install server dependencies
+        working-directory: server
+        run: bun install
+
+      - name: Lint server
+        working-directory: server
+        run: bun run lint
+
+      - name: Install client dependencies
+        working-directory: client
+        run: bun install
+
+      - name: Lint client
+        working-directory: client
+        run: bun run lint
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install server dependencies
+        working-directory: server
+        run: bun install
+
+      - name: Test server
+        working-directory: server
+        run: bun run test
+
+      - name: Install client dependencies
+        working-directory: client
+        run: bun install
+
+      - name: Test client
+        working-directory: client
+        run: bun run test

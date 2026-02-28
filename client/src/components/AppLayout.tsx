@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
-import { apiFetch } from "../lib/api";
-import { logger } from "../lib/logger";
+import { z } from "zod";
+import { apiFetch } from "../lib/api.js";
+import { logger } from "../lib/logger.js";
 
 export function AppLayout() {
 	const navigate = useNavigate();
@@ -9,7 +10,7 @@ export function AppLayout() {
 
 	const handleLogout = async () => {
 		try {
-			await apiFetch("/auth/logout", {
+			await apiFetch("/auth/logout", z.object({ success: z.literal(true) }), {
 				method: "POST",
 			});
 			navigate("/login");
@@ -66,11 +67,7 @@ export function AppLayout() {
 					>
 						Databases
 					</Link>
-					<Link
-						to="/plugins"
-						className="block px-4 py-2 hover:bg-gray-800"
-						onClick={closeSidebar}
-					>
+					<Link to="/plugins" className="block px-4 py-2 hover:bg-gray-800" onClick={closeSidebar}>
 						Plugins
 					</Link>
 					<button
