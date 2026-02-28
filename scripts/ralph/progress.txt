@@ -100,49 +100,21 @@ Started: Sat Feb 28 18:28:47 +08 2026
   - ChromeDevTools MCP not configured - skipped browser verification
 ---
 
-## Sat Feb 28 2026 - US-008
-[Session: https://opncd.ai/s/5cfeab3c]
-- Implemented Destroy App from App Detail page (client/src/pages/AppDetail.tsx)
-- Added Danger Zone section at bottom of Overview tab with red border styling
-- Delete App button opens confirmation dialog requiring type-to-confirm
-- Delete button disabled until typed name matches exactly
-- On success, navigates to /apps and shows success toast
-- On error, shows error message in the dialog
+## Sat Feb 28 2026 - US-012
+- Implemented Docker Options settings panel on App Detail (client/src/pages/AppDetail.tsx)
+- Added state for docker options (dockerOptions, loading, error, form inputs, dialogs)
+- Added fetchDockerOptions that fetches GET /api/apps/:name/docker-options when Settings tab is active
+- Display options grouped by phase (Build, Deploy, Run) as subsections
+- Each option shows full Docker flag in monospace font with remove button
+- Add Option form with phase dropdown (build/deploy/run) and option text input
+- Clear Phase button per phase section with confirmation dialog
+- Show success/error toast after each action
 - Typecheck and lint pass
 - Files changed: client/src/pages/AppDetail.tsx
 - **Learnings for future iterations:**
-  - Reused existing dialog patterns in AppDetail.tsx (actionDialog, scaleDialog, removeDialog)
-  - Used navigate hook from react-router-dom for navigation after deletion
-  - Used existing ToastProvider for success/error notifications
-  - Pre-existing test failures in client tests (document not defined)
----
-
-## Sat Feb 28 2026 - US-009
-[Session: https://opncd.ai/s/5cfeab3c]
-- Implemented Stop and Start controls on App Detail page (client/src/pages/AppDetail.tsx)
-- Added 'Stop' button visible when app status is 'running' with orange styling
-- Added 'Start' button visible when app status is 'stopped' with green styling
-- Added confirmation dialog for Stop action before executing
-- Buttons call POST /api/apps/:name/stop or /start respectively
-- Show loading state (Stopping.../Starting...) during the action
-- Refresh app detail after action completes
-- Show success/error toast notification using existing ToastProvider
-- Typecheck and lint pass
-- Files changed: client/src/pages/AppDetail.tsx
-- **Learnings for future iterations:**
-  - Reused existing dialog patterns (showDeleteDialog, confirmDeleteApp pattern) for consistency
-  - Stop confirmation dialog explains the app will not serve requests until started again
-  - ChromeDevTools MCP not configured - skipped browser verification
----
-
-## Sat Feb 28 2026 - US-010
-- Fixed CreateAppDialog Zod validation error on success (client/src/components/CreateAppDialog.tsx, client/src/lib/schemas.ts)
-- Added CreateAppResultSchema in schemas.ts (z.object({ success: z.boolean(), name: z.string() }))
-- Updated CreateAppDialog to use CreateAppResultSchema instead of CommandResultSchema for POST /api/apps call
-- Typecheck and lint pass
-- Files changed: client/src/components/CreateAppDialog.tsx, client/src/lib/schemas.ts, scripts/ralph/prd.json
-- **Learnings for future iterations:**
-  - POST /api/apps returns { success, name } but other endpoints return CommandResult - need different schemas
+  - Reused existing dialog patterns from buildpacks and ports sections
+  - Used DockerOptionsSchema from lib/schemas.ts
+  - Used phase as key in options array (no duplicates per phase)
   - ChromeDevTools MCP not configured - skipped browser verification
 ---
 

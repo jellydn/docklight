@@ -16,6 +16,8 @@ import {
 	ConfigVarsSchema,
 	type DeploymentSettings,
 	DeploymentSettingsSchema,
+	type DockerOptions,
+	DockerOptionsSchema,
 	type PortMapping,
 	PortsResponseSchema,
 	type ProxyReport,
@@ -130,6 +132,27 @@ export function AppDetail() {
 	const [pendingRemoveBuildpack, setPendingRemoveBuildpack] = useState<Buildpack | null>(null);
 	const [buildpackRemoveSubmitting, setBuildpackRemoveSubmitting] = useState(false);
 
+	// Docker Options state
+	const [dockerOptions, setDockerOptions] = useState<DockerOptions | null>(null);
+	const [dockerOptionsLoading, setDockerOptionsLoading] = useState(false);
+	const [dockerOptionsError, setDockerOptionsError] = useState<string | null>(null);
+	const [newDockerOptionPhase, setNewDockerOptionPhase] = useState<"build" | "deploy" | "run">(
+		"deploy"
+	);
+	const [newDockerOption, setNewDockerOption] = useState("");
+	const [dockerOptionAddSubmitting, setDockerOptionAddSubmitting] = useState(false);
+	const [showClearDockerPhaseDialog, setShowClearDockerPhaseDialog] = useState(false);
+	const [pendingClearDockerPhase, setPendingClearDockerPhase] = useState<
+		"build" | "deploy" | "run" | null
+	>(null);
+	const [clearDockerPhaseSubmitting, setClearDockerPhaseSubmitting] = useState(false);
+	const [showRemoveDockerOptionDialog, setShowRemoveDockerOptionDialog] = useState(false);
+	const [pendingRemoveDockerOption, setPendingRemoveDockerOption] = useState<{
+		phase: "build" | "deploy" | "run";
+		option: string;
+	} | null>(null);
+	const [dockerOptionRemoveSubmitting, setDockerOptionRemoveSubmitting] = useState(false);
+
 	// Log viewer state
 	const [logs, setLogs] = useState<string[]>([]);
 	const [connectionStatus, setConnectionStatus] = useState<
@@ -180,6 +203,7 @@ export function AppDetail() {
 			fetchPorts();
 			fetchProxyReport();
 			fetchBuildpacks();
+			fetchDockerOptions();
 		}
 	}, [activeTab, name]);
 
@@ -1024,6 +1048,130 @@ export function AppDetail() {
 		}
 	};
 
+	const fetchDockerOptions = async () => {
+		if (!name) return;
+
+		setDockerOptionsLoading(true);
+		setDockerOptionsError(null);
+		try {
+			const options = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/docker-options`,
+				DockerOptionsSchema
+			);
+			setDockerOptions(options);
+		} catch (err) {
+			setDockerOptionsError(err instanceof Error ? err.message : "Failed to load docker options");
+		} finally {
+			setDockerOptionsLoading(false);
+		}
+	};
+
+	const handleAddDockerOption = async () => {
+		if (!name || !newDockerOption || dockerOptionAddSubmitting) return;
+
+		setDockerOptionAddSubmitting(true);
+		try {
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/docker-options`,
+				CommandResultSchema,
+				{
+					method: "POST",
+					body: JSON.stringify({ phase: newDockerOptionPhase, option: newDockerOption }),
+				}
+			);
+			addToast(result.exitCode === 0 ? "success" : "error", "Docker option added", result);
+			if (result.exitCode === 0) {
+				setNewDockerOption("");
+				fetchDockerOptions();
+			}
+		} catch (err) {
+			addToast(
+				"error",
+				"Failed to add docker option",
+				createErrorResult(`dokku docker-options:add ${name}`, err)
+			);
+		} finally {
+			setDockerOptionAddSubmitting(false);
+		}
+	};
+
+	const handleRemoveDockerOption = (phase: "build" | "deploy" | "run", option: string) => {
+		setPendingRemoveDockerOption({ phase, option });
+		setShowRemoveDockerOptionDialog(true);
+	};
+
+	const confirmRemoveDockerOption = async () => {
+		if (!name || !pendingRemoveDockerOption || dockerOptionRemoveSubmitting) return;
+
+		setDockerOptionRemoveSubmitting(true);
+		try {
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/docker-options`,
+				CommandResultSchema,
+				{
+					method: "DELETE",
+					body: JSON.stringify({
+						phase: pendingRemoveDockerOption.phase,
+						option: pendingRemoveDockerOption.option,
+					}),
+				}
+			);
+			addToast(result.exitCode === 0 ? "success" : "error", "Docker option removed", result);
+			setShowRemoveDockerOptionDialog(false);
+			setPendingRemoveDockerOption(null);
+			fetchDockerOptions();
+		} catch (err) {
+			addToast(
+				"error",
+				"Failed to remove docker option",
+				createErrorResult(`dokku docker-options:remove ${name}`, err)
+			);
+			setShowRemoveDockerOptionDialog(false);
+			setPendingRemoveDockerOption(null);
+		} finally {
+			setDockerOptionRemoveSubmitting(false);
+		}
+	};
+
+	const handleClearDockerPhase = (phase: "build" | "deploy" | "run") => {
+		setPendingClearDockerPhase(phase);
+		setShowClearDockerPhaseDialog(true);
+	};
+
+	const confirmClearDockerPhase = async () => {
+		if (!name || !pendingClearDockerPhase || clearDockerPhaseSubmitting) return;
+
+		setClearDockerPhaseSubmitting(true);
+		try {
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/docker-options`,
+				CommandResultSchema,
+				{
+					method: "DELETE",
+					body: JSON.stringify({ phase: pendingClearDockerPhase }),
+				}
+			);
+			addToast(
+				result.exitCode === 0 ? "success" : "error",
+				`${pendingClearDockerPhase} docker options cleared`,
+				result
+			);
+			setShowClearDockerPhaseDialog(false);
+			setPendingClearDockerPhase(null);
+			fetchDockerOptions();
+		} catch (err) {
+			addToast(
+				"error",
+				"Failed to clear docker options",
+				createErrorResult(`dokku docker-options:clear ${name}`, err)
+			);
+			setShowClearDockerPhaseDialog(false);
+			setPendingClearDockerPhase(null);
+		} finally {
+			setClearDockerPhaseSubmitting(false);
+		}
+	};
+
 	const handleEnableSSL = async () => {
 		if (!name || sslSubmitting) return;
 
@@ -1530,6 +1678,66 @@ export function AppDetail() {
 								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 							>
 								{clearBuildpacksSubmitting ? "Clearing..." : "Clear All"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{showRemoveDockerOptionDialog && pendingRemoveDockerOption && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4">Confirm Remove Docker Option</h2>
+						<p className="mb-6">
+							Are you sure you want to remove the docker option{" "}
+							<strong className="font-mono">{pendingRemoveDockerOption.option}</strong> from{" "}
+							<strong>{pendingRemoveDockerOption.phase}</strong> phase?
+						</p>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => {
+									setShowRemoveDockerOptionDialog(false);
+									setPendingRemoveDockerOption(null);
+								}}
+								disabled={dockerOptionRemoveSubmitting}
+								className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmRemoveDockerOption}
+								disabled={dockerOptionRemoveSubmitting}
+								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+							>
+								Remove
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{showClearDockerPhaseDialog && pendingClearDockerPhase && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4 text-red-600">Clear Docker Options</h2>
+						<p className="mb-6">
+							Are you sure you want to clear all docker options for the{" "}
+							<strong>{pendingClearDockerPhase}</strong> phase on <strong>{name}</strong>?
+						</p>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => setShowClearDockerPhaseDialog(false)}
+								disabled={clearDockerPhaseSubmitting}
+								className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmClearDockerPhase}
+								disabled={clearDockerPhaseSubmitting}
+								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+							>
+								{clearDockerPhaseSubmitting ? "Clearing..." : "Clear"}
 							</button>
 						</div>
 					</div>
@@ -2282,7 +2490,95 @@ export function AppDetail() {
 
 					<div className="bg-white rounded-lg shadow p-6">
 						<h2 className="text-lg font-semibold mb-4">Docker Options</h2>
-						<p className="text-gray-500">Configure Docker runtime options.</p>
+
+						{dockerOptionsLoading ? (
+							<div className="flex justify-center py-8">
+								<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+							</div>
+						) : dockerOptionsError ? (
+							<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+								{dockerOptionsError}
+							</div>
+						) : (
+							<div className="space-y-6">
+								{(["build", "deploy", "run"] as const).map((phase) => {
+									const options = dockerOptions?.[phase] || [];
+									return (
+										<div key={phase} className="border rounded-lg p-4">
+											<div className="flex justify-between items-center mb-3">
+												<h3 className="text-sm font-medium text-gray-700 capitalize">
+													{phase} Phase
+												</h3>
+												{options.length > 0 && (
+													<button
+														onClick={() => handleClearDockerPhase(phase)}
+														className="text-red-600 hover:text-red-800 text-sm"
+													>
+														Clear Phase
+													</button>
+												)}
+											</div>
+
+											{options.length > 0 ? (
+												<ul className="space-y-2 mb-4">
+													{options.map((option) => (
+														<li
+															key={option}
+															className="flex items-center justify-between bg-gray-50 rounded px-3 py-2"
+														>
+															<code className="font-mono text-sm text-gray-800">{option}</code>
+															<button
+																onClick={() => handleRemoveDockerOption(phase, option)}
+																className="text-red-600 hover:text-red-800 ml-4"
+																title="Remove"
+															>
+																🗑️
+															</button>
+														</li>
+													))}
+												</ul>
+											) : (
+												<p className="text-gray-500 text-sm mb-4">No {phase} options configured.</p>
+											)}
+										</div>
+									);
+								})}
+
+								<div className="pt-4 border-t">
+									<h3 className="text-sm font-medium text-gray-700 mb-3">Add Docker Option</h3>
+									<div className="flex flex-col sm:flex-row gap-2 mb-2">
+										<select
+											value={newDockerOptionPhase}
+											onChange={(e) =>
+												setNewDockerOptionPhase(e.target.value as "build" | "deploy" | "run")
+											}
+											className="border rounded px-3 py-2"
+										>
+											<option value="build">Build</option>
+											<option value="deploy">Deploy</option>
+											<option value="run">Run</option>
+										</select>
+										<input
+											type="text"
+											placeholder="e.g., --memory=512m --cpus=0.5"
+											value={newDockerOption}
+											onChange={(e) => setNewDockerOption(e.target.value)}
+											className="flex-1 border rounded px-3 py-2 font-mono text-sm"
+										/>
+										<button
+											onClick={handleAddDockerOption}
+											disabled={!newDockerOption || dockerOptionAddSubmitting}
+											className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+										>
+											Add
+										</button>
+									</div>
+									<p className="text-xs text-gray-500">
+										Enter Docker flags (e.g., --memory=512m, --cpus=0.5, --env VAR=value)
+									</p>
+								</div>
+							</div>
+						)}
 					</div>
 
 					<div className="bg-white rounded-lg shadow p-6">
