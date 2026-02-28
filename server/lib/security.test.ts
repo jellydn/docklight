@@ -4,7 +4,6 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { CommandResult } from "./executor.js";
 import { createApp, destroyApp, isValidAppName, scaleApp } from "./apps.js";
 import { addDomain, removeDomain } from "./domains.js";
 import { setConfig, unsetConfig } from "./config.js";
@@ -13,18 +12,22 @@ import { installPlugin } from "./plugins.js";
 import { addDockerOption } from "./docker-options.js";
 import { addBuildpack } from "./buildpacks.js";
 import { setDeployBranch } from "./deployment.js";
-import { executeCommand } from "./executor.js";
+import { executeCommand, executeCommandAsRoot } from "./executor.js";
 
 vi.mock("./executor.js", () => ({
 	executeCommand: vi.fn(),
+	executeCommandAsRoot: vi.fn(),
 }));
 
 const mockExecuteCommand = executeCommand as ReturnType<typeof vi.fn>;
+const mockExecuteCommandAsRoot = executeCommandAsRoot as ReturnType<typeof vi.fn>;
 
 describe("Security: App Name Validation", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
+
+	const DOLLAR_MALICIOUS = "${malicious}";
 
 	describe("isValidAppName", () => {
 		const maliciousInputs = [
@@ -42,7 +45,7 @@ describe("Security: App Name Validation", () => {
 			// Command substitution variants
 			"$(cat /etc/passwd)",
 			"`cat /etc/passwd`",
-			"${malicious}",
+			DOLLAR_MALICIOUS,
 			// Pipe chains
 			"app | malicious",
 			"app || malicious",
@@ -187,7 +190,7 @@ describe("Security: Domain Validation", () => {
 				stderr: "",
 			});
 
-			const result = await addDomain("my-app", "example.com");
+			const _result = await addDomain("my-app", "example.com");
 
 			expect(mockExecuteCommand).toHaveBeenCalled();
 		});
@@ -355,16 +358,16 @@ describe("Security: Plugin Validation", () => {
 		});
 
 		it("should accept valid plugin repository", async () => {
-			mockExecuteCommand.mockResolvedValue({
+			mockExecuteCommandAsRoot.mockResolvedValue({
 				command: "dokku plugin:install https://github.com/user/repo",
 				exitCode: 0,
 				stdout: "",
 				stderr: "",
 			});
 
-			const result = await installPlugin("https://github.com/user/repo");
+			const _result = await installPlugin("https://github.com/user/repo");
 
-			expect(mockExecuteCommand).toHaveBeenCalled();
+			expect(mockExecuteCommandAsRoot).toHaveBeenCalled();
 		});
 	});
 });
@@ -384,7 +387,7 @@ describe("Security: Docker Options", () => {
 				stderr: "",
 			});
 
-			const result = await addDockerOption("my-app", "run", "--privileged");
+			const _result = await addDockerOption("my-app", "run", "--privileged");
 
 			expect(mockExecuteCommand).toHaveBeenCalled();
 		});
@@ -397,7 +400,7 @@ describe("Security: Docker Options", () => {
 				stderr: "",
 			});
 
-			const result = await addDockerOption("my-app", "run", "--network=host");
+			const _result = await addDockerOption("my-app", "run", "--network=host");
 
 			expect(mockExecuteCommand).toHaveBeenCalled();
 		});
@@ -438,7 +441,7 @@ describe("Security: Buildpacks", () => {
 				stderr: "",
 			});
 
-			const result = await addBuildpack("my-app", "https://example.com/buildpack.git");
+			const _result = await addBuildpack("my-app", "https://example.com/buildpack.git");
 
 			expect(mockExecuteCommand).toHaveBeenCalled();
 		});
@@ -469,7 +472,7 @@ describe("Security: Deployment Settings", () => {
 				stderr: "",
 			});
 
-			const result = await setDeployBranch("my-app", "feature/branch-123");
+			const _result = await setDeployBranch("my-app", "feature/branch-123");
 
 			expect(mockExecuteCommand).toHaveBeenCalled();
 		});
@@ -550,7 +553,7 @@ describe("Security: Scale App", () => {
 				stderr: "",
 			});
 
-			const result = await scaleApp("my-app", "web", 3);
+			const _result = await scaleApp("my-app", "web", 3);
 
 			expect(mockExecuteCommand).toHaveBeenCalledWith("dokku ps:scale my-app web=3");
 		});
