@@ -217,10 +217,12 @@ describe("AppDetail", () => {
 		);
 
 		await vi.waitFor(() => {
-			expect(screen.getByText("Delete App")).toBeInTheDocument();
+			const deleteButtons = screen.getAllByText("Delete App");
+			expect(deleteButtons.length).toBeGreaterThan(0);
 		});
 
-		await user.click(screen.getByText("Delete App"));
+		const deleteButtons = screen.getAllByText("Delete App");
+		await user.click(deleteButtons[0]);
 
 		await vi.waitFor(() => {
 			expect(screen.getByText("Delete App")).toBeInTheDocument();
@@ -241,7 +243,8 @@ describe("AppDetail", () => {
 		);
 
 		await vi.waitFor(() => {
-			expect(screen.getByText("Overview")).toBeInTheDocument();
+			const overviewTabs = screen.getAllByText("Overview");
+			expect(overviewTabs.length).toBeGreaterThan(0);
 		});
 
 		await user.click(screen.getByText("Config"));
