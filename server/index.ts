@@ -27,6 +27,7 @@ import {
 import { getAuditLogs, getRecentCommands } from "./lib/db.js";
 import { addDomain, getDomains, removeDomain } from "./lib/domains.js";
 import { logger } from "./lib/logger.js";
+import { addPort, clearPorts, getPorts, removePort } from "./lib/ports.js";
 import {
 	disablePlugin,
 	enablePlugin,
@@ -268,6 +269,57 @@ app.post("/api/apps/:name/domains", async (req, res) => {
 app.delete("/api/apps/:name/domains/:domain", async (req, res) => {
 	const { name, domain } = req.params;
 	const result = await removeDomain(name, domain);
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.get("/api/apps/:name/ports", async (req, res) => {
+	const { name } = req.params;
+	const ports = await getPorts(name);
+	res.json(ports);
+});
+
+app.post("/api/apps/:name/ports", async (req, res) => {
+	const { name } = req.params;
+	const { scheme, hostPort, containerPort } = req.body;
+
+	if (!scheme || typeof scheme !== "string") {
+		res.status(400).json({ error: "Scheme is required" });
+		return;
+	}
+
+	if (typeof hostPort !== "number" || typeof containerPort !== "number") {
+		res.status(400).json({ error: "Host port and container port are required" });
+		return;
+	}
+
+	const result = await addPort(name, scheme, hostPort, containerPort);
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/ports", async (req, res) => {
+	const { name } = req.params;
+	const { scheme, hostPort, containerPort } = req.body;
+
+	if (!scheme || typeof scheme !== "string") {
+		res.status(400).json({ error: "Scheme is required" });
+		return;
+	}
+
+	if (typeof hostPort !== "number" || typeof containerPort !== "number") {
+		res.status(400).json({ error: "Host port and container port are required" });
+		return;
+	}
+
+	const result = await removePort(name, scheme, hostPort, containerPort);
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/ports/all", async (req, res) => {
+	const { name } = req.params;
+	const result = await clearPorts(name);
 	clearPrefix("apps:");
 	res.json(result);
 });
