@@ -4,132 +4,150 @@
 
 ## Tech Debt
 
-**Client-side testing:**
-- Issue: No client-side tests (Vitest only for server)
-- Files: `client/src/` (no .test.tsx files)
-- Impact: UI regressions may go unnoticed
-- Fix approach: Add Vitest + @testing-library for React components
+**Command Output Parsing:**
+- Issue: Fragile string parsing for Dokku command output (multiple output formats handled)
+- Files: `server/lib/apps.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`
+- Impact: May break if Dokku changes output format
+- Fix approach: Consider using Dokku's JSON output options if available, or consolidate parsing utilities
 
-**Type safety in API responses:**
-- Issue: Some API calls use `any` type or loose typing
-- Files: `client/src/lib/api.ts`, `server/lib/*.test.ts`
-- Impact: Runtime type errors possible
-- Fix approach: Use zod or similar for runtime validation
+**ANSI Code Stripping:**
+- Issue: Manual ANSI escape code handling throughout codebase
+- Files: `server/lib/apps.ts` (strip-ansi-cjs dependency present)
+- Impact: Output may contain color codes if not properly stripped
+- Fix approach: Centralize ANSI stripping in executor or utility function
+
+**Cache Invalidation:**
+- Issue: Prefix-based cache invalidation may miss edge cases
+- Files: `server/lib/cache.ts`, usage throughout `server/index.ts`
+- Impact: Stale data could be served after operations
+- Fix approach: Consider tag-based or more granular invalidation
 
 ## Known Bugs
 
-**None documented**
-- No active bug tracker found
-- TODO/FIXME/HACK comments: None found in codebase search
+**No tracked bugs** - Issue tracking not visible in this codebase
 
 ## Security Considerations
 
-**Command execution via SSH:**
-- Risk: Shell command injection if allowlist is bypassed
-- Files: `server/lib/executor.ts`, `server/lib/allowlist.ts`
-- Current mitigation: Strict allowlist of approved commands
-- Recommendations: Regular security audits of allowlist, input sanitization
+**Shell Injection Risk:**
+- Risk: User input used in shell commands (mitigated by allowlist)
+- Files: `server/lib/allowlist.ts`, `server/lib/executor.ts`
+- Current mitigation: Command allowlist enforced before execution
+- Recommendations: Regular audit of allowlist, consider sandboxing
 
-**Single password authentication:**
-- Risk: Shared password, no rate limiting visible
+**Password Storage:**
+- Risk: Password stored in environment variable only
 - Files: `server/lib/auth.ts`
-- Current mitigation: JWT tokens with expiration, HTTPS recommended
-- Recommendations: Add rate limiting, consider OAuth/LDAP for teams
+- Current mitigation: Single password for all users (simple deployment)
+- Recommendations: Consider password hashing, multi-user support for production
 
-**Plugin management with root:**
-- Risk: Plugin install/enable/disable runs with sudo
-- Files: `server/lib/plugins.ts`
-- Current mitigation: Separate SSH target for root commands
-- Recommendations: Document sudo requirements clearly
+**Session Management:**
+- Risk: JWT tokens in cookies without explicit expiry configuration visible
+- Files: `server/lib/auth.ts`
+- Current mitigation: httpOnly cookies prevent XSS access
+- Recommendations: Document session timeout policy, consider refresh tokens
+
+**Sudo Password Handling:**
+- Risk: Sudo passwords passed through API for plugin operations
+- Files: `server/index.ts`, `server/lib/plugins.ts`
+- Current mitigation: Optional, only for plugin enable/disable/uninstall
+- Recommendations: Consider server-side credential management
 
 ## Performance Bottlenecks
 
-**SSH connection per command:**
-- Problem: Each Dokku command opens new SSH connection
-- Files: `server/lib/executor.ts`
-- Cause: One-off command execution pattern
-- Improvement path: Connection pooling or persistent SSH session
+**Sequential App Listing:**
+- Problem: Each app requires 2-3 shell commands (ps:report, domains:report)
+- Files: `server/lib/apps.ts`
+- Cause: Dokku CLI design (no batch API)
+- Improvement path: Consider parallel execution with Promise.all()
 
-**No caching for app lists:**
-- Problem: Every page load re-fetches apps from Dokku
-- Files: `client/src/pages/Dashboard.tsx`
-- Cause: No server-side caching layer
-- Improvement path: Add in-memory cache with TTL
+**Cache Warming:**
+- Problem: First request after server start is slow (cache empty)
+- Files: `server/lib/cache.ts`
+- Cause: On-demand cache population
+- Improvement path: Background cache warming on server startup
 
 ## Fragile Areas
 
-**Command allowlist:**
-- Files: `server/lib/allowlist.ts`
-- Why fragile: Adding new Dokku features requires manual allowlist updates
-- Safe modification: Add commands incrementally with tests
-- Test coverage: Good (executor tests validate allowlist)
+**Dokku Output Parsing:**
+- Files: `server/lib/apps.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`
+- Why fragile: Depends on Dokku CLI output format
+- Safe modification: Add tests for each output format variation
+- Test coverage: Good coverage in `apps.test.ts`, extend to other parsers
 
-**SSH connection handling:**
-- Files: `server/lib/executor.ts`
-- Why fragile: Network issues, SSH key misconfig cause silent failures
-- Safe modification: Add connection health checks, retry logic
-- Test coverage: Needs improvement (network failure scenarios)
+**App Name Validation:**
+- Files: `server/lib/apps.ts` (`isValidAppName`)
+- Why fragile: Regex must match Dokku's naming rules
+- Safe modification: Update regex if Dokku changes rules
+- Test coverage: Good test coverage for valid/invalid names
 
 ## Scaling Limits
 
-**Single-server design:**
-- Current capacity: 1 Dokku server
-- Limit: Cannot manage multiple Dokku instances
-- Scaling path: Multi-server support would require architecture redesign
+**Server Process:**
+- Current capacity: Single-process Express server
+- Limit: Blocked by in-memory cache and WebSocket connections
+- Scaling path: Add Redis for shared cache, separate WebSocket servers
 
-**Concurrent WebSocket connections:**
-- Current capacity: Limited by Node.js event loop
-- Limit: Unknown (no load testing documented)
-- Scaling path: WebSocket connection pooling, Redis pub/sub for multi-instance
+**Database:**
+- Current capacity: SQLite for command history only
+- Limit: Not designed for high write throughput
+- Scaling path: SQLite is sufficient for current audit log use case
 
 ## Dependencies at Risk
 
 **better-sqlite3:**
-- Risk: Native module, requires compilation for each platform
-- Impact: Build failures if toolchain missing
-- Migration plan: Use sqlite3 (pure JS) or consider serverless DB
+- Risk: Native module, requires compilation
+- Impact: Server won't start if compilation fails
+- Migration plan: Use Bun's native SQLite or consider pure JS alternative
 
-**Dokku CLI version compatibility:**
-- Risk: Breaking changes in Dokku commands
-- Impact: Commands may fail on Dokku updates
-- Migration plan: Version pinning, command abstraction layer
+**Express 5.0.0:**
+- Risk: May have breaking changes from v4
+- Impact: Middleware compatibility
+- Migration plan: Currently stable, monitor for issues
+
+**React 19.2.0:**
+- Risk: Latest major version, potential ecosystem issues
+- Impact: Component library compatibility
+- Migration plan: Monitor third-party library updates
 
 ## Missing Critical Features
 
-**User management:**
-- Problem: Single admin user only
-- Blocks: Team collaboration, audit trails
-- Priority: Medium (documented as solo dev tool)
+**Multi-user Support:**
+- Problem: Single shared password for authentication
+- Blocks: Role-based access control, user-specific permissions
 
-**Multi-server support:**
-- Problem: Can only manage one Dokku instance
-- Blocks: Managing multiple VPS from one UI
-- Priority: Low (out of scope per design)
+**Audit Logging:**
+- Problem: Commands stored in SQLite but no UI for viewing
+- Blocks: Compliance auditing, troubleshooting historical issues
 
-**Configuration backup/restore:**
-- Problem: No way to backup/restore app configs
-- Blocks: Disaster recovery
-- Priority: Low (Dokku has its own backup mechanisms)
+**Configuration Persistence:**
+- Problem: No UI for managing server configuration
+- Blocks: Changing port, password without server restart
 
 ## Test Coverage Gaps
 
-**Client-side:**
-- What's not tested: All React components and pages
-- Files: `client/src/components/`, `client/src/pages/`
-- Risk: UI regressions, broken user flows
+**Executor Module:**
+- What's not tested: `server/lib/executor.ts` has no visible test file
+- Files: `server/lib/executor.ts`
+- Risk: Core shell execution logic untested
 - Priority: High
 
-**WebSocket server:**
-- What's not tested: Log streaming, connection handling
+**WebSocket Log Streaming:**
+- What's not tested: `server/lib/websocket.ts` has no visible test file
 - Files: `server/lib/websocket.ts`
-- Risk: Log viewer may break without detection
+- Risk: Real-time functionality untested
 - Priority: Medium
 
-**Error scenarios:**
-- What's not tested: Network failures, SSH timeouts, invalid responses
-- Files: `server/lib/executor.ts`, integration tests
-- Risk: Poor error handling in production
+**Client Pages:**
+- What's not tested: Most page components lack test files
+- Files: `client/src/pages/*.tsx`
+- Risk: UI integration bugs
 - Priority: Medium
+
+**E2E Tests:**
+- What's not tested: Full user flows (login → create app → deploy)
+- Files: `.agents/skills/dev-browser/` (infrastructure exists but coverage unknown)
+- Risk: Integration issues between components
+- Priority: Low (dev-browser skill exists)
 
 ---
 

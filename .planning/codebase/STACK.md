@@ -5,87 +5,83 @@
 ## Languages
 
 **Primary:**
-- TypeScript 5.x - Server and client code
-- React 19.x - Frontend framework
+- TypeScript ^5.3.2 (server) - Backend API and business logic
+- TypeScript ~5.9.3 (client) - Frontend React components
 
 **Secondary:**
-- Shell - Dokku command execution via SSH
+- TSX for React components (client)
+- JSON for configuration files
 
 ## Runtime
 
 **Environment:**
-- Node.js (server), Browser (client)
+- Node.js (Server: Bun runtime, Client: Vite dev server)
 
 **Package Manager:**
-- Bun (primary, for dev)
-- npm (fallback compatible)
-- Lockfile: `bun.lock` (server), `package-lock.json` not used
+- Bun
+- Lockfiles: `bun.lockb` present in server/, client/, and .agents/skills/dev-browser/
 
 ## Frameworks
 
 **Core:**
-- Express 4.18.x - Backend API server (`server/`)
-- React 19.2.x - Frontend UI (`client/`)
-- React Router 7.x - Client-side routing
-- Vite 7.x - Frontend build tool and dev server
+- Express ^5.0.0 - Backend web framework
+- React ^19.2.0 - Frontend UI framework
+- React Router DOM ^7.13.1 - Client-side routing
+- Vite ^7.3.1 - Frontend build tool and dev server
 
 **Testing:**
-- Vitest 2.x - Test runner (server only)
-- Supertest 7.x - HTTP endpoint testing
+- Vitest ^4.0.0 - Test runner for both server and client
+- @testing-library/react ^16.3.2 - React component testing
+- @testing-library/user-event ^14.6.1 - User interaction simulation
+- happy-dom ^20.7.0 - DOM environment for client tests
+- Supertest ^7.0.0 - HTTP endpoint testing (server)
 
 **Build/Dev:**
-- TypeScript 5.x - Type checking
-- tsx 4.x - TypeScript execution for server dev
-- Biome 2.4.x - Linting and formatting
-- Tailwind CSS 3.x - Utility-first CSS framework
+- Biome ^2.4.4 - Linting and formatting
+- tsx ^4.6.2 - TypeScript execution for server dev
+- TypeScript ^5.3.2 - Type checking (server)
 
 ## Key Dependencies
 
 **Critical:**
-- better-sqlite3 12.x - SQLite database for command history (`server/lib/db.ts`)
-- express 4.18.x - HTTP server (`server/index.ts`)
-- react 19.2.x - UI framework
-- jsonwebtoken 9.x - JWT authentication (`server/lib/auth.ts`)
-- ws 8.19.x - WebSocket server for live logs (`server/lib/websocket.ts`)
+- better-sqlite3 ^12.6.2 - Embedded SQLite database for command history
+- pino ^10.3.1 + pino-http ^11.0.0 - Structured logging
+- express-rate-limit ^8.2.1 - API rate limiting
+- ws ^8.19.0 - WebSocket server for log streaming
+- jsonwebtoken ^9.0.3 - JWT authentication
+- zod ^4.3.6 - Runtime schema validation (client)
 
 **Infrastructure:**
-- pino 10.x - Structured logging
-- pino-http 11.x - HTTP request logging middleware
-- cookie-parser 1.4.x - Cookie parsing for session auth
-
-**UI:**
-- @radix-ui/* - Accessible component primitives (dialog, slot)
-- class-variance-authority - Component variant management
-- clsx + tailwind-merge - Conditional className utilities
-- sonner 2.x - Toast notifications
-- lucide-react 0.575.x - Icons
+- cookie-parser ^1.4.7 - Cookie parsing for auth
+- tailwindcss 4 + @tailwindcss/postcss ^4.2.1 - Utility-first CSS
+- class-variance-authority ^0.7.1 - Component variant management
+- Radix UI (@radix-ui/react-dialog, @radix-ui/react-slot) - Accessible component primitives
+- lucide-react ^0.575.0 - Icon library
+- sonner ^2.0.7 - Toast notifications
 
 ## Configuration
 
 **Environment:**
-- `DOCKLIGHT_PASSWORD` (required) - Admin login password
-- `DOCKLIGHT_SECRET` (optional, auto-generated) - JWT signing secret
-- `DOCKLIGHT_DOKKU_SSH_TARGET` (recommended) - SSH target for Dokku commands
-- `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` (optional) - Dedicated SSH target for root commands
-- `DOCKLIGHT_DOKKU_SSH_KEY_PATH` (optional) - SSH key path for Dokku
-- `PORT` (optional, default 3001) - Server port
+- `.env` files for environment variables
+- Key configs: `PORT` (default 3001), authentication password
 
 **Build:**
-- `server/tsconfig.json` - TypeScript config for server
-- `client/tsconfig.json` (via Vite) - TypeScript config for client
-- `server/biome.json` - Shared lint/format config
-- `client/vite.config.ts` referenced but uses default Vite config
+- `server/tsconfig.json` - Server TypeScript config (strict mode, ES2022 target)
+- `client/tsconfig.json` - Client TypeScript config with paths for @ alias
+- `server/biome.json` - Shared linting/formatting config
+- `client/vite.config.ts` - Vite build config with proxy to server
 
 ## Platform Requirements
 
 **Development:**
-- Node.js 20+ or Bun
-- SSH access to a Dokku server (for integration testing)
+- Bun runtime
+- Node.js-compatible environment
+- Dokku server access for integration testing
 
 **Production:**
-- Dokku server with Docker
-- VPS with SSH access
-- Recommended: Cloudflare Zero Trust or Tailscale for additional security
+- Dokku host (self-hosted PaaS)
+- SSH access to Dokku server
+- Node.js runtime for server
 
 ---
 

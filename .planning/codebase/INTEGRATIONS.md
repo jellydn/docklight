@@ -4,106 +4,78 @@
 
 ## APIs & External Services
 
-**Dokku CLI (via SSH):**
-- Purpose: Core functionality - all app/database/plugin management
-- Implementation: `server/lib/executor.ts` executes shell commands via SSH
-- Auth: SSH key-based authentication
-- Commands restricted to allowlist in `server/lib/allowlist.ts`
+**Dokku CLI:**
+- Primary integration for app deployment management
+- CLI commands executed via shell (allowlist enforced)
+- SDK/Client: Direct shell execution via `server/lib/executor.ts`
+- Auth: Server must have SSH/sudo access to Dokku
 
-**Command Categories:**
-- Apps: `apps:list`, `ps:report`, `ps:restart`, `ps:rebuild`, `ps:scale`
-- Config: `config:show`, `config:set`, `config:unset`
-- Domains: `domains:report`, `domains:add`, `domains:remove`
-- Databases: `<plugin>:list`, `<plugin>:create`, `<plugin>:link`, `<plugin>:unlink`, `<plugin>:destroy`
-- Plugins: `plugin:list`, `plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`
-- SSL: `letsencrypt:enable`, `letsencrypt:auto-renew`
+**System Monitoring:**
+- System resource commands: `top`, `free`, `df`
+- Used for server health monitoring
+- Executed through same allowlisted command pattern
 
 ## Data Storage
 
 **Databases:**
-- SQLite (better-sqlite3) - Local file-based database
-- Connection: `server/lib/db.ts`
-- Client: better-sqlite3 (synchronous API)
-- Purpose: Store command execution history
-
-**Schema:**
-- `commands` table: id, command, exitCode, stdout, stderr, createdAt
+- better-sqlite3 (embedded SQLite)
+- Connection: Local file-based (`server/data/commands.db`)
+- Client: Synchronous API with prepared statements
+- Purpose: Store recent command history (cache)
 
 **File Storage:**
-- Local filesystem only (no S3, etc.)
-- SQLite database file location: Configurable via DB path
+- Local filesystem only
+- No external file storage services
 
 **Caching:**
-- None (no Redis, etc.)
+- In-memory LRU cache (server/lib/cache.ts)
+- Time-based TTL for expensive operations (app lists, database lists)
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Custom JWT-based authentication
-- Implementation: `server/lib/auth.ts`
-- Storage: HTTP-only session cookie
-- Secret: `DOCKLIGHT_SECRET` env var (auto-generated if not set)
-
-**Flow:**
-1. User submits password to `/api/auth/login`
-2. Server verifies against `DOCKLIGHT_PASSWORD`
-3. Server issues JWT token
-4. Token stored in cookie
-5. Subsequent requests validate token via middleware
+- Custom password-based authentication
+- Implementation: Cookie-based sessions with httpOnly
+- JWT tokens stored in secure cookies
+- Rate limiting on login endpoint (express-rate-limit)
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None (no Sentry, etc.)
+- None (local logging only)
 
 **Logs:**
-- Pino structured logging (`server/lib/logger.ts`)
+- Pino structured logging (JSON format)
 - HTTP requests logged via pino-http middleware
-- Log level: Configurable (defaults to info)
-- Output: stdout (can be configured for file/transport)
+- Real-time log streaming via WebSocket (`server/lib/websocket.ts`)
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Dokku (self-hosted PaaS)
-- Docker containers
+- GitHub Actions for CI/CD
+- Staging deployment via `.github/workflows/deploy-staging.yml`
 
 **CI Pipeline:**
-- None visible (manual git push to Dokku remote)
-
-**Deployment:**
-```bash
-git push dokku main
-```
+- `.github/workflows/ci.yml` - Typecheck, lint, and test on push/PR to main
+- Uses oven-sh/setup-bun@v2
+- Runs typecheck, lint, and test for both server and client in parallel
 
 ## Environment Configuration
 
 **Required env vars:**
-- `DOCKLIGHT_PASSWORD` - Admin password (required)
-
-**Optional env vars:**
-- `DOCKLIGHT_SECRET` - JWT signing secret (auto-generated if not set)
-- `DOCKLIGHT_DOKKU_SSH_TARGET` - SSH target for Dokku commands (recommended)
-- `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` - Dedicated SSH target for root-required commands
-- `DOCKLIGHT_DOKKU_SSH_KEY_PATH` - Path to SSH private key
-- `DOCKLIGHT_DOKKU_SSH_OPTS` - Additional SSH options
 - `PORT` - Server port (default: 3001)
+- `DOKKU_PASSWORD` - Authentication password for web UI
 
 **Secrets location:**
-- Environment variables only
-- No secrets in code
+- Environment variables (not committed to git)
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None (no webhook endpoints)
+- None
 
 **Outgoing:**
-- None (no external webhooks)
-
-**Real-time:**
-- WebSocket server for live log streaming (`server/lib/websocket.ts`)
-- Endpoint: `/api/apps/:name/logs/stream`
+- None
 
 ---
 

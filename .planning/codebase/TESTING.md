@@ -5,57 +5,68 @@
 ## Test Framework
 
 **Runner:**
-- Vitest 2.x
-- Config: `server/vitest.config.ts`
+- Vitest ^4.0.0
+- Config: `server/vitest.config.ts`, `client/vitest.config.ts` (implied)
 
 **Assertion Library:**
-- Built-in Vitest assertions (Chai-like)
+- Vitest's built-in expect (Chai-like)
 
 **Run Commands:**
 ```bash
-bun test              # Run all tests
-bun run test:watch    # Watch mode
-bun run test:coverage # Coverage report
+# Server
+cd server
+bun test                 # Run all tests
+bun run test:watch       # Watch mode
+bun run test:coverage    # Run with coverage
+
+# Client
+cd client
+bun test                 # Run all tests
+bun run test:watch       # Watch mode
+bun run test:coverage    # Run with coverage
 ```
 
 ## Test File Organization
 
 **Location:**
-- Co-located with source files: `lib/*.test.ts`
-- Root-level integration test: `index.test.ts`
+- Co-located with source files (same directory)
 
 **Naming:**
-- Source file + `.test.ts` suffix: `apps.ts` → `apps.test.ts`
+- `[filename].test.ts` for server tests
+- `[filename].test.tsx` for client component tests
 
 **Structure:**
 ```
 server/
-├── lib/
-│   ├── apps.ts
-│   ├── apps.test.ts
-│   ├── databases.ts
-│   ├── databases.test.ts
-│   └── ...
-├── index.test.ts
+  lib/
+    apps.ts
+    apps.test.ts
+    executor.ts
+    executor.test.ts (implied)
+
+client/src/
+  components/
+    AppLayout.tsx
+    AppLayout.test.tsx
 ```
 
 ## Test Structure
 
 **Suite Organization:**
 ```typescript
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 describe("functionName", () => {
   beforeEach(() => {
-    // Setup
+    vi.clearAllMocks();
   });
 
   it("should do something specific", () => {
     // Arrange
-    const input = "...";
+    const input = "test";
 
     // Act
-    const result = functionUnderTest(input);
+    const result = functionName(input);
 
     // Assert
     expect(result).toBe(expected);
@@ -64,104 +75,118 @@ describe("functionName", () => {
 ```
 
 **Patterns:**
-- Setup: `beforeEach` for shared setup
-- Teardown: Not commonly used ( Vitest auto-cleanup)
-- Assertion: `expect(actual).op(expected)`
+- Setup: Use `beforeEach` to clear mocks between tests
+- Mocking: `vi.mock()` at module level for dependencies
+- Assertions: Descriptive test names starting with "should"
 
 ## Mocking
 
-**Framework:** Vitest vi
+**Framework:** Vitest's built-in `vi` mock functions
 
 **Patterns:**
 ```typescript
-// Mock external module
-vi.mock("../lib/executor", () => ({
-  executeCommand: vi.fn().mockResolvedValue({
-    exitCode: 0,
-    stdout: "mocked output",
-    stderr: "",
-  }),
+// Mock module at top level
+vi.mock("./executor.js", () => ({
+  executeCommand: vi.fn(),
 }));
 
-// Mock function
-const mockFn = vi.fn().mockReturnValue("value");
-expect(mockFn).toHaveBeenCalledWith("arg");
+// Get mock reference in tests
+const mockExecuteCommand = executeCommand as ReturnType<typeof vi.fn>;
+
+// Mock return values
+mockExecuteCommand.mockResolvedValue({
+  command: "dokku apps:list",
+  exitCode: 0,
+  stdout: "my-app",
+  stderr: "",
+});
 ```
 
 **What to Mock:**
-- SSH executor (`server/lib/executor.ts`)
+- Shell command execution (`executeCommand`)
+- External API calls (`apiFetch`)
 - Database operations
-- External API calls
+- Logger
 
 **What NOT to Mock:**
-- Business logic functions under test
-- Data transformation utilities
+- Pure utility functions
+- Data transformation logic
 
 ## Fixtures and Factories
 
 **Test Data:**
-- Inline in tests (no separate fixture files)
-- Example:
-```typescript
-const mockApp = {
-  name: "test-app",
-  status: "running",
-  domains: ["example.com"],
-};
-```
+- Created inline in each test
+- No centralized fixture files
 
 **Location:**
-- Co-located with tests (no shared fixture directory)
+- Test data defined within test files
 
 ## Coverage
 
-**Requirements:** None enforced (coverage tracked but no threshold)
+**Requirements:** None enforced (coverage used for visibility)
 
 **View Coverage:**
 ```bash
-bun run test:coverage
+bun run test:coverage    # Generates HTML report in coverage/
 ```
 
-**Provider:** v8 (via @vitest/coverage-v8)
-
-**Reporters:** text, json, html
+**Provider:** v8 (built-in Vitest coverage)
 
 ## Test Types
 
 **Unit Tests:**
-- Focus: Individual functions in `lib/*.test.ts`
-- Approach: Mock dependencies, test business logic
-- Example: `apps.test.ts` tests list(), restart(), rebuild()
+- Server lib functions: test business logic in isolation
+- Mock shell execution
+- Test error handling, validation, parsing
 
 **Integration Tests:**
-- Focus: API endpoints in `index.test.ts`
-- Approach: Supertest for HTTP assertions, mock executor
-- Example: Test GET /api/apps returns 200 with app list
+- API endpoint tests using Supertest (implied by devDependency)
+- Test request/response flow through Express
 
 **E2E Tests:**
-- Framework: Custom browser automation (`.agents/skills/dev-browser/`)
-- Scope: Full user flows via Playwright
-- Location: Separate skill, not in test directory
+- Framework: Browser automation (`.agents/skills/dev-browser/`)
+- Snapshot testing for visual regression
 
 ## Common Patterns
 
 **Async Testing:**
 ```typescript
-it("should handle async operation", async () => {
+it("should handle async operations", async () => {
+  mockExecuteCommand.mockResolvedValue(expectedResult);
   const result = await asyncFunction();
-  expect(result).toBe(expected);
+  expect(result).toEqual(expected);
 });
 ```
 
 **Error Testing:**
 ```typescript
 it("should return error on failure", async () => {
-  vi.mocked(executeCommand).mockResolvedValue({
+  mockExecuteCommand.mockResolvedValue({
     exitCode: 1,
-    stderr: "error message",
+    stderr: "Error message",
   });
   const result = await functionUnderTest();
-  expect(result.exitCode).toBe(1);
+  expect(result).toEqual({
+    error: "Failed operation",
+    exitCode: 1,
+    stderr: "Error message",
+  });
+});
+```
+
+**React Component Testing:**
+```typescript
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+it("should render and respond to clicks", async () => {
+  const user = userEvent.setup();
+  render(<Component />);
+
+  expect(screen.getByText("Button")).toBeInTheDocument();
+
+  await user.click(screen.getByRole("button"));
+  expect(mockFunction).toHaveBeenCalled();
 });
 ```
 
