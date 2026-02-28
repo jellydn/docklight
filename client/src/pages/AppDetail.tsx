@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { useToast } from "../components/ToastProvider";
 import { apiFetch } from "../lib/api.js";
@@ -24,6 +24,7 @@ interface ScaleChange {
 
 export function AppDetail() {
 	const { name } = useParams<{ name: string }>();
+	const navigate = useNavigate();
 	const { addToast } = useToast();
 	const [app, setApp] = useState<AppDetailData | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -44,6 +45,17 @@ export function AppDetail() {
 	const [newConfigValue, setNewConfigValue] = useState("");
 	const [showRemoveDialog, setShowRemoveDialog] = useState(false);
 	const [pendingRemoveKey, setPendingRemoveKey] = useState<string | null>(null);
+
+	// Delete app state
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+	const [confirmDeleteName, setConfirmDeleteName] = useState("");
+	const [deleting, setDeleting] = useState(false);
+
+	// Stop/Start app state
+	const [showStopDialog, setShowStopDialog] = useState(false);
+	const [showStartDialog, setShowStartDialog] = useState(false);
+	const [stopping, setStopping] = useState(false);
+	const [starting, setStarting] = useState(false);
 
 	// Domains state
 	const [domains, setDomains] = useState<string[]>([]);
@@ -112,44 +124,39 @@ export function AppDetail() {
 		const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 		const wsUrl = `${protocol}//${window.location.host}/api/apps/${name}/logs/stream`;
 
-		try {
-			const ws = new WebSocket(wsUrl);
-			wsRef.current = ws;
+		const ws = new WebSocket(wsUrl);
+		wsRef.current = ws;
 
-			ws.onopen = () => {
-				setConnectionStatus("connected");
-				setLogs([]);
-				ws.send(JSON.stringify({ lines: lineCount }));
-			};
+		ws.onopen = () => {
+			setConnectionStatus("connected");
+			setLogs([]);
+			ws.send(JSON.stringify({ lines: lineCount }));
+		};
 
-			ws.onmessage = (event) => {
-				try {
-					const data = JSON.parse(event.data);
-					if (data.line) {
-						setLogs((prev) => {
-							const next = [...prev, data.line];
-							return next.length > 10000 ? next.slice(-10000) : next;
-						});
-					}
-					if (data.error && !data.line) {
-						setConnectionStatus("disconnected");
-					}
-				} catch (err) {
-					logger.error({ err }, "Error parsing WebSocket message");
+		ws.onmessage = (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				if (data.line) {
+					setLogs((prev) => {
+						const next = [...prev, data.line];
+						return next.length > 10000 ? next.slice(-10000) : next;
+					});
 				}
-			};
+				if (data.error && !data.line) {
+					setConnectionStatus("disconnected");
+				}
+			} catch (err) {
+				logger.error({ err }, "Error parsing WebSocket message");
+			}
+		};
 
-			ws.onclose = () => {
-				setConnectionStatus("disconnected");
-			};
-
-			ws.onerror = () => {
-				setConnectionStatus("disconnected");
-			};
-		} catch (err) {
-			logger.error({ err }, "Failed to connect to WebSocket");
+		ws.onclose = () => {
 			setConnectionStatus("disconnected");
-		}
+		};
+
+		ws.onerror = () => {
+			setConnectionStatus("disconnected");
+		};
 	};
 
 	const disconnectWebSocket = () => {
@@ -347,6 +354,101 @@ export function AppDetail() {
 		});
 	};
 
+	const handleDeleteApp = () => {
+		setShowDeleteDialog(true);
+		setConfirmDeleteName("");
+	};
+
+	const confirmDeleteApp = async () => {
+		if (!name || confirmDeleteName !== name) return;
+
+		setDeleting(true);
+		try {
+			const result = await apiFetch(`/apps/${encodeURIComponent(name)}`, CommandResultSchema, {
+				method: "DELETE",
+				body: JSON.stringify({ confirmName: name }),
+			});
+			if (result.exitCode === 0) {
+				addToast("success", `App ${name} deleted successfully`, result);
+				navigate("/apps");
+			} else {
+				addToast("error", `Failed to delete app: ${result.stderr}`, result);
+			}
+			setShowDeleteDialog(false);
+			setConfirmDeleteName("");
+		} catch (err) {
+			const errorResult: CommandResult = {
+				command: `dokku apps:destroy ${name} --force`,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Failed to delete app",
+			};
+			addToast("error", "Failed to delete app", errorResult);
+			setShowDeleteDialog(false);
+			setConfirmDeleteName("");
+		} finally {
+			setDeleting(false);
+		}
+	};
+
+	const handleStopApp = () => {
+		setShowStopDialog(true);
+	};
+
+	const confirmStopApp = async () => {
+		if (!name) return;
+
+		setStopping(true);
+		try {
+			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/stop`, CommandResultSchema, {
+				method: "POST",
+			});
+			addToast(result.exitCode === 0 ? "success" : "error", "App stopped", result);
+			setShowStopDialog(false);
+			fetchAppDetail();
+		} catch (err) {
+			const errorResult: CommandResult = {
+				command: `dokku ps:stop ${name}`,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Failed to stop app",
+			};
+			addToast("error", "Failed to stop app", errorResult);
+			setShowStopDialog(false);
+		} finally {
+			setStopping(false);
+		}
+	};
+
+	const handleStartApp = () => {
+		setShowStartDialog(true);
+	};
+
+	const confirmStartApp = async () => {
+		if (!name) return;
+
+		setStarting(true);
+		try {
+			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/start`, CommandResultSchema, {
+				method: "POST",
+			});
+			addToast(result.exitCode === 0 ? "success" : "error", "App started", result);
+			setShowStartDialog(false);
+			fetchAppDetail();
+		} catch (err) {
+			const errorResult: CommandResult = {
+				command: `dokku ps:start ${name}`,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Failed to start app",
+			};
+			addToast("error", "Failed to start app", errorResult);
+			setShowStartDialog(false);
+		} finally {
+			setStarting(false);
+		}
+	};
+
 	const fetchDomains = async () => {
 		if (!name) return;
 
@@ -518,6 +620,22 @@ export function AppDetail() {
 				</div>
 				{activeTab === "overview" && (
 					<div className="flex gap-2">
+						{app.status === "running" && (
+							<button
+								onClick={handleStopApp}
+								className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700"
+							>
+								Stop
+							</button>
+						)}
+						{app.status === "stopped" && (
+							<button
+								onClick={handleStartApp}
+								className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+							>
+								Start
+							</button>
+						)}
 						<button
 							onClick={() => handleAction("restart")}
 							className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -655,6 +773,102 @@ export function AppDetail() {
 				</div>
 			)}
 
+			{showDeleteDialog && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4 text-red-600">Delete App</h2>
+						<p className="mb-4">
+							This action is <strong>irreversible</strong>. The app <strong>{name}</strong> and all its data will be
+							permanently deleted.
+						</p>
+						<div className="mb-4">
+							<label htmlFor="confirmDeleteName" className="block text-sm font-medium text-gray-700 mb-2">
+								Type <strong>{name}</strong> to confirm
+							</label>
+							<input
+								id="confirmDeleteName"
+								type="text"
+								value={confirmDeleteName}
+								onChange={(e) => setConfirmDeleteName(e.target.value)}
+								placeholder="Enter app name"
+								className="w-full border rounded px-3 py-2"
+							/>
+						</div>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => {
+									setShowDeleteDialog(false);
+									setConfirmDeleteName("");
+								}}
+								className="px-4 py-2 border rounded hover:bg-gray-100"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmDeleteApp}
+								disabled={confirmDeleteName !== name || deleting}
+								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+							>
+								{deleting ? "Deleting..." : "Delete App"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{showStopDialog && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4 text-orange-600">Stop App</h2>
+						<p className="mb-6">
+							Are you sure you want to stop <strong>{name}</strong>? The app will not serve requests until started
+							again.
+						</p>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => setShowStopDialog(false)}
+								className="px-4 py-2 border rounded hover:bg-gray-100"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmStopApp}
+								disabled={stopping}
+								className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+							>
+								{stopping ? "Stopping..." : "Stop App"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{showStartDialog && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4 text-green-600">Start App</h2>
+						<p className="mb-6">
+							Are you sure you want to start <strong>{name}</strong>?
+						</p>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => setShowStartDialog(false)}
+								className="px-4 py-2 border rounded hover:bg-gray-100"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmStartApp}
+								disabled={starting}
+								className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+							>
+								{starting ? "Starting..." : "Start App"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
 			<div className="border-b mb-4 overflow-x-auto">
 				<nav className="flex space-x-4 min-w-max">
 					<button
@@ -755,6 +969,22 @@ export function AppDetail() {
 							) : (
 								<span className="text-gray-400">No processes running</span>
 							)}
+						</div>
+
+						<div className="mt-8 pt-6 border-t border-red-200">
+							<div className="border border-red-300 rounded-lg p-4 bg-red-50">
+								<h3 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h3>
+								<p className="text-sm text-red-600 mb-4">
+									Deleting an app is irreversible. All data, logs, and configurations will be permanently
+									removed.
+								</p>
+								<button
+									onClick={handleDeleteApp}
+									className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+								>
+									Delete App
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>

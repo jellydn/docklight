@@ -3,7 +3,17 @@ import express from "express";
 import http from "http";
 import path from "path";
 import pinoHttp from "pino-http";
-import { getAppDetail, getApps, rebuildApp, restartApp, scaleApp } from "./lib/apps.js";
+import {
+	getAppDetail,
+	getApps,
+	rebuildApp,
+	restartApp,
+	scaleApp,
+	createApp,
+	destroyApp,
+	stopApp,
+	startApp,
+} from "./lib/apps.js";
 import { authMiddleware, clearAuthCookie, login, setAuthCookie } from "./lib/auth.js";
 import { clearPrefix, get, set } from "./lib/cache.js";
 import { getConfig, setConfig, unsetConfig } from "./lib/config.js";
@@ -17,7 +27,13 @@ import {
 import { getRecentCommands } from "./lib/db.js";
 import { addDomain, getDomains, removeDomain } from "./lib/domains.js";
 import { logger } from "./lib/logger.js";
-import { disablePlugin, enablePlugin, getPlugins, installPlugin, uninstallPlugin } from "./lib/plugins.js";
+import {
+	disablePlugin,
+	enablePlugin,
+	getPlugins,
+	installPlugin,
+	uninstallPlugin,
+} from "./lib/plugins.js";
 import { getServerHealth } from "./lib/server.js";
 import { enableSSL, getSSL, renewSSL } from "./lib/ssl.js";
 import { authRateLimiter } from "./lib/rate-limiter.js";
@@ -87,6 +103,25 @@ app.get("/api/apps", async (_req, res) => {
 	res.json(apps);
 });
 
+app.post("/api/apps", async (req, res) => {
+	const { name } = req.body;
+	if (!name || typeof name !== "string") {
+		res.status(400).json({ error: "App name is required" });
+		return;
+	}
+
+	const result = await createApp(name);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
+	clearPrefix("apps:");
+	res.status(201).json({ success: true, name });
+});
+
 app.get("/api/apps/:name", async (req, res) => {
 	const { name } = req.params;
 	const app = await getAppDetail(name);
@@ -107,10 +142,57 @@ app.post("/api/apps/:name/rebuild", async (req, res) => {
 	res.json(result);
 });
 
+app.post("/api/apps/:name/stop", async (req, res) => {
+	const { name } = req.params;
+	const result = await stopApp(name);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.post("/api/apps/:name/start", async (req, res) => {
+	const { name } = req.params;
+	const result = await startApp(name);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
 app.post("/api/apps/:name/scale", async (req, res) => {
 	const { name } = req.params;
 	const { processType, count } = req.body;
 	const result = await scaleApp(name, processType, count);
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name", async (req, res) => {
+	const { name } = req.params;
+	const { confirmName } = req.body;
+	if (!confirmName || typeof confirmName !== "string") {
+		res.status(400).json({ error: "App name confirmation is required" });
+		return;
+	}
+	const result = await destroyApp(name, confirmName);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
 	clearPrefix("apps:");
 	res.json(result);
 });

@@ -71,19 +71,8 @@ vi.mock("./lib/websocket.js", () => ({
 	setupLogStreaming: vi.fn(),
 }));
 
-import {
-	getApps,
-	getAppDetail,
-	restartApp,
-	rebuildApp,
-	scaleApp,
-} from "./lib/apps.js";
-import {
-	authMiddleware,
-	setAuthCookie,
-	clearAuthCookie,
-	login,
-} from "./lib/auth.js";
+import { getApps, getAppDetail, restartApp, rebuildApp, scaleApp } from "./lib/apps.js";
+import { authMiddleware, setAuthCookie, clearAuthCookie, login } from "./lib/auth.js";
 import { getConfig, setConfig, unsetConfig } from "./lib/config.js";
 import {
 	getDatabases,
@@ -94,7 +83,13 @@ import {
 } from "./lib/databases.js";
 import { getRecentCommands } from "./lib/db.js";
 import { getDomains, addDomain, removeDomain } from "./lib/domains.js";
-import { disablePlugin, enablePlugin, getPlugins, installPlugin, uninstallPlugin } from "./lib/plugins.js";
+import {
+	disablePlugin,
+	enablePlugin,
+	getPlugins,
+	installPlugin,
+	uninstallPlugin,
+} from "./lib/plugins.js";
 import { getServerHealth } from "./lib/server.js";
 import { enableSSL, getSSL, renewSSL } from "./lib/ssl.js";
 
@@ -123,15 +118,15 @@ function createTestApp(): Express {
 		res.json({ success: true });
 	});
 
-	app.get("/api/auth/me", (req, res, next) => {
-		(authMiddleware as (req: Request, res: Response, next: NextFunction) => void)(
-			req,
-			res,
-			next
-		);
-	}, (_req, res) => {
-		res.json({ authenticated: true });
-	});
+	app.get(
+		"/api/auth/me",
+		(req, res, next) => {
+			(authMiddleware as (req: Request, res: Response, next: NextFunction) => void)(req, res, next);
+		},
+		(_req, res) => {
+			res.json({ authenticated: true });
+		}
+	);
 
 	const withAuth = (handler: AsyncHandler) => {
 		return async (req: Request, res: Response, next: NextFunction) => {
@@ -145,187 +140,258 @@ function createTestApp(): Express {
 		};
 	};
 
-	app.get("/api/apps", withAuth(async (_req, res) => {
-		const apps = await getApps();
-		if (!Array.isArray(apps)) {
-			res.status(apps.exitCode >= 400 ? apps.exitCode : 500).json(apps);
-			return;
-		}
-		res.json(apps);
-	}));
+	app.get(
+		"/api/apps",
+		withAuth(async (_req, res) => {
+			const apps = await getApps();
+			if (!Array.isArray(apps)) {
+				res.status(apps.exitCode >= 400 ? apps.exitCode : 500).json(apps);
+				return;
+			}
+			res.json(apps);
+		})
+	);
 
-	app.get("/api/apps/:name", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const app = await getAppDetail(name);
-		res.json(app);
-	}));
+	app.get(
+		"/api/apps/:name",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const app = await getAppDetail(name);
+			res.json(app);
+		})
+	);
 
-	app.post("/api/apps/:name/restart", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const result = await restartApp(name);
-		res.json(result);
-	}));
+	app.post(
+		"/api/apps/:name/restart",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const result = await restartApp(name);
+			res.json(result);
+		})
+	);
 
-	app.post("/api/apps/:name/rebuild", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const result = await rebuildApp(name);
-		res.json(result);
-	}));
+	app.post(
+		"/api/apps/:name/rebuild",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const result = await rebuildApp(name);
+			res.json(result);
+		})
+	);
 
-	app.post("/api/apps/:name/scale", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const { processType, count } = req.body;
-		const result = await scaleApp(name, processType, count);
-		res.json(result);
-	}));
+	app.post(
+		"/api/apps/:name/scale",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const { processType, count } = req.body;
+			const result = await scaleApp(name, processType, count);
+			res.json(result);
+		})
+	);
 
-	app.get("/api/server/health", withAuth(async (_req, res) => {
-		const health = await getServerHealth();
-		res.json(health);
-	}));
+	app.get(
+		"/api/server/health",
+		withAuth(async (_req, res) => {
+			const health = await getServerHealth();
+			res.json(health);
+		})
+	);
 
-	app.get("/api/apps/:name/config", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const config = await getConfig(name);
-		res.json(config);
-	}));
+	app.get(
+		"/api/apps/:name/config",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const config = await getConfig(name);
+			res.json(config);
+		})
+	);
 
-	app.post("/api/apps/:name/config", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const { key, value } = req.body;
-		const result = await setConfig(name, key, value);
-		res.json(result);
-	}));
+	app.post(
+		"/api/apps/:name/config",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const { key, value } = req.body;
+			const result = await setConfig(name, key, value);
+			res.json(result);
+		})
+	);
 
-	app.delete("/api/apps/:name/config/:key", withAuth(async (req, res) => {
-		const { name, key } = req.params;
-		const result = await unsetConfig(name, key);
-		res.json(result);
-	}));
+	app.delete(
+		"/api/apps/:name/config/:key",
+		withAuth(async (req, res) => {
+			const { name, key } = req.params;
+			const result = await unsetConfig(name, key);
+			res.json(result);
+		})
+	);
 
-	app.get("/api/apps/:name/domains", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const domains = await getDomains(name);
-		res.json(domains);
-	}));
+	app.get(
+		"/api/apps/:name/domains",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const domains = await getDomains(name);
+			res.json(domains);
+		})
+	);
 
-	app.post("/api/apps/:name/domains", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const { domain } = req.body;
-		const result = await addDomain(name, domain);
-		res.json(result);
-	}));
+	app.post(
+		"/api/apps/:name/domains",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const { domain } = req.body;
+			const result = await addDomain(name, domain);
+			res.json(result);
+		})
+	);
 
-	app.delete("/api/apps/:name/domains/:domain", withAuth(async (req, res) => {
-		const { name, domain } = req.params;
-		const result = await removeDomain(name, domain);
-		res.json(result);
-	}));
+	app.delete(
+		"/api/apps/:name/domains/:domain",
+		withAuth(async (req, res) => {
+			const { name, domain } = req.params;
+			const result = await removeDomain(name, domain);
+			res.json(result);
+		})
+	);
 
-	app.get("/api/databases", withAuth(async (_req, res) => {
-		const databases = await getDatabases();
-		res.json(databases);
-	}));
+	app.get(
+		"/api/databases",
+		withAuth(async (_req, res) => {
+			const databases = await getDatabases();
+			res.json(databases);
+		})
+	);
 
-	app.post("/api/databases", withAuth(async (req, res) => {
-		const { plugin, name } = req.body;
-		const result = await createDatabase(plugin, name);
-		res.json(result);
-	}));
+	app.post(
+		"/api/databases",
+		withAuth(async (req, res) => {
+			const { plugin, name } = req.body;
+			const result = await createDatabase(plugin, name);
+			res.json(result);
+		})
+	);
 
-	app.post("/api/databases/:name/link", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const { plugin, app } = req.body;
-		const result = await linkDatabase(plugin, name, app);
-		res.json(result);
-	}));
+	app.post(
+		"/api/databases/:name/link",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const { plugin, app } = req.body;
+			const result = await linkDatabase(plugin, name, app);
+			res.json(result);
+		})
+	);
 
-	app.post("/api/databases/:name/unlink", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const { plugin, app } = req.body;
-		const result = await unlinkDatabase(plugin, name, app);
-		res.json(result);
-	}));
+	app.post(
+		"/api/databases/:name/unlink",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const { plugin, app } = req.body;
+			const result = await unlinkDatabase(plugin, name, app);
+			res.json(result);
+		})
+	);
 
-	app.delete("/api/databases/:name", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const { plugin, confirmName } = req.body;
-		const result = await destroyDatabase(plugin, name, confirmName);
-		res.json(result);
-	}));
+	app.delete(
+		"/api/databases/:name",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const { plugin, confirmName } = req.body;
+			const result = await destroyDatabase(plugin, name, confirmName);
+			res.json(result);
+		})
+	);
 
-	app.post("/api/plugins/install", withAuth(async (req, res) => {
-		const { repository, name, sudoPassword } = req.body ?? {};
-		const result =
-			typeof sudoPassword === "string" && sudoPassword.trim().length > 0
-				? await installPlugin(repository, name, sudoPassword)
-				: await installPlugin(repository, name);
-		res.json(result);
-	}));
+	app.post(
+		"/api/plugins/install",
+		withAuth(async (req, res) => {
+			const { repository, name, sudoPassword } = req.body ?? {};
+			const result =
+				typeof sudoPassword === "string" && sudoPassword.trim().length > 0
+					? await installPlugin(repository, name, sudoPassword)
+					: await installPlugin(repository, name);
+			res.json(result);
+		})
+	);
 
-	app.get("/api/plugins", withAuth(async (_req, res) => {
-		const plugins = await getPlugins();
-		res.json(plugins);
-	}));
+	app.get(
+		"/api/plugins",
+		withAuth(async (_req, res) => {
+			const plugins = await getPlugins();
+			res.json(plugins);
+		})
+	);
 
-	app.post("/api/plugins/:name/enable", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const { sudoPassword } = req.body ?? {};
-		const result =
-			typeof sudoPassword === "string" && sudoPassword.trim().length > 0
-				? await enablePlugin(name, sudoPassword)
-				: await enablePlugin(name);
-		res.json(result);
-	}));
+	app.post(
+		"/api/plugins/:name/enable",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const { sudoPassword } = req.body ?? {};
+			const result =
+				typeof sudoPassword === "string" && sudoPassword.trim().length > 0
+					? await enablePlugin(name, sudoPassword)
+					: await enablePlugin(name);
+			res.json(result);
+		})
+	);
 
-	app.post("/api/plugins/:name/disable", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const { sudoPassword } = req.body ?? {};
-		const result =
-			typeof sudoPassword === "string" && sudoPassword.trim().length > 0
-				? await disablePlugin(name, sudoPassword)
-				: await disablePlugin(name);
-		res.json(result);
-	}));
+	app.post(
+		"/api/plugins/:name/disable",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const { sudoPassword } = req.body ?? {};
+			const result =
+				typeof sudoPassword === "string" && sudoPassword.trim().length > 0
+					? await disablePlugin(name, sudoPassword)
+					: await disablePlugin(name);
+			res.json(result);
+		})
+	);
 
-	app.delete("/api/plugins/:name", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const { sudoPassword } = req.body ?? {};
-		const result =
-			typeof sudoPassword === "string" && sudoPassword.trim().length > 0
-				? await uninstallPlugin(name, sudoPassword)
-				: await uninstallPlugin(name);
-		res.json(result);
-	}));
+	app.delete(
+		"/api/plugins/:name",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const { sudoPassword } = req.body ?? {};
+			const result =
+				typeof sudoPassword === "string" && sudoPassword.trim().length > 0
+					? await uninstallPlugin(name, sudoPassword)
+					: await uninstallPlugin(name);
+			res.json(result);
+		})
+	);
 
-	app.get("/api/apps/:name/ssl", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const ssl = await getSSL(name);
-		res.json(ssl);
-	}));
+	app.get(
+		"/api/apps/:name/ssl",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const ssl = await getSSL(name);
+			res.json(ssl);
+		})
+	);
 
-	app.post("/api/apps/:name/ssl/enable", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const result = await enableSSL(name);
-		res.json(result);
-	}));
+	app.post(
+		"/api/apps/:name/ssl/enable",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const result = await enableSSL(name);
+			res.json(result);
+		})
+	);
 
-	app.post("/api/apps/:name/ssl/renew", withAuth(async (req, res) => {
-		const { name } = req.params;
-		const result = await renewSSL(name);
-		res.json(result);
-	}));
+	app.post(
+		"/api/apps/:name/ssl/renew",
+		withAuth(async (req, res) => {
+			const { name } = req.params;
+			const result = await renewSSL(name);
+			res.json(result);
+		})
+	);
 
 	app.get("/api/commands", (req, res) => {
-		(authMiddleware as (req: Request, res: Response, next: NextFunction) => void)(
-			req,
-			res,
-			() => {
-				const limit = Number.parseInt(req.query.limit as string, 10) || 20;
-				const commands = getRecentCommands(limit);
-				res.json(commands);
-			}
-		);
+		(authMiddleware as (req: Request, res: Response, next: NextFunction) => void)(req, res, () => {
+			const limit = Number.parseInt(req.query.limit as string, 10) || 20;
+			const commands = getRecentCommands(limit);
+			res.json(commands);
+		});
 	});
 
 	return app;

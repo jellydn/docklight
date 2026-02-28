@@ -102,3 +102,11 @@ export const PluginInfoSchema = z.object({
 });
 
 export type PluginInfo = z.infer<typeof PluginInfoSchema>;
+
+// App creation result schema
+export const CreateAppResultSchema = z.object({
+	success: z.boolean(),
+	name: z.string(),
+});
+
+export type CreateAppResult = z.infer<typeof CreateAppResultSchema>;

@@ -26,14 +26,7 @@ describe("isValidAppName", () => {
 	});
 
 	it("should reject invalid app names", () => {
-		const invalidNames = [
-			"MyApp",
-			"my_app",
-			"my.app",
-			"my app",
-			"my$app",
-			"",
-		];
+		const invalidNames = ["MyApp", "my_app", "my.app", "my app", "my$app", ""];
 
 		invalidNames.forEach((name) => {
 			expect(isValidAppName(name)).toBe(false);
@@ -463,8 +456,9 @@ describe("restartApp", () => {
 
 		expect(result).toEqual({
 			error: "Invalid app name",
-			command: "",
+			command: "restart-app-validation",
 			exitCode: 400,
+			stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
 		});
 		expect(mockExecuteCommand).not.toHaveBeenCalled();
 	});
@@ -498,8 +492,9 @@ describe("rebuildApp", () => {
 
 		expect(result).toEqual({
 			error: "Invalid app name",
-			command: "",
+			command: "rebuild-app-validation",
 			exitCode: 400,
+			stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
 		});
 		expect(mockExecuteCommand).not.toHaveBeenCalled();
 	});

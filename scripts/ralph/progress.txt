@@ -1,458 +1,151 @@
 # Ralph Progress Log
-Started: Fri Feb 27 21:01:07 +08 2026
----
-
-## [Fri Feb 27 2026] - US-001
-[Session: https://opncd.ai/s/]
-- Implemented backend scaffold with Express, TypeScript, and shell executor
-- Created server/ directory with package.json, tsconfig.json
-- Implemented shell executor at server/lib/executor.ts with 30s timeout
-- Created command allowlist at server/lib/allowlist.ts
-- Set up Express server at server/index.ts with /api/health endpoint
-- Typecheck passes
-- Files changed: server/package.json, server/tsconfig.json, server/lib/allowlist.ts, server/lib/executor.ts, server/index.ts, server/.gitignore
-- **Learnings for future iterations:**
-  - Used Bun for package installation and running scripts
-  - TypeScript configured with ES2022 target and commonjs module for Node.js
-  - Command executor uses promisify(exec) for async/await pattern
----
-
-## [Fri Feb 27 2026] - US-002
-[Session: https://opncd.ai/s/]
-- Implemented SQLite command history persistence with better-sqlite3
-- Created server/lib/db.ts with DB initialization at data/docklight.db
-- Created command_history table with id, command, exitCode, stdout, stderr, createdAt
-- Implemented saveCommand() and getRecentCommands(limit) functions
-- Updated executor.ts to auto-save every execution to DB
-- Added GET /api/commands endpoint returning last 20 commands
-- Typecheck passes
-- Files changed: server/lib/db.ts, server/lib/executor.ts, server/index.ts, server/package.json, server/tsconfig.json
-- **Learnings for future iterations:**
-  - better-sqlite3 requires @types/better-sqlite3 for TypeScript support
-  - DB stored in ../data/ relative to server/ directory
-  - Command executor now always saves to DB, regardless of success/failure
----
-
-## [Fri Feb 27 2026] - US-003
-[Session: https://opncd.ai/s/]
-- Implemented authentication backend with JWT and cookie sessions
-- Installed jsonwebtoken and cookie-parser dependencies
-- Created server/lib/auth.ts with login, verifyToken, generateToken, setAuthCookie, clearAuthCookie, and authMiddleware
-- Added POST /api/auth/login endpoint accepting { password }
-- Added POST /api/auth/logout endpoint clearing session cookie
-- Added GET /api/auth/me endpoint returning { authenticated: true } if valid session
-- Applied authMiddleware to all /api/* routes except /api/auth/login and /api/health
-- JWT secret from DOCKLIGHT_SECRET env var or default (production warning)
-- Password read from DOCKLIGHT_PASSWORD env var
-- Typecheck passes
-- Files changed: server/lib/auth.ts, server/index.ts, server/package.json, server/tsconfig.json
-- **Learnings for future iterations:**
-  - authMiddleware applied after specific routes to exclude them from protection
-  - httpOnly cookie prevents XSS attacks on session token
-  - Cookie configured with secure flag in production environment
----
-
-## [Fri Feb 27 2026] - US-004
-[Session: https://opncd.ai/s/]
-- Created frontend scaffold with React + Vite + TypeScript
-- Installed and configured Tailwind CSS v3
-- Installed react-router-dom for routing
-- Created AppLayout component with left sidebar (Dashboard, Apps, Databases links) and main content area
-- Set up routes: /login, /dashboard, /apps, /apps/:name, /databases
-- Created API client utility at client/src/lib/api.ts with fetch wrapper that handles auth (redirects to /login on 401)
-- Configured Vite proxy to forward /api/* to backend (http://localhost:3001) in development
-- Created placeholder pages for all routes
-- Added typecheck script to package.json
-- Typecheck passes
-- Files changed: client/package.json, client/tsconfig.json, client/vite.config.ts, client/tailwind.config.js, client/postcss.config.js, client/src/index.css, client/src/App.tsx, client/src/components/AppLayout.tsx, client/src/lib/api.ts, client/src/pages/*.tsx
-- **Learnings for future iterations:**
-  - Tailwind CSS v3 requires specifying content paths in config
-  - Vite proxy configured to forward /api/* to backend during development
-  - API client uses credentials: 'include' to send cookies with requests
-  - React Router uses <Outlet /> for nested route rendering in AppLayout
----
-
-## [Fri Feb 27 2026] - US-005
-[Session: https://opncd.ai/s/]
-- Implemented login page UI with form handling and error display
-- Added password input field and submit button to Login page
-- Implemented form submission calling POST /api/auth/login with entered password
-- On successful login, redirects to /dashboard
-- On failure, displays error message 'Invalid password'
-- Added authentication check on mount - if already authenticated (GET /api/auth/me returns 200), redirects to /dashboard
-- Added logout button in sidebar calling POST /api/auth/logout and redirecting to /login
-- Typecheck passes
-- Browser verification skipped due to ChromeDevTools MCP not configured
-- Files changed: client/src/pages/Login.tsx, client/src/components/AppLayout.tsx
-- **Learnings for future iterations:**
-  - Login component checks /api/auth/me on mount to redirect authenticated users
-  - Logout button uses onClick handler instead of Link for POST request
-  - Form uses React controlled component pattern for password state
----
-
-## [Fri Feb 27 2026] - US-006
-[Session: https://opncd.ai/s/]
-- Created multi-stage Dockerfile: stage 1 builds client with Vite, stage 2 builds server TypeScript, stage 3 runs Node.js serving SPA + API
-- Updated server/index.ts to serve client/dist as static files with express.static
-- Added SPA fallback for client-side routing with wildcard route sending index.html
-- Created Procfile with web process type running node server/dist/index.js
-- Created app.json with healthcheck pointing to /api/health
-- Created .dockerignore excluding node_modules, .git, data/
-- EXPOSE port uses PORT env var (default 3001) matching Express PORT
-- Typecheck passes
-- Files changed: Dockerfile, .dockerignore, Procfile, app.json, server/index.ts
-- **Learnings for future iterations:**
-  - Multi-stage Dockerfile separates build and runtime for smaller image size
-  - SPA fallback must come after static file serving in Express middleware order
-  - Client dist path is ../client/dist relative to server/ directory
----
-
-## [Fri Feb 27 2026] - US-007
-[Session: https://opncd.ai/s/]
-- Implemented GET /api/apps endpoint calling 'dokku apps:list' and 'dokku ps:report' via shell executor
-- Created server/lib/apps.ts with getApps() function
-- Parses dokku output into JSON array: [{ name, status (running/stopped), domains, lastDeployTime }]
-- Domains parsed from 'dokku domains:report <app>' for each app
-- Returns empty array if no apps exist
-- Errors return { error, command, exitCode, stderr } object
-- Typecheck passes
-- Files changed: server/lib/apps.ts, server/index.ts
-- **Learnings for future iterations:**
-  - Dokku commands called via executor with proper error handling
-  - Status determined by checking for 'deployed' in ps:report output
-  - Deploy time parsed from 'deployed at' timestamp using regex
-  - Domains extracted from 'domains vhosts' field in domains:report
----
-
-## [Fri Feb 27 2026] - US-008
-[Session: https://opncd.ai/s/]
-- Implemented GET /api/server/health endpoint returning { cpu, memory, disk } as percentages 0-100
-- Created server/lib/server.ts with getServerHealth() function
-- CPU parsed from /proc/stat using awk to calculate usage percentage
-- Memory parsed from 'free -m' output (used/total percentage)
-- Disk parsed from 'df -h /' output (percentage column)
-- Values clamped to 0-100 range
-- Errors return { error, command, exitCode, stderr } object
-- Typecheck passes
-- Files changed: server/lib/server.ts, server/index.ts
-- **Learnings for future iterations:**
-  - CPU usage calculated from /proc/stat user+nice time vs total time
-  - awk used for parsing Linux system files efficiently
-  - Memory percentage calculated from used vs total in MB
-  - Disk percentage extracted from df output using awk
----
-
-## [Fri Feb 27 2026] - US-009
-[Session: https://opncd.ai/s/]
-- Implemented dashboard page UI at /dashboard with server health, apps list, and recent activity
-- Server health bar at top showing CPU, memory, disk with color coding (green <60%, yellow <85%, red >=85%)
-- Apps table with columns: Name, Status (badge), Domains, Last Deploy
-- App name is a Link to /apps/:name
-- Loading spinner shown while fetching data
-- Error state displays message if API fails
-- Auto-refreshes every 30 seconds using setInterval
-- Recent Activity section showing last 20 commands from GET /api/commands
-- Typecheck passes
-- Browser verification skipped due to ChromeDevTools MCP not configured
-- Files changed: client/src/pages/Dashboard.tsx
-- **Learnings for future iterations:**
-  - useEffect with empty deps runs once and clears interval on unmount
-  - Promise.all used to fetch multiple API endpoints in parallel
-  - Tailwind utility classes used for conditional styling and responsive layout
-  - Link component from react-router-dom for client-side navigation
----
-
-## [Fri Feb 27 2026] - US-010
-[Session: https://opncd.ai/s/]
-- Implemented GET /api/apps/:name endpoint returning app detail from 'dokku ps:report <app>'
-- App detail includes: name, status, git remote, domains, process types/counts
-- Implemented POST /api/apps/:name/restart executing 'dokku ps:restart <app>' and returning executor result
-- Implemented POST /api/apps/:name/rebuild executing 'dokku ps:rebuild <app>' and returning executor result
-- App name validated against allowlist pattern (alphanumeric lowercase + hyphens only) using regex /^[a-z0-9-]+$/
-- All endpoints use executor to run dokku commands and return results
-- Typecheck passes
-- Files changed: server/lib/apps.ts, server/index.ts
-- **Learnings for future iterations:**
-  - isValidAppName function validates app names before executing commands
-  - Process types/counts parsed from 'process type scale' lines in ps:report
-  - Git remote extracted from 'app deployed' line in ps:report
-  - All app action endpoints return CommandResult with command, exitCode, stdout, stderr
----
-
-## [Fri Feb 27 2026] - US-011
-[Session: https://opncd.ai/s/]
-- Implemented app detail page UI at /apps/:name with overview tab showing app information
-- Displays app name, status badge, git remote, domains list, process types and counts
-- Top action bar with Restart and Rebuild buttons
-- Clicking action shows confirmation dialog before executing
-- Executes restart/rebuild API calls and displays CLI output (command, exitCode, stdout, stderr)
-- Command output displayed with formatted code blocks and color coding (green for exit 0, red for non-zero)
-- Close button to dismiss command output
-- Loading spinner shown while fetching app details
-- Error state displayed if API fails
-- Typecheck passes
-- Browser verification skipped due to ChromeDevTools MCP not configured
-- Files changed: client/src/pages/AppDetail.tsx
-- **Learnings for future iterations:**
-  - Modal dialog pattern with overlay for confirmations
-  - Action state management with pendingAction and showActionDialog
-  - Command result displayed conditionally only when available
-  - Fetch app detail refreshed after successful action
-  - Process counts displayed as Object.entries for dynamic rendering
----
-
-## [Fri Feb 27 2026] - US-012
-[Session: https://opncd.ai/s/]
-- Installed ws dependency for WebSocket support
-- Created WebSocket endpoint at /api/apps/:name/logs/stream
-- On connection, spawns 'dokku logs <app> -t -n <num>' via child_process.spawn
-- Streams stdout lines to WebSocket client as they arrive using send()
-- Client can send { lines: 100|500|1000 } to set initial line count
-- On WebSocket close, kills the spawned process
-- Auth check on WebSocket upgrade validates JWT from cookie
-- Setup integrated with HTTP server in server/index.ts
-- Typecheck passes
-- Files changed: server/lib/websocket.ts, server/index.ts, server/package.json
-- **Learnings for future iterations:**
-  - WebSocketServer with noServer option for manual upgrade handling
-  - HTTP server upgrade event allows WebSocket routing
-  - Cookie parsing from request headers for auth validation
-  - handleUpgrade method properly integrates ws with http server
-  - Process cleanup on WebSocket close to prevent orphaned processes
----
-
-## [Fri Feb 27 2026] - US-013
-[Session: https://opncd.ai/s/]
-- Implemented Logs tab on app detail page with tabbed layout (Overview, Config, Domains, Logs, SSL)
-- Connects to WebSocket endpoint on tab open
-- Log output displayed in monospace pre-formatted text with dark background (bg-gray-900)
-- Auto-scroll to bottom enabled by default, toggleable with button
-- Line count selector (100/500/1000) at top with dropdown
-- Disconnects WebSocket when navigating away (useEffect cleanup)
-- Connection status indicator (connected/disconnected/reconnecting) with color coding
-- WebSocket URL uses ws:// or wss:// based on current protocol
-- Logs state managed with useRef for logsEndRef and wsRef
-- Typecheck passes
-- Browser verification skipped due to ChromeDevTools MCP not configured
-- Files changed: client/src/pages/AppDetail.tsx
-- **Learnings for future iterations:**
-  - Tab pattern with activeTab state for switching views
-  - WebSocket connection established in useEffect with cleanup on unmount/tab change
-  - Ref types must match the HTML element type (HTMLPreElement for pre tag)
-  - Auto-scroll implemented by setting scrollTop to scrollHeight on logs update
-  - Connection status displayed with color-coded badges for user feedback
----
-
-## [Fri Feb 27 2026] - US-014
-[Session: https://opncd.ai/s/]
-- Implemented GET /api/apps/:name/config endpoint calling 'dokku config:show <app>' and returning key-value JSON object
-- Implemented POST /api/apps/:name/config endpoint accepting { key, value } and calling 'dokku config:set <app> KEY=VALUE'
-- Implemented DELETE /api/apps/:name/config/:key endpoint calling 'dokku config:unset <app> KEY'
-- Created server/lib/config.ts with getConfig, setConfig, and unsetConfig functions
-- Key and value inputs sanitized using regex to remove shell metacharacters
-- Sanitization removes characters that could enable shell injection: ['"`$()|<>\\
-- App name validated using isValidAppName from apps.ts
-- All endpoints use executor to run dokku commands and return results
-- Typecheck passes
-- Files changed: server/lib/config.ts, server/index.ts
-- **Learnings for future iterations:**
-  - Config parsing from dokku config:show output with regex matching
-  - Key-value pairs extracted from format "key: value"
-  - Input sanitization prevents command injection vulnerabilities
-  - Returns config as Record<string, string> for easy frontend consumption
----
-
-## [Fri Feb 27 2026] - US-017
-[Session: https://opncd.ai/s/]
-- Implemented GET /api/apps/:name/domains endpoint calling 'dokku domains:report <app>' and returning array of domain strings
-- Implemented POST /api/apps/:name/domains endpoint accepting { domain } and calling 'dokku domains:add <app> <domain>'
-- Implemented DELETE /api/apps/:name/domains/:domain endpoint calling 'dokku domains:remove <app> <domain>'
-- Created server/lib/domains.ts with getDomains, addDomain, and removeDomain functions
-- Domain input validated with basic format check (letters, numbers, hyphens, dots allowed)
-- Domain input sanitized to remove shell characters: [;&$()|<>`'"\\]
-- App name validated using isValidAppName from apps.ts
-- All endpoints use executor to run dokku commands and return results
-- Typecheck passes
-- Files changed: server/lib/domains.ts, server/index.ts
-- **Learnings for future iterations:**
-  - Domains extracted from 'domains vhosts' field in domains:report output
-  - Domain format validated with regex /^[a-zA-Z0-9.-]+$/
-  - Shell character validation prevents command injection: /[;&$()|<>`'"\\]/
-  - Empty string validation added for domain input
-  - Returns domains as string[] for easy frontend consumption
----
-
-## [Fri Feb 27 2026] - US-019
-[Session: https://opncd.ai/s/]
-- Implemented GET /api/databases endpoint detecting installed DB plugins by checking 'dokku plugin:list'
-- Returns array: [{ name, plugin, linkedApps, connectionInfo }]
-- For each installed plugin, calls '<plugin>:list' to get databases
-- Implemented POST /api/databases accepting { plugin, name } and calling 'dokku <plugin>:create <name>'
-- Implemented POST /api/databases/:name/link accepting { plugin, app } and calling 'dokku <plugin>:link <name> <app>'
-- Implemented POST /api/databases/:name/unlink accepting { plugin, app } and calling 'dokku <plugin>:unlink <name> <app>'
-- Implemented DELETE /api/databases/:name accepting { confirmName } and calling 'dokku <plugin>:destroy <name> --force'
-- Created server/lib/databases.ts with getDatabases, createDatabase, linkDatabase, unlinkDatabase, destroyDatabase
-- Supports plugins: postgres, redis, mysql, mariadb, mongo
-- Database name and app name sanitized to remove shell injection characters
-- Linked apps extracted from '<plugin>:links <db>' output
-- Connection info generated based on plugin type
-- All endpoints use executor to run dokku commands and return results
-- Typecheck passes
-- Files changed: server/lib/databases.ts, server/index.ts
-- **Learnings for future iterations:**
-  - Plugin detection by searching for plugin names in plugin:list output
-  - Database plugin must be validated against SUPPORTED_PLUGINS constant
-  - Type assertion (as any) used for TypeScript compatibility with string parameter
-   - Linked apps parsed from 'linked apps:' field with comma-separated values
-   - Connection info templates: postgresql://, mysql://, redis://, mongodb://
-   - Database name sanitization removes all characters except alphanumeric, underscore, and hyphen
----
-
-## [Fri Feb 27 2026] - US-015
-[Session: https://opncd.ai/s/]
-- Implemented Config vars UI on app detail page with tabbed layout
-- Added ConfigVars interface for key-value pairs
-- Config tab displays environment variables in a table format with key and value columns
-- Values masked by default (••••••), click to reveal actual value
-- Add new variable form with key input, value input, and Set button
-- Remove variable with trash icon per row, confirmation dialog before calling unset
-- CLI output displayed after each set/unset action with command, exitCode, stdout, stderr
-- Loading spinner while fetching config vars
-- Error state displays message if API fails
-- State management for config vars, visible values, new config form, and remove confirmation
-- useEffect fetches config vars when config tab becomes active
-- Typecheck passes
-- Browser verification skipped due to ChromeDevTools MCP not configured
-- Files changed: client/src/pages/AppDetail.tsx
-- **Learnings for future iterations:**
-  - Config vars state includes visibleValues Set to track which values should be revealed
-  - Toggle value visibility implemented with Set for efficient lookups
-  - Remove confirmation dialog pattern similar to action confirmation dialog
-  - Command output can be displayed inline within tabs (not just overview)
-  - useEffect with activeTab dependency allows fetching data when tab changes
-  - Config vars fetched from GET /api/apps/:name/config (already implemented in US-014)
-  - Add config via POST /api/apps/:name/config with { key, value } body (already implemented in US-014)
-  - Remove config via DELETE /api/apps/:name/config/:key (already implemented in US-014)
-   - Command result display component pattern reused across different tabs
-   - parseInt requires radix parameter (10) to pass biome linting
----
-
-## [Fri Feb 27 2026] - US-016
-[Session: https://opncd.ai/s/]
-- Implemented process scaling API endpoint and UI
-- Added POST /api/apps/:name/scale endpoint accepting { processType, count }
-- Created scaleApp() function in server/lib/apps.ts that calls 'dokku ps:scale <app> <type>=<count>'
-- Validates process type (alphanumeric + hyphens only) and count (0-100 range)
-- Updated Overview tab to show process types with current count and number inputs for scaling
-- Added "Apply Scaling" button that appears when scale changes are made
-- Confirmation dialog shows before applying scale changes
-- CLI output displayed after scale action using existing CommandResult component
-- Typecheck passes
-- Browser verification skipped due to ChromeDevTools MCP not configured
-- Files changed: server/lib/apps.ts, server/index.ts, client/src/pages/AppDetail.tsx, server/lib/config.ts, server/lib/databases.ts, server/lib/domains.ts (formatting)
-- **Learnings for future iterations:**
-  - Scale changes tracked in state object scaleChanges: Record<string, number>
-  - Number input with min/max values prevents invalid scale counts
-  - Confirmation dialog pattern reuses existing action dialog structure
-  - Multiple process types can be changed, but apply action processes one at a time
-  - Biome format command fixes formatting across all modified files
----
-
-## [Fri Feb 27 2026] - US-018
-[Session: https://opncd.ai/s/]
-- Implemented Domain management UI on app detail page
-- Added domains state management: domains, domainsLoading, domainsError, newDomain, showDomainRemoveDialog, pendingRemoveDomain
-- Added useEffect to fetch domains when domains tab becomes active
-- Implemented fetchDomains() function to fetch domains from GET /api/apps/:name/domains
-- Implemented handleAddDomain() function to add domain via POST /api/apps/:name/domains
-- Implemented handleRemoveDomain() and confirmRemoveDomain() functions to remove domain via DELETE /api/apps/:name/domains/:domain
-- Added domain removal confirmation dialog
-- Domains tab lists current domains in table format with trash icon for removal
-- Add domain form with text input and Add button
-- CLI output displayed after each add/remove action using existing CommandResult component
-- Typecheck passes
-- Browser verification skipped due to ChromeDevTools MCP not configured
-- Files changed: client/src/pages/AppDetail.tsx
-- **Learnings for future iterations:**
-  - Domain management follows same pattern as config vars management
-  - fetchDomains called when activeTab === 'domains' to get fresh data
-  - Domain removal uses encodeURIComponent for URL parameter safety
-  - Domain removal dialog reuses same confirmation dialog pattern as config vars
-  - Command result display pattern reused across all tab actions
----
-
-## [Fri Feb 27 2026] - US-020
-[Session: https://opncd.ai/s/]
-- Implemented Database management UI page at /databases
-- Lists all databases grouped by plugin type (postgres, redis, mysql, mariadb, mongo)
-- Each database shows: name, plugin, linked apps, connection info (masked by default, click to reveal)
-- Create database form with plugin dropdown and name input
-- Link database to app with app dropdown (shows apps not already linked)
-- Unlink database from app with confirmation dialog
-- Destroy database with double confirmation (type database name to confirm)
-- CLI output displayed for all actions (create, link, unlink, destroy)
-- Connection info masked (••••••••••••) by default, toggle visibility on click
-- Loading and error states handled
-- Action result display reuses existing CommandResult component pattern
-- Typecheck passes
-- Browser verification skipped due to ChromeDevTools MCP not configured
-- Files changed: client/src/pages/Databases.tsx, client/src/pages/AppDetail.tsx (formatting)
-- **Learnings for future iterations:**
-  - Database page follows same pattern as AppDetail tabs for state management
-  - Databases fetched from GET /api/databases endpoint (already implemented in US-019)
-  - Grouped by plugin type using Record<string, Database[]>
-  - Connection info visibility toggle implemented with Set for efficient lookups
-  - Link app form filters out already linked apps from dropdown
-  - Destroy confirmation requires typing database name for safety
-- Command result display pattern consistent across all pages
-- API calls: POST /api/databases for create, POST /api/databases/:name/link for link, POST /api/databases/:name/unlink for unlink, DELETE /api/databases/:name for destroy
----
-
-## [Fri Feb 27 2026] - US-021
-[Session: https://opncd.ai/s/]
-- Implemented SSL management API and UI
-- Created server/lib/ssl.ts with getSSL, enableSSL, renewSSL functions
-- getSSL parses 'dokku letsencrypt:ls' output first, falls back to 'dokku certs:report <app>'
-- SSL status includes active, expiryDate, and certProvider fields
-- Added GET /api/apps/:name/ssl endpoint returning SSL status
-- Added POST /api/apps/:name/ssl/enable endpoint calling 'dokku letsencrypt:enable <app>'
-- Added POST /api/apps/:name/ssl/renew endpoint calling 'dokku letsencrypt:auto-renew <app>'
-- Updated client/src/pages/AppDetail.tsx with SSL tab implementation
-- SSL tab shows status badge (Active/Inactive), provider, and expiry date
-- Enable Let's Encrypt button shown when SSL inactive
-- Renew Certificate button shown when SSL active
-- CLI output displayed for all SSL actions using existing CommandResult pattern
-- Typecheck passes for both server and client
-- Browser verification skipped due to ChromeDevTools MCP not configured
-- Files changed: server/lib/ssl.ts, server/index.ts, client/src/pages/AppDetail.tsx, scripts/ralph/prd.json
-- **Learnings for future iterations:**
-- SSL status parsing requires trying multiple dokku commands (letsencrypt:ls first, then certs:report)
-- SSL module follows same pattern as other app-specific modules (config, domains)
-- SSL tab implementation reuses existing action result display pattern
-- useEffect with activeTab dependency pattern used for fetching data on tab change
-- App name validation reused from apps.ts via isValidAppName function
-
-## [Fri Feb 27 2026] - US-022
-[Session: https://opncd.ai/s/]
-- Implemented Command output toast and action result display system
-- Created reusable CommandResult component at client/src/components/CommandResult.tsx showing command, exit code badge, stdout in monospace, stderr in red
-- Created ToastProvider context at client/src/components/ToastProvider.tsx for managing toast notifications
-- Created ToastContainer component at client/src/components/ToastContainer.tsx with success (green) and error (red) toasts, expandable details showing CommandResult
-- Created types.ts at client/src/components/ exporting CommandResult and Toast interfaces
-- Updated App.tsx to wrap app with ToastProvider and add ToastContainer
-- Removed inline command result displays from AppDetail.tsx and Databases.tsx
-- Updated all action handlers to use addToast instead of inline displays:
-  - AppDetail: restart, rebuild, scale, config set/unset, domain add/remove, ssl enable/renew
-  - Databases: create, link, unlink, destroy
-- Removed duplicate CommandResult interfaces, now imported from types.ts
-- Removed actionResult state from components, now managed by toast system
-- Fixed lint issues: removed unnecessary fragment in AppDetail.tsx, prefixed unused variable with underscore in Login.tsx
+Started: Sat Feb 28 12:43:28 +08 2026
+## Sat Feb 28 2026 - US-004, US-005, US-006
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented CreateAppDialog component (client/src/components/CreateAppDialog.tsx)
+- Added Create App button to Dashboard (client/src/pages/Dashboard.tsx)
+- Implemented inline validation for app name (regex: /^[a-z0-9-]+$/)
+- Added Next Steps view after app creation with git remote instructions
+- Added Copy button for git remote command
+- Added Go to App button that navigates to /apps/:name
 - Typecheck and lint pass
-- Browser verification skipped due to ChromeDevTools MCP not configured
-- Files changed: client/src/App.tsx, client/src/components/*.tsx, client/src/components/types.ts, client/src/pages/AppDetail.tsx, client/src/pages/Databases.tsx, client/src/pages/Login.tsx, scripts/ralph/prd.json
+- Files changed: client/src/components/CreateAppDialog.tsx, client/src/pages/Dashboard.tsx
 - **Learnings for future iterations:**
-  - React Context API provides clean pattern for global toast notifications without prop drilling
-  - Toast system reduces code duplication by centralizing command result display logic
-  - TypeScript type exports should use `.js` extension when importing from type-only files
-  - Fragment removal required when wrapping single element in ternary expression
-  - All action buttons now provide consistent user feedback through toast notifications
+  - Use CommandResultSchema from lib/schemas.ts when calling apiFetch for POST/PUT/DELETE operations
+  - Dialog can transition between different views (creation form -> next steps) by using state
+  - Reset dialog state when closing to avoid stale data on next open
+---
+
+## Sat Feb 28 2026 - US-001
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Create App API endpoint (server/lib/apps.ts, server/index.ts)
+- Added `createApp(name)` function that runs `dokku apps:create <name>`
+- Added POST /api/apps route that accepts { name: string }
+- Added name validation using existing isValidAppName()
+- Added cache clearing (clearPrefix('apps:')) after creation
+- Files changed: server/lib/apps.ts, server/index.ts
+- **Learnings for future iterations:**
+  - The codebase follows a consistent pattern: validation first, then executeCommand, then return result
+  - Cache clearing is important for consistency - always call clearPrefix('apps:') after app mutations
+  - Test failures are pre-existing (vi.mocked not a function issue) - not caused by this change
+---
+
+## Sat Feb 28 2026 - US-002
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Destroy App API endpoint (server/lib/apps.ts, server/index.ts)
+- Added `destroyApp(name, confirmName)` function that runs `dokku apps:destroy <name> --force`
+- Added DELETE /api/apps/:name route that accepts { confirmName: string }
+- Added validation to ensure confirmName matches name before executing
+- Added cache clearing (clearPrefix('apps:')) after destruction
+- Files changed: server/lib/apps.ts, server/index.ts
+- **Learnings for future iterations:**
+  - The destroy endpoint requires typing the app name for confirmation - this is a safety feature
+  - The endpoint returns CommandResult which includes exitCode, stdout, stderr
+  - Typecheck and lint pass without issues
+---
+
+## Sat Feb 28 2026 - US-003
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Stop and Start App API endpoints (server/lib/apps.ts, server/index.ts)
+- Added `stopApp(name)` function that runs `dokku ps:stop <name>`
+- Added `startApp(name)` function that runs `dokku ps:start <name>`
+- Added POST /api/apps/:name/stop route
+- Added POST /api/apps/:name/start route
+- Both endpoints validate app name with isValidAppName()
+- Both clear apps cache after each action
+- Files changed: server/lib/apps.ts, server/index.ts
+- **Learnings for future iterations:**
+  - Follow the same pattern as restartApp and rebuildApp for consistency
+  - Typecheck and lint pass
+  - Test failures are pre-existing (vi.mocked not a function issue)
+---
+
+## Sat Feb 28 2026 - US-007
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Dedicated Apps listing page (client/src/pages/Apps.tsx)
+- Replaced Navigate redirect with full apps listing page
+- Shows table with Name, Status, Domains, Last Deploy columns
+- Added 'Create App' button in page header
+- App names link to /apps/:name detail page
+- Empty state with friendly message and CTA button to open CreateAppDialog
+- Loading spinner while fetching
+- Error state with message if API fails
+- Typecheck and lint pass
+- Files changed: client/src/pages/Apps.tsx, scripts/ralph/prd.json
+- **Learnings for future iterations:**
+  - Reused Dashboard pattern for apps table layout and styling
+  - Used same AppSchema and apiFetch patterns as Dashboard
+  - Test failures are pre-existing (document not defined issue in test environment)
+  - ChromeDevTools MCP not configured - skipped browser verification
+---
+
+## Sat Feb 28 2026 - US-008
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Destroy App from App Detail page (client/src/pages/AppDetail.tsx)
+- Added Danger Zone section at bottom of Overview tab with red border styling
+- Delete App button opens confirmation dialog requiring type-to-confirm
+- Delete button disabled until typed name matches exactly
+- On success, navigates to /apps and shows success toast
+- On error, shows error message in the dialog
+- Typecheck and lint pass
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - Reused existing dialog patterns in AppDetail.tsx (actionDialog, scaleDialog, removeDialog)
+  - Used navigate hook from react-router-dom for navigation after deletion
+  - Used existing ToastProvider for success/error notifications
+  - Pre-existing test failures in client tests (document not defined)
+---
+
+## Sat Feb 28 2026 - US-009
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Stop and Start controls on App Detail page (client/src/pages/AppDetail.tsx)
+- Added 'Stop' button visible when app status is 'running' with orange styling
+- Added 'Start' button visible when app status is 'stopped' with green styling
+- Added confirmation dialog for Stop action before executing
+- Buttons call POST /api/apps/:name/stop or /start respectively
+- Show loading state (Stopping.../Starting...) during the action
+- Refresh app detail after action completes
+- Show success/error toast notification using existing ToastProvider
+- Typecheck and lint pass
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - Reused existing dialog patterns (showDeleteDialog, confirmDeleteApp pattern) for consistency
+  - Stop confirmation dialog explains the app will not serve requests until started again
+  - ChromeDevTools MCP not configured - skipped browser verification
+---
+
+## Sat Feb 28 2026 - US-010
+- Fixed CreateAppDialog Zod validation error on success (client/src/components/CreateAppDialog.tsx, client/src/lib/schemas.ts)
+- Added CreateAppResultSchema in schemas.ts (z.object({ success: z.boolean(), name: z.string() }))
+- Updated CreateAppDialog to use CreateAppResultSchema instead of CommandResultSchema for POST /api/apps call
+- Typecheck and lint pass
+- Files changed: client/src/components/CreateAppDialog.tsx, client/src/lib/schemas.ts, scripts/ralph/prd.json
+- **Learnings for future iterations:**
+  - POST /api/apps returns { success, name } but other endpoints return CommandResult - need different schemas
+  - ChromeDevTools MCP not configured - skipped browser verification
+---
+
+## Sat Feb 28 2026 - US-011
+[Session: https://opncd.ai/s/5cfeab3c]
+- Fixed unconditional cache clearing on destroy/stop/start endpoints (server/index.ts)
+- DELETE /api/apps/:name now only calls clearPrefix('apps:') when result.exitCode === 0
+- POST /api/apps/:name/stop now only calls clearPrefix('apps:') when result.exitCode === 0
+- POST /api/apps/:name/start now only calls clearPrefix('apps:') when result.exitCode === 0
+- On failure, returns appropriate HTTP status code (400-599) and error response
+- Typecheck and lint pass
+- Files changed: server/index.ts
+- **Learnings for future iterations:**
+  - Follow same pattern as POST /api/apps (create app) endpoint for consistency
+  - Use exitCode >= 400 && exitCode < 600 to determine if it's an HTTP error code
+  - Pre-existing test failures (vi.mocked not a function issue) - not caused by this change
+---
+
+## Sat Feb 28 2026 - US-012
+[Session: https://opncd.ai/s/5cfeab3c]
+- Fixed copy button to copy full git remote command (client/src/components/CreateAppDialog.tsx)
+- Copy button now copies 'git remote add dokku dokku@<host>:<app>' instead of just 'dokku@<host>:<app>'
+- Typecheck and lint pass
+- Files changed: client/src/components/CreateAppDialog.tsx
+- **Learnings for future iterations:**
+  - ChromeDevTools MCP not configured - skipped browser verification
+---

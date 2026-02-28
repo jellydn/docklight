@@ -26,6 +26,7 @@ bun run test:watch       # Watch mode
 bun run test:coverage    # Run with coverage
 vitest run src/single-test.test.ts  # Single test file
 vitest run -t "test name"            # Single test by name
+vitest run src/hooks/use-app.test.ts -t "should fetch app"  # Single test in file
 ```
 
 ### Client
@@ -42,6 +43,8 @@ bun run preview      # Preview production build
 bun test             # Run tests (vitest run)
 bun run test:watch   # Watch mode
 bun run test:coverage # Run with coverage
+vitest run src/hooks/use-app.test.ts        # Single test file
+vitest run -t "should display apps"         # Single test by name
 ```
 
 ### Dev Browser (Testing)
@@ -80,12 +83,15 @@ npx vitest run -t "test name"              # Single test by name
 - Use ES modules with `.js` extension for relative imports
 - Group: external → internal → types
 - Use path aliases when available (`@/*`)
+- Client: `@/` points to `client/src/`
+- Server: `@/` points to `server/`
 
 ```typescript
 import express from "express";
 import type { Request, Response } from "express";
 import { getData } from "./lib/db.js";
 import type { Data } from "./lib/types.js";
+import { apiFetch } from "@/lib/api";
 ```
 
 ### Formatting (biome)
@@ -131,6 +137,13 @@ try {
   return { exitCode: err.code || 1, stderr: err.message };
 }
 ```
+
+### Logging
+
+- Framework: Pino (structured logging)
+- Server: Use `logger` from `server/lib/logger.ts`
+- Log errors with context: `logger.error({ err }, "Error message")`
+- HTTP requests logged automatically via pino-http middleware
 
 ### Database
 

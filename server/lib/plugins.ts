@@ -34,7 +34,10 @@ function isSafePluginName(name: string): boolean {
 }
 
 function stripAnsi(value: string): string {
-	return value.split("\u001b").join("").replace(/\[[0-9;]*m/g, "");
+	return value
+		.split("\u001b")
+		.join("")
+		.replace(/\[[0-9;]*m/g, "");
 }
 
 function parsePluginLine(line: string): PluginInfo | null {
@@ -93,7 +96,8 @@ export async function getPlugins(): Promise<PluginInfo[] | PluginInputError> {
 	const result = await executeCommand("dokku plugin:list");
 	if (result.exitCode !== 0) {
 		return {
-			error: "Failed to list plugins. Check that DOCKLIGHT_DOKKU_SSH_TARGET is configured correctly. See https://github.com/jellydn/docklight/blob/main/docs/deployment.md",
+			error:
+				"Failed to list plugins. Check that DOCKLIGHT_DOKKU_SSH_TARGET is configured correctly. See https://github.com/jellydn/docklight/blob/main/docs/deployment.md",
 			command: result.command,
 			exitCode: result.exitCode,
 			stderr: result.stderr,
@@ -154,7 +158,8 @@ async function executePluginCommand(
 	command: string,
 	sudoPassword?: string
 ): Promise<CommandResult | PluginInputError> {
-	const SUDO_ERROR_REGEX = /sudo: .*password|a terminal is required|sudo: sorry, you must have a tty|Root-required command cannot run/i;
+	const SUDO_ERROR_REGEX =
+		/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty|Root-required command cannot run/i;
 	const result = await executeCommandAsRoot(command, 30000, sudoPassword);
 
 	if (result.exitCode !== 0 && SUDO_ERROR_REGEX.test(result.stderr)) {

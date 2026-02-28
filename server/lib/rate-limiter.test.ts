@@ -25,10 +25,13 @@ function createTestRateLimiter(store: MemoryStore): RequestHandler {
 		skipSuccessfulRequests: false,
 		handler: (_req, res) => {
 			const retryAfter = Math.ceil(15 * 60);
-			res.status(429).set("Retry-After", String(retryAfter)).json({
-				error: "Too many login attempts. Please try again later.",
-				retryAfter: `${retryAfter} seconds`,
-			});
+			res
+				.status(429)
+				.set("Retry-After", String(retryAfter))
+				.json({
+					error: "Too many login attempts. Please try again later.",
+					retryAfter: `${retryAfter} seconds`,
+				});
 		},
 		keyGenerator: (req) => {
 			// Generate the key using ipKeyGenerator helper
@@ -60,9 +63,7 @@ describe("authRateLimiter", () => {
 
 			// Make 3 requests sequentially
 			for (let i = 0; i < 3; i++) {
-				const response = await request(app)
-					.post("/api/auth/login")
-					.send({ password: "test" });
+				const response = await request(app).post("/api/auth/login").send({ password: "test" });
 				expect(response.status).toBe(200);
 				expect(response.body).toEqual({ success: true });
 			}
@@ -75,9 +76,7 @@ describe("authRateLimiter", () => {
 
 			// Make 5 requests - all should succeed
 			for (let i = 0; i < 5; i++) {
-				const response = await request(app)
-					.post("/api/auth/login")
-					.send({ password: "test" });
+				const response = await request(app).post("/api/auth/login").send({ password: "test" });
 				expect(response.status).toBe(200);
 			}
 
@@ -125,9 +124,7 @@ describe("authRateLimiter", () => {
 
 			// Make 5 failed requests - all should return 401
 			for (let i = 0; i < 5; i++) {
-				const response = await request(app)
-					.post("/api/auth/fail")
-					.send({ password: "wrong" });
+				const response = await request(app).post("/api/auth/fail").send({ password: "wrong" });
 				expect(response.status).toBe(401);
 			}
 
@@ -145,10 +142,7 @@ describe("authRateLimiter", () => {
 			const app = createTestApp(rateLimiter);
 
 			const makeRequestFromIp = async (ip: string) =>
-				request(app)
-					.post("/api/auth/login")
-					.set("X-Forwarded-For", ip)
-					.send({ password: "test" });
+				request(app).post("/api/auth/login").set("X-Forwarded-For", ip).send({ password: "test" });
 
 			// First IP makes 5 requests - all should succeed
 			for (let i = 0; i < 5; i++) {
@@ -177,9 +171,7 @@ describe("authRateLimiter", () => {
 			const app = createTestApp(rateLimiter);
 
 			// Make a request
-			const response = await request(app)
-				.post("/api/auth/login")
-				.send({ password: "test" });
+			const response = await request(app).post("/api/auth/login").send({ password: "test" });
 
 			expect(response.status).toBe(200);
 			// Standard headers should be present when standardHeaders: true

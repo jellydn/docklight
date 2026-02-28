@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { disablePlugin, enablePlugin, getPlugins, installPlugin, uninstallPlugin } from "./plugins.js";
+import {
+	disablePlugin,
+	enablePlugin,
+	getPlugins,
+	installPlugin,
+	uninstallPlugin,
+} from "./plugins.js";
 import { executeCommand, executeCommandAsRoot } from "./executor.js";
 
 vi.mock("./executor.js", () => ({

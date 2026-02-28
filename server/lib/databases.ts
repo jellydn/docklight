@@ -29,7 +29,8 @@ function parseInstalledPlugins(pluginListOutput: string): SupportedPlugin[] {
 }
 
 async function getInstalledPlugins(): Promise<
-	{ plugins: SupportedPlugin[] } | { error: string; command: string; exitCode: number; stderr: string }
+	| { plugins: SupportedPlugin[] }
+	| { error: string; command: string; exitCode: number; stderr: string }
 > {
 	const pluginListResult = await executeCommand("dokku plugin:list");
 
@@ -73,9 +74,7 @@ export async function getDatabases(): Promise<
 
 						let linkedApps: string[] = [];
 						if (linkReportResult.exitCode === 0) {
-							const linkLines = linkReportResult.stdout
-								.split("\n")
-								.filter((line) => line.trim());
+							const linkLines = linkReportResult.stdout.split("\n").filter((line) => line.trim());
 							for (const line of linkLines) {
 								if (line.includes("linked apps")) {
 									const match = line.match(/linked apps:\s*(.+)/);

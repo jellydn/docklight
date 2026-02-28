@@ -16,7 +16,7 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
@@ -32,7 +32,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
@@ -49,7 +49,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
@@ -69,7 +69,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
@@ -87,7 +87,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
@@ -102,7 +102,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 6,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
@@ -121,7 +121,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 7,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
@@ -140,7 +140,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 8,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
@@ -159,51 +159,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 9,
-      "passes": true,
+      "passes": false,
       "notes": ""
-    },
-    {
-      "id": "US-010",
-      "title": "Fix CreateAppDialog Zod validation error on success",
-      "description": "As a developer, I need to fix the client-side schema mismatch so app creation doesn't show a false error after succeeding.",
-      "acceptanceCriteria": [
-        "Add CreateAppResultSchema (z.object({ success: z.boolean(), name: z.string() })) in client/src/lib/schemas.ts",
-        "Update CreateAppDialog.tsx to use CreateAppResultSchema instead of CommandResultSchema for the POST /api/apps call",
-        "Successful app creation transitions to the Next Steps view without errors",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-011",
-      "title": "Fix unconditional cache clearing on destroy/stop/start endpoints",
-      "description": "As a developer, I need to fix the destroy, stop, and start endpoints to only clear the apps cache on success.",
-      "acceptanceCriteria": [
-        "DELETE /api/apps/:name only calls clearPrefix('apps:') when result.exitCode === 0",
-        "POST /api/apps/:name/stop only calls clearPrefix('apps:') when result.exitCode === 0",
-        "POST /api/apps/:name/start only calls clearPrefix('apps:') when result.exitCode === 0",
-        "On failure, return appropriate HTTP status code and error response",
-        "Typecheck passes"
-      ],
-      "priority": 11,
-      "passes": true,
-      "notes": "Fixed. Now destroy, stop, and start endpoints only clear cache on success (exitCode === 0)."
-    },
-    {
-      "id": "US-012",
-      "title": "Fix copy button to copy full git remote command",
-      "description": "As a user, I want the copy button to copy the full git remote add command so I can paste it directly into my terminal.",
-      "acceptanceCriteria": [
-        "Copy button in CreateAppDialog Next Steps view copies 'git remote add dokku dokku@<host>:<app>' instead of just 'dokku@<host>:<app>'",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 12,
-      "passes": true,
-      "notes": "Fixed. Now copies full git remote add command."
     }
   ]
 }
