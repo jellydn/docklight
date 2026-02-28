@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CreateAppDialog } from "@/components/CreateAppDialog.js";
 import { apiFetch } from "../lib/api.js";
 import {
 	ServerHealthSchema,
@@ -19,6 +20,7 @@ export function Dashboard() {
 	const [commands, setCommands] = useState<CommandHistory[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [createAppOpen, setCreateAppOpen] = useState(false);
 
 	const fetchData = async () => {
 		try {
@@ -130,7 +132,12 @@ export function Dashboard() {
 
 					{/* Apps */}
 					<div className="bg-white rounded-lg shadow p-6 mb-6">
-						<h2 className="text-lg font-semibold mb-4">Apps</h2>
+						<div className="flex items-center justify-between mb-4">
+							<h2 className="text-lg font-semibold">Apps</h2>
+							<Button size="sm" onClick={() => setCreateAppOpen(true)}>
+								Create App
+							</Button>
+						</div>
 						{apps.length === 0 ? (
 							<p className="text-gray-500">No apps found</p>
 						) : (
@@ -193,6 +200,13 @@ export function Dashboard() {
 					</div>
 				</>
 			)}
+			<CreateAppDialog
+				open={createAppOpen}
+				onOpenChange={setCreateAppOpen}
+				onCreated={() => {
+					void fetchData();
+				}}
+			/>
 		</div>
 	);
 }

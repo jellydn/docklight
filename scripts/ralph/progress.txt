@@ -1,12 +1,20 @@
 # Ralph Progress Log
 Started: Sat Feb 28 12:43:28 +08 2026
+## Sat Feb 28 2026 - US-004, US-005, US-006
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented CreateAppDialog component (client/src/components/CreateAppDialog.tsx)
+- Added Create App button to Dashboard (client/src/pages/Dashboard.tsx)
+- Implemented inline validation for app name (regex: /^[a-z0-9-]+$/)
+- Added Next Steps view after app creation with git remote instructions
+- Added Copy button for git remote command
+- Added Go to App button that navigates to /apps/:name
+- Typecheck and lint pass
+- Files changed: client/src/components/CreateAppDialog.tsx, client/src/pages/Dashboard.tsx
+- **Learnings for future iterations:**
+  - Use CommandResultSchema from lib/schemas.ts when calling apiFetch for POST/PUT/DELETE operations
+  - Dialog can transition between different views (creation form -> next steps) by using state
+  - Reset dialog state when closing to avoid stale data on next open
 ---
-
-## Codebase Patterns
-- Use `executeCommand` from `./executor.js` to run Dokku commands
-- Use `isValidAppName()` for app name validation (regex: `/^[a-z0-9-]+$/`)
-- Clear cache with `clearPrefix('apps:')` after any app modifications
-- Return `CommandResult` (exitCode, stdout, stderr) from app operations
 
 ## Sat Feb 28 2026 - US-001
 [Session: https://opncd.ai/s/5cfeab3c]
