@@ -28,6 +28,17 @@ function getSshUser(target: string): string | null {
 	return target.slice(0, atIndex).trim().toLowerCase();
 }
 
+function isSshWarningOnly(stderr: string): boolean {
+	const lines = stderr
+		.split("\n")
+		.map((l) => l.trim())
+		.filter((l) => l.length > 0);
+	return (
+		lines.length > 0 &&
+		lines.every((l) => /^Warning: Permanently added .+ to the list of known hosts/i.test(l))
+	);
+}
+
 export function buildRuntimeCommand(command: string, options?: ExecuteCommandOptions): string {
 	const trimmedPassword = options?.sudoPassword?.trim();
 	const baseCommand = options?.asRoot
@@ -96,6 +107,22 @@ export async function executeCommand(
 	} catch (error: unknown) {
 		const err = error as { code?: number; stdout?: string; stderr?: string; message?: string };
 		let stderr = err.stderr || err.message || "";
+
+		if (
+			err.code === 255 &&
+			err.stdout &&
+			err.stdout.trim().length > 0 &&
+			isSshWarningOnly(stderr)
+		) {
+			const result = {
+				command,
+				exitCode: 0,
+				stdout: err.stdout.trim(),
+				stderr: stderr.trim(),
+			};
+			saveCommand(result);
+			return result;
+		}
 		const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
 		const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
 		const isRootTargetAuthError =
