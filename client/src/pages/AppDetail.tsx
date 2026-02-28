@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { useToast } from "../components/ToastProvider";
 import { apiFetch } from "../lib/api.js";
@@ -24,6 +24,7 @@ interface ScaleChange {
 
 export function AppDetail() {
 	const { name } = useParams<{ name: string }>();
+	const navigate = useNavigate();
 	const { addToast } = useToast();
 	const [app, setApp] = useState<AppDetailData | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -44,6 +45,11 @@ export function AppDetail() {
 	const [newConfigValue, setNewConfigValue] = useState("");
 	const [showRemoveDialog, setShowRemoveDialog] = useState(false);
 	const [pendingRemoveKey, setPendingRemoveKey] = useState<string | null>(null);
+
+	// Delete app state
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+	const [confirmDeleteName, setConfirmDeleteName] = useState("");
+	const [deleting, setDeleting] = useState(false);
 
 	// Domains state
 	const [domains, setDomains] = useState<string[]>([]);
@@ -345,6 +351,43 @@ export function AppDetail() {
 			}
 			return newSet;
 		});
+	};
+
+	const handleDeleteApp = () => {
+		setShowDeleteDialog(true);
+		setConfirmDeleteName("");
+	};
+
+	const confirmDeleteApp = async () => {
+		if (!name || confirmDeleteName !== name) return;
+
+		setDeleting(true);
+		try {
+			const result = await apiFetch(`/apps/${encodeURIComponent(name)}`, CommandResultSchema, {
+				method: "DELETE",
+				body: JSON.stringify({ confirmName: name }),
+			});
+			if (result.exitCode === 0) {
+				addToast("success", `App ${name} deleted successfully`, result);
+				navigate("/apps");
+			} else {
+				addToast("error", `Failed to delete app: ${result.stderr}`, result);
+			}
+			setShowDeleteDialog(false);
+			setConfirmDeleteName("");
+		} catch (err) {
+			const errorResult: CommandResult = {
+				command: `dokku apps:destroy ${name} --force`,
+				exitCode: 1,
+				stdout: "",
+				stderr: err instanceof Error ? err.message : "Failed to delete app",
+			};
+			addToast("error", "Failed to delete app", errorResult);
+			setShowDeleteDialog(false);
+			setConfirmDeleteName("");
+		} finally {
+			setDeleting(false);
+		}
 	};
 
 	const fetchDomains = async () => {
@@ -655,6 +698,49 @@ export function AppDetail() {
 				</div>
 			)}
 
+			{showDeleteDialog && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+					<div className="bg-white rounded p-6 max-w-md w-full">
+						<h2 className="text-lg font-semibold mb-4 text-red-600">Delete App</h2>
+						<p className="mb-4">
+							This action is <strong>irreversible</strong>. The app <strong>{name}</strong> and all its data will be
+							permanently deleted.
+						</p>
+						<div className="mb-4">
+							<label htmlFor="confirmDeleteName" className="block text-sm font-medium text-gray-700 mb-2">
+								Type <strong>{name}</strong> to confirm
+							</label>
+							<input
+								id="confirmDeleteName"
+								type="text"
+								value={confirmDeleteName}
+								onChange={(e) => setConfirmDeleteName(e.target.value)}
+								placeholder="Enter app name"
+								className="w-full border rounded px-3 py-2"
+							/>
+						</div>
+						<div className="flex justify-end space-x-2">
+							<button
+								onClick={() => {
+									setShowDeleteDialog(false);
+									setConfirmDeleteName("");
+								}}
+								className="px-4 py-2 border rounded hover:bg-gray-100"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmDeleteApp}
+								disabled={confirmDeleteName !== name || deleting}
+								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+							>
+								{deleting ? "Deleting..." : "Delete App"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
 			<div className="border-b mb-4 overflow-x-auto">
 				<nav className="flex space-x-4 min-w-max">
 					<button
@@ -755,6 +841,22 @@ export function AppDetail() {
 							) : (
 								<span className="text-gray-400">No processes running</span>
 							)}
+						</div>
+
+						<div className="mt-8 pt-6 border-t border-red-200">
+							<div className="border border-red-300 rounded-lg p-4 bg-red-50">
+								<h3 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h3>
+								<p className="text-sm text-red-600 mb-4">
+									Deleting an app is irreversible. All data, logs, and configurations will be permanently
+									removed.
+								</p>
+								<button
+									onClick={handleDeleteApp}
+									className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+								>
+									Delete App
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>
