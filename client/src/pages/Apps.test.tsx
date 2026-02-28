@@ -42,7 +42,8 @@ describe("Apps", () => {
 			</MemoryRouter>,
 		);
 
-		expect(screen.getByRole("status")).toBeInTheDocument();
+		const spinner = screen.getByText(/./, { selector: ".animate-spin" });
+		expect(spinner).toBeInTheDocument();
 	});
 
 	it("should render apps list", async () => {
