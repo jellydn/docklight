@@ -78,7 +78,7 @@ jobs:
 
       - name: Test server
         working-directory: server
-        run: bun test
+        run: bun run test
 
       - name: Install client dependencies
         working-directory: client
@@ -86,4 +86,4 @@ jobs:
 
       - name: Test client
         working-directory: client
-        run: bun test
+        run: bun run test

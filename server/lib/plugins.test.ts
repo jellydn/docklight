@@ -73,6 +73,8 @@ describe("installPlugin", () => {
 			error: "Plugin repository contains invalid characters",
 			command: "",
 			exitCode: 400,
+			stdout: "",
+			stderr: "",
 		});
 		expect(mockExecuteCommandAsRoot).not.toHaveBeenCalled();
 	});
