@@ -1,12 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { Apps } from "./Apps";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { App } from "../lib/schemas.js";
+import { Apps } from "./Apps";
 
 vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
+}));
+
+const mockToastContext = {
+	addToast: vi.fn(),
+	removeToast: vi.fn(),
+};
+
+vi.mock("@/components/ToastProvider.js", () => ({
+	useToast: () => mockToastContext,
 }));
 
 const mockApps: App[] = [
