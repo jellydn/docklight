@@ -9,6 +9,19 @@ Docklight is a minimal, self-hosted web UI for managing a Dokku server.
 
 ## Commands
 
+### Quick Commands (justfile)
+
+```bash
+just install          # Install all dependencies
+just server-dev       # Run server dev server
+just client-dev       # Run client dev server
+just test             # Run all tests
+just lint             # Lint both server and client
+just format           # Format both server and client
+just typecheck        # Type check both projects
+just build            # Build both projects
+```
+
 ### Server (workdir: server/)
 
 ```bash
@@ -22,9 +35,9 @@ bun run format           # Format (biome)
 bun test                 # Run tests (vitest run)
 bun run test:watch       # Watch mode
 bun run test:coverage    # Run with coverage
-vitest run src/single-test.test.ts        # Single test file
+vitest run lib/single-test.test.ts        # Single test file
 vitest run -t "test name"                  # Single test by name
-vitest run src/hooks/use-app.test.ts -t "should fetch app"  # Single test in file
+vitest run lib/apps.test.ts -t "should fetch app"  # Single test in file
 ```
 
 ### Client (workdir: client/)
@@ -43,6 +56,14 @@ bun run test:coverage # Run with coverage
 vitest run src/hooks/use-app.test.ts        # Single test file
 vitest run -t "should display apps"         # Single test by name
 ```
+
+## Post-Change Requirements
+
+**ALWAYS run after making changes:**
+
+- `bun run typecheck` - Type check TypeScript
+- `bun run lint` - Lint code with biome
+- `bun test` - Run tests to ensure nothing broke
 
 ## Code Style Guidelines
 
