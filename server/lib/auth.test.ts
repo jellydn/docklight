@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Request, Response, NextFunction } from "express";
 
 // Mock db and logger before importing auth
@@ -175,14 +175,17 @@ describe("authMiddleware", () => {
 		authMiddleware(req, res, next);
 
 		expect(next).toHaveBeenCalled();
-		expect((req as Request & { user?: JWTPayload }).user?.username).toBe("alice");
+		expect((req as unknown as { user?: JWTPayload }).user?.username).toBe("alice");
 	});
 });
 
 describe("requireRole", () => {
 	it("should allow legacy token (no role) through", () => {
 		const token = generateToken(); // no user → no role
-		const req = { cookies: { session: token }, user: { authenticated: true } } as Request;
+		const req = {
+			cookies: { session: token },
+			user: { authenticated: true },
+		} as unknown as Request;
 		const res = {
 			status: vi.fn().mockReturnThis(),
 			json: vi.fn(),
@@ -197,7 +200,7 @@ describe("requireRole", () => {
 	it("should allow matching role", () => {
 		const req = {
 			user: { authenticated: true, userId: 1, username: "alice", role: "admin" },
-		} as Request;
+		} as unknown as Request;
 		const res = {
 			status: vi.fn().mockReturnThis(),
 			json: vi.fn(),
@@ -212,7 +215,7 @@ describe("requireRole", () => {
 	it("should reject insufficient role", () => {
 		const req = {
 			user: { authenticated: true, userId: 2, username: "bob", role: "viewer" },
-		} as Request;
+		} as unknown as Request;
 		const res = {
 			status: vi.fn().mockReturnThis(),
 			json: vi.fn(),
