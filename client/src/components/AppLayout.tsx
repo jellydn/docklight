@@ -34,10 +34,9 @@ export function AppLayout() {
 
 			{/* Sidebar */}
 			<aside
-				className={`fixed inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:z-auto ${
+				className={`fixed inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:z-auto md:pointer-events-auto ${
 					sidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
 				}`}
-				aria-hidden={!sidebarOpen}
 			>
 				<div className="flex items-center justify-between p-4">
 					<h1 className="text-xl font-bold">Docklight</h1>
