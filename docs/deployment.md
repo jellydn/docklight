@@ -273,6 +273,74 @@ dokku config:set docklight DOCKLIGHT_PASSWORD=new-password
 
 This automatically restarts the app.
 
+## Staging Environment (PR Preview)
+
+Docklight supports automatic staging deployments for pull requests via GitHub Actions.
+
+### One-time setup
+
+#### 1. Create a deploy key
+
+Generate a dedicated SSH key for GitHub Actions:
+
+```bash
+# On your local machine
+ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/dokku_deploy -N ""
+
+# Add the public key to Dokku
+cat ~/.ssh/dokku_deploy.pub | ssh root@<your-server-ip> dokku ssh-keys:add github-actions
+```
+
+#### 2. Add GitHub secrets
+
+Go to **GitHub repo → Settings → Secrets and variables → Actions** and add:
+
+| Secret | Value |
+|---|---|
+| `DOKKU_SSH_KEY` | Contents of `~/.ssh/dokku_deploy` (the private key, including `-----BEGIN/END-----` lines) |
+| `DOKKU_HOST` | Your server IP or hostname (e.g., `95.111.232.131`) |
+
+#### 3. Create the staging app on Dokku
+
+```bash
+# Create the app
+ssh dokku@<your-server-ip> apps:create docklight-staging
+
+# Copy config from production (adjust values as needed)
+ssh dokku@<your-server-ip> config:set docklight-staging \
+  DOCKLIGHT_DOKKU_SSH_KEY_PATH='/app/.ssh/id_ed25519' \
+  DOCKLIGHT_DOKKU_SSH_TARGET='dokku@<your-server-ip>' \
+  DOCKLIGHT_DOKKU_SSH_ROOT_TARGET='root@<your-server-ip>' \
+  DOCKLIGHT_PASSWORD='staging-password' \
+  DOCKLIGHT_SECRET='staging-secret'
+
+# Mount the SSH key (same as production setup)
+dokku storage:mount docklight-staging /home/dokku/.ssh/docklight:/app/.ssh/id_ed25519
+
+# (Optional) Set a staging domain
+ssh dokku@<your-server-ip> domains:set docklight-staging staging.yourdomain.com
+```
+
+### How it works
+
+The workflow at `.github/workflows/deploy-staging.yml` runs on every PR push:
+
+1. Checks out the PR branch
+2. Pushes it to the `docklight-staging` Dokku app
+3. Comments the staging URL on the PR
+
+### Manual deployment
+
+To deploy any branch to staging manually:
+
+```bash
+# Add the staging remote (one-time)
+git remote add staging dokku@<your-server-ip>:docklight-staging
+
+# Deploy a branch
+git push staging your-branch:main --force
+```
+
 ## Security Recommendations
 
 1. **Always use HTTPS** — Enable Let's Encrypt (Step 5)
