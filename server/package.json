@@ -31,7 +31,7 @@
 		"@types/express": "^5.0.0",
 		"@types/express-rate-limit": "^6.0.2",
 		"@types/jsonwebtoken": "^9.0.10",
-		"@types/node": "^20.10.0",
+		"@types/node": "^25.0.0",
 		"@types/pino-http": "^6.1.0",
 		"@types/supertest": "^7.0.0",
 		"@types/ws": "^8.18.1",
