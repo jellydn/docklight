@@ -42,7 +42,7 @@ describe("Apps", () => {
 			</MemoryRouter>,
 		);
 
-		const spinner = screen.getByText(/./, { selector: ".animate-spin" });
+		const spinner = document.querySelector(".animate-spin");
 		expect(spinner).toBeInTheDocument();
 	});
 

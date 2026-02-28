@@ -72,7 +72,7 @@ describe("Dashboard", () => {
 			</MemoryRouter>,
 		);
 
-		const spinner = screen.getByText(/./, { selector: ".animate-spin" });
+		const spinner = document.querySelector(".animate-spin");
 		expect(spinner).toBeInTheDocument();
 	});
 
@@ -216,6 +216,7 @@ describe("Dashboard", () => {
 	});
 
 	it("should refresh data when refresh button is clicked", async () => {
+		vi.useRealTimers();
 		const user = userEvent.setup();
 		let fetchCount = 0;
 		apiFetchMock.mockImplementation((endpoint: string) => {

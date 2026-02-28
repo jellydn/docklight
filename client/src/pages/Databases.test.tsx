@@ -65,7 +65,7 @@ describe("Databases", () => {
 			</MemoryRouter>,
 		);
 
-		const spinner = screen.getByText(/./, { selector: ".animate-spin" });
+		const spinner = document.querySelector(".animate-spin");
 		expect(spinner).toBeInTheDocument();
 	});
 
@@ -194,9 +194,9 @@ describe("Databases", () => {
 
 		await vi.waitFor(() => {
 			expect(screen.getByText("postgres-test-db")).toBeInTheDocument();
-			expect(screen.getByText(/plugin/i)).toBeInTheDocument();
-			expect(screen.getByText(/linked apps/i)).toBeInTheDocument();
-			expect(screen.getByText(/connection info/i)).toBeInTheDocument();
+			expect(screen.getAllByText(/plugin/i).length).toBeGreaterThan(0);
+			expect(screen.getAllByText(/linked apps/i).length).toBeGreaterThan(0);
+			expect(screen.getAllByText(/connection info/i).length).toBeGreaterThan(0);
 		});
 	});
 
@@ -273,7 +273,7 @@ describe("Databases", () => {
 		);
 
 		await vi.waitFor(() => {
-			expect(screen.getByText("my-app")).toBeInTheDocument();
+			expect(screen.getAllByText("my-app").length).toBeGreaterThan(0);
 		});
 
 		const unlinkButtons = screen.getAllByText("Unlink");

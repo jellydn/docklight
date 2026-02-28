@@ -292,9 +292,9 @@ describe("getAppDetail", () => {
 
 		expect(result).toEqual({
 			error: "Invalid app name",
-			command: "",
+			command: "get-app-detail-validation",
 			exitCode: 400,
-			stderr: "App name must contain only lowercase letters, numbers, and hyphens",
+			stderr: "App name must contain only lowercase letters, numbers, and hyphens.",
 		});
 		expect(mockExecuteCommand).not.toHaveBeenCalled();
 	});

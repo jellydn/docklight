@@ -51,7 +51,7 @@ describe("AppDetail", () => {
 			</MemoryRouter>,
 		);
 
-		const spinner = screen.getByText(/./, { selector: ".animate-spin" });
+		const spinner = document.querySelector(".animate-spin");
 		expect(spinner).toBeInTheDocument();
 	});
 
@@ -164,8 +164,11 @@ describe("AppDetail", () => {
 		await user.click(screen.getByText("Restart"));
 
 		await vi.waitFor(() => {
-			expect(screen.getByText("Confirm Action")).toBeInTheDocument();
-			expect(screen.getByText(/restart test-app/)).toBeInTheDocument();
+			const confirmHeading = screen.getByText("Confirm Action");
+			expect(confirmHeading).toBeInTheDocument();
+			expect(confirmHeading.parentElement).toHaveTextContent(
+				"Are you sure you want to restart test-app?",
+			);
 		});
 	});
 
@@ -225,8 +228,12 @@ describe("AppDetail", () => {
 		await user.click(deleteButtons[0]);
 
 		await vi.waitFor(() => {
-			expect(screen.getByText("Delete App")).toBeInTheDocument();
-			expect(screen.getByText(/irreversible/i)).toBeInTheDocument();
+			expect(
+				screen.getByRole("heading", {
+					name: "Delete App",
+				}),
+			).toBeInTheDocument();
+			expect(screen.getByText(/and all its data will be permanently deleted/i)).toBeInTheDocument();
 		});
 	});
 
