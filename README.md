@@ -190,20 +190,20 @@ Contributions are welcome. Please read our contributing guidelines before submit
 
 ## 📜 License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Author
 
 👤 **Dung Huynh**
 
-- Website: https://productsway.com
-- Twitter: [@jellydn](https://x.com/jellydn)
+- Website: [https://productsway.com](https://productsway.com)
+- Twitter: [@jellydn](https://twitter.com/jellydn)
 - GitHub: [@jellydn](https://github.com/jellydn)
 
 ## Show your support
 
-Give a ⭐ if this project helped you.
+Give a ⭐️ if this project helped you!
 
-- Ko-fi: https://ko-fi.com/jellydn
-- PayPal: https://www.paypal.com/paypalme/jellydn
-- Buy Me a Coffee: https://buymeacoffee.com/jellydn
+[![kofi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/dunghd)
+[![paypal](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/dunghd)
+[![buymeacoffee](https://img.shields.io/badge/Buy_Me_A_Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/dunghd)
