@@ -1,114 +1,140 @@
 # Architecture
 
-**Analysis Date:** 2026-02-27
+**Analysis Date:** 2026-02-28
 
 ## Pattern Overview
 
-**Overall:** Layered monolith (React SPA + Express API + service modules wrapping Dokku CLI)
+**Overall:** Client-Server with SSH-based Command Execution
 
 **Key Characteristics:**
-- Single backend entrypoint defines API surface and composes domain services in `server/index.ts`.
-- Backend domain modules translate HTTP use cases into constrained shell execution via `server/lib/apps.ts`, `server/lib/config.ts`, `server/lib/domains.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`, and `server/lib/server.ts`.
-- Frontend is a route-driven SPA (`client/src/App.tsx`) with page-level state and API calls through a shared fetch helper in `client/src/lib/api.ts`.
+- Single-page React application communicating via REST API
+- Express server executes Dokku commands over SSH
+- No state shared between requests (except SQLite DB for history)
+- WebSocket for real-time log streaming
+- JWT-based session authentication
 
 ## Layers
 
-**Presentation Layer (Web UI):**
-- Purpose: Render admin UI, capture user actions, and show command outcomes.
-- Location: `client/src/pages/`, `client/src/components/`, `client/src/App.tsx`, `client/src/main.tsx`
-- Contains: Route config, page views, layout, toast UX, client-side log streaming.
-- Depends on: API client (`client/src/lib/api.ts`) and logger (`client/src/lib/logger.ts`).
-- Used by: End users via browser.
+**Presentation Layer (Client):**
+- Purpose: React UI for Dokku management
+- Location: `client/src/`
+- Contains: Pages, components, routing, API client
+- Depends on: Express API
+- Used by: Browser users
 
-**API Layer (HTTP + WS):**
-- Purpose: Expose authenticated REST endpoints and WebSocket log stream.
-- Location: `server/index.ts`, `server/lib/websocket.ts`
-- Contains: Route handlers, auth gate attachment (`app.use("/api", authMiddleware)`), static file serving, SPA fallback, HTTP upgrade handling.
-- Depends on: Domain services in `server/lib/*.ts` and auth helpers in `server/lib/auth.ts`.
-- Used by: SPA calls from `client/src/lib/api.ts` and browser WebSocket in `client/src/pages/AppDetail.tsx`.
+**API Layer (Server):**
+- Purpose: HTTP endpoints and WebSocket server
+- Location: `server/index.ts`, `server/lib/server.ts`
+- Contains: Route handlers, middleware, auth
+- Depends on: Business logic layer, executor
+- Used by: React client
 
-**Domain/Service Layer:**
-- Purpose: Validate/sanitize inputs and implement Dokku operations per feature.
-- Location: `server/lib/apps.ts`, `server/lib/config.ts`, `server/lib/domains.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`, `server/lib/server.ts`
-- Contains: App lifecycle, config vars, domains, DB management, SSL, host health parsing.
-- Depends on: Command execution abstraction in `server/lib/executor.ts` (except log streaming process spawn in `server/lib/websocket.ts`).
-- Used by: API route handlers in `server/index.ts`.
+**Business Logic Layer:**
+- Purpose: Domain-specific operations (apps, databases, plugins, etc.)
+- Location: `server/lib/*.ts` (apps.ts, databases.ts, plugins.ts, etc.)
+- Contains: Functions that format and execute Dokku commands
+- Depends on: Executor, database
+- Used by: API layer
 
-**Infrastructure Layer:**
-- Purpose: Cross-cutting concerns: command allowlisting, command history persistence, JWT/session auth, logging.
-- Location: `server/lib/executor.ts`, `server/lib/allowlist.ts`, `server/lib/db.ts`, `server/lib/auth.ts`, `server/lib/logger.ts`
-- Contains: Shell execution + allowlist checks, SQLite history table, cookie JWT lifecycle, pino logging.
-- Depends on: `better-sqlite3`, `jsonwebtoken`, `pino` from `server/package.json`.
-- Used by: API and domain modules.
+**Executor Layer:**
+- Purpose: Execute shell commands via SSH
+- Location: `server/lib/executor.ts`
+- Contains: SSH connection, command execution, allowlist validation
+- Depends on: Dokku server (via SSH)
+- Used by: Business logic layer
 
 ## Data Flow
 
-**Authenticated Management Request:**
-1. UI triggers `apiFetch()` in `client/src/lib/api.ts` from pages like `client/src/pages/Dashboard.tsx` or `client/src/pages/AppDetail.tsx`.
-2. Express route in `server/index.ts` receives request; `/api/*` (except auth endpoints) passes through `authMiddleware` from `server/lib/auth.ts`.
-3. Route delegates to domain module (for example `getAppDetail` in `server/lib/apps.ts`).
-4. Domain module calls `executeCommand()` in `server/lib/executor.ts`; allowlist enforced by `server/lib/allowlist.ts` and result recorded via `saveCommand()` in `server/lib/db.ts`.
-5. Result returns as JSON to frontend; UI updates local state and optional toast via `client/src/components/ToastProvider.tsx`.
+**Typical Request (e.g., restart app):**
+1. User clicks "Restart" button in React UI
+2. Client makes POST request to `/api/apps/:name/restart` with JWT cookie
+3. Server middleware validates JWT token
+4. Route handler calls `apps.restart(name)` in `server/lib/apps.ts`
+5. Business logic formats command string (e.g., `dokku ps:restart appname`)
+6. Executor validates command against allowlist
+7. Executor opens SSH connection to Dokku server
+8. Executor runs command and captures stdout/stderr/exit code
+9. Business logic returns CommandResult to API
+10. API responds with JSON `{ command, exitCode, stdout, stderr }`
+11. Client displays toast notification with result
 
-**Live Logs Flow:**
-1. `client/src/pages/AppDetail.tsx` opens `ws(s)://.../api/apps/:name/logs/stream`.
-2. Upgrade is intercepted and authenticated in `server/lib/websocket.ts` using `verifyToken()` from `server/lib/auth.ts`.
-3. Server spawns `dokku logs` process and forwards each line to client over WebSocket in `server/lib/websocket.ts`.
+**WebSocket Connection (logs):**
+1. User navigates to Logs tab
+2. Client opens WebSocket to `/api/apps/:name/logs/stream`
+3. Server establishes WebSocket connection
+4. Client sends message with desired line count
+5. Server spawns Dokku logs process via SSH
+6. Server streams each log line to client via WebSocket
+7. Client appends lines to log viewer
+8. On disconnect/tab change, server kills SSH process
 
 **State Management:**
-- Frontend uses local React state/hooks per page (`useState`/`useEffect`) in `client/src/pages/*.tsx`.
-- Backend keeps persistent command history in SQLite (`server/lib/db.ts`, `data/docklight.db`) and stateless API responses per request.
+- Client-side: React useState/useEffect (no Redux/Zustand)
+- Server-side: Stateless (except SQLite DB for history)
 
 ## Key Abstractions
 
-**Command Execution Boundary:**
-- Purpose: Centralized shell execution policy + audit trail.
-- Examples: `server/lib/executor.ts`, `server/lib/allowlist.ts`, `server/lib/db.ts`
-- Pattern: Wrapper/facade around `child_process.exec` with allowlist + persistence.
+**CommandResult:**
+- Purpose: Represents shell command execution result
+- Examples: `client/src/components/types.ts`, `server/index.ts`
+- Pattern: Interface with command, exitCode, stdout, stderr
 
-**Feature Service Modules:**
-- Purpose: One module per operational domain (apps/config/domains/databases/ssl/health).
-- Examples: `server/lib/apps.ts`, `server/lib/config.ts`, `server/lib/domains.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`, `server/lib/server.ts`
-- Pattern: Function-oriented service modules returning either typed success data or structured error objects.
+**Executor Function:**
+- Purpose: Generic SSH command execution with allowlist validation
+- Examples: `server/lib/executor.ts`
+- Pattern: Async function taking command string, returning CommandResult
 
-**Session Auth Helpers:**
-- Purpose: Encapsulate login token issuance, verification, cookie handling, and middleware checks.
-- Examples: `server/lib/auth.ts`, auth routes in `server/index.ts`
-- Pattern: Utility + Express middleware abstraction.
+**Toast Notifications:**
+- Purpose: User feedback for async operations
+- Examples: `client/src/components/ToastProvider.tsx`
+- Pattern: Context provider with addToast(type, title, result) function
 
 ## Entry Points
 
-**Backend HTTP Server:**
+**Server Entry Point:**
 - Location: `server/index.ts`
-- Triggers: `bun run dev`, `bun start` from `server/package.json`.
-- Responsibilities: Build Express app, register API routes, serve `client/dist`, attach SPA fallback, create HTTP server, initialize WebSocket streaming.
+- Triggers: `bun run dev` or `node dist/index.js`
+- Responsibilities:
+  - Initialize Express app
+  - Configure middleware (CORS, JSON parsing, logging, auth)
+  - Register routes
+  - Start HTTP server
+  - Initialize WebSocket server
 
-**Frontend SPA Bootstrap:**
+**Client Entry Point:**
 - Location: `client/src/main.tsx`
-- Triggers: Vite runtime (`bun run dev`, `bun run build`) from `client/package.json`.
-- Responsibilities: Mount React root and render routed application from `client/src/App.tsx`.
+- Triggers: Browser loads the app
+- Responsibilities:
+  - Mount React app
+  - Configure Router
+  - Wrap with ToastProvider
 
-**WebSocket Upgrade Path:**
-- Location: `server/lib/websocket.ts`
-- Triggers: Browser upgrade requests to `/api/apps/:name/logs/stream` from `client/src/pages/AppDetail.tsx`.
-- Responsibilities: Authenticate session cookie, validate app name, stream Dokku logs.
+**Vite Dev Server:**
+- Location: `client/` (configured via Vite conventions)
+- Triggers: `bun run dev` in client directory
+- Responsibilities:
+  - Serve React app
+  - Proxy /api requests to Express server (port 3001)
+  - Hot module replacement
 
 ## Error Handling
 
-**Strategy:** Return structured error payloads from service functions and propagate to UI through JSON responses.
+**Strategy:** Return structured errors, don't throw
 
 **Patterns:**
-- Shell and parse operations use try/catch and return `{ error, command, exitCode, stderr }` in modules like `server/lib/apps.ts`, `server/lib/config.ts`, and `server/lib/server.ts`.
-- Frontend catches request failures and surfaces user-facing state/toasts in `client/src/pages/Dashboard.tsx`, `client/src/pages/AppDetail.tsx`, and `client/src/pages/Databases.tsx`.
+- All executor calls wrapped in try-catch
+- Errors returned as CommandResult with exitCode=1
+- Client checks exitCode and displays appropriate toast
+- No global error handlers (errors local to operations)
 
 ## Cross-Cutting Concerns
 
-**Logging:** pino logger instances in `server/lib/logger.ts` and `client/src/lib/logger.ts`; HTTP logging middleware is attached in `server/index.ts` via `pino-http`.
+**Logging:** Pino structured logging with pino-http middleware
 
-**Validation:** Input guards and sanitization are done in feature modules (examples: `isValidAppName()` in `server/lib/apps.ts`, env key/value checks in `server/lib/config.ts`, domain/plugin/name checks in `server/lib/domains.ts` and `server/lib/databases.ts`).
+**Validation:** Command allowlist in `server/lib/allowlist.ts` - only approved commands can execute
 
-**Authentication:** Cookie-based JWT auth implemented in `server/lib/auth.ts`, enforced for API routes in `server/index.ts`, and checked for WebSocket upgrades in `server/lib/websocket.ts`.
+**Authentication:** JWT middleware on protected routes, cookie-based sessions
 
 ---
 
-*Architecture analysis: 2026-02-27*
+*Architecture analysis: 2026-02-28*

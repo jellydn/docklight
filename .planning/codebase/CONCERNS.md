@@ -1,126 +1,136 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-02-27
+**Analysis Date:** 2026-02-28
 
 ## Tech Debt
 
-**Command execution and validation are split across many modules:**
-- Issue: Validation/sanitization rules are implemented ad hoc in each feature module while execution policy is centralized separately, causing inconsistent protections and duplicated parsing logic.
-- Files: `server/lib/executor.ts`, `server/lib/allowlist.ts`, `server/lib/apps.ts`, `server/lib/config.ts`, `server/lib/domains.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`
-- Impact: Security checks are uneven and easy to bypass when one path misses a character/class.
-- Fix approach: Move to a single command builder + argument escaping layer and execute with `spawn` args (no shell string interpolation).
+**Client-side testing:**
+- Issue: No client-side tests (Vitest only for server)
+- Files: `client/src/` (no .test.tsx files)
+- Impact: UI regressions may go unnoticed
+- Fix approach: Add Vitest + @testing-library for React components
 
-**HTTP API error semantics are inconsistent:**
-- Issue: Many backend operations return error payloads with HTTP 200 instead of status-aligned 4xx/5xx responses.
-- Files: `server/index.ts`, `server/lib/apps.ts`, `server/lib/config.ts`, `server/lib/domains.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`, `client/src/lib/api.ts`, `client/src/pages/Dashboard.tsx`, `client/src/pages/Databases.tsx`
-- Impact: Frontend can treat failed backend operations as successful data fetches and show misleading empty states.
-- Fix approach: Standardize API response contracts and set proper HTTP status codes for operational failures.
-
-**Operational parsing depends on CLI text output:**
-- Issue: Core state is parsed from brittle string matching against Dokku CLI human-readable output.
-- Files: `server/lib/apps.ts`, `server/lib/domains.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`, `server/lib/server.ts`
-- Impact: Dokku output format changes can silently break parsing and UI behavior.
-- Fix approach: Prefer machine-readable output where available or isolate robust parsers with regression tests.
+**Type safety in API responses:**
+- Issue: Some API calls use `any` type or loose typing
+- Files: `client/src/lib/api.ts`, `server/lib/*.test.ts`
+- Impact: Runtime type errors possible
+- Fix approach: Use zod or similar for runtime validation
 
 ## Known Bugs
 
-**Unauthenticated login possible when password env var is missing:**
-- Symptoms: Login can succeed with an empty/missing password field when `DOCKLIGHT_PASSWORD` is not set.
-- Files: `server/lib/auth.ts`, `server/index.ts`
-- Trigger: Start server without `DOCKLIGHT_PASSWORD`, then POST `/api/auth/login` with `{}`.
-- Workaround: Always set `DOCKLIGHT_PASSWORD` in all environments.
-
-**Scale action applies only one changed process type:**
-- Symptoms: When multiple process scales are edited, only the first entry is sent to backend.
-- Files: `client/src/pages/AppDetail.tsx`
-- Trigger: Change scale for more than one process type, then click "Apply Scaling".
-- Workaround: Apply scaling one process type at a time.
+**None documented**
+- No active bug tracker found
+- TODO/FIXME/HACK comments: None found in codebase search
 
 ## Security Considerations
 
-**Shell command injection risk in config value handling:**
-- Risk: `config:set` interpolates user value into a shell command string wrapped in single quotes while not blocking single quotes/`&`, enabling command chaining in some payloads.
-- Files: `server/lib/config.ts`, `server/lib/executor.ts`, `server/lib/allowlist.ts`
-- Current mitigation: Partial character blacklist and allowlist on command prefixes.
-- Recommendations: Stop using `exec` with shell strings; use `spawn` with argv, strict allowlist by full command shape, and reject unsafe characters including `'`, `&`, newlines.
+**Command execution via SSH:**
+- Risk: Shell command injection if allowlist is bypassed
+- Files: `server/lib/executor.ts`, `server/lib/allowlist.ts`
+- Current mitigation: Strict allowlist of approved commands
+- Recommendations: Regular security audits of allowlist, input sanitization
 
-**Weak/default auth secret and no login throttling:**
-- Risk: Predictable default JWT secret and no brute-force protection on login endpoint.
-- Files: `server/lib/auth.ts`, `server/index.ts`
-- Current mitigation: Warning logs and `httpOnly`/`sameSite=strict` cookie flags.
-- Recommendations: Fail fast on missing secret in production, require strong secret/password at startup, add rate limiting/lockout for `/api/auth/login`.
+**Single password authentication:**
+- Risk: Shared password, no rate limiting visible
+- Files: `server/lib/auth.ts`
+- Current mitigation: JWT tokens with expiration, HTTPS recommended
+- Recommendations: Add rate limiting, consider OAuth/LDAP for teams
+
+**Plugin management with root:**
+- Risk: Plugin install/enable/disable runs with sudo
+- Files: `server/lib/plugins.ts`
+- Current mitigation: Separate SSH target for root commands
+- Recommendations: Document sudo requirements clearly
 
 ## Performance Bottlenecks
 
-**N+1 command execution for database view:**
-- Problem: Database listing runs plugin discovery, per-plugin list, then per-database link queries.
-- Files: `server/lib/databases.ts`
-- Cause: Nested async calls per plugin and per database without caching.
-- Improvement path: Cache plugin availability and batch/limit detail fetches; add pagination for large fleets.
+**SSH connection per command:**
+- Problem: Each Dokku command opens new SSH connection
+- Files: `server/lib/executor.ts`
+- Cause: One-off command execution pattern
+- Improvement path: Connection pooling or persistent SSH session
 
-**Dashboard refresh does repeated expensive shell calls:**
-- Problem: Every refresh triggers health checks plus app/command queries, and app listing itself triggers multiple Dokku commands per app.
-- Files: `client/src/pages/Dashboard.tsx`, `server/lib/server.ts`, `server/lib/apps.ts`
-- Cause: Polling every 30s with no server-side caching or incremental updates.
-- Improvement path: Add short-lived server cache and incremental/push updates where possible.
+**No caching for app lists:**
+- Problem: Every page load re-fetches apps from Dokku
+- Files: `client/src/pages/Dashboard.tsx`
+- Cause: No server-side caching layer
+- Improvement path: Add in-memory cache with TTL
 
 ## Fragile Areas
 
-**WebSocket log streaming lifecycle and protocol assumptions:**
-- Files: `server/lib/websocket.ts`, `client/src/pages/AppDetail.tsx`
-- Why fragile: Custom cookie parsing, strict path regex handling, and reconnect/state behavior are hand-rolled.
-- Safe modification: Change protocol handling with integration tests that cover auth failure, reconnect, and app name edge cases.
-- Test coverage: No dedicated websocket tests found in `server/` or `client/`.
+**Command allowlist:**
+- Files: `server/lib/allowlist.ts`
+- Why fragile: Adding new Dokku features requires manual allowlist updates
+- Safe modification: Add commands incrementally with tests
+- Test coverage: Good (executor tests validate allowlist)
 
-**Dokku response parsing in app/config/domain/ssl flows:**
-- Files: `server/lib/apps.ts`, `server/lib/config.ts`, `server/lib/domains.ts`, `server/lib/ssl.ts`
-- Why fragile: Business behavior depends on matching specific output phrases.
-- Safe modification: Wrap parsers in small pure functions and validate them with fixture-based tests before altering regexes.
-- Test coverage: No parser tests found in `server/`.
+**SSH connection handling:**
+- Files: `server/lib/executor.ts`
+- Why fragile: Network issues, SSH key misconfig cause silent failures
+- Safe modification: Add connection health checks, retry logic
+- Test coverage: Needs improvement (network failure scenarios)
 
 ## Scaling Limits
 
-**Command history storage:**
-- Current capacity: SQLite table `command_history` has no retention policy and stores full stdout/stderr per command.
-- Limit: Unbounded growth increases disk usage and query cost over time.
-- Scaling path: Add retention/TTL, truncation/compression for large outputs, and archive strategy.
+**Single-server design:**
+- Current capacity: 1 Dokku server
+- Limit: Cannot manage multiple Dokku instances
+- Scaling path: Multi-server support would require architecture redesign
 
-**Single-process backend execution model:**
-- Current capacity: One Node process handles API, shell execution orchestration, and websocket log streaming.
-- Limit: Under high concurrent operations/log streams, event-loop contention and process spawning overhead can degrade responsiveness.
-- Scaling path: Introduce background job queue and isolate long-running operations from request path.
+**Concurrent WebSocket connections:**
+- Current capacity: Limited by Node.js event loop
+- Limit: Unknown (no load testing documented)
+- Scaling path: WebSocket connection pooling, Redis pub/sub for multi-instance
 
 ## Dependencies at Risk
 
-**Non-reproducible container dependency installs:**
-- Risk: Docker builds use `npm install` with `package*.json` and no committed npm lockfiles, while repo lockfiles are Bun lockfiles.
-- Impact: Dependency drift across builds can cause unexpected runtime/build breakage.
-- Migration plan: Use deterministic installs (`npm ci` + `package-lock.json`) or standardize container builds on Bun with `bun.lock`.
+**better-sqlite3:**
+- Risk: Native module, requires compilation for each platform
+- Impact: Build failures if toolchain missing
+- Migration plan: Use sqlite3 (pure JS) or consider serverless DB
+
+**Dokku CLI version compatibility:**
+- Risk: Breaking changes in Dokku commands
+- Impact: Commands may fail on Dokku updates
+- Migration plan: Version pinning, command abstraction layer
 
 ## Missing Critical Features
 
-**No automated test suite for app server/client paths:**
-- Problem: There are no tests in `server/` or `client/` validating command construction, parsing, auth edge cases, or UI flows.
-- Blocks: Safe refactoring and confident releases for security-sensitive command execution paths.
+**User management:**
+- Problem: Single admin user only
+- Blocks: Team collaboration, audit trails
+- Priority: Medium (documented as solo dev tool)
 
-**No startup hard-fail for insecure auth configuration:**
-- Problem: Server logs warnings for missing `DOCKLIGHT_PASSWORD`/`DOCKLIGHT_SECRET` but continues running.
-- Blocks: Reliable secure-by-default deployments.
+**Multi-server support:**
+- Problem: Can only manage one Dokku instance
+- Blocks: Managing multiple VPS from one UI
+- Priority: Low (out of scope per design)
+
+**Configuration backup/restore:**
+- Problem: No way to backup/restore app configs
+- Blocks: Disaster recovery
+- Priority: Low (Dokku has its own backup mechanisms)
 
 ## Test Coverage Gaps
 
-**Backend security and command execution paths untested:**
-- What's not tested: Login edge cases, command allowlist bypass attempts, config/domain/database input validation, command failure handling.
-- Files: `server/lib/auth.ts`, `server/lib/executor.ts`, `server/lib/allowlist.ts`, `server/lib/config.ts`, `server/lib/domains.ts`, `server/lib/databases.ts`
-- Risk: Security regressions or command execution bugs can ship unnoticed.
+**Client-side:**
+- What's not tested: All React components and pages
+- Files: `client/src/components/`, `client/src/pages/`
+- Risk: UI regressions, broken user flows
 - Priority: High
 
-**Frontend critical workflows untested:**
-- What's not tested: Multi-process scaling UX behavior, websocket log lifecycle, error-state rendering when backend returns non-array error objects.
-- Files: `client/src/pages/AppDetail.tsx`, `client/src/pages/Dashboard.tsx`, `client/src/pages/Databases.tsx`, `client/src/lib/api.ts`
-- Risk: Regressions in operational workflows and misleading UI states.
-- Priority: High
+**WebSocket server:**
+- What's not tested: Log streaming, connection handling
+- Files: `server/lib/websocket.ts`
+- Risk: Log viewer may break without detection
+- Priority: Medium
+
+**Error scenarios:**
+- What's not tested: Network failures, SSH timeouts, invalid responses
+- Files: `server/lib/executor.ts`, integration tests
+- Risk: Poor error handling in production
+- Priority: Medium
 
 ---
 
-*Concerns audit: 2026-02-27*
+*Concerns audit: 2026-02-28*

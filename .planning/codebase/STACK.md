@@ -1,74 +1,92 @@
 # Technology Stack
 
-**Analysis Date:** 2026-02-27
+**Analysis Date:** 2026-02-28
 
 ## Languages
 
 **Primary:**
-- TypeScript 5.x - Backend and frontend application code in `server/**/*.ts` and `client/src/**/*.tsx`; compiler configs in `server/tsconfig.json` and `client/tsconfig.app.json`
+- TypeScript 5.x - Server and client code
+- React 19.x - Frontend framework
 
 **Secondary:**
-- JavaScript (ESM config) - Frontend/build tooling configs in `client/vite.config.ts`, `client/tailwind.config.js`, and `client/postcss.config.js`
+- Shell - Dokku command execution via SSH
 
 ## Runtime
 
 **Environment:**
-- Node.js 20 (containerized) - Multi-stage Docker build and runtime use `node:20-alpine` in `Dockerfile`
+- Node.js (server), Browser (client)
 
 **Package Manager:**
-- Bun (developer workflow) - Install/run scripts via `justfile`, `server/package.json`, and `client/package.json`
-- Lockfile: present (`server/bun.lock`, `client/bun.lock`)
+- Bun (primary, for dev)
+- npm (fallback compatible)
+- Lockfile: `bun.lock` (server), `package-lock.json` not used
 
 ## Frameworks
 
 **Core:**
-- Express 4.18.x - HTTP API and static SPA serving in `server/index.ts` with dependency in `server/package.json`
-- React 19.x + React Router 7.x - SPA UI and routing in `client/src/main.tsx`, `client/src/App.tsx`, and dependency pins in `client/package.json`
-- Dokku CLI integration layer - App/database/domain/SSL operations executed from `server/lib/apps.ts`, `server/lib/databases.ts`, `server/lib/domains.ts`, `server/lib/ssl.ts`
+- Express 4.18.x - Backend API server (`server/`)
+- React 19.2.x - Frontend UI (`client/`)
+- React Router 7.x - Client-side routing
+- Vite 7.x - Frontend build tool and dev server
 
 **Testing:**
-- No test framework configured for app packages - `server/package.json` and `client/package.json` do not define `test` scripts
+- Vitest 2.x - Test runner (server only)
+- Supertest 7.x - HTTP endpoint testing
 
 **Build/Dev:**
-- Vite 7.x - Frontend dev server and build in `client/package.json` and `client/vite.config.ts`
-- TypeScript compiler (`tsc`) - Backend and frontend type/build scripts in `server/package.json` and `client/package.json`
-- tsx 4.x - Backend dev watch mode in `server/package.json`
-- Biome 2.x - Lint/format in `server/package.json`, `client/package.json`, `server/biome.json`, and `client/biome.json`
-- Tailwind CSS 3 + PostCSS + Autoprefixer - Styling toolchain in `client/package.json`, `client/tailwind.config.js`, and `client/postcss.config.js`
+- TypeScript 5.x - Type checking
+- tsx 4.x - TypeScript execution for server dev
+- Biome 2.4.x - Linting and formatting
+- Tailwind CSS 3.x - Utility-first CSS framework
 
 ## Key Dependencies
 
 **Critical:**
-- `express` - API server and routing backbone (`server/package.json`, `server/index.ts`)
-- `better-sqlite3` - Local command-history persistence (`server/package.json`, `server/lib/db.ts`)
-- `jsonwebtoken` + `cookie-parser` - Session auth cookie + JWT verification (`server/package.json`, `server/lib/auth.ts`, `server/index.ts`)
-- `ws` - Real-time log streaming over WebSocket (`server/package.json`, `server/lib/websocket.ts`)
-- `react`/`react-dom`/`react-router-dom` - Client rendering and routing (`client/package.json`, `client/src/main.tsx`, `client/src/App.tsx`)
+- better-sqlite3 12.x - SQLite database for command history (`server/lib/db.ts`)
+- express 4.18.x - HTTP server (`server/index.ts`)
+- react 19.2.x - UI framework
+- jsonwebtoken 9.x - JWT authentication (`server/lib/auth.ts`)
+- ws 8.19.x - WebSocket server for live logs (`server/lib/websocket.ts`)
 
 **Infrastructure:**
-- `pino` + `pino-http` - Structured backend/client logging (`server/package.json`, `server/lib/logger.ts`, `client/src/lib/logger.ts`)
-- Built-in Node `child_process` - Shell execution bridge to Dokku/system commands (`server/lib/executor.ts`, `server/lib/server.ts`)
+- pino 10.x - Structured logging
+- pino-http 11.x - HTTP request logging middleware
+- cookie-parser 1.4.x - Cookie parsing for session auth
+
+**UI:**
+- @radix-ui/* - Accessible component primitives (dialog, slot)
+- class-variance-authority - Component variant management
+- clsx + tailwind-merge - Conditional className utilities
+- sonner 2.x - Toast notifications
+- lucide-react 0.575.x - Icons
 
 ## Configuration
 
 **Environment:**
-- Runtime is env-var driven (`DOCKLIGHT_PASSWORD`, `DOCKLIGHT_SECRET`, `PORT`, `NODE_ENV`, `LOG_LEVEL`) in `server/lib/auth.ts`, `server/index.ts`, and `server/lib/logger.ts`
-- Deployment and required vars documented in `README.md` and `docs/deployment.md`
+- `DOCKLIGHT_PASSWORD` (required) - Admin login password
+- `DOCKLIGHT_SECRET` (optional, auto-generated) - JWT signing secret
+- `DOCKLIGHT_DOKKU_SSH_TARGET` (recommended) - SSH target for Dokku commands
+- `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` (optional) - Dedicated SSH target for root commands
+- `DOCKLIGHT_DOKKU_SSH_KEY_PATH` (optional) - SSH key path for Dokku
+- `PORT` (optional, default 3001) - Server port
 
 **Build:**
-- Backend TS build config: `server/tsconfig.json`
-- Frontend TS/Vite configs: `client/tsconfig.json`, `client/tsconfig.app.json`, `client/tsconfig.node.json`, `client/vite.config.ts`
-- Container build/runtime: `Dockerfile`
+- `server/tsconfig.json` - TypeScript config for server
+- `client/tsconfig.json` (via Vite) - TypeScript config for client
+- `server/biome.json` - Shared lint/format config
+- `client/vite.config.ts` referenced but uses default Vite config
 
 ## Platform Requirements
 
 **Development:**
-- Bun toolchain expected for local workflows (`justfile`, `README.md`)
-- Local Dokku CLI presence is required for backend command execution paths (`server/lib/executor.ts`, `server/lib/allowlist.ts`)
+- Node.js 20+ or Bun
+- SSH access to a Dokku server (for integration testing)
 
 **Production:**
-- Target is Dokku-hosted deployment using Docker image build and healthcheck (`docs/deployment.md`, `Dockerfile`, `app.json`, `Procfile`)
+- Dokku server with Docker
+- VPS with SSH access
+- Recommended: Cloudflare Zero Trust or Tailscale for additional security
 
 ---
 
-*Stack analysis: 2026-02-27*
+*Stack analysis: 2026-02-28*

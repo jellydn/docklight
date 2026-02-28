@@ -1,110 +1,170 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-02-27
+**Analysis Date:** 2026-02-28
 
 ## Test Framework
 
 **Runner:**
-- Vitest `^2.1.0` configured in `.agents/skills/dev-browser/package.json`.
-- Config: `.agents/skills/dev-browser/vitest.config.ts`.
+- Vitest 2.x
+- Config: `server/vitest.config.ts`
 
 **Assertion Library:**
-- Vitest built-in assertions/globals (`globals: true`) in `.agents/skills/dev-browser/vitest.config.ts`.
+- Built-in Vitest assertions (Chai-like)
 
 **Run Commands:**
 ```bash
-cd .agents/skills/dev-browser && bun test              # Run all tests
-cd .agents/skills/dev-browser && bun run test:watch    # Watch mode
-# Coverage command not configured in package scripts
+bun test              # Run all tests
+bun run test:watch    # Watch mode
+bun run test:coverage # Coverage report
 ```
 
 ## Test File Organization
 
 **Location:**
-- Expected location is skill-local source tree via `include: ["src/**/*.test.ts"]` in `.agents/skills/dev-browser/vitest.config.ts`.
-- No committed `*.test.*` or `*.spec.*` files were found under `server/`, `client/`, or `.agents/skills/dev-browser/src/` in this snapshot.
+- Co-located with source files: `lib/*.test.ts`
+- Root-level integration test: `index.test.ts`
 
 **Naming:**
-- Configured naming pattern is `*.test.ts` in `.agents/skills/dev-browser/vitest.config.ts`.
+- Source file + `.test.ts` suffix: `apps.ts` → `apps.test.ts`
 
 **Structure:**
 ```
-.agents/skills/dev-browser/
-  src/
-    **/*.test.ts   # configured include pattern
+server/
+├── lib/
+│   ├── apps.ts
+│   ├── apps.test.ts
+│   ├── databases.ts
+│   ├── databases.test.ts
+│   └── ...
+├── index.test.ts
 ```
 
 ## Test Structure
 
 **Suite Organization:**
 ```typescript
-// No committed test suites found in server/, client/, or .agents/skills/dev-browser/src/
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+describe("functionName", () => {
+  beforeEach(() => {
+    // Setup
+  });
+
+  it("should do something specific", () => {
+    // Arrange
+    const input = "...";
+
+    // Act
+    const result = functionUnderTest(input);
+
+    // Assert
+    expect(result).toBe(expected);
+  });
+});
 ```
 
 **Patterns:**
-- Setup pattern: not observable from committed test files.
-- Teardown pattern: not observable from committed test files.
-- Assertion pattern: not observable from committed test files.
+- Setup: `beforeEach` for shared setup
+- Teardown: Not commonly used ( Vitest auto-cleanup)
+- Assertion: `expect(actual).op(expected)`
 
 ## Mocking
 
-**Framework:**
-- Vitest is configured (`.agents/skills/dev-browser/vitest.config.ts`), but no committed mocks were found.
+**Framework:** Vitest vi
 
 **Patterns:**
 ```typescript
-// No committed mocking examples found in repository test files.
+// Mock external module
+vi.mock("../lib/executor", () => ({
+  executeCommand: vi.fn().mockResolvedValue({
+    exitCode: 0,
+    stdout: "mocked output",
+    stderr: "",
+  }),
+}));
+
+// Mock function
+const mockFn = vi.fn().mockReturnValue("value");
+expect(mockFn).toHaveBeenCalledWith("arg");
 ```
 
 **What to Mock:**
-- Not documented in committed test code; operationally, browser/extension boundaries are described in `.agents/skills/dev-browser/SKILL.md`.
+- SSH executor (`server/lib/executor.ts`)
+- Database operations
+- External API calls
 
 **What NOT to Mock:**
-- Not documented in committed test code.
+- Business logic functions under test
+- Data transformation utilities
 
 ## Fixtures and Factories
 
 **Test Data:**
+- Inline in tests (no separate fixture files)
+- Example:
 ```typescript
-// No committed fixtures/factories found.
+const mockApp = {
+  name: "test-app",
+  status: "running",
+  domains: ["example.com"],
+};
 ```
 
 **Location:**
-- No fixture/factory directories or files were found in `server/`, `client/`, or `.agents/skills/dev-browser/src/`.
+- Co-located with tests (no shared fixture directory)
 
 ## Coverage
 
-**Requirements:** None enforced in committed config/scripts.
+**Requirements:** None enforced (coverage tracked but no threshold)
 
 **View Coverage:**
 ```bash
-# No coverage script configured in `server/package.json`, `client/package.json`, or `.agents/skills/dev-browser/package.json`
+bun run test:coverage
 ```
+
+**Provider:** v8 (via @vitest/coverage-v8)
+
+**Reporters:** text, json, html
 
 ## Test Types
 
 **Unit Tests:**
-- No committed unit test files found.
+- Focus: Individual functions in `lib/*.test.ts`
+- Approach: Mock dependencies, test business logic
+- Example: `apps.test.ts` tests list(), restart(), rebuild()
 
 **Integration Tests:**
-- No committed integration test files found.
+- Focus: API endpoints in `index.test.ts`
+- Approach: Supertest for HTTP assertions, mock executor
+- Example: Test GET /api/apps returns 200 with app list
 
 **E2E Tests:**
-- No committed E2E suite in this repository snapshot.
-- Browser automation capability exists via `.agents/skills/dev-browser/` (`playwright` dependency in `.agents/skills/dev-browser/package.json`) but is not represented by committed test files.
+- Framework: Custom browser automation (`.agents/skills/dev-browser/`)
+- Scope: Full user flows via Playwright
+- Location: Separate skill, not in test directory
 
 ## Common Patterns
 
 **Async Testing:**
 ```typescript
-// No committed async test examples found.
+it("should handle async operation", async () => {
+  const result = await asyncFunction();
+  expect(result).toBe(expected);
+});
 ```
 
 **Error Testing:**
 ```typescript
-// No committed error-path test examples found.
+it("should return error on failure", async () => {
+  vi.mocked(executeCommand).mockResolvedValue({
+    exitCode: 1,
+    stderr: "error message",
+  });
+  const result = await functionUnderTest();
+  expect(result.exitCode).toBe(1);
+});
 ```
 
 ---
 
-*Testing analysis: 2026-02-27*
+*Testing analysis: 2026-02-28*

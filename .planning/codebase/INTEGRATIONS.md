@@ -1,69 +1,110 @@
 # External Integrations
 
-**Analysis Date:** 2026-02-27
+**Analysis Date:** 2026-02-28
 
 ## APIs & External Services
 
-**PaaS/Infrastructure (Dokku):**
-- Dokku CLI - Core integration for app lifecycle, config, domains, databases, SSL, and logs (`dokku ...` commands in `server/lib/apps.ts`, `server/lib/config.ts`, `server/lib/domains.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`, `server/lib/websocket.ts`)
-- SDK/Client: Shell command execution via Node `child_process.exec`/`spawn` (`server/lib/executor.ts`, `server/lib/websocket.ts`)
-- Auth: Session cookie JWT validated by backend middleware for API/WebSocket access (`server/lib/auth.ts`, `server/lib/websocket.ts`)
+**Dokku CLI (via SSH):**
+- Purpose: Core functionality - all app/database/plugin management
+- Implementation: `server/lib/executor.ts` executes shell commands via SSH
+- Auth: SSH key-based authentication
+- Commands restricted to allowlist in `server/lib/allowlist.ts`
+
+**Command Categories:**
+- Apps: `apps:list`, `ps:report`, `ps:restart`, `ps:rebuild`, `ps:scale`
+- Config: `config:show`, `config:set`, `config:unset`
+- Domains: `domains:report`, `domains:add`, `domains:remove`
+- Databases: `<plugin>:list`, `<plugin>:create`, `<plugin>:link`, `<plugin>:unlink`, `<plugin>:destroy`
+- Plugins: `plugin:list`, `plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`
+- SSL: `letsencrypt:enable`, `letsencrypt:auto-renew`
 
 ## Data Storage
 
 **Databases:**
-- SQLite (local file, via better-sqlite3) for command history (`server/lib/db.ts`, `server/package.json`)
-- Connection: Local filesystem path `data/docklight.db` (`server/lib/db.ts`)
-- Client: `better-sqlite3` direct driver (`server/lib/db.ts`)
+- SQLite (better-sqlite3) - Local file-based database
+- Connection: `server/lib/db.ts`
+- Client: better-sqlite3 (synchronous API)
+- Purpose: Store command execution history
+
+**Schema:**
+- `commands` table: id, command, exitCode, stdout, stderr, createdAt
 
 **File Storage:**
-- Local filesystem only (`/app/data` in container and `data/` in repo) (`Dockerfile`, `server/lib/db.ts`)
+- Local filesystem only (no S3, etc.)
+- SQLite database file location: Configurable via DB path
 
 **Caching:**
-- None (no cache layer/service configured in `server/package.json` or `client/package.json`)
+- None (no Redis, etc.)
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Custom (no external IdP/OAuth provider)
-- Implementation: Password check from env var + JWT session cookie + Express middleware (`server/lib/auth.ts`, `server/index.ts`)
+- Custom JWT-based authentication
+- Implementation: `server/lib/auth.ts`
+- Storage: HTTP-only session cookie
+- Secret: `DOCKLIGHT_SECRET` env var (auto-generated if not set)
+
+**Flow:**
+1. User submits password to `/api/auth/login`
+2. Server verifies against `DOCKLIGHT_PASSWORD`
+3. Server issues JWT token
+4. Token stored in cookie
+5. Subsequent requests validate token via middleware
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None (no external Sentry/Datadog/Bugsnag-style SDK present in `server/package.json` or `client/package.json`)
+- None (no Sentry, etc.)
 
 **Logs:**
-- Structured logs with Pino/Pino HTTP on backend and browser-side Pino logger (`server/lib/logger.ts`, `server/index.ts`, `client/src/lib/logger.ts`)
-- Command execution audit persisted in SQLite `command_history` (`server/lib/db.ts`, `server/lib/executor.ts`)
+- Pino structured logging (`server/lib/logger.ts`)
+- HTTP requests logged via pino-http middleware
+- Log level: Configurable (defaults to info)
+- Output: stdout (can be configured for file/transport)
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Dokku (single-node/self-hosted target) with Docker-based deploy (`README.md`, `docs/deployment.md`, `Dockerfile`)
+- Dokku (self-hosted PaaS)
+- Docker containers
 
 **CI Pipeline:**
-- None (repository includes local task runner `justfile` and Renovate config `renovate.json`, but no CI workflow config files)
+- None visible (manual git push to Dokku remote)
+
+**Deployment:**
+```bash
+git push dokku main
+```
 
 ## Environment Configuration
 
 **Required env vars:**
-- `DOCKLIGHT_PASSWORD` (required login password) (`server/lib/auth.ts`, `README.md`)
-- `DOCKLIGHT_SECRET` (JWT signing secret; strongly recommended) (`server/lib/auth.ts`, `README.md`)
-- `PORT` (server listen port) (`server/index.ts`, `README.md`)
-- `NODE_ENV`, `LOG_LEVEL` (runtime behavior/logging) (`server/lib/auth.ts`, `server/lib/logger.ts`)
+- `DOCKLIGHT_PASSWORD` - Admin password (required)
+
+**Optional env vars:**
+- `DOCKLIGHT_SECRET` - JWT signing secret (auto-generated if not set)
+- `DOCKLIGHT_DOKKU_SSH_TARGET` - SSH target for Dokku commands (recommended)
+- `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` - Dedicated SSH target for root-required commands
+- `DOCKLIGHT_DOKKU_SSH_KEY_PATH` - Path to SSH private key
+- `DOCKLIGHT_DOKKU_SSH_OPTS` - Additional SSH options
+- `PORT` - Server port (default: 3001)
 
 **Secrets location:**
-- Process environment variables, typically managed via Dokku config (`docs/deployment.md`, `README.md`)
+- Environment variables only
+- No secrets in code
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None (no webhook receiver endpoints; exposed endpoints are UI/API routes and WebSocket stream in `server/index.ts` and `server/lib/websocket.ts`)
+- None (no webhook endpoints)
 
 **Outgoing:**
-- None (no outbound webhook/event callbacks over HTTP found; outbound integration is local Dokku/system shell execution in `server/lib/executor.ts` and `server/lib/server.ts`)
+- None (no external webhooks)
+
+**Real-time:**
+- WebSocket server for live log streaming (`server/lib/websocket.ts`)
+- Endpoint: `/api/apps/:name/logs/stream`
 
 ---
 
-*Integration audit: 2026-02-27*
+*Integration audit: 2026-02-28*
