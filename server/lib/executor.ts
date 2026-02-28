@@ -89,6 +89,7 @@ const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 export class SSHPool {
 	private connections = new Map<string, NodeSSH>();
 	private timers = new Map<string, ReturnType<typeof setTimeout>>();
+	private pending = new Map<string, Promise<NodeSSH>>();
 
 	async getConnection(target: string, keyPath?: string): Promise<NodeSSH> {
 		const existing = this.connections.get(target);
@@ -100,22 +101,38 @@ export class SSHPool {
 			this.closeConnection(target);
 		}
 
+		const pendingConn = this.pending.get(target);
+		if (pendingConn) {
+			return pendingConn;
+		}
+
 		const parsed = parseTarget(target);
 		if (!parsed) {
 			throw new Error(`Invalid SSH target: ${target}`);
 		}
 
 		const ssh = new NodeSSH();
-		await ssh.connect({
-			host: parsed.host,
-			port: parsed.port,
-			username: parsed.username,
-			privateKeyPath: keyPath || undefined,
-			readyTimeout: 10000,
-		});
+		const connectPromise = ssh
+			.connect({
+				host: parsed.host,
+				port: parsed.port,
+				username: parsed.username,
+				privateKeyPath: keyPath || undefined,
+				readyTimeout: 10000,
+			})
+			.then(() => {
+				this.pending.delete(target);
+				this.connections.set(target, ssh);
+				this.resetIdleTimer(target);
+				return ssh;
+			})
+			.catch((err) => {
+				this.pending.delete(target);
+				throw err;
+			});
 
-		this.connections.set(target, ssh);
-		this.resetIdleTimer(target);
+		this.pending.set(target, connectPromise);
+		await connectPromise;
 		return ssh;
 	}
 
@@ -128,6 +145,7 @@ export class SSHPool {
 	}
 
 	closeConnection(target: string): void {
+		this.pending.delete(target);
 		const conn = this.connections.get(target);
 		if (conn) {
 			conn.dispose();
@@ -213,15 +231,18 @@ async function executeViaPool(
 
 	let execResult: { stdout: string; stderr: string; code: number | null };
 	try {
-		execResult = await Promise.race([
-			ssh.execCommand(remoteCommand),
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new Error(`Command timed out after ${timeout}ms: ${command}`)),
-					timeout
-				)
-			),
-		]);
+		let timeoutId: ReturnType<typeof setTimeout> | null = null;
+		const timeoutPromise = new Promise<never>((_, reject) => {
+			timeoutId = setTimeout(
+				() => reject(new Error(`Command timed out after ${timeout}ms: ${command}`)),
+				timeout
+			);
+		});
+		try {
+			execResult = await Promise.race([ssh.execCommand(remoteCommand), timeoutPromise]);
+		} finally {
+			if (timeoutId) clearTimeout(timeoutId);
+		}
 	} catch (execError) {
 		const execErrMessage = getErrorMessage(execError);
 		const result: CommandResult = {
