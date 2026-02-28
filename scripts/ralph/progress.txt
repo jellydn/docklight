@@ -249,3 +249,16 @@ Started: Sat Feb 28 18:28:47 +08 2026
   - Use Promise.all to run independent commands in parallel for better performance
   - Builder value of empty string means auto-detect
   - Build dir cleared by passing empty string or null
+---
+
+## [Date/Time] - US-007
+- Implemented Zod schemas for new settings APIs (client/src/lib/schemas.ts)
+- Added PortMappingSchema and PortsResponseSchema
+- Added ProxyReportSchema
+- Added BuildpackSchema and BuildpacksResponseSchema
+- Added DockerOptionsSchema
+- Added NetworkReportSchema
+- Added DeploymentSettingsSchema
+- All schemas exported with proper TypeScript types
+- Typecheck and lint pass
+- Files changed: client/src/lib/schemas.ts

@@ -110,3 +110,65 @@ export const CreateAppResultSchema = z.object({
 });
 
 export type CreateAppResult = z.infer<typeof CreateAppResultSchema>;
+
+// Port mapping schema
+export const PortMappingSchema = z.object({
+	scheme: z.string(),
+	hostPort: z.number(),
+	containerPort: z.number(),
+});
+
+export type PortMapping = z.infer<typeof PortMappingSchema>;
+
+// Ports response schema
+export const PortsResponseSchema = z.object({
+	ports: z.array(PortMappingSchema),
+});
+
+export type PortsResponse = z.infer<typeof PortsResponseSchema>;
+
+// Proxy report schema
+export const ProxyReportSchema = z.object({
+	enabled: z.boolean(),
+	type: z.string(),
+});
+
+export type ProxyReport = z.infer<typeof ProxyReportSchema>;
+
+// Buildpack schema
+export const BuildpackSchema = z.object({
+	index: z.number(),
+	url: z.string(),
+});
+
+export type Buildpack = z.infer<typeof BuildpackSchema>;
+
+// Buildpacks response schema
+export const BuildpacksResponseSchema = z.object({
+	buildpacks: z.array(BuildpackSchema),
+});
+
+export type BuildpacksResponse = z.infer<typeof BuildpacksResponseSchema>;
+
+// Docker options schema
+export const DockerOptionsSchema = z.object({
+	build: z.array(z.string()),
+	deploy: z.array(z.string()),
+	run: z.array(z.string()),
+});
+
+export type DockerOptions = z.infer<typeof DockerOptionsSchema>;
+
+// Network report schema
+export const NetworkReportSchema = z.record(z.string(), z.string());
+
+export type NetworkReport = z.infer<typeof NetworkReportSchema>;
+
+// Deployment settings schema
+export const DeploymentSettingsSchema = z.object({
+	deployBranch: z.string(),
+	buildDir: z.string(),
+	builder: z.string(),
+});
+
+export type DeploymentSettings = z.infer<typeof DeploymentSettingsSchema>;
