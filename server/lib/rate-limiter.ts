@@ -1,8 +1,10 @@
 import type { RequestHandler } from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+import { randomUUID } from "crypto";
 import { logger } from "./logger.js";
 
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const AUTH_MAX_REQUESTS = 5;
 
 /**
  * Rate limiter configuration for authentication endpoints.
@@ -14,7 +16,7 @@ const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
  */
 export const authRateLimiter: RequestHandler = rateLimit({
 	windowMs: WINDOW_MS,
-	max: 5, // 5 attempts per window
+	max: AUTH_MAX_REQUESTS,
 	standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
 	legacyHeaders: false, // Disable `X-RateLimit-*` headers
 	skipFailedRequests: false, // Count all requests, including failed ones
@@ -24,13 +26,13 @@ export const authRateLimiter: RequestHandler = rateLimit({
 	 * Custom handler for rate limit exceeded responses.
 	 * Logs the rate limit event and returns a 429 status with retry-after header.
 	 */
-	handler: (_req, res) => {
+	handler: (req, res) => {
 		const retryAfter = Math.ceil(WINDOW_MS / 1000);
 
 		logger.warn(
 			{
-				ip: _req.ip,
-				path: _req.path,
+				ip: req.ip,
+				path: req.path,
 				retryAfter,
 			},
 			"Rate limit exceeded for authentication endpoint"
@@ -45,8 +47,14 @@ export const authRateLimiter: RequestHandler = rateLimit({
 	/**
 	 * Key generator function that uses the client's IP address.
 	 * Uses ipKeyGenerator helper for proper IPv6 support.
+	 * Falls back to random UUID if IP cannot be determined.
 	 */
 	keyGenerator: (req) => {
-		return ipKeyGenerator(req.ip ?? "::ffff:127.0.0.1");
+		if (req.ip) {
+			return ipKeyGenerator(req.ip);
+		}
+
+		logger.warn({ path: req.path }, "Could not determine IP for rate limiting. Using random key as fallback.");
+		return randomUUID();
 	},
 });
