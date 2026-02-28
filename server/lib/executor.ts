@@ -41,6 +41,7 @@ function isSshWarningOnly(stderr: string): boolean {
 }
 
 // Parses "user@host" or "user@host:port" into its components.
+// Note: IPv6 addresses are not supported (e.g., "user@[::1]:2222" will not parse correctly).
 function parseTarget(target: string): { host: string; username: string; port: number } | null {
 	const atIndex = target.indexOf("@");
 	if (atIndex <= 0) return null;
@@ -198,7 +199,7 @@ async function executeViaPool(
 				command,
 				exitCode: 1,
 				stdout: "",
-				stderr: retryErr.message || "SSH connection failed",
+				stderr: `SSH connection failed (initial: ${connErr.message}, retry: ${retryErr.message})`,
 			};
 			saveCommand(result);
 			return result;

@@ -13,13 +13,13 @@ vi.mock("./db.js", () => ({
 	saveCommand: vi.fn(),
 }));
 
-// Use vi.hoisted so the mock instance is available when the factory runs.
-const mockSshInstance = vi.hoisted(() => ({
+// Mock the SSH instance - needs to be defined before the mock factory
+const mockSshInstance = {
 	connect: vi.fn(),
 	execCommand: vi.fn(),
 	isConnected: vi.fn(),
 	dispose: vi.fn(),
-}));
+};
 
 // NodeSSH must be a regular function (not arrow) so it can be used as a constructor.
 // Returning an object from a constructor causes `new NodeSSH()` to return that object.
@@ -114,6 +114,42 @@ describe("SSHPool", () => {
 		pool.closeAll();
 		expect(mockSshInstance.dispose).toHaveBeenCalledTimes(2);
 	});
+
+	it("closes connection after idle timeout", async () => {
+		vi.useFakeTimers();
+		await pool.getConnection("dokku@host");
+		expect(mockSshInstance.connect).toHaveBeenCalledTimes(1);
+
+		// Advance time past the 5-minute idle timeout
+		vi.advanceTimersByTime(5 * 60 * 1000 + 1000);
+
+		expect(mockSshInstance.dispose).toHaveBeenCalledOnce();
+		vi.useRealTimers();
+	});
+
+	it("resets idle timer on connection reuse", async () => {
+		vi.useFakeTimers();
+		await pool.getConnection("dokku@host");
+
+		// Advance partially through timeout
+		vi.advanceTimersByTime(3 * 60 * 1000);
+
+		// Reuse the connection - should reset timer
+		mockSshInstance.isConnected.mockReturnValue(true);
+		await pool.getConnection("dokku@host");
+
+		// Advance past original timeout
+		vi.advanceTimersByTime(3 * 60 * 1000);
+
+		// Connection should still be alive (not disposed yet)
+		expect(mockSshInstance.dispose).not.toHaveBeenCalled();
+
+		// Now advance past the new timeout
+		vi.advanceTimersByTime(2 * 60 * 1000 + 1000);
+
+		expect(mockSshInstance.dispose).toHaveBeenCalledOnce();
+		vi.useRealTimers();
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -178,6 +214,9 @@ describe("executeCommand with SSH pool", () => {
 		const result = await executeCommand("dokku apps:list");
 
 		expect(result.exitCode).toBe(1);
+		expect(result.stderr).toContain("SSH connection failed");
+		expect(result.stderr).toContain("initial:");
+		expect(result.stderr).toContain("retry:");
 		expect(result.stderr).toContain("Connection refused");
 		expect(mockSshInstance.connect).toHaveBeenCalledTimes(2);
 	});
