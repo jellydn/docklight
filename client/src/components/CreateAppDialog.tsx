@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "../lib/api.js";
-import { CommandResultSchema } from "../lib/schemas.js";
+import { CreateAppResultSchema } from "../lib/schemas.js";
 
 interface CreateAppDialogProps {
 	open: boolean;
@@ -45,7 +45,7 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 		setLoading(true);
 
 		try {
-			await apiFetch("/apps", CommandResultSchema, {
+			await apiFetch("/apps", CreateAppResultSchema, {
 				method: "POST",
 				body: JSON.stringify({ name: appName }),
 			});
