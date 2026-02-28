@@ -72,7 +72,8 @@ describe("Dashboard", () => {
 			</MemoryRouter>,
 		);
 
-		expect(screen.getByRole("status")).toBeInTheDocument();
+		const spinner = screen.getByText(/./, { selector: ".animate-spin" });
+		expect(spinner).toBeInTheDocument();
 	});
 
 	it("should render dashboard with data", async () => {
@@ -220,10 +221,7 @@ describe("Dashboard", () => {
 		apiFetchMock.mockImplementation((endpoint: string) => {
 			fetchCount++;
 			if (endpoint === "/server/health") {
-				if (fetchCount <= 3) {
-					return Promise.resolve(mockHealth);
-				}
-				return Promise.resolve({ ...mockHealth, cpu: 50.0 });
+				return Promise.resolve(mockHealth);
 			}
 			if (endpoint === "/apps") return Promise.resolve([]);
 			if (endpoint === "/commands?limit=20") return Promise.resolve([]);
@@ -240,11 +238,12 @@ describe("Dashboard", () => {
 			expect(screen.getByText("45.5%")).toBeInTheDocument();
 		});
 
+		const initialCallCount = fetchCount;
 		const refreshButton = screen.getByText("Refresh");
 		await user.click(refreshButton);
 
 		await vi.waitFor(() => {
-			expect(apiFetchMock).toHaveBeenCalled();
+			expect(fetchCount).toBeGreaterThan(initialCallCount);
 		});
 	});
 
