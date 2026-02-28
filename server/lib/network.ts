@@ -51,8 +51,10 @@ export async function getNetworkReport(
 		};
 	}
 
+	const command = DokkuCommands.networkReport(name);
+
 	try {
-		const result = await executeCommand(DokkuCommands.networkReport(name));
+		const result = await executeCommand(command);
 
 		if (result.exitCode !== 0) {
 			return {
@@ -89,7 +91,7 @@ export async function getNetworkReport(
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.networkReport(name),
+			command,
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -111,16 +113,15 @@ export async function setNetworkProperty(
 		);
 	}
 
+	const command = DokkuCommands.networkSet(name, key, value);
+
 	try {
-		if (value === "") {
-			return executeCommand(DokkuCommands.networkSet(name, key));
-		}
-		return executeCommand(DokkuCommands.networkSet(name, key, value));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.networkSet(name, key, value),
+			command,
 			exitCode: 1,
 		};
 	}
@@ -140,13 +141,15 @@ export async function clearNetworkProperty(
 		);
 	}
 
+	const command = DokkuCommands.networkSet(name, key);
+
 	try {
-		return executeCommand(DokkuCommands.networkSet(name, key));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.networkSet(name, key),
+			command,
 			exitCode: 1,
 		};
 	}

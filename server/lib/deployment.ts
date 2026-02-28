@@ -41,10 +41,13 @@ export async function getDeploymentSettings(
 		};
 	}
 
+	const gitCommand = DokkuCommands.gitReport(name);
+	const builderCommand = DokkuCommands.builderReport(name);
+
 	try {
 		const [gitResult, builderResult] = await Promise.all([
-			executeCommand(DokkuCommands.gitReport(name)),
-			executeCommand(DokkuCommands.builderReport(name)),
+			executeCommand(gitCommand),
+			executeCommand(builderCommand),
 		]);
 
 		if (gitResult.exitCode !== 0) {
@@ -90,7 +93,7 @@ export async function getDeploymentSettings(
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `${DokkuCommands.gitReport(name)} && ${DokkuCommands.builderReport(name)}`,
+			command: `${gitCommand} && ${builderCommand}`,
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -109,13 +112,15 @@ export async function setDeployBranch(
 		return createDeploymentError("Deploy branch is required");
 	}
 
+	const command = DokkuCommands.gitSetDeployBranch(name, branch);
+
 	try {
-		return executeCommand(DokkuCommands.gitSetDeployBranch(name, branch));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.gitSetDeployBranch(name, branch),
+			command,
 			exitCode: 1,
 		};
 	}
@@ -129,16 +134,18 @@ export async function setBuildDir(
 		return createDeploymentError("Invalid app name");
 	}
 
+	const command =
+		dir === ""
+			? DokkuCommands.builderClearBuildDir(name)
+			: DokkuCommands.builderSetBuildDir(name, dir);
+
 	try {
-		if (dir === "") {
-			return executeCommand(DokkuCommands.builderClearBuildDir(name));
-		}
-		return executeCommand(DokkuCommands.builderSetBuildDir(name, dir));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.builderSetBuildDir(name, dir),
+			command,
 			exitCode: 1,
 		};
 	}
@@ -151,13 +158,15 @@ export async function clearBuildDir(
 		return createDeploymentError("Invalid app name");
 	}
 
+	const command = DokkuCommands.builderClearBuildDir(name);
+
 	try {
-		return executeCommand(DokkuCommands.builderClearBuildDir(name));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.builderClearBuildDir(name),
+			command,
 			exitCode: 1,
 		};
 	}
@@ -177,16 +186,18 @@ export async function setBuilder(
 		);
 	}
 
+	const command =
+		builder === ""
+			? DokkuCommands.builderClearSelected(name)
+			: DokkuCommands.builderSetSelected(name, builder);
+
 	try {
-		if (builder === "") {
-			return executeCommand(DokkuCommands.builderClearSelected(name));
-		}
-		return executeCommand(DokkuCommands.builderSetSelected(name, builder));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.builderSetSelected(name, builder),
+			command,
 			exitCode: 1,
 		};
 	}

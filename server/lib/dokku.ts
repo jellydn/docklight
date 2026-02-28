@@ -2,11 +2,108 @@ import { executeCommand } from "./executor.js";
 import { shellQuote } from "./shell.js";
 
 /**
+ * Type definition for Dokku command builder functions.
+ * Each command builder returns a complete shell command string.
+ */
+export interface DokkuCommands {
+	// Version
+	version(): string;
+
+	// Apps
+	appsList(): string;
+	appsListQuiet(): string;
+	appsCreate(name: string): string;
+	appsDestroy(name: string): string;
+
+	// Process management
+	psReport(app: string): string;
+	psRestart(app: string): string;
+	psStop(app: string): string;
+	psStart(app: string): string;
+	psRebuild(app: string): string;
+	psScale(app: string, processType: string, count: number): string;
+
+	// Domains
+	domainsReport(app: string): string;
+	domainsAdd(app: string, domain: string): string;
+	domainsRemove(app: string, domain: string): string;
+
+	// Config
+	configShow(app: string): string;
+	configSet(app: string, key: string, value: string): string;
+	configUnset(app: string, key: string): string;
+
+	// Plugins
+	pluginList(): string;
+	pluginInstall(repo: string, name?: string): string;
+	pluginUninstall(name: string): string;
+	pluginEnable(name: string): string;
+	pluginDisable(name: string): string;
+
+	// Ports
+	portsReport(app: string): string;
+	portsAdd(app: string, scheme: string, hostPort: number, containerPort: number): string;
+	portsRemove(app: string, scheme: string, hostPort: number, containerPort: number): string;
+	portsClear(app: string): string;
+
+	// Proxy
+	proxyReport(app: string): string;
+	proxyEnable(app: string): string;
+	proxyDisable(app: string): string;
+
+	// Buildpacks
+	buildpacksReport(app: string): string;
+	buildpacksAdd(app: string, url: string, index?: number): string;
+	buildpacksRemove(app: string, url: string): string;
+	buildpacksClear(app: string): string;
+
+	// Deployment - git
+	gitReport(app: string): string;
+	gitSetDeployBranch(app: string, branch: string): string;
+
+	// Deployment - builder
+	builderReport(app: string): string;
+	builderSetBuildDir(app: string, dir: string): string;
+	builderClearBuildDir(app: string): string;
+	builderSetSelected(app: string, builder: string): string;
+	builderClearSelected(app: string): string;
+
+	// SSL / Let's Encrypt
+	letsencryptReport(app: string): string;
+	letsencryptLs(): string;
+	letsencryptSetEmail(app: string, email: string): string;
+	letsencryptEnable(app: string): string;
+	letsencryptAutoRenew(app: string): string;
+	certsReport(app: string): string;
+
+	// Network
+	networkReport(app: string): string;
+	networkSet(app: string, key: string, value?: string): string;
+
+	// Docker options
+	dockerOptionsReport(app: string): string;
+	dockerOptionsAdd(app: string, phase: string, option: string): string;
+	dockerOptionsRemove(app: string, phase: string, option: string): string;
+	dockerOptionsClear(app: string, phase: string): string;
+
+	// Database (dynamic plugin name)
+	dbList(plugin: string): string;
+	dbLinks(plugin: string, name: string): string;
+	dbCreate(plugin: string, name: string): string;
+	dbLink(plugin: string, name: string, app: string): string;
+	dbUnlink(plugin: string, name: string, app: string): string;
+	dbDestroy(plugin: string, name: string): string;
+
+	// Logs
+	logsFollow(app: string, lines: number): string;
+}
+
+/**
  * Centralized Dokku CLI command builders.
  * All Dokku command strings are defined here to make version compatibility
  * changes easy to apply in a single location.
  */
-export const DokkuCommands = {
+export const DokkuCommands: DokkuCommands = {
 	// Version
 	version: () => "dokku version",
 
@@ -62,6 +159,7 @@ export const DokkuCommands = {
 	// Buildpacks
 	buildpacksReport: (app: string) => `dokku buildpacks:report ${app}`,
 	buildpacksAdd: (app: string, url: string, index?: number) =>
+		// Buildpack index is 1-based, so 0 is invalid and should be treated as undefined
 		index !== undefined && index > 0
 			? `dokku buildpacks:add ${shellQuote(app)} --index ${index} ${shellQuote(url)}`
 			: `dokku buildpacks:add ${shellQuote(app)} ${shellQuote(url)}`,

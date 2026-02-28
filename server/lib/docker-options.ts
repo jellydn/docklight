@@ -42,8 +42,10 @@ export async function getDockerOptions(
 		};
 	}
 
+	const command = DokkuCommands.dockerOptionsReport(name);
+
 	try {
-		const result = await executeCommand(DokkuCommands.dockerOptionsReport(name));
+		const result = await executeCommand(command);
 
 		if (result.exitCode !== 0) {
 			return {
@@ -84,7 +86,7 @@ export async function getDockerOptions(
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.dockerOptionsReport(name),
+			command,
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -109,13 +111,15 @@ export async function addDockerOption(
 		return createDockerOptionsError("Docker option is required");
 	}
 
+	const command = DokkuCommands.dockerOptionsAdd(name, phase, option);
+
 	try {
-		return executeCommand(DokkuCommands.dockerOptionsAdd(name, phase, option));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.dockerOptionsAdd(name, phase, option),
+			command,
 			exitCode: 1,
 		};
 	}
@@ -139,13 +143,15 @@ export async function removeDockerOption(
 		return createDockerOptionsError("Docker option is required");
 	}
 
+	const command = DokkuCommands.dockerOptionsRemove(name, phase, option);
+
 	try {
-		return executeCommand(DokkuCommands.dockerOptionsRemove(name, phase, option));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.dockerOptionsRemove(name, phase, option),
+			command,
 			exitCode: 1,
 		};
 	}
@@ -164,13 +170,15 @@ export async function clearDockerOptions(
 		return createDockerOptionsError(phaseValidationError);
 	}
 
+	const command = DokkuCommands.dockerOptionsClear(name, phase);
+
 	try {
-		return executeCommand(DokkuCommands.dockerOptionsClear(name, phase));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.dockerOptionsClear(name, phase),
+			command,
 			exitCode: 1,
 		};
 	}

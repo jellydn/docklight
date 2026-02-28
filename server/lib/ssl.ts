@@ -156,6 +156,8 @@ export async function getSSL(
 		return INVALID_NAME_ERROR;
 	}
 
+	const fallbackCommand = DokkuCommands.letsencryptLs();
+
 	try {
 		const letsencryptReportResult = await executeCommand(DokkuCommands.letsencryptReport(appName));
 		if (letsencryptReportResult.exitCode === 0) {
@@ -165,7 +167,7 @@ export async function getSSL(
 			}
 		}
 
-		const letsencryptResult = await executeCommand(DokkuCommands.letsencryptLs());
+		const letsencryptResult = await executeCommand(fallbackCommand);
 
 		if (letsencryptResult.exitCode === 0) {
 			const listStatus = parseLetsencryptList(letsencryptResult.stdout, appName);
@@ -188,7 +190,7 @@ export async function getSSL(
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.letsencryptLs(),
+			command: fallbackCommand,
 			exitCode: 1,
 			stderr: err.message || "",
 		};

@@ -50,6 +50,8 @@ async function getInstalledPlugins(): Promise<
 export async function getDatabases(): Promise<
 	Database[] | { error: string; command: string; exitCode: number; stderr: string }
 > {
+	const fallbackCommand = DokkuCommands.pluginList();
+
 	try {
 		const installedPluginsResult = await getInstalledPlugins();
 		if ("error" in installedPluginsResult) {
@@ -110,7 +112,7 @@ export async function getDatabases(): Promise<
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.pluginList(),
+			command: fallbackCommand,
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -150,6 +152,8 @@ export async function createDatabase(
 		};
 	}
 
+	const command = DokkuCommands.dbCreate(plugin, sanitizedName);
+
 	try {
 		const installedPluginsResult = await getInstalledPlugins();
 		if ("error" in installedPluginsResult) {
@@ -173,12 +177,12 @@ export async function createDatabase(
 			};
 		}
 
-		return executeCommand(DokkuCommands.dbCreate(plugin, sanitizedName));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.dbCreate(plugin, sanitizedName),
+			command,
 			exitCode: 1,
 		};
 	}
@@ -228,13 +232,15 @@ export async function linkDatabase(
 		};
 	}
 
+	const command = DokkuCommands.dbLink(plugin, sanitizedName, sanitizedApp);
+
 	try {
-		return executeCommand(DokkuCommands.dbLink(plugin, sanitizedName, sanitizedApp));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.dbLink(plugin, sanitizedName, sanitizedApp),
+			command,
 			exitCode: 1,
 		};
 	}
@@ -284,13 +290,15 @@ export async function unlinkDatabase(
 		};
 	}
 
+	const command = DokkuCommands.dbUnlink(plugin, sanitizedName, sanitizedApp);
+
 	try {
-		return executeCommand(DokkuCommands.dbUnlink(plugin, sanitizedName, sanitizedApp));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.dbUnlink(plugin, sanitizedName, sanitizedApp),
+			command,
 			exitCode: 1,
 		};
 	}
@@ -339,13 +347,15 @@ export async function destroyDatabase(
 		};
 	}
 
+	const command = DokkuCommands.dbDestroy(plugin, sanitizedName);
+
 	try {
-		return executeCommand(DokkuCommands.dbDestroy(plugin, sanitizedName));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.dbDestroy(plugin, sanitizedName),
+			command,
 			exitCode: 1,
 		};
 	}

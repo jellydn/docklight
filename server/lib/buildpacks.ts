@@ -32,8 +32,10 @@ export async function getBuildpacks(
 		};
 	}
 
+	const command = DokkuCommands.buildpacksReport(name);
+
 	try {
-		const result = await executeCommand(DokkuCommands.buildpacksReport(name));
+		const result = await executeCommand(command);
 
 		if (result.exitCode !== 0) {
 			return {
@@ -62,7 +64,7 @@ export async function getBuildpacks(
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.buildpacksReport(name),
+			command,
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -82,13 +84,15 @@ export async function addBuildpack(
 		return createBuildpackError("Buildpack URL is required");
 	}
 
+	const command = DokkuCommands.buildpacksAdd(name, url, index);
+
 	try {
-		return executeCommand(DokkuCommands.buildpacksAdd(name, url, index));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.buildpacksAdd(name, url, index),
+			command,
 			exitCode: 1,
 		};
 	}
@@ -106,13 +110,15 @@ export async function removeBuildpack(
 		return createBuildpackError("Buildpack URL is required");
 	}
 
+	const command = DokkuCommands.buildpacksRemove(name, url);
+
 	try {
-		return executeCommand(DokkuCommands.buildpacksRemove(name, url));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.buildpacksRemove(name, url),
+			command,
 			exitCode: 1,
 		};
 	}
@@ -125,13 +131,15 @@ export async function clearBuildpacks(
 		return createBuildpackError("Invalid app name");
 	}
 
+	const command = DokkuCommands.buildpacksClear(name);
+
 	try {
-		return executeCommand(DokkuCommands.buildpacksClear(name));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.buildpacksClear(name),
+			command,
 			exitCode: 1,
 		};
 	}

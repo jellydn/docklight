@@ -41,6 +41,8 @@ function createValidationError(commandName: string): typeof INVALID_NAME_ERROR {
 export async function getApps(): Promise<
 	App[] | { error: string; command: string; exitCode: number; stderr: string }
 > {
+	const fallbackCommand = DokkuCommands.appsList();
+
 	try {
 		const listCommands = [DokkuCommands.appsListQuiet(), DokkuCommands.appsList()];
 		let listResult: CommandResult | undefined;
@@ -55,10 +57,10 @@ export async function getApps(): Promise<
 
 		return {
 			error: "Failed to list apps",
-			command: listResult?.command || DokkuCommands.appsList(),
+			command: listResult?.command || fallbackCommand,
 			exitCode: listResult?.exitCode || 1,
 			stderr: withRuntimeHint(
-				listResult?.command || DokkuCommands.appsList(),
+				listResult?.command || fallbackCommand,
 				listResult?.stderr || UNKNOWN_ERROR
 			),
 		};
@@ -66,7 +68,7 @@ export async function getApps(): Promise<
 		const err = error as { message?: string };
 		return {
 			error: err.message || UNKNOWN_ERROR,
-			command: DokkuCommands.appsList(),
+			command: fallbackCommand,
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -196,8 +198,10 @@ export async function getAppDetail(
 		return createValidationError("get-app-detail");
 	}
 
+	const psReportCommand = DokkuCommands.psReport(name);
+
 	try {
-		const psReportResult = await executeCommand(DokkuCommands.psReport(name));
+		const psReportResult = await executeCommand(psReportCommand);
 		const domainsReportResult = await executeCommand(DokkuCommands.domainsReport(name));
 
 		if (psReportResult.exitCode !== 0) {
@@ -220,7 +224,7 @@ export async function getAppDetail(
 		const err = error as { message?: string };
 		return {
 			error: err.message || UNKNOWN_ERROR,
-			command: DokkuCommands.psReport(name),
+			command: psReportCommand,
 			exitCode: 1,
 			stderr: err.message || "",
 		};

@@ -48,8 +48,10 @@ export async function getDomains(
 		};
 	}
 
+	const command = DokkuCommands.domainsReport(name);
+
 	try {
-		const result = await executeCommand(DokkuCommands.domainsReport(name));
+		const result = await executeCommand(command);
 
 		if (result.exitCode !== 0) {
 			return {
@@ -86,7 +88,7 @@ export async function getDomains(
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.domainsReport(name),
+			command,
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -107,14 +109,15 @@ export async function addDomain(
 	}
 
 	const sanitizedDomain = domain.trim();
+	const command = DokkuCommands.domainsAdd(name, sanitizedDomain);
 
 	try {
-		return executeCommand(DokkuCommands.domainsAdd(name, sanitizedDomain));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.domainsAdd(name, sanitizedDomain),
+			command,
 			exitCode: 1,
 		};
 	}
@@ -134,14 +137,15 @@ export async function removeDomain(
 	}
 
 	const sanitizedDomain = domain.trim();
+	const command = DokkuCommands.domainsRemove(name, sanitizedDomain);
 
 	try {
-		return executeCommand(DokkuCommands.domainsRemove(name, sanitizedDomain));
+		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.domainsRemove(name, sanitizedDomain),
+			command,
 			exitCode: 1,
 		};
 	}
