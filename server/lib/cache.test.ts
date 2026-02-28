@@ -1,10 +1,14 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { get, set, del, clear, clearPrefix, getStats } from "./cache.js";
 
 describe("cache", () => {
 	beforeEach(() => {
 		clear();
 		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
 	});
 
 	describe("get and set", () => {
