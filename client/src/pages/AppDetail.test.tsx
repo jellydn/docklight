@@ -266,7 +266,7 @@ describe("AppDetail", () => {
 		);
 
 		await vi.waitFor(() => {
-			expect(screen.getByText("Git Remote")).toBeInTheDocument();
+			expect(screen.getByText(/git remote/i)).toBeInTheDocument();
 			expect(screen.getByText("dokku@test-app.example.com")).toBeInTheDocument();
 		});
 	});
