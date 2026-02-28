@@ -45,6 +45,13 @@ import {
 } from "./lib/docker-options.js";
 import { getNetworkReport, setNetworkProperty, clearNetworkProperty } from "./lib/network.js";
 import {
+	getDeploymentSettings,
+	setDeployBranch,
+	setBuildDir,
+	clearBuildDir,
+	setBuilder,
+} from "./lib/deployment.js";
+import {
 	disablePlugin,
 	enablePlugin,
 	getPlugins,
@@ -538,6 +545,44 @@ app.delete("/api/apps/:name/network", async (req, res) => {
 	}
 
 	const result = await clearNetworkProperty(name, key);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.get("/api/apps/:name/deployment", async (req, res) => {
+	const { name } = req.params;
+	const deploymentSettings = await getDeploymentSettings(name);
+	res.json(deploymentSettings);
+});
+
+app.put("/api/apps/:name/deployment", async (req, res) => {
+	const { name } = req.params;
+	const { deployBranch, buildDir, builder } = req.body;
+
+	let result: Awaited<ReturnType<typeof setDeployBranch>>;
+
+	if (deployBranch !== undefined) {
+		result = await setDeployBranch(name, deployBranch);
+	} else if (buildDir !== undefined) {
+		result =
+			buildDir === "" || buildDir === null
+				? await clearBuildDir(name)
+				: await setBuildDir(name, buildDir);
+	} else if (builder !== undefined) {
+		result = await setBuilder(name, builder ?? "");
+	} else {
+		res
+			.status(400)
+			.json({ error: "At least one of deployBranch, buildDir, or builder is required" });
+		return;
+	}
 
 	if (result.exitCode !== 0) {
 		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;

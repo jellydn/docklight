@@ -232,4 +232,20 @@ Started: Sat Feb 28 18:28:47 +08 2026
   - Follow same pattern as buildpacks.ts and docker-options.ts for consistency
   - Use stripAnsi() to clean CLI output
   - Network properties are hyphenated in Dokku CLI (convert to camelCase for JS object keys)
+---
 
+## [Date/Time] - US-006
+- Implemented Deployment settings API endpoints (server/lib/deployment.ts, server/index.ts)
+- Created getDeploymentSettings, setDeployBranch, setBuildDir, clearBuildDir, setBuilder functions
+- Added routes: GET /api/apps/:name/deployment, PUT /api/apps/:name/deployment
+- GET /api/apps/:name/deployment runs both dokku git:report and dokku builder:report in parallel
+- PUT /api/apps/:name/deployment handles deployBranch, buildDir, and builder as optional fields
+- Validates app name with isValidAppName()
+- Validates builder is one of: herokuish, dockerfile, pack, or empty string for auto-detect
+- Clear cache after mutations (only on success)
+- Typecheck and lint pass
+- Files changed: server/lib/deployment.ts (new), server/index.ts
+- **Learnings for future iterations:**
+  - Use Promise.all to run independent commands in parallel for better performance
+  - Builder value of empty string means auto-detect
+  - Build dir cleared by passing empty string or null
