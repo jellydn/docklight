@@ -19,6 +19,7 @@ import { logger } from "./lib/logger.js";
 import { disablePlugin, enablePlugin, getPlugins, installPlugin, uninstallPlugin } from "./lib/plugins.js";
 import { getServerHealth } from "./lib/server.js";
 import { enableSSL, getSSL, renewSSL } from "./lib/ssl.js";
+import { authRateLimiter } from "./lib/rate-limiter.js";
 import { setupLogStreaming } from "./lib/websocket.js";
 
 const app = express();
@@ -36,7 +37,7 @@ app.get("/api/health", (_req, res) => {
 	res.json({ status: "ok" });
 });
 
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/auth/login", authRateLimiter, (req, res) => {
 	const { password } = req.body;
 
 	if (login(password)) {
