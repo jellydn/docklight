@@ -28,6 +28,7 @@ const CLIENT_DIST = path.resolve(__dirname, "..", "..", "client", "dist");
 
 app.use(cookieParser());
 app.use(express.json());
+app.set("trust proxy", true);
 app.use(pinoHttp({ logger }));
 
 // Serve static files from client
