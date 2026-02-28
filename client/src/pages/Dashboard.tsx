@@ -1,30 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { apiFetch } from "../lib/api";
-
-interface ServerHealth {
-	cpu: number;
-	memory: number;
-	disk: number;
-}
-
-interface App {
-	name: string;
-	status: "running" | "stopped";
-	domains: string[];
-	lastDeployTime?: string;
-}
-
-interface CommandHistory {
-	id: number;
-	command: string;
-	exitCode: number;
-	stdout: string;
-	stderr: string;
-	createdAt: string;
-}
+import { apiFetch } from "../lib/api.js";
+import {
+	ServerHealthSchema,
+	type ServerHealth,
+	AppSchema,
+	type App,
+	CommandHistorySchema,
+	type CommandHistory,
+} from "../lib/schemas.js";
 
 export function Dashboard() {
 	const [health, setHealth] = useState<ServerHealth | null>(null);
@@ -36,9 +23,9 @@ export function Dashboard() {
 	const fetchData = async () => {
 		try {
 			const [healthData, appsData, commandsData] = await Promise.all([
-				apiFetch<ServerHealth>("/server/health"),
-				apiFetch<App[]>("/apps"),
-				apiFetch<CommandHistory[]>("/commands?limit=20"),
+				apiFetch("/server/health", ServerHealthSchema),
+				apiFetch("/apps", z.array(AppSchema)),
+				apiFetch("/commands?limit=20", z.array(CommandHistorySchema)),
 			]);
 
 			setHealth(healthData);

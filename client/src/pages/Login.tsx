@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiFetch } from "../lib/api";
+import { z } from "zod";
+import { apiFetch } from "../lib/api.js";
 
 export function Login() {
 	const [password, setPassword] = useState("");
@@ -22,7 +23,7 @@ export function Login() {
 		setError("");
 
 		try {
-			await apiFetch("/auth/login", {
+			await apiFetch("/auth/login", z.object({ success: z.literal(true) }), {
 				method: "POST",
 				body: JSON.stringify({ password }),
 			});

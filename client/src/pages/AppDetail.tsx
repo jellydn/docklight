@@ -1,29 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { z } from "zod";
 import { useToast } from "../components/ToastProvider";
-import type { CommandResult } from "../components/types";
-import { apiFetch } from "../lib/api";
-import { logger } from "../lib/logger";
-
-interface AppDetail {
-	name: string;
-	status: "running" | "stopped";
-	gitRemote: string;
-	domains: string[];
-	processes: Record<string, number>;
-}
-
-interface SSLStatus {
-	active: boolean;
-	expiryDate?: string;
-	certProvider?: string;
-}
+import { apiFetch } from "../lib/api.js";
+import { logger } from "../lib/logger.js";
+import {
+	CommandResultSchema,
+	type CommandResult,
+	AppDetailSchema,
+	type AppDetail as AppDetailData,
+	SSLStatusSchema,
+	type SSLStatus,
+	ConfigVarsSchema,
+	type ConfigVars,
+} from "../lib/schemas.js";
 
 type TabType = "overview" | "config" | "domains" | "logs" | "ssl";
-
-interface ConfigVars {
-	[key: string]: string;
-}
 
 interface ScaleChange {
 	processType: string;
@@ -33,7 +25,7 @@ interface ScaleChange {
 export function AppDetail() {
 	const { name } = useParams<{ name: string }>();
 	const { addToast } = useToast();
-	const [app, setApp] = useState<AppDetail | null>(null);
+	const [app, setApp] = useState<AppDetailData | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [showActionDialog, setShowActionDialog] = useState(false);
@@ -169,7 +161,7 @@ export function AppDetail() {
 
 	const fetchAppDetail = async () => {
 		try {
-			const appData = await apiFetch<AppDetail>(`/apps/${name}`);
+			const appData = await apiFetch(`/apps/${name}`, AppDetailSchema);
 			setApp(appData);
 			setLoading(false);
 			setError(null);
@@ -188,7 +180,7 @@ export function AppDetail() {
 		if (!pendingAction || !name) return;
 
 		try {
-			const result = await apiFetch<CommandResult>(`/apps/${name}/${pendingAction}`, {
+			const result = await apiFetch(`/apps/${name}/${pendingAction}`, CommandResultSchema, {
 				method: "POST",
 			});
 			addToast(result.exitCode === 0 ? "success" : "error", `${pendingAction} completed`, result);
@@ -242,7 +234,7 @@ export function AppDetail() {
 
 		for (const change of pendingScaleChanges) {
 			try {
-				const result = await apiFetch<CommandResult>(`/apps/${name}/scale`, {
+				const result = await apiFetch(`/apps/${name}/scale`, CommandResultSchema, {
 					method: "POST",
 					body: JSON.stringify({
 						processType: change.processType,
@@ -277,7 +269,7 @@ export function AppDetail() {
 		setConfigLoading(true);
 		setConfigError(null);
 		try {
-			const config = await apiFetch<ConfigVars>(`/apps/${name}/config`);
+			const config = await apiFetch(`/apps/${name}/config`, ConfigVarsSchema);
 			setConfigVars(config);
 		} catch (err) {
 			setConfigError(err instanceof Error ? err.message : "Failed to load config vars");
@@ -290,7 +282,7 @@ export function AppDetail() {
 		if (!name || !newConfigKey || !newConfigValue) return;
 
 		try {
-			const result = await apiFetch<CommandResult>(`/apps/${name}/config`, {
+			const result = await apiFetch(`/apps/${name}/config`, CommandResultSchema, {
 				method: "POST",
 				body: JSON.stringify({ key: newConfigKey, value: newConfigValue }),
 			});
@@ -318,9 +310,13 @@ export function AppDetail() {
 		if (!name || !pendingRemoveKey) return;
 
 		try {
-			const result = await apiFetch<CommandResult>(`/apps/${name}/config/${pendingRemoveKey}`, {
-				method: "DELETE",
-			});
+			const result = await apiFetch(
+				`/apps/${name}/config/${pendingRemoveKey}`,
+				CommandResultSchema,
+				{
+					method: "DELETE",
+				}
+			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Config var removed", result);
 			setShowRemoveDialog(false);
 			setPendingRemoveKey(null);
@@ -356,7 +352,7 @@ export function AppDetail() {
 		setDomainsLoading(true);
 		setDomainsError(null);
 		try {
-			const domainsData = await apiFetch<string[]>(`/apps/${name}/domains`);
+			const domainsData = await apiFetch(`/apps/${name}/domains`, z.array(z.string()));
 			setDomains(domainsData);
 		} catch (err) {
 			setDomainsError(err instanceof Error ? err.message : "Failed to load domains");
@@ -369,7 +365,7 @@ export function AppDetail() {
 		if (!name || !newDomain) return;
 
 		try {
-			const result = await apiFetch<CommandResult>(`/apps/${name}/domains`, {
+			const result = await apiFetch(`/apps/${name}/domains`, CommandResultSchema, {
 				method: "POST",
 				body: JSON.stringify({ domain: newDomain }),
 			});
@@ -396,8 +392,9 @@ export function AppDetail() {
 		if (!name || !pendingRemoveDomain) return;
 
 		try {
-			const result = await apiFetch<CommandResult>(
+			const result = await apiFetch(
 				`/apps/${name}/domains/${encodeURIComponent(pendingRemoveDomain)}`,
+				CommandResultSchema,
 				{
 					method: "DELETE",
 				}
@@ -425,7 +422,7 @@ export function AppDetail() {
 		setSslLoading(true);
 		setSslError(null);
 		try {
-			const ssl = await apiFetch<SSLStatus>(`/apps/${name}/ssl`);
+			const ssl = await apiFetch(`/apps/${name}/ssl`, SSLStatusSchema);
 			setSslStatus(ssl);
 		} catch (err) {
 			setSslError(err instanceof Error ? err.message : "Failed to load SSL status");
@@ -438,7 +435,7 @@ export function AppDetail() {
 		if (!name) return;
 
 		try {
-			const result = await apiFetch<CommandResult>(`/apps/${name}/ssl/enable`, {
+			const result = await apiFetch(`/apps/${name}/ssl/enable`, CommandResultSchema, {
 				method: "POST",
 			});
 			addToast(result.exitCode === 0 ? "success" : "error", "SSL enabled", result);
@@ -458,7 +455,7 @@ export function AppDetail() {
 		if (!name) return;
 
 		try {
-			const result = await apiFetch<CommandResult>(`/apps/${name}/ssl/renew`, {
+			const result = await apiFetch(`/apps/${name}/ssl/renew`, CommandResultSchema, {
 				method: "POST",
 			});
 			addToast(result.exitCode === 0 ? "success" : "error", "SSL renewed", result);
@@ -845,39 +842,41 @@ export function AppDetail() {
 									<table className="min-w-full divide-y divide-gray-200">
 										<thead>
 											<tr>
-												<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Key</th>
+												<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
+													Key
+												</th>
 												<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
 													Value
 												</th>
 												<th className="px-4 py-2"></th>
 											</tr>
 										</thead>
-									<tbody className="divide-y divide-gray-200">
-										{Object.entries(configVars).map(([key, value]) => (
-											<tr key={key}>
-												<td className="px-4 py-2">
-													<code className="bg-gray-100 px-2 py-1 rounded text-sm">{key}</code>
-												</td>
-												<td className="px-4 py-2">
-													<button
-														onClick={() => toggleValueVisibility(key)}
-														className="font-mono text-sm cursor-pointer hover:text-blue-600"
-													>
-														{visibleValues.has(key) ? value : "••••••"}
-													</button>
-												</td>
-												<td className="px-4 py-2 text-right">
-													<button
-														onClick={() => handleRemoveConfigVar(key)}
-														className="text-red-600 hover:text-red-800"
-														title="Remove"
-													>
-														🗑️
-													</button>
-												</td>
-											</tr>
-										))}
-									</tbody>
+										<tbody className="divide-y divide-gray-200">
+											{Object.entries(configVars).map(([key, value]) => (
+												<tr key={key}>
+													<td className="px-4 py-2">
+														<code className="bg-gray-100 px-2 py-1 rounded text-sm">{key}</code>
+													</td>
+													<td className="px-4 py-2">
+														<button
+															onClick={() => toggleValueVisibility(key)}
+															className="font-mono text-sm cursor-pointer hover:text-blue-600"
+														>
+															{visibleValues.has(key) ? value : "••••••"}
+														</button>
+													</td>
+													<td className="px-4 py-2 text-right">
+														<button
+															onClick={() => handleRemoveConfigVar(key)}
+															className="text-red-600 hover:text-red-800"
+															title="Remove"
+														>
+															🗑️
+														</button>
+													</td>
+												</tr>
+											))}
+										</tbody>
 									</table>
 								</div>
 							) : (
