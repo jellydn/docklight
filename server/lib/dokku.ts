@@ -210,12 +210,15 @@ export const DokkuCommands: DokkuCommands = {
 	dbList: (plugin: string): string => `dokku ${plugin}:list`,
 	dbLinks: (plugin: string, name: string): string => `dokku ${plugin}:links ${name}`,
 	dbCreate: (plugin: string, name: string): string => `dokku ${plugin}:create ${name}`,
-	dbLink: (plugin: string, name: string, app: string): string => `dokku ${plugin}:link ${name} ${app}`,
-	dbUnlink: (plugin: string, name: string, app: string): string => `dokku ${plugin}:unlink ${name} ${app}`,
+	dbLink: (plugin: string, name: string, app: string): string =>
+		`dokku ${plugin}:link ${name} ${app}`,
+	dbUnlink: (plugin: string, name: string, app: string): string =>
+		`dokku ${plugin}:unlink ${name} ${app}`,
 	dbDestroy: (plugin: string, name: string): string => `dokku ${plugin}:destroy ${name} --force`,
 
 	// Logs
-	logsFollow: (app: string, lines: number): string => `dokku logs ${shellQuote(app)} -t -n ${lines}`,
+	logsFollow: (app: string, lines: number): string =>
+		`dokku logs ${shellQuote(app)} -t -n ${lines}`,
 };
 
 /**
