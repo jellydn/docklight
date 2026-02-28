@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./client/public/logo.svg" alt="Docklight Logo" width="128" height="128">
+  <img src="./client/public/logo.svg" alt="Docklight logo" width="128" height="128">
 </p>
 
 # Docklight
@@ -7,8 +7,11 @@
 A minimal, self-hosted web UI for managing a single-node Dokku server.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
+![Node](https://img.shields.io/badge/Node-20%2B-339933?logo=node.js&logoColor=white)
+![Bun](https://img.shields.io/badge/Bun-1.x-000000?logo=bun&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 
-## Why
+## Motivation
 
 Dokku is powerful but CLI-driven. For solo developers and small teams:
 
@@ -19,153 +22,188 @@ Dokku is powerful but CLI-driven. For solo developers and small teams:
 
 Docklight fills the gap — a lightweight, self-hosted UI that wraps the Dokku CLI.
 
-## Architecture
+## Overview
+
+Dokku is powerful, but primarily CLI-driven. Docklight adds a lightweight web interface so you can manage apps, databases, domains, SSL, and operational visibility from one place.
+
+Architecture:
 
 ```
-Browser → React SPA → Express API → Shell Exec → Dokku CLI → Docker
+Browser -> React SPA -> Express API -> Shell Exec -> Dokku CLI -> Docker
 ```
 
-Runs on the same VPS as Dokku. No remote orchestration. No distributed complexity.
+Docklight is designed to run on the same VPS as Dokku.
 
-## Features
+## ✨ Features
 
-- **Dashboard** — List all apps with status, domains, last deploy. Server health (CPU/memory/disk).
-- **App Management** — Restart, rebuild, scale processes, view/edit config vars, manage domains.
-- **Live Logs** — Stream app logs in real time via WebSocket.
-- **Database Management** — List, create, link/unlink, destroy databases (Postgres, Redis, etc.).
-- **SSL Management** — Enable/renew Let's Encrypt certificates.
-- **Command Transparency** — Every action shows the exact CLI command, exit code, and output.
-- **Auth** — Single admin password, JWT session cookie.
+- Dashboard with app status, domains, last deploy, and server health.
+- App management: restart, rebuild, scale, config vars, and domains.
+- Live app logs over WebSocket.
+- Database management: list, create, link/unlink, destroy.
+- SSL management with Let's Encrypt.
+- Audit logs for command history and filtering.
+- Command transparency: exact CLI command, exit code, stdout/stderr.
+- Simple auth with admin password and JWT session.
 
-## Tech Stack
+## 🧱 Tech Stack
 
-| Layer    | Technology                        |
-| -------- | --------------------------------- |
-| Backend  | Node.js, Express, TypeScript      |
-| Frontend | React, Vite, Tailwind, TypeScript |
-| Database | SQLite (better-sqlite3)           |
-| Logs     | WebSocket (ws)                    |
-| Auth     | JWT (jsonwebtoken)                |
-| Deploy   | Docker, Dokku                     |
+| Layer      | Stack                                 |
+| ---------- | ------------------------------------- |
+| Backend    | Node.js, Express, TypeScript          |
+| Frontend   | React, Vite, Tailwind CSS, TypeScript |
+| Database   | SQLite (`better-sqlite3`)             |
+| Realtime   | WebSocket (`ws`)                      |
+| Auth       | JWT (`jsonwebtoken`)                  |
+| Deployment | Docker, Dokku                         |
 
-## Quick Start
+## 🚀 Getting Started
 
-### Deploy to Dokku (recommended)
+### Installation
+
+#### Deploy to Dokku (Recommended)
 
 ```bash
 # On your Dokku server
 dokku apps:create docklight
 dokku config:set docklight DOCKLIGHT_PASSWORD=your-secure-password
 
-# From your local machine (use your server IP)
+# From your local machine
 git remote add dokku dokku@<your-server-ip>:docklight
 git push dokku main
 ```
 
-📖 **[Full deployment guide →](docs/deployment.md)** — SSH keys, domains, HTTPS, persistent storage, troubleshooting.
+Full guide: [docs/deployment.md](docs/deployment.md)
 
-### Local Development
+#### From Source (Local Development)
 
 ```bash
 # Install dependencies
-cd server && bun install && cd ..
-cd client && bun install && cd ..
+cd server && bun install
+cd ../client && bun install
+cd ..
 
-# Set admin password
+# Required env
 export DOCKLIGHT_PASSWORD=dev
 
-# Start backend (port 3001)
+# Terminal 1
 cd server && bun run dev
 
-# Start frontend (port 5173, proxies /api to backend) — in another terminal
+# Terminal 2
 cd client && bun run dev
 ```
 
-Or with [just](https://github.com/casey/just):
+Or use `just`:
 
 ```bash
 just install
-just server-dev    # terminal 1
-just client-dev    # terminal 2
+just server-dev
+just client-dev
 ```
 
-### Environment Variables
-
-| Variable             | Required | Description                         |
-| -------------------- | -------- | ----------------------------------- |
-| `DOCKLIGHT_PASSWORD` | Yes      | Admin login password                |
-| `DOCKLIGHT_SECRET`   | No       | JWT signing secret (auto-generated) |
-| `DOCKLIGHT_DOKKU_SSH_TARGET` | No (recommended on Dokku deploy) | SSH target used to run Dokku commands (example: `dokku@<server-ip>`). For plugin install/enable/disable/uninstall, use a root SSH user (example: `root@<server-ip>`) or configure passwordless sudo. |
-| `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` | No | Optional dedicated SSH target for root-required commands (example: `root@<server-ip>`). Recommended when `DOCKLIGHT_DOKKU_SSH_TARGET` uses `dokku@...`. |
-| `DOCKLIGHT_DOKKU_SSH_KEY_PATH` | No | Private key path inside container for Dokku SSH (default ssh key lookup if unset) |
-| `DOCKLIGHT_DOKKU_SSH_OPTS` | No | Extra SSH options for Dokku command execution |
-| `PORT`               | No       | Server port (default: 3001)         |
-
-## Security
-
-Docklight runs shell commands on your server. For production use:
-
-- **Always** set a strong `DOCKLIGHT_PASSWORD`
-- **Always** use HTTPS (Let's Encrypt via Dokku)
-- Consider putting behind [Cloudflare Zero Trust](https://www.cloudflare.com/products/zero-trust/) or [Tailscale](https://tailscale.com/)
-- Commands are restricted to a predefined allowlist — no arbitrary shell execution
-
-> ⚠️ If Docklight crashes, you always have SSH as a fallback. This is a convenience layer, not your only access path.
-
-### Plugin Management Note
-
-Some Dokku plugin commands (`plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`) require root privileges to modify system-level files. These commands run with `sudo`.
-
-#### Why Root Access is Needed
-
-Plugin management commands write to directories like `/var/lib/dokku/plugins/` and may update system configurations. The `dokku` user doesn't have write permissions to these locations by default.
-
-#### Configuration Options
-
-**Option 1: Use a dedicated root SSH target (Recommended)**
-
-Set `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` to route root-required commands directly to root:
+## 🛠️ Build Commands
 
 ```bash
-dokku config:set docklight DOCKLIGHT_DOKKU_SSH_TARGET=dokku@<server-ip>
-dokku config:set docklight DOCKLIGHT_DOKKU_SSH_ROOT_TARGET=root@<server-ip>
-dokku config:set docklight DOCKLIGHT_DOKKU_SSH_KEY_PATH=/app/.ssh/id_ed25519
+# Show available commands
+just
+
+# Install dependencies
+just install
+
+# Run dev servers
+just server-dev
+just client-dev
+
+# Quality checks
+just lint
+just format
+just typecheck
+just test
+
+# Build
+just build
 ```
 
-This approach keeps normal commands running as the `dokku` user (more secure) while only elevating to root for plugin operations.
+## 🔧 Environment Variables
 
-**Option 2: Configure passwordless sudo**
+| Variable                          | Required                       | Description                                                                         |
+| --------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------- |
+| `DOCKLIGHT_PASSWORD`              | Yes                            | Admin login password                                                                |
+| `DOCKLIGHT_SECRET`                | No                             | JWT signing secret (auto-generated if unset)                                        |
+| `DOCKLIGHT_DOKKU_SSH_TARGET`      | No (recommended in production) | SSH target for Dokku commands, for example `dokku@<server-ip>`                      |
+| `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` | No                             | Optional root SSH target for root-required commands, for example `root@<server-ip>` |
+| `DOCKLIGHT_DOKKU_SSH_KEY_PATH`    | No                             | Private key path inside container                                                   |
+| `DOCKLIGHT_DOKKU_SSH_OPTS`        | No                             | Extra SSH options                                                                   |
+| `PORT`                            | No                             | Server port (default `3001`)                                                        |
 
-Allow the `dokku` user to run plugin commands without a password:
+## 🔒 Security Notes
 
-```bash
-# On your Dokku server, as root
-echo "dokku ALL=(ALL) NOPASSWD: /usr/local/bin/dokku plugin:*" | sudo tee /etc/sudoers.d/docklight
-sudo chmod 0440 /etc/sudoers.d/docklight
+Docklight executes Dokku commands on your server.
+
+- Always set a strong `DOCKLIGHT_PASSWORD`.
+- Always expose Docklight behind HTTPS.
+- Keep SSH fallback access to your server.
+- Command execution is restricted to an allowlist.
+
+### Plugin Management and Root Access
+
+Some plugin commands (`plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`) require root privileges.
+
+Recommended:
+
+- Set `DOCKLIGHT_DOKKU_SSH_TARGET` to `dokku@<server-ip>`
+- Set `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` to `root@<server-ip>`
+
+Alternative:
+
+- Configure passwordless sudo for plugin commands on the `dokku` user.
+
+Troubleshooting details:
+
+- [docs/deployment.md#plugin-management-sudo-errors](docs/deployment.md#plugin-management-sudo-errors)
+
+## 📦 Project Structure
+
+```text
+docklight/
+├── client/           # React + Vite frontend
+├── server/           # Express + TypeScript backend
+├── docs/             # Documentation (deployment, etc.)
+├── .github/workflows # CI/CD workflows
+└── justfile          # Task runner commands
 ```
 
-Then use `dokku@<server-ip>` for `DOCKLIGHT_DOKKU_SSH_TARGET`.
+## 🧪 Dokku Command Coverage
 
-#### Troubleshooting
+| Category  | Commands                                                                                                                                      |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Apps      | `apps:list`, `apps:create`, `apps:destroy`, `ps:report`, `ps:restart`, `ps:stop`, `ps:start`, `ps:rebuild`, `ps:scale`                        |
+| Config    | `config:show`, `config:set`, `config:unset`                                                                                                   |
+| Domains   | `domains:report`, `domains:add`, `domains:remove`                                                                                             |
+| Logs      | `logs <app> -t -n <lines>`                                                                                                                    |
+| Databases | `plugin:list`, `<plugin>:list`, `<plugin>:links`, `<plugin>:create`, `<plugin>:link`, `<plugin>:unlink`, `<plugin>:destroy`                   |
+| Plugins   | `plugin:list`, `plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`                                                        |
+| SSL       | `letsencrypt:report`, `letsencrypt:ls`, `certs:report`, `letsencrypt:set <app> email <email>`, `letsencrypt:enable`, `letsencrypt:auto-renew` |
 
-If plugin commands fail with errors like:
-- `sudo: no password was provided`
-- `sudo: a terminal is required to read the password`
-- `sorry, you must have a tty to run sudo`
+## 🤝 Contributing
 
-See the [deployment guide troubleshooting section](docs/deployment.md#plugin-management-sudo-errors).
+Contributions are welcome. Please read our contributing guidelines before submitting PRs.
 
-## Dokku Commands Coverage
+## 📜 License
 
-| Category  | Commands                                                                                   |
-| --------- | ------------------------------------------------------------------------------------------ |
-| Apps      | `apps:list`, `ps:report`, `ps:restart`, `ps:rebuild`, `ps:scale`                           |
-| Config    | `config:show`, `config:set`, `config:unset`                                                |
-| Domains   | `domains:report`, `domains:add`, `domains:remove`                                          |
-| Databases | `<plugin>:list`, `<plugin>:create`, `<plugin>:link`, `<plugin>:unlink`, `<plugin>:destroy` |
-| Plugins   | `plugin:list`, `plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`     |
-| SSL       | `letsencrypt:enable`, `letsencrypt:auto-renew`                                             |
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
-## License
+## Author
 
-MIT
+👤 **Dung Huynh**
+
+- Website: https://productsway.com
+- Twitter: [@jellydn](https://x.com/jellydn)
+- GitHub: [@jellydn](https://github.com/jellydn)
+
+## Show your support
+
+Give a ⭐ if this project helped you.
+
+- Ko-fi: https://ko-fi.com/jellydn
+- PayPal: https://www.paypal.com/paypalme/jellydn
+- Buy Me a Coffee: https://buymeacoffee.com/jellydn
