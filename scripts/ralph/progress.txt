@@ -1,151 +1,22 @@
 # Ralph Progress Log
-Started: Sat Feb 28 12:43:28 +08 2026
-## Sat Feb 28 2026 - US-004, US-005, US-006
-[Session: https://opncd.ai/s/5cfeab3c]
-- Implemented CreateAppDialog component (client/src/components/CreateAppDialog.tsx)
-- Added Create App button to Dashboard (client/src/pages/Dashboard.tsx)
-- Implemented inline validation for app name (regex: /^[a-z0-9-]+$/)
-- Added Next Steps view after app creation with git remote instructions
-- Added Copy button for git remote command
-- Added Go to App button that navigates to /apps/:name
-- Typecheck and lint pass
-- Files changed: client/src/components/CreateAppDialog.tsx, client/src/pages/Dashboard.tsx
-- **Learnings for future iterations:**
-  - Use CommandResultSchema from lib/schemas.ts when calling apiFetch for POST/PUT/DELETE operations
-  - Dialog can transition between different views (creation form -> next steps) by using state
-  - Reset dialog state when closing to avoid stale data on next open
+Started: Sat Feb 28 19:37:43 +08 2026
 ---
 
-## Sat Feb 28 2026 - US-001
-[Session: https://opncd.ai/s/5cfeab3c]
-- Implemented Create App API endpoint (server/lib/apps.ts, server/index.ts)
-- Added `createApp(name)` function that runs `dokku apps:create <name>`
-- Added POST /api/apps route that accepts { name: string }
-- Added name validation using existing isValidAppName()
-- Added cache clearing (clearPrefix('apps:')) after creation
-- Files changed: server/lib/apps.ts, server/index.ts
-- **Learnings for future iterations:**
-  - The codebase follows a consistent pattern: validation first, then executeCommand, then return result
-  - Cache clearing is important for consistency - always call clearPrefix('apps:') after app mutations
-  - Test failures are pre-existing (vi.mocked not a function issue) - not caused by this change
----
+## Codebase Patterns
+- Use native `<select>` elements for dropdowns (no custom Select component)
+- Toast only supports "success" or "error" types, not "warning"
+- Deployment settings API uses PUT /api/apps/:name/deployment
 
-## Sat Feb 28 2026 - US-002
-[Session: https://opncd.ai/s/5cfeab3c]
-- Implemented Destroy App API endpoint (server/lib/apps.ts, server/index.ts)
-- Added `destroyApp(name, confirmName)` function that runs `dokku apps:destroy <name> --force`
-- Added DELETE /api/apps/:name route that accepts { confirmName: string }
-- Added validation to ensure confirmName matches name before executing
-- Added cache clearing (clearPrefix('apps:')) after destruction
-- Files changed: server/lib/apps.ts, server/index.ts
-- **Learnings for future iterations:**
-  - The destroy endpoint requires typing the app name for confirmation - this is a safety feature
-  - The endpoint returns CommandResult which includes exitCode, stdout, stderr
-  - Typecheck and lint pass without issues
----
-
-## Sat Feb 28 2026 - US-003
-[Session: https://opncd.ai/s/5cfeab3c]
-- Implemented Stop and Start App API endpoints (server/lib/apps.ts, server/index.ts)
-- Added `stopApp(name)` function that runs `dokku ps:stop <name>`
-- Added `startApp(name)` function that runs `dokku ps:start <name>`
-- Added POST /api/apps/:name/stop route
-- Added POST /api/apps/:name/start route
-- Both endpoints validate app name with isValidAppName()
-- Both clear apps cache after each action
-- Files changed: server/lib/apps.ts, server/index.ts
-- **Learnings for future iterations:**
-  - Follow the same pattern as restartApp and rebuildApp for consistency
-  - Typecheck and lint pass
-  - Test failures are pre-existing (vi.mocked not a function issue)
----
-
-## Sat Feb 28 2026 - US-007
-[Session: https://opncd.ai/s/5cfeab3c]
-- Implemented Dedicated Apps listing page (client/src/pages/Apps.tsx)
-- Replaced Navigate redirect with full apps listing page
-- Shows table with Name, Status, Domains, Last Deploy columns
-- Added 'Create App' button in page header
-- App names link to /apps/:name detail page
-- Empty state with friendly message and CTA button to open CreateAppDialog
-- Loading spinner while fetching
-- Error state with message if API fails
-- Typecheck and lint pass
-- Files changed: client/src/pages/Apps.tsx, scripts/ralph/prd.json
-- **Learnings for future iterations:**
-  - Reused Dashboard pattern for apps table layout and styling
-  - Used same AppSchema and apiFetch patterns as Dashboard
-  - Test failures are pre-existing (document not defined issue in test environment)
-  - ChromeDevTools MCP not configured - skipped browser verification
----
-
-## Sat Feb 28 2026 - US-008
-[Session: https://opncd.ai/s/5cfeab3c]
-- Implemented Destroy App from App Detail page (client/src/pages/AppDetail.tsx)
-- Added Danger Zone section at bottom of Overview tab with red border styling
-- Delete App button opens confirmation dialog requiring type-to-confirm
-- Delete button disabled until typed name matches exactly
-- On success, navigates to /apps and shows success toast
-- On error, shows error message in the dialog
-- Typecheck and lint pass
-- Files changed: client/src/pages/AppDetail.tsx
-- **Learnings for future iterations:**
-  - Reused existing dialog patterns in AppDetail.tsx (actionDialog, scaleDialog, removeDialog)
-  - Used navigate hook from react-router-dom for navigation after deletion
-  - Used existing ToastProvider for success/error notifications
-  - Pre-existing test failures in client tests (document not defined)
----
-
-## Sat Feb 28 2026 - US-009
-[Session: https://opncd.ai/s/5cfeab3c]
-- Implemented Stop and Start controls on App Detail page (client/src/pages/AppDetail.tsx)
-- Added 'Stop' button visible when app status is 'running' with orange styling
-- Added 'Start' button visible when app status is 'stopped' with green styling
-- Added confirmation dialog for Stop action before executing
-- Buttons call POST /api/apps/:name/stop or /start respectively
-- Show loading state (Stopping.../Starting...) during the action
-- Refresh app detail after action completes
-- Show success/error toast notification using existing ToastProvider
-- Typecheck and lint pass
-- Files changed: client/src/pages/AppDetail.tsx
-- **Learnings for future iterations:**
-  - Reused existing dialog patterns (showDeleteDialog, confirmDeleteApp pattern) for consistency
-  - Stop confirmation dialog explains the app will not serve requests until started again
-  - ChromeDevTools MCP not configured - skipped browser verification
----
-
-## Sat Feb 28 2026 - US-010
-- Fixed CreateAppDialog Zod validation error on success (client/src/components/CreateAppDialog.tsx, client/src/lib/schemas.ts)
-- Added CreateAppResultSchema in schemas.ts (z.object({ success: z.boolean(), name: z.string() }))
-- Updated CreateAppDialog to use CreateAppResultSchema instead of CommandResultSchema for POST /api/apps call
-- Typecheck and lint pass
-- Files changed: client/src/components/CreateAppDialog.tsx, client/src/lib/schemas.ts, scripts/ralph/prd.json
-- **Learnings for future iterations:**
-  - POST /api/apps returns { success, name } but other endpoints return CommandResult - need different schemas
-  - ChromeDevTools MCP not configured - skipped browser verification
----
-
-## Sat Feb 28 2026 - US-011
-[Session: https://opncd.ai/s/5cfeab3c]
-- Fixed unconditional cache clearing on destroy/stop/start endpoints (server/index.ts)
-- DELETE /api/apps/:name now only calls clearPrefix('apps:') when result.exitCode === 0
-- POST /api/apps/:name/stop now only calls clearPrefix('apps:') when result.exitCode === 0
-- POST /api/apps/:name/start now only calls clearPrefix('apps:') when result.exitCode === 0
-- On failure, returns appropriate HTTP status code (400-599) and error response
-- Typecheck and lint pass
-- Files changed: server/index.ts
-- **Learnings for future iterations:**
-  - Follow same pattern as POST /api/apps (create app) endpoint for consistency
-  - Use exitCode >= 400 && exitCode < 600 to determine if it's an HTTP error code
-  - Pre-existing test failures (vi.mocked not a function issue) - not caused by this change
----
-
-## Sat Feb 28 2026 - US-012
-[Session: https://opncd.ai/s/5cfeab3c]
-- Fixed copy button to copy full git remote command (client/src/components/CreateAppDialog.tsx)
-- Copy button now copies 'git remote add dokku dokku@<host>:<app>' instead of just 'dokku@<host>:<app>'
-- Typecheck and lint pass
-- Files changed: client/src/components/CreateAppDialog.tsx
-- **Learnings for future iterations:**
-  - ChromeDevTools MCP not configured - skipped browser verification
+## 2026-02-28 20:15 +08 - US-014
+[Session: ]
+- Implemented enhanced CreateAppDialog with collapsible Advanced Options section
+- Added deployment settings fields: Deploy Branch, Build Directory, Builder dropdown
+- On app creation, POST /api/apps is called first, then PUT /api/apps/:name/deployment for advanced settings
+- If advanced settings fail, app is still created but shows warning message and toast
+- Existing name-only flow works identically when advanced section is collapsed
+- Files changed: client/src/components/CreateAppDialog.tsx, scripts/ralph/prd.json
+- Typecheck: PASSED, Lint: PASSED, Tests: pre-existing failures unrelated to changes
+**Learnings for future iterations:**
+  - Test failures in this codebase are pre-existing environment issues (vi.mocked not available, document not defined in test env)
+  - Always run lint/format before committing as pre-commit hooks will fail
 ---

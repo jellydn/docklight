@@ -28,6 +28,30 @@ import { getAuditLogs, getRecentCommands } from "./lib/db.js";
 import { addDomain, getDomains, removeDomain } from "./lib/domains.js";
 import { logger } from "./lib/logger.js";
 import {
+	addPort,
+	clearPorts,
+	disableProxy,
+	enableProxy,
+	getPorts,
+	getProxyReport,
+	removePort,
+} from "./lib/ports.js";
+import { addBuildpack, clearBuildpacks, getBuildpacks, removeBuildpack } from "./lib/buildpacks.js";
+import {
+	addDockerOption,
+	clearDockerOptions,
+	getDockerOptions,
+	removeDockerOption,
+} from "./lib/docker-options.js";
+import { getNetworkReport, setNetworkProperty, clearNetworkProperty } from "./lib/network.js";
+import {
+	getDeploymentSettings,
+	setDeployBranch,
+	setBuildDir,
+	clearBuildDir,
+	setBuilder,
+} from "./lib/deployment.js";
+import {
 	disablePlugin,
 	enablePlugin,
 	getPlugins,
@@ -38,8 +62,22 @@ import { getServerHealth } from "./lib/server.js";
 import { enableSSL, getSSL, renewSSL } from "./lib/ssl.js";
 import { authRateLimiter } from "./lib/rate-limiter.js";
 import { setupLogStreaming } from "./lib/websocket.js";
+import type { CommandResult } from "./lib/executor.js";
 
 const app = express();
+
+type CommandResultLike =
+	| CommandResult
+	| { error: string; exitCode: number; command?: string; stdout?: string; stderr?: string };
+
+function handleCommandResult(res: express.Response, result: CommandResultLike): boolean {
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return false;
+	}
+	return true;
+}
 const PORT = process.env.PORT || 3001;
 const CLIENT_DIST = path.resolve(__dirname, "..", "..", "client", "dist");
 
@@ -270,6 +308,257 @@ app.delete("/api/apps/:name/domains/:domain", async (req, res) => {
 	const result = await removeDomain(name, domain);
 	clearPrefix("apps:");
 	res.json(result);
+});
+
+app.get("/api/apps/:name/ports", async (req, res) => {
+	const { name } = req.params;
+	const ports = await getPorts(name);
+	if (!Array.isArray(ports)) {
+		const statusCode = ports.exitCode >= 400 && ports.exitCode < 600 ? ports.exitCode : 500;
+		res.status(statusCode).json(ports);
+		return;
+	}
+	res.json({ ports });
+});
+
+app.post("/api/apps/:name/ports", async (req, res) => {
+	const { name } = req.params;
+	const { scheme, hostPort, containerPort } = req.body;
+
+	const result = await addPort(name, scheme, hostPort, containerPort);
+	if (!handleCommandResult(res, result)) return;
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/ports", async (req, res) => {
+	const { name } = req.params;
+	const { scheme, hostPort, containerPort } = req.body;
+
+	const result = await removePort(name, scheme, hostPort, containerPort);
+	if (!handleCommandResult(res, result)) return;
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/ports/all", async (req, res) => {
+	const { name } = req.params;
+	const result = await clearPorts(name);
+	if (!handleCommandResult(res, result)) return;
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.get("/api/apps/:name/proxy", async (req, res) => {
+	const { name } = req.params;
+	const proxyReport = await getProxyReport(name);
+	if ("error" in proxyReport) {
+		const statusCode =
+			proxyReport.exitCode >= 400 && proxyReport.exitCode < 600 ? proxyReport.exitCode : 500;
+		res.status(statusCode).json(proxyReport);
+		return;
+	}
+
+	res.json(proxyReport);
+});
+
+app.post("/api/apps/:name/proxy/enable", async (req, res) => {
+	const { name } = req.params;
+	const result = await enableProxy(name);
+	if (!handleCommandResult(res, result)) return;
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.post("/api/apps/:name/proxy/disable", async (req, res) => {
+	const { name } = req.params;
+	const result = await disableProxy(name);
+	if (!handleCommandResult(res, result)) return;
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.get("/api/apps/:name/buildpacks", async (req, res) => {
+	const { name } = req.params;
+	const buildpacks = await getBuildpacks(name);
+	if (!Array.isArray(buildpacks)) {
+		const statusCode =
+			buildpacks.exitCode >= 400 && buildpacks.exitCode < 600 ? buildpacks.exitCode : 500;
+		res.status(statusCode).json(buildpacks);
+		return;
+	}
+
+	res.json({ buildpacks });
+});
+
+app.post("/api/apps/:name/buildpacks", async (req, res) => {
+	const { name } = req.params;
+	const { url, index } = req.body;
+
+	const result = await addBuildpack(name, url, index);
+	if (!handleCommandResult(res, result)) return;
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/buildpacks", async (req, res) => {
+	const { name } = req.params;
+	const { url } = req.body;
+
+	const result = await removeBuildpack(name, url);
+	if (!handleCommandResult(res, result)) return;
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/buildpacks/all", async (req, res) => {
+	const { name } = req.params;
+	const result = await clearBuildpacks(name);
+	if (!handleCommandResult(res, result)) return;
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.get("/api/apps/:name/docker-options", async (req, res) => {
+	const { name } = req.params;
+	const dockerOptions = await getDockerOptions(name);
+	if ("error" in dockerOptions) {
+		const statusCode =
+			dockerOptions.exitCode >= 400 && dockerOptions.exitCode < 600 ? dockerOptions.exitCode : 500;
+		res.status(statusCode).json(dockerOptions);
+		return;
+	}
+
+	res.json(dockerOptions);
+});
+
+app.post("/api/apps/:name/docker-options", async (req, res) => {
+	const { name } = req.params;
+	const { phase, option } = req.body;
+
+	const result = await addDockerOption(name, phase, option);
+	if (!handleCommandResult(res, result)) return;
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/docker-options", async (req, res) => {
+	const { name } = req.params;
+	const { phase, option } = req.body;
+
+	const result = await removeDockerOption(name, phase, option);
+	if (!handleCommandResult(res, result)) return;
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/docker-options/all", async (req, res) => {
+	const { name } = req.params;
+	const { phase } = req.body;
+
+	const result = await clearDockerOptions(name, phase);
+	if (!handleCommandResult(res, result)) return;
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.get("/api/apps/:name/network", async (req, res) => {
+	const { name } = req.params;
+	const networkReport = await getNetworkReport(name);
+	if ("error" in networkReport) {
+		const statusCode =
+			networkReport.exitCode >= 400 && networkReport.exitCode < 600 ? networkReport.exitCode : 500;
+		res.status(statusCode).json(networkReport);
+		return;
+	}
+
+	res.json(networkReport);
+});
+
+app.put("/api/apps/:name/network", async (req, res) => {
+	const { name } = req.params;
+	const { key, value } = req.body;
+
+	const result = await setNetworkProperty(name, key, value ?? "");
+	if (!handleCommandResult(res, result)) return;
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/network", async (req, res) => {
+	const { name } = req.params;
+	const { key } = req.body;
+
+	const result = await clearNetworkProperty(name, key);
+	if (!handleCommandResult(res, result)) return;
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.get("/api/apps/:name/deployment", async (req, res) => {
+	const { name } = req.params;
+	const deploymentSettings = await getDeploymentSettings(name);
+	if ("error" in deploymentSettings) {
+		const statusCode =
+			deploymentSettings.exitCode >= 400 && deploymentSettings.exitCode < 600
+				? deploymentSettings.exitCode
+				: 500;
+		res.status(statusCode).json(deploymentSettings);
+		return;
+	}
+
+	res.json(deploymentSettings);
+});
+
+app.put("/api/apps/:name/deployment", async (req, res) => {
+	const { name } = req.params;
+	const { deployBranch, buildDir, builder } = req.body;
+	const promises: Promise<CommandResultLike>[] = [];
+
+	if (deployBranch !== undefined) {
+		promises.push(setDeployBranch(name, deployBranch));
+	}
+	if (buildDir !== undefined) {
+		promises.push(
+			buildDir === "" || buildDir === null ? clearBuildDir(name) : setBuildDir(name, buildDir)
+		);
+	}
+	if (builder !== undefined) {
+		promises.push(setBuilder(name, builder ?? ""));
+	}
+
+	if (promises.length === 0) {
+		res
+			.status(400)
+			.json({ error: "At least one of deployBranch, buildDir, or builder is required" });
+		return;
+	}
+
+	const results = await Promise.all(promises);
+	const firstError = results.find((r) => r.exitCode !== 0);
+
+	if (firstError) {
+		const statusCode =
+			firstError.exitCode >= 400 && firstError.exitCode < 600 ? firstError.exitCode : 500;
+		res.status(statusCode).json(firstError);
+		return;
+	}
+
+	clearPrefix("apps:");
+	res.json(results[results.length - 1]);
 });
 
 app.get("/api/databases", async (_req, res) => {

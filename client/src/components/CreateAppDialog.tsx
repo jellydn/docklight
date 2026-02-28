@@ -10,8 +10,9 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ToastProvider.js";
 import { apiFetch } from "../lib/api.js";
-import { CreateAppResultSchema } from "../lib/schemas.js";
+import { CommandResultSchema, CreateAppResultSchema } from "../lib/schemas.js";
 
 interface CreateAppDialogProps {
 	open: boolean;
@@ -26,7 +27,13 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [createdAppName, setCreatedAppName] = useState<string | null>(null);
+	const [showAdvanced, setShowAdvanced] = useState(false);
+	const [deployBranch, setDeployBranch] = useState("");
+	const [buildDir, setBuildDir] = useState("");
+	const [builder, setBuilder] = useState("");
+	const [advancedWarning, setAdvancedWarning] = useState<string | null>(null);
 	const navigate = useNavigate();
+	const { addToast } = useToast();
 
 	const hostname = typeof window !== "undefined" ? window.location.hostname : "";
 
@@ -45,6 +52,7 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 
 		setError(null);
 		setLoading(true);
+		setAdvancedWarning(null);
 
 		try {
 			await apiFetch("/apps", CreateAppResultSchema, {
@@ -53,6 +61,37 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 			});
 			setCreatedAppName(appName);
 			onCreated?.(appName);
+
+			if (deployBranch || buildDir || builder) {
+				try {
+					const result = await apiFetch(
+						`/apps/${encodeURIComponent(appName)}/deployment`,
+						CommandResultSchema,
+						{
+							method: "PUT",
+							body: JSON.stringify({
+								deployBranch: deployBranch || undefined,
+								buildDir: buildDir || undefined,
+								builder: builder || undefined,
+							}),
+						}
+					);
+
+					if (result.exitCode !== 0) {
+						throw new Error(result.stderr || "Failed to apply advanced settings");
+					}
+				} catch (advErr) {
+					const warningMsg =
+						advErr instanceof Error ? advErr.message : "Failed to apply advanced settings";
+					setAdvancedWarning(warningMsg);
+					addToast("error", "App created, but advanced settings failed", {
+						command: "",
+						exitCode: 1,
+						stdout: "",
+						stderr: warningMsg,
+					});
+				}
+			}
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to create app");
 		} finally {
@@ -89,6 +128,11 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 		setError(null);
 		setLoading(false);
 		setCreatedAppName(null);
+		setShowAdvanced(false);
+		setDeployBranch("");
+		setBuildDir("");
+		setBuilder("");
+		setAdvancedWarning(null);
 	};
 
 	return (
@@ -132,6 +176,70 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 								/>
 								{error && <p className="text-sm text-red-500">{error}</p>}
 							</div>
+
+							<div className="border-t pt-4">
+								<button
+									type="button"
+									onClick={() => setShowAdvanced(!showAdvanced)}
+									className="flex items-center text-sm text-gray-600 hover:text-gray-900"
+								>
+									<span className={`mr-2 transition-transform ${showAdvanced ? "rotate-90" : ""}`}>
+										▶
+									</span>
+									Advanced Options
+								</button>
+							</div>
+
+							{showAdvanced && (
+								<div className="space-y-4 pl-4 border-l-2 border-gray-200">
+									<div>
+										<label htmlFor="deploy-branch" className="block text-sm font-medium mb-1">
+											Deploy Branch
+										</label>
+										<Input
+											id="deploy-branch"
+											placeholder="main"
+											value={deployBranch}
+											onChange={(e) => setDeployBranch(e.target.value)}
+											disabled={loading}
+										/>
+									</div>
+
+									<div>
+										<label htmlFor="build-dir" className="block text-sm font-medium mb-1">
+											Build Directory
+										</label>
+										<Input
+											id="build-dir"
+											placeholder="e.g., apps/api"
+											value={buildDir}
+											onChange={(e) => setBuildDir(e.target.value)}
+											disabled={loading}
+										/>
+										<p className="mt-1 text-xs text-gray-500">
+											For monorepo: path to subdirectory (e.g., apps/api)
+										</p>
+									</div>
+
+									<div>
+										<label htmlFor="builder" className="block text-sm font-medium mb-1">
+											Builder
+										</label>
+										<select
+											id="builder"
+											value={builder}
+											onChange={(e) => setBuilder(e.target.value)}
+											disabled={loading}
+											className="w-full max-w-md border rounded px-3 py-2"
+										>
+											<option value="">Auto-detect</option>
+											<option value="herokuish">Herokuish</option>
+											<option value="dockerfile">Dockerfile</option>
+											<option value="pack">Cloud Native Buildpacks (pack)</option>
+										</select>
+									</div>
+								</div>
+							)}
 						</div>
 						<DialogFooter>
 							<Button variant="outline" onClick={handleClose} disabled={loading}>
@@ -148,6 +256,9 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 							<DialogTitle>App Created!</DialogTitle>
 							<DialogDescription>
 								Your app "{createdAppName}" has been created successfully.
+								{advancedWarning && (
+									<span className="block mt-2 text-amber-600">Warning: {advancedWarning}</span>
+								)}
 							</DialogDescription>
 						</DialogHeader>
 						<div className="grid gap-4 py-4">
