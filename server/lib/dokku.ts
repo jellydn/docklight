@@ -105,117 +105,117 @@ export interface DokkuCommands {
  */
 export const DokkuCommands: DokkuCommands = {
 	// Version
-	version: () => "dokku version",
+	version: (): string => "dokku version",
 
 	// Apps
-	appsList: () => "dokku apps:list",
-	appsListQuiet: () => "dokku --quiet apps:list",
-	appsCreate: (name: string) => `dokku apps:create ${name}`,
-	appsDestroy: (name: string) => `dokku apps:destroy ${name} --force`,
+	appsList: (): string => "dokku apps:list",
+	appsListQuiet: (): string => "dokku --quiet apps:list",
+	appsCreate: (name: string): string => `dokku apps:create ${name}`,
+	appsDestroy: (name: string): string => `dokku apps:destroy ${name} --force`,
 
 	// Process management
-	psReport: (app: string) => `dokku ps:report ${app}`,
-	psRestart: (app: string) => `dokku ps:restart ${app}`,
-	psStop: (app: string) => `dokku ps:stop ${app}`,
-	psStart: (app: string) => `dokku ps:start ${app}`,
-	psRebuild: (app: string) => `dokku ps:rebuild ${app}`,
-	psScale: (app: string, processType: string, count: number) =>
+	psReport: (app: string): string => `dokku ps:report ${app}`,
+	psRestart: (app: string): string => `dokku ps:restart ${app}`,
+	psStop: (app: string): string => `dokku ps:stop ${app}`,
+	psStart: (app: string): string => `dokku ps:start ${app}`,
+	psRebuild: (app: string): string => `dokku ps:rebuild ${app}`,
+	psScale: (app: string, processType: string, count: number): string =>
 		`dokku ps:scale ${app} ${processType}=${count}`,
 
 	// Domains
-	domainsReport: (app: string) => `dokku domains:report ${app}`,
-	domainsAdd: (app: string, domain: string) =>
+	domainsReport: (app: string): string => `dokku domains:report ${app}`,
+	domainsAdd: (app: string, domain: string): string =>
 		`dokku domains:add ${shellQuote(app)} ${shellQuote(domain)}`,
-	domainsRemove: (app: string, domain: string) =>
+	domainsRemove: (app: string, domain: string): string =>
 		`dokku domains:remove ${shellQuote(app)} ${shellQuote(domain)}`,
 
 	// Config
-	configShow: (app: string) => `dokku config:show ${app}`,
-	configSet: (app: string, key: string, value: string) =>
+	configShow: (app: string): string => `dokku config:show ${app}`,
+	configSet: (app: string, key: string, value: string): string =>
 		`dokku config:set ${shellQuote(app)} ${shellQuote(key)}=${shellQuote(value)}`,
-	configUnset: (app: string, key: string) => `dokku config:unset ${app} ${key}`,
+	configUnset: (app: string, key: string): string => `dokku config:unset ${app} ${key}`,
 
 	// Plugins
-	pluginList: () => "dokku plugin:list",
-	pluginInstall: (repo: string, name?: string) =>
+	pluginList: (): string => "dokku plugin:list",
+	pluginInstall: (repo: string, name?: string): string =>
 		name ? `dokku plugin:install ${repo} ${name}` : `dokku plugin:install ${repo}`,
-	pluginUninstall: (name: string) => `dokku plugin:uninstall ${name}`,
-	pluginEnable: (name: string) => `dokku plugin:enable ${name}`,
-	pluginDisable: (name: string) => `dokku plugin:disable ${name}`,
+	pluginUninstall: (name: string): string => `dokku plugin:uninstall ${name}`,
+	pluginEnable: (name: string): string => `dokku plugin:enable ${name}`,
+	pluginDisable: (name: string): string => `dokku plugin:disable ${name}`,
 
 	// Ports
-	portsReport: (app: string) => `dokku ports:report ${app}`,
-	portsAdd: (app: string, scheme: string, hostPort: number, containerPort: number) =>
+	portsReport: (app: string): string => `dokku ports:report ${app}`,
+	portsAdd: (app: string, scheme: string, hostPort: number, containerPort: number): string =>
 		`dokku ports:add ${app} ${scheme}:${hostPort}:${containerPort}`,
-	portsRemove: (app: string, scheme: string, hostPort: number, containerPort: number) =>
+	portsRemove: (app: string, scheme: string, hostPort: number, containerPort: number): string =>
 		`dokku ports:remove ${app} ${scheme}:${hostPort}:${containerPort}`,
-	portsClear: (app: string) => `dokku ports:clear ${app}`,
+	portsClear: (app: string): string => `dokku ports:clear ${app}`,
 
 	// Proxy
-	proxyReport: (app: string) => `dokku proxy:report ${app}`,
-	proxyEnable: (app: string) => `dokku proxy:enable ${app}`,
-	proxyDisable: (app: string) => `dokku proxy:disable ${app}`,
+	proxyReport: (app: string): string => `dokku proxy:report ${app}`,
+	proxyEnable: (app: string): string => `dokku proxy:enable ${app}`,
+	proxyDisable: (app: string): string => `dokku proxy:disable ${app}`,
 
 	// Buildpacks
-	buildpacksReport: (app: string) => `dokku buildpacks:report ${app}`,
-	buildpacksAdd: (app: string, url: string, index?: number) =>
+	buildpacksReport: (app: string): string => `dokku buildpacks:report ${app}`,
+	buildpacksAdd: (app: string, url: string, index?: number): string =>
 		// Buildpack index is 1-based, so 0 is invalid and should be treated as undefined
 		index !== undefined && index > 0
 			? `dokku buildpacks:add ${shellQuote(app)} --index ${index} ${shellQuote(url)}`
 			: `dokku buildpacks:add ${shellQuote(app)} ${shellQuote(url)}`,
-	buildpacksRemove: (app: string, url: string) =>
+	buildpacksRemove: (app: string, url: string): string =>
 		`dokku buildpacks:remove ${shellQuote(app)} ${shellQuote(url)}`,
-	buildpacksClear: (app: string) => `dokku buildpacks:clear ${shellQuote(app)}`,
+	buildpacksClear: (app: string): string => `dokku buildpacks:clear ${shellQuote(app)}`,
 
 	// Deployment - git
-	gitReport: (app: string) => `dokku git:report ${app}`,
-	gitSetDeployBranch: (app: string, branch: string) =>
+	gitReport: (app: string): string => `dokku git:report ${app}`,
+	gitSetDeployBranch: (app: string, branch: string): string =>
 		`dokku git:set ${shellQuote(app)} deploy-branch ${shellQuote(branch)}`,
 
 	// Deployment - builder
-	builderReport: (app: string) => `dokku builder:report ${app}`,
-	builderSetBuildDir: (app: string, dir: string) =>
+	builderReport: (app: string): string => `dokku builder:report ${app}`,
+	builderSetBuildDir: (app: string, dir: string): string =>
 		`dokku builder:set ${shellQuote(app)} build-dir ${shellQuote(dir)}`,
-	builderClearBuildDir: (app: string) => `dokku builder:set ${shellQuote(app)} build-dir`,
-	builderSetSelected: (app: string, builder: string) =>
+	builderClearBuildDir: (app: string): string => `dokku builder:set ${shellQuote(app)} build-dir`,
+	builderSetSelected: (app: string, builder: string): string =>
 		`dokku builder:set ${shellQuote(app)} selected ${shellQuote(builder)}`,
-	builderClearSelected: (app: string) => `dokku builder:set ${shellQuote(app)} selected`,
+	builderClearSelected: (app: string): string => `dokku builder:set ${shellQuote(app)} selected`,
 
 	// SSL / Let's Encrypt
-	letsencryptReport: (app: string) => `dokku letsencrypt:report ${app}`,
-	letsencryptLs: () => "dokku letsencrypt:ls",
-	letsencryptSetEmail: (app: string, email: string) =>
+	letsencryptReport: (app: string): string => `dokku letsencrypt:report ${app}`,
+	letsencryptLs: (): string => "dokku letsencrypt:ls",
+	letsencryptSetEmail: (app: string, email: string): string =>
 		`dokku letsencrypt:set ${shellQuote(app)} email ${shellQuote(email)}`,
-	letsencryptEnable: (app: string) => `dokku letsencrypt:enable ${app}`,
-	letsencryptAutoRenew: (app: string) => `dokku letsencrypt:auto-renew ${app}`,
-	certsReport: (app: string) => `dokku certs:report ${app}`,
+	letsencryptEnable: (app: string): string => `dokku letsencrypt:enable ${app}`,
+	letsencryptAutoRenew: (app: string): string => `dokku letsencrypt:auto-renew ${app}`,
+	certsReport: (app: string): string => `dokku certs:report ${app}`,
 
 	// Network
-	networkReport: (app: string) => `dokku network:report ${app}`,
-	networkSet: (app: string, key: string, value?: string) =>
+	networkReport: (app: string): string => `dokku network:report ${app}`,
+	networkSet: (app: string, key: string, value?: string): string =>
 		value !== undefined
 			? `dokku network:set ${shellQuote(app)} ${shellQuote(key)} ${shellQuote(value)}`
 			: `dokku network:set ${shellQuote(app)} ${shellQuote(key)}`,
 
 	// Docker options
-	dockerOptionsReport: (app: string) => `dokku docker-options:report ${app}`,
-	dockerOptionsAdd: (app: string, phase: string, option: string) =>
+	dockerOptionsReport: (app: string): string => `dokku docker-options:report ${app}`,
+	dockerOptionsAdd: (app: string, phase: string, option: string): string =>
 		`dokku docker-options:add ${shellQuote(app)} ${shellQuote(phase)} ${shellQuote(option)}`,
-	dockerOptionsRemove: (app: string, phase: string, option: string) =>
+	dockerOptionsRemove: (app: string, phase: string, option: string): string =>
 		`dokku docker-options:remove ${shellQuote(app)} ${shellQuote(phase)} ${shellQuote(option)}`,
-	dockerOptionsClear: (app: string, phase: string) =>
+	dockerOptionsClear: (app: string, phase: string): string =>
 		`dokku docker-options:clear ${shellQuote(app)} ${shellQuote(phase)}`,
 
 	// Database (dynamic plugin name)
-	dbList: (plugin: string) => `dokku ${plugin}:list`,
-	dbLinks: (plugin: string, name: string) => `dokku ${plugin}:links ${name}`,
-	dbCreate: (plugin: string, name: string) => `dokku ${plugin}:create ${name}`,
-	dbLink: (plugin: string, name: string, app: string) => `dokku ${plugin}:link ${name} ${app}`,
-	dbUnlink: (plugin: string, name: string, app: string) => `dokku ${plugin}:unlink ${name} ${app}`,
-	dbDestroy: (plugin: string, name: string) => `dokku ${plugin}:destroy ${name} --force`,
+	dbList: (plugin: string): string => `dokku ${plugin}:list`,
+	dbLinks: (plugin: string, name: string): string => `dokku ${plugin}:links ${name}`,
+	dbCreate: (plugin: string, name: string): string => `dokku ${plugin}:create ${name}`,
+	dbLink: (plugin: string, name: string, app: string): string => `dokku ${plugin}:link ${name} ${app}`,
+	dbUnlink: (plugin: string, name: string, app: string): string => `dokku ${plugin}:unlink ${name} ${app}`,
+	dbDestroy: (plugin: string, name: string): string => `dokku ${plugin}:destroy ${name} --force`,
 
 	// Logs
-	logsFollow: (app: string, lines: number) => `dokku logs ${shellQuote(app)} -t -n ${lines}`,
+	logsFollow: (app: string, lines: number): string => `dokku logs ${shellQuote(app)} -t -n ${lines}`,
 };
 
 /**

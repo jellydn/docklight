@@ -7,6 +7,7 @@ import { isValidAppName } from "./apps.js";
 import { buildRuntimeCommand } from "./executor.js";
 import { logger } from "./logger.js";
 import { DokkuCommands } from "./dokku.js";
+import { isCommandAllowed } from "./allowlist.js";
 
 export function setupLogStreaming(server: http.Server) {
 	const wss = new WebSocketServer({
@@ -86,7 +87,13 @@ export function setupLogStreaming(server: http.Server) {
 			}
 		});
 
-		const command = buildRuntimeCommand(DokkuCommands.logsFollow(appName, lineCount));
+		const dokkuCommand = DokkuCommands.logsFollow(appName, lineCount);
+		if (!isCommandAllowed(dokkuCommand)) {
+			logger.error({ command: dokkuCommand }, "Rejected non-allowlisted log streaming command");
+			ws.close();
+			return;
+		}
+		const command = buildRuntimeCommand(dokkuCommand);
 		logProcess = spawn("sh", ["-lc", command]);
 
 		logProcess.stdout?.on("data", (data: Buffer) => {
