@@ -16,6 +16,7 @@ import {
 } from "../lib/schemas.js";
 
 type TabType = "overview" | "config" | "domains" | "logs" | "ssl";
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface ScaleChange {
 	processType: string;
@@ -69,6 +70,7 @@ export function AppDetail() {
 	const [sslStatus, setSslStatus] = useState<SSLStatus | null>(null);
 	const [sslLoading, setSslLoading] = useState(false);
 	const [sslError, setSslError] = useState<string | null>(null);
+	const [sslEmail, setSslEmail] = useState("");
 
 	// Log viewer state
 	const [logs, setLogs] = useState<string[]>([]);
@@ -536,16 +538,38 @@ export function AppDetail() {
 
 	const handleEnableSSL = async () => {
 		if (!name) return;
+		const normalizedEmail = sslEmail.trim();
+		if (normalizedEmail.length === 0) {
+			const errorResult: CommandResult = {
+				command: `dokku letsencrypt:set ${name} email <email>`,
+				exitCode: 1,
+				stdout: "",
+				stderr: "Email is required to enable Let's Encrypt",
+			};
+			addToast("error", "Failed to enable SSL", errorResult);
+			return;
+		}
+		if (!EMAIL_PATTERN.test(normalizedEmail)) {
+			const errorResult: CommandResult = {
+				command: `dokku letsencrypt:set ${name} email ${normalizedEmail}`,
+				exitCode: 1,
+				stdout: "",
+				stderr: "Invalid email address",
+			};
+			addToast("error", "Failed to enable SSL", errorResult);
+			return;
+		}
 
 		try {
 			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/ssl/enable`, CommandResultSchema, {
 				method: "POST",
+				body: JSON.stringify({ email: normalizedEmail }),
 			});
 			addToast(result.exitCode === 0 ? "success" : "error", "SSL enabled", result);
 			fetchSSLStatus();
 		} catch (err) {
 			const errorResult: CommandResult = {
-				command: `dokku letsencrypt:enable ${name}`,
+				command: `dokku letsencrypt:set ${name} email ${normalizedEmail} && dokku letsencrypt:enable ${name}`,
 				exitCode: 1,
 				stdout: "",
 				stderr: err instanceof Error ? err.message : "Failed to enable SSL",
@@ -1244,12 +1268,30 @@ export function AppDetail() {
 										Renew Certificate
 									</button>
 								) : (
-									<button
-										onClick={handleEnableSSL}
-										className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-									>
-										Enable Let's Encrypt
-									</button>
+									<div className="space-y-3">
+										<div>
+											<label
+												htmlFor="ssl-email"
+												className="block text-sm font-medium text-gray-700 mb-1"
+											>
+												Let's Encrypt Email
+											</label>
+											<input
+												id="ssl-email"
+												type="email"
+												value={sslEmail}
+												onChange={(event) => setSslEmail(event.target.value)}
+												placeholder="you@example.com"
+												className="w-full max-w-md px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+											/>
+										</div>
+										<button
+											onClick={handleEnableSSL}
+											className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+										>
+											Enable Let's Encrypt
+										</button>
+									</div>
 								)}
 							</div>
 						</div>
