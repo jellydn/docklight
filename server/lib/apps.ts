@@ -1,5 +1,6 @@
 import { type CommandResult, executeCommand } from "./executor.js";
 import { stripAnsi } from "./ansi.js";
+import { DokkuCommands } from "./dokku.js";
 
 export interface App {
 	name: string;
@@ -41,7 +42,7 @@ export async function getApps(): Promise<
 	App[] | { error: string; command: string; exitCode: number; stderr: string }
 > {
 	try {
-		const listCommands = ["dokku --quiet apps:list", "dokku apps:list"];
+		const listCommands = [DokkuCommands.appsListQuiet(), DokkuCommands.appsList()];
 		let listResult: CommandResult | undefined;
 
 		for (const command of listCommands) {
@@ -54,10 +55,10 @@ export async function getApps(): Promise<
 
 		return {
 			error: "Failed to list apps",
-			command: listResult?.command || "dokku apps:list",
+			command: listResult?.command || DokkuCommands.appsList(),
 			exitCode: listResult?.exitCode || 1,
 			stderr: withRuntimeHint(
-				listResult?.command || "dokku apps:list",
+				listResult?.command || DokkuCommands.appsList(),
 				listResult?.stderr || UNKNOWN_ERROR
 			),
 		};
@@ -65,7 +66,7 @@ export async function getApps(): Promise<
 		const err = error as { message?: string };
 		return {
 			error: err.message || UNKNOWN_ERROR,
-			command: "dokku apps:list",
+			command: DokkuCommands.appsList(),
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -85,8 +86,8 @@ async function fetchAppDetails(stdout: string): Promise<App[]> {
 	return Promise.all(
 		appNames.map(async (appName) => {
 			const [psReportResult, domainsReportResult] = await Promise.all([
-				executeCommand(`dokku ps:report ${appName}`),
-				executeCommand(`dokku domains:report ${appName}`),
+				executeCommand(DokkuCommands.psReport(appName)),
+				executeCommand(DokkuCommands.domainsReport(appName)),
 			]);
 
 			return {
@@ -196,8 +197,8 @@ export async function getAppDetail(
 	}
 
 	try {
-		const psReportResult = await executeCommand(`dokku ps:report ${name}`);
-		const domainsReportResult = await executeCommand(`dokku domains:report ${name}`);
+		const psReportResult = await executeCommand(DokkuCommands.psReport(name));
+		const domainsReportResult = await executeCommand(DokkuCommands.domainsReport(name));
 
 		if (psReportResult.exitCode !== 0) {
 			return {
@@ -219,7 +220,7 @@ export async function getAppDetail(
 		const err = error as { message?: string };
 		return {
 			error: err.message || UNKNOWN_ERROR,
-			command: `dokku ps:report ${name}`,
+			command: DokkuCommands.psReport(name),
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -270,7 +271,7 @@ export async function createApp(
 		return createValidationError("create-app");
 	}
 
-	const result = await executeCommand(`dokku apps:create ${name}`);
+	const result = await executeCommand(DokkuCommands.appsCreate(name));
 	return result;
 }
 
@@ -291,7 +292,7 @@ export async function destroyApp(
 		};
 	}
 
-	const result = await executeCommand(`dokku apps:destroy ${name} --force`);
+	const result = await executeCommand(DokkuCommands.appsDestroy(name));
 	return result;
 }
 
@@ -302,7 +303,7 @@ export async function restartApp(
 		return createValidationError("restart-app");
 	}
 
-	return executeCommand(`dokku ps:restart ${name}`);
+	return executeCommand(DokkuCommands.psRestart(name));
 }
 
 export async function stopApp(
@@ -312,7 +313,7 @@ export async function stopApp(
 		return createValidationError("stop-app");
 	}
 
-	return executeCommand(`dokku ps:stop ${name}`);
+	return executeCommand(DokkuCommands.psStop(name));
 }
 
 export async function startApp(
@@ -322,7 +323,7 @@ export async function startApp(
 		return createValidationError("start-app");
 	}
 
-	return executeCommand(`dokku ps:start ${name}`);
+	return executeCommand(DokkuCommands.psStart(name));
 }
 
 export async function rebuildApp(
@@ -332,7 +333,7 @@ export async function rebuildApp(
 		return createValidationError("rebuild-app");
 	}
 
-	return executeCommand(`dokku ps:rebuild ${name}`);
+	return executeCommand(DokkuCommands.psRebuild(name));
 }
 
 export async function scaleApp(
@@ -364,5 +365,5 @@ export async function scaleApp(
 		};
 	}
 
-	return executeCommand(`dokku ps:scale ${name} ${processType}=${count}`);
+	return executeCommand(DokkuCommands.psScale(name, processType, count));
 }

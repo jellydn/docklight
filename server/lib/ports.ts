@@ -1,6 +1,7 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
+import { DokkuCommands } from "./dokku.js";
 
 export interface PortMapping {
 	scheme: string;
@@ -44,7 +45,7 @@ export async function getPorts(
 	}
 
 	try {
-		const result = await executeCommand(`dokku ports:report ${name}`);
+		const result = await executeCommand(DokkuCommands.portsReport(name));
 
 		if (result.exitCode !== 0) {
 			return {
@@ -80,7 +81,7 @@ export async function getPorts(
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku ports:report ${name}`,
+			command: DokkuCommands.portsReport(name),
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -113,12 +114,12 @@ export async function addPort(
 	}
 
 	try {
-		return executeCommand(`dokku ports:add ${name} ${scheme}:${hostPort}:${containerPort}`);
+		return executeCommand(DokkuCommands.portsAdd(name, scheme, hostPort, containerPort));
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku ports:add ${name} ${scheme}:${hostPort}:${containerPort}`,
+			command: DokkuCommands.portsAdd(name, scheme, hostPort, containerPort),
 			exitCode: 1,
 		};
 	}
@@ -150,12 +151,12 @@ export async function removePort(
 	}
 
 	try {
-		return executeCommand(`dokku ports:remove ${name} ${scheme}:${hostPort}:${containerPort}`);
+		return executeCommand(DokkuCommands.portsRemove(name, scheme, hostPort, containerPort));
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku ports:remove ${name} ${scheme}:${hostPort}:${containerPort}`,
+			command: DokkuCommands.portsRemove(name, scheme, hostPort, containerPort),
 			exitCode: 1,
 		};
 	}
@@ -169,12 +170,12 @@ export async function clearPorts(
 	}
 
 	try {
-		return executeCommand(`dokku ports:clear ${name}`);
+		return executeCommand(DokkuCommands.portsClear(name));
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku ports:clear ${name}`,
+			command: DokkuCommands.portsClear(name),
 			exitCode: 1,
 		};
 	}
@@ -198,7 +199,7 @@ export async function getProxyReport(
 	}
 
 	try {
-		const result = await executeCommand(`dokku proxy:report ${name}`);
+		const result = await executeCommand(DokkuCommands.proxyReport(name));
 
 		if (result.exitCode !== 0) {
 			return {
@@ -230,7 +231,7 @@ export async function getProxyReport(
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku proxy:report ${name}`,
+			command: DokkuCommands.proxyReport(name),
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -249,12 +250,12 @@ export async function enableProxy(
 	}
 
 	try {
-		return executeCommand(`dokku proxy:enable ${name}`);
+		return executeCommand(DokkuCommands.proxyEnable(name));
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku proxy:enable ${name}`,
+			command: DokkuCommands.proxyEnable(name),
 			exitCode: 1,
 		};
 	}
@@ -272,12 +273,12 @@ export async function disableProxy(
 	}
 
 	try {
-		return executeCommand(`dokku proxy:disable ${name}`);
+		return executeCommand(DokkuCommands.proxyDisable(name));
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku proxy:disable ${name}`,
+			command: DokkuCommands.proxyDisable(name),
 			exitCode: 1,
 		};
 	}

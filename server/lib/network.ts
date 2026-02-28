@@ -1,7 +1,7 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
-import { shellQuote } from "./shell.js";
+import { DokkuCommands } from "./dokku.js";
 
 export interface NetworkReport {
 	"attach-post-create": string;
@@ -52,7 +52,7 @@ export async function getNetworkReport(
 	}
 
 	try {
-		const result = await executeCommand(`dokku network:report ${name}`);
+		const result = await executeCommand(DokkuCommands.networkReport(name));
 
 		if (result.exitCode !== 0) {
 			return {
@@ -89,7 +89,7 @@ export async function getNetworkReport(
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku network:report ${name}`,
+			command: DokkuCommands.networkReport(name),
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -113,16 +113,14 @@ export async function setNetworkProperty(
 
 	try {
 		if (value === "") {
-			return executeCommand(`dokku network:set ${shellQuote(name)} ${shellQuote(key)}`);
+			return executeCommand(DokkuCommands.networkSet(name, key));
 		}
-		return executeCommand(
-			`dokku network:set ${shellQuote(name)} ${shellQuote(key)} ${shellQuote(value)}`
-		);
+		return executeCommand(DokkuCommands.networkSet(name, key, value));
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku network:set ${shellQuote(name)} ${shellQuote(key)} ${shellQuote(value)}`,
+			command: DokkuCommands.networkSet(name, key, value),
 			exitCode: 1,
 		};
 	}
@@ -143,12 +141,12 @@ export async function clearNetworkProperty(
 	}
 
 	try {
-		return executeCommand(`dokku network:set ${shellQuote(name)} ${shellQuote(key)}`);
+		return executeCommand(DokkuCommands.networkSet(name, key));
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku network:set ${shellQuote(name)} ${shellQuote(key)}`,
+			command: DokkuCommands.networkSet(name, key),
 			exitCode: 1,
 		};
 	}
