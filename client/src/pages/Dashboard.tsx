@@ -147,40 +147,42 @@ export function Dashboard() {
 						{apps.length === 0 ? (
 							<p className="text-gray-500">No apps found</p>
 						) : (
-							<table className="min-w-full">
-								<thead>
-									<tr className="border-b">
-										<th className="text-left py-2 px-4">Name</th>
-										<th className="text-left py-2 px-4">Status</th>
-										<th className="text-left py-2 px-4">Domains</th>
-										<th className="text-left py-2 px-4">Last Deploy</th>
-									</tr>
-								</thead>
-								<tbody>
-									{apps.map((app) => (
-										<tr key={app.name} className="border-b">
-											<td className="py-2 px-4">
-												<Link to={`/apps/${app.name}`} className="text-blue-600 hover:underline">
-													{app.name}
-												</Link>
-											</td>
-											<td className="py-2 px-4">{getStatusBadge(app.status)}</td>
-											<td className="py-2 px-4">
-												{app.domains.length > 0 ? (
-													<ul className="list-disc list-inside">
-														{app.domains.map((domain) => (
-															<li key={domain}>{domain}</li>
-														))}
-													</ul>
-												) : (
-													<span className="text-gray-400">-</span>
-												)}
-											</td>
-											<td className="py-2 px-4">{app.lastDeployTime || "-"}</td>
+							<div className="overflow-x-auto">
+								<table className="min-w-full">
+									<thead>
+										<tr className="border-b">
+											<th className="text-left py-2 px-4">Name</th>
+											<th className="text-left py-2 px-4">Status</th>
+											<th className="text-left py-2 px-4">Domains</th>
+											<th className="text-left py-2 px-4">Last Deploy</th>
 										</tr>
-									))}
-								</tbody>
-							</table>
+									</thead>
+									<tbody>
+										{apps.map((app) => (
+											<tr key={app.name} className="border-b">
+												<td className="py-2 px-4">
+													<Link to={`/apps/${app.name}`} className="text-blue-600 hover:underline">
+														{app.name}
+													</Link>
+												</td>
+												<td className="py-2 px-4">{getStatusBadge(app.status)}</td>
+												<td className="py-2 px-4">
+													{app.domains.length > 0 ? (
+														<ul className="list-disc list-inside">
+															{app.domains.map((domain) => (
+																<li key={domain}>{domain}</li>
+															))}
+														</ul>
+													) : (
+														<span className="text-gray-400">-</span>
+													)}
+												</td>
+												<td className="py-2 px-4">{app.lastDeployTime || "-"}</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
 						)}
 					</div>
 

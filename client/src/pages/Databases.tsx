@@ -314,7 +314,7 @@ export function Databases() {
 			{/* Create Database Form */}
 			<div className="bg-white rounded-lg shadow p-6 mb-6">
 				<h2 className="text-lg font-semibold mb-4">Create New Database</h2>
-				<div className="flex space-x-2">
+				<div className="flex flex-col sm:flex-row gap-2">
 					<select
 						value={newDbPlugin}
 						onChange={(e) => setNewDbPlugin(e.target.value)}
@@ -397,7 +397,7 @@ export function Databases() {
 									{/* Link App Form */}
 									{apps.length > 0 && (
 										<div className="mt-4 pt-4 border-t">
-											<div className="flex space-x-2">
+											<div className="flex flex-col sm:flex-row gap-2">
 												<span className="text-sm font-medium text-gray-700 self-center">
 													Link App:
 												</span>
