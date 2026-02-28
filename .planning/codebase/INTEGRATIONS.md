@@ -5,78 +5,113 @@
 ## APIs & External Services
 
 **Dokku CLI:**
-- Primary integration for app deployment management
-- CLI commands executed via shell (allowlist enforced)
-- SDK/Client: Direct shell execution via `server/lib/executor.ts`
-- Auth: Server must have SSH/sudo access to Dokku
+- What it's used for: Core functionality - manages Docker containers, apps, domains, SSL, databases
+- SDK/Client: None (direct shell execution via SSH)
+- Auth: SSH key-based authentication
+- Location: Remote server accessed via `node-ssh`
 
-**System Monitoring:**
-- System resource commands: `top`, `free`, `df`
-- Used for server health monitoring
-- Executed through same allowlisted command pattern
+**SSH Protocol:**
+- What it's used for: Secure remote command execution on Dokku server
+- SDK/Client: `node-ssh` 13.2.1
+- Auth: `DOCKLIGHT_DOKKU_SSH_TARGET`, `DOCKLIGHT_DOKKU_SSH_KEY_PATH`
+- Sudo support: Via `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` for privileged commands
 
 ## Data Storage
 
 **Databases:**
-- better-sqlite3 (embedded SQLite)
-- Connection: Local file-based (`server/data/commands.db`)
-- Client: Synchronous API with prepared statements
-- Purpose: Store recent command history (cache)
+- Type: SQLite (embedded)
+- Connection: `server/lib/db.ts` using `better-sqlite3`
+- Client: `better-sqlite3` 12.6.2 (synchronous API)
+- Purpose: Audit logging for command history
+- Location: `data/docklight.db` (generated, not committed)
 
 **File Storage:**
-- Local filesystem only
-- No external file storage services
+- Service: Local filesystem only
+- Location: `data/` directory for SQLite database
 
 **Caching:**
-- In-memory LRU cache (server/lib/cache.ts)
-- Time-based TTL for expensive operations (app lists, database lists)
+- Service: In-memory (Map-based with TTL)
+- Implementation: `server/lib/cache.ts`
+- TTL: 30000ms (configurable via `CACHE_TTL` env var)
+- Purpose: Reduce redundant Dokku commands
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Custom password-based authentication
-- Implementation: Cookie-based sessions with httpOnly
-- JWT tokens stored in secure cookies
-- Rate limiting on login endpoint (express-rate-limit)
+- Service: Custom JWT-based authentication
+- Implementation:
+  - Password-based login stored in `DOCKLIGHT_PASSWORD` env var
+  - JWT tokens signed with `DOCKLIGHT_SECRET`
+  - 24-hour token expiry
+  - httpOnly cookies for token storage
+  - Rate limiting: 5 attempts per 15-minute window
+
+**Security:**
+- Command allowlist in `server/lib/allowlist.ts`
+- Input validation via Zod schemas
+- Regex-based app name validation
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None (local logging only)
+- Service: None (logs only)
 
 **Logs:**
-- Pino structured logging (JSON format)
-- HTTP requests logged via pino-http middleware
-- Real-time log streaming via WebSocket (`server/lib/websocket.ts`)
+- Framework: Pino (structured JSON logging)
+- Config: `server/lib/logger.ts`
+- HTTP requests: Auto-logged via `pino-http` middleware
+- Log levels: info, warn, error (configurable via `LOG_LEVEL`)
+- Format: JSON in production, human-readable in development
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- GitHub Actions for CI/CD
-- Staging deployment via `.github/workflows/deploy-staging.yml`
+- Platform: Dokku (self-hosted PaaS)
+- Alternative: Heroku, Cloud66 (via `app.json`, `Procfile`)
 
 **CI Pipeline:**
-- `.github/workflows/ci.yml` - Typecheck, lint, and test on push/PR to main
-- Uses oven-sh/setup-bun@v2
-- Runs typecheck, lint, and test for both server and client in parallel
+- Service: GitHub Actions
+- Workflows:
+  - `.github/workflows/ci.yml` - Typecheck, lint, test on push/PR
+  - `.github/workflows/deploy-production.yml` - Production deployment
+  - `.github/workflows/deploy-staging.yml` - Staging deployment
+
+**Deployment Artifacts:**
+- `Dockerfile` - Multi-stage Docker build
+- `Procfile` - Process definitions for cloud platforms
+- `app.json` - Heroku/Cloud66 configuration
 
 ## Environment Configuration
 
 **Required env vars:**
+- `DOCKLIGHT_SECRET` - JWT signing secret (REQUIRED - warning if missing)
+- `DOCKLIGHT_PASSWORD` - Admin password (required for auth to work)
+
+**Optional env vars:**
+- `DOCKLIGHT_DOKKU_SSH_TARGET` - Default SSH user@host
+- `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` - Root SSH target for sudo commands
+- `DOCKLIGHT_DOKKU_SSH_KEY_PATH` - Path to SSH private key
+- `DOCKLIGHT_DOKKU_SSH_OPTS` - Additional SSH options
+- `CACHE_TTL` - Cache TTL in milliseconds (default: 30000)
+- `LOG_LEVEL` - Logging level (default: "info")
 - `PORT` - Server port (default: 3001)
-- `DOKKU_PASSWORD` - Authentication password for web UI
+- `NODE_ENV` - Environment ("development" or "production")
 
 **Secrets location:**
-- Environment variables (not committed to git)
+- Environment variables (no secret management service)
+- httpOnly cookies for JWT tokens
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None
+- None (no webhook endpoints)
 
 **Outgoing:**
-- None
+- None (no outgoing webhooks)
+
+**Real-time:**
+- WebSocket server at `/api/apps/:name/logs/stream` for log streaming
+- Requires JWT authentication via cookie
 
 ---
-
 *Integration audit: 2026-02-28*

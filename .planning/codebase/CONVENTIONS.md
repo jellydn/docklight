@@ -5,69 +5,52 @@
 ## Naming Patterns
 
 **Files:**
-- kebab-case for regular files: `command-executor.ts`, `api-client.ts`
-- Test files: `.test.ts` (server) or `.test.tsx` (client) suffix
+- kebab-case (e.g., `command-executor.ts`, `dokku.ts`)
 
 **Functions:**
-- camelCase: `getApps`, `restartApp`, `isValidAppName`, `executeCommand`
+- camelCase (e.g., `getApps`, `executeCommand`, `isValidAppName`)
 
 **Variables:**
-- camelCase: `const appName`, `const exitCode`
-- Constants: SCREAMING_SNAKE_CASE for module-level exports
+- camelCase (e.g., `mockExecuteCommand`, `commandResult`)
 
-**Types:**
-- PascalCase for interfaces/types: `CommandResult`, `App`, `AppDetail`
-- Type unions: `type AllowedCommand = typeof ALLOWED_COMMANDS[number]`
+**Types/Interfaces:**
+- PascalCase (e.g., `CommandResult`, `SSHPool`, `AppDetail`)
+
+**Constants:**
+- SCREAMING_SNAKE_CASE (e.g., `ALLOWED_COMMANDS`, `WINDOW_MS`, `IDLE_TIMEOUT_MS`)
 
 ## Code Style
 
 **Formatting:**
-- Tool: Biome ^2.4.4
-- Config: `server/biome.json` (shared)
-- Indent: Tabs (displayed as 2 spaces)
-- Line width: 100 characters
-- Quotes: Double quotes
-- Semicolons: Always
-- Trailing commas: ES5
+- Tool: Biome
+- Settings: Tabs (2 spaces), Strings: double quotes, Trailing commas: es5, Line width: 100, Semicolons: always
 
 **Linting:**
-- Tool: Biome linter (recommended rules enabled)
-- Key rules:
-  - `useImportType`: Enforced (type-only imports)
-  - `noExplicitAny`: Off
-  - `useParseIntRadix`: Off
+- Tool: Biome
+- Rules: Recommended + suspicious.noExplicitAny(off), style.useImportType(on), style.useNodejsImportProtocol(off), correctness.useParseIntRadix(off)
 
 ## Import Organization
 
 **Order:**
-1. External imports (from node_modules)
-2. Internal imports (relative paths)
-3. Type imports (using `import type`)
+1. External dependencies (express, pino, node-ssh, etc.)
+2. Internal utilities (logger, executor, etc.)
+3. Types from other modules
 
 **Path Aliases:**
-- Client: `@/` points to `client/src/` (configured in vite.config.ts)
-- Server: `@/` points to `server/` (configured in vitest.config.ts)
-
-```typescript
-import express from "express"; // External
-import { executeCommand } from "./lib/executor.js"; // Internal
-import type { Request, Response } from "express"; // Type
-import { apiFetch } from "@/lib/api"; // With alias (client)
-```
-
-**Note:** Relative imports use `.js` extension even for TypeScript files (ES module requirement).
+- `@/` points to current directory (server/)
+- Used for import convenience: `import { logger } from "@/lib/logger.js";`
 
 ## Error Handling
 
 **Patterns:**
-- Never throw errors across API boundaries
-- Return error objects with `{ exitCode, stderr }` structure
-- Use try-catch for shell command execution
-- Validate inputs before executing commands
+- Use try-catch for async operations
+- Return error objects with exitCode, stderr, and context rather than throwing
+- Wrap errors with context: `logger.error({ err }, "Error message")`
+- Validation errors return 400 status with descriptive stderr messages
 
 ```typescript
 try {
-  const result = await execAsync(cmd, { timeout });
+  const result = await executeCommand(cmd);
   return { ...result, exitCode: 0 };
 } catch (error: unknown) {
   const err = error as { code?: number; message?: string };
@@ -77,48 +60,73 @@ try {
 
 ## Logging
 
-**Framework:** Pino (structured JSON logging)
+**Framework:** Pino (structured logging)
 
 **Patterns:**
-- Server: Import `logger` from `server/lib/logger.ts`
-- Client: Import `logger` from `client/src/lib/logger.ts`
-- Log errors with context: `logger.error({ err }, "Error message")`
-- HTTP requests logged automatically via pino-http middleware
+- Server uses `logger` from `server/lib/logger.ts`
+- Log errors with context: `logger.error({ err, command }, "Error message")`
+- HTTP requests automatically logged via pino-http middleware
+- Console transport in development, no transport in production
+- Log levels: info, warn, error
+
+```typescript
+logger.error(
+  {
+    err,
+    command,
+    path: req.path,
+  },
+  "Error message"
+);
+```
 
 ## Comments
 
 **When to Comment:**
-- Explain non-obvious business logic
-- Document command output parsing (Dokku output formats)
-- Note security considerations
-- JSDoc only for exported API functions
+- Document complex logic (e.g., command builders, SSH pool behavior)
+- Document public API with JSDoc tags (@description, @param, @returns)
+- Explain non-obvious error handling strategies
+- Document security-critical code (command allowlists, input validation)
 
 **JSDoc/TSDoc:**
-- Minimal usage in this codebase
-- Prefer self-documenting code with clear names
+- Use @description for function descriptions
+- Use @param for parameter documentation
+- Use @returns for return value documentation
+- Use @description for class/interface purposes
+- Comments use JSDoc format: `/** @description ... */`
 
 ## Function Design
 
-**Size:** Keep functions focused (typically < 50 lines)
+**Size:** Functions should be small and focused (typically < 50 lines)
+- Extract complex logic into helper functions
+- Keep single responsibility
 
 **Parameters:**
-- Use objects for multiple related parameters
-- Destructure in function signature for clarity
+- Explicit types for all parameters
+- Use interfaces for complex parameter objects
+- Optional parameters with default values where appropriate
 
 **Return Values:**
-- Always type return values explicitly
-- Return consistent error object structure
+- Simple values: direct return
+- Error scenarios: return error object with exitCode, stderr, and context
+- Async operations: Promise-based returns
+- Public functions often return union types of success/error patterns
 
 ## Module Design
 
 **Exports:**
-- Named exports for functions and utilities
-- Default export rarely used
+- Named exports for functions and constants
+- Default export for main entry point (server/index.ts)
+- Barrel files: Not used in this codebase
 
-**Barrel Files:**
-- Not currently used in this codebase
-- Each module imports directly from source files
+**Structure:**
+- lib/ directory contains reusable utilities
+- Each module has one public API (exports in module-level scope)
+- Type definitions co-located with their usage or in separate .d.ts files
+
+**Testing:**
+- Co-located test files (*.test.ts in same directory as source)
+- No separate test directories for server
 
 ---
-
 *Convention analysis: 2026-02-28*

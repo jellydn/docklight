@@ -5,191 +5,228 @@
 ## Test Framework
 
 **Runner:**
-- Vitest ^4.0.0
-- Config: `server/vitest.config.ts`, `client/vitest.config.ts` (implied)
+- Vitest (version 4.0.0)
+- Config: `/Users/huynhdung/src/tries/2026-02-28-jellydn-docklight-pr41/server/vitest.config.ts`
 
 **Assertion Library:**
-- Vitest's built-in expect (Chai-like)
+- Vitest built-in assertions (expect)
 
 **Run Commands:**
 ```bash
-# Server
-cd server
-bun test                 # Run all tests
-bun run test:watch       # Watch mode
-bun run test:coverage    # Run with coverage
-
-# Client
-cd client
-bun test                 # Run all tests
-bun run test:watch       # Watch mode
-bun run test:coverage    # Run with coverage
+bun run test                 # Run all tests
+bun run test:watch          # Watch mode
+bun run test:coverage        # Run with coverage
+vitest run lib/*.test.ts     # Single test file
+vitest run -t "test name"    # Single test by name
 ```
 
 ## Test File Organization
 
 **Location:**
-- Co-located with source files (same directory)
+- Co-located with source files (*.test.ts in same directory)
+- Example: `server/lib/apps.test.ts` for `server/lib/apps.ts`
 
 **Naming:**
-- `[filename].test.ts` for server tests
-- `[filename].test.tsx` for client component tests
+- Pattern: `{filename}.test.ts`
+- Example: `dokku.test.ts`, `executor.test.ts`, `apps.test.ts`
 
 **Structure:**
 ```
-server/
-  lib/
-    apps.ts
-    apps.test.ts
-    executor.ts
-    executor.test.ts (implied)
-
-client/src/
-  components/
-    AppLayout.tsx
-    AppLayout.test.tsx
+lib/
+├── apps.ts
+├── apps.test.ts
+├── dokku.ts
+├── dokku.test.ts
+├── executor.ts
+├── executor.test.ts
+└── ...
 ```
 
 ## Test Structure
 
 **Suite Organization:**
 ```typescript
-import { describe, it, expect, vi, beforeEach } from "vitest";
+describe("FunctionName", () => {
+  describe("Subcategory", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
 
-describe("functionName", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("should do something specific", () => {
-    // Arrange
-    const input = "test";
-
-    // Act
-    const result = functionName(input);
-
-    // Assert
-    expect(result).toBe(expected);
+    it("should handle specific scenario", () => {
+      // Arrange
+      // Act
+      // Assert
+    });
   });
 });
 ```
 
 **Patterns:**
-- Setup: Use `beforeEach` to clear mocks between tests
-- Mocking: `vi.mock()` at module level for dependencies
-- Assertions: Descriptive test names starting with "should"
+- **Setup**: beforeEach() calls vi.clearAllMocks() to reset mocks between tests
+- **Teardown**: afterEach() not used for cleanup (except for timing-related tests)
+- **Assertion**: Use expect().toBe(), expect().toEqual(), expect().resolves, etc.
 
 ## Mocking
 
-**Framework:** Vitest's built-in `vi` mock functions
+**Framework:** Vitest vi module
 
 **Patterns:**
 ```typescript
-// Mock module at top level
 vi.mock("./executor.js", () => ({
   executeCommand: vi.fn(),
 }));
 
-// Get mock reference in tests
 const mockExecuteCommand = executeCommand as ReturnType<typeof vi.fn>;
 
-// Mock return values
-mockExecuteCommand.mockResolvedValue({
+vi.mocked(mockExecuteCommand).mockResolvedValue({
   command: "dokku apps:list",
   exitCode: 0,
-  stdout: "my-app",
+  stdout: "my-app\nanother-app",
   stderr: "",
 });
 ```
 
 **What to Mock:**
-- Shell command execution (`executeCommand`)
-- External API calls (`apiFetch`)
-- Database operations
-- Logger
+- External dependencies (SSH, file system, database, process execution)
+- API calls to other modules
+- Dependencies that require complex setup or have side effects
 
 **What NOT to Mock:**
-- Pure utility functions
-- Data transformation logic
+- Pure functions (no external dependencies)
+- Simple utility functions
+- Helper functions without I/O
+- Pure logic that can be tested directly
 
 ## Fixtures and Factories
 
 **Test Data:**
-- Created inline in each test
-- No centralized fixture files
+```typescript
+const mockExecResult = { stdout: "app1\napp2", stderr: "", code: 0 };
+
+const mockApps: App[] = [
+  {
+    name: "my-app",
+    status: "running",
+    domains: ["my-app.example.com"],
+    lastDeployTime: "2024-01-15T10:30:00Z",
+  },
+];
+
+function makeExecResult(
+  stdout: string,
+  stderr: string,
+  code: number
+): CommandResult {
+  return { stdout, stderr, code, signal: null };
+}
+```
 
 **Location:**
-- Test data defined within test files
+- Defined inline near the tests that use them
+- Factory functions defined as helper functions in the test file
 
 ## Coverage
 
-**Requirements:** None enforced (coverage used for visibility)
+**Requirements:** No explicit coverage requirements documented
 
 **View Coverage:**
 ```bash
-bun run test:coverage    # Generates HTML report in coverage/
+bun run test:coverage    # Generates coverage report in coverage/ directory
 ```
 
-**Provider:** v8 (built-in Vitest coverage)
+**Configured Coverage:**
+```typescript
+coverage: {
+  provider: "v8",
+  reporter: ["text", "json", "html"],
+  include: ["lib/**/*.ts", "*.ts"],
+  exclude: ["node_modules/", "dist/", "**/*.test.ts"],
+}
+```
 
 ## Test Types
 
 **Unit Tests:**
-- Server lib functions: test business logic in isolation
-- Mock shell execution
-- Test error handling, validation, parsing
+- Scope: Individual functions and utilities
+- Approach: Mock external dependencies, test pure logic
+- Example: `apps.test.ts` tests validation functions, parsers
 
 **Integration Tests:**
-- API endpoint tests using Supertest (implied by devDependency)
-- Test request/response flow through Express
+- Scope: Module interactions, data flow
+- Approach: Partially mock dependencies, test integration paths
+- Example: `index.test.ts` tests API routes with mocked business logic
 
 **E2E Tests:**
-- Framework: Browser automation (`.agents/skills/dev-browser/`)
-- Snapshot testing for visual regression
+- Framework: Not used (no test suite for full user flows)
 
 ## Common Patterns
 
 **Async Testing:**
 ```typescript
-it("should handle async operations", async () => {
-  mockExecuteCommand.mockResolvedValue(expectedResult);
-  const result = await asyncFunction();
-  expect(result).toEqual(expected);
+it("should return apps on success", async () => {
+  mockExecuteCommand.mockResolvedValue({
+    command: "dokku --quiet apps:list",
+    exitCode: 0,
+    stdout: "app1\napp2",
+    stderr: "",
+  });
+
+  const result = await getApps();
+
+  expect(result).toEqual(["app1", "app2"]);
 });
 ```
 
 **Error Testing:**
 ```typescript
-it("should return error on failure", async () => {
+it("should return error on command failure", async () => {
   mockExecuteCommand.mockResolvedValue({
+    command: "dokku apps:list",
     exitCode: 1,
-    stderr: "Error message",
+    stdout: "",
+    stderr: "Permission denied",
   });
-  const result = await functionUnderTest();
+
+  const result = await getApps();
+
   expect(result).toEqual({
-    error: "Failed operation",
+    error: "Failed to list apps",
+    command: "dokku --quiet apps:list",
     exitCode: 1,
-    stderr: "Error message",
+    stderr: "Permission denied",
   });
 });
 ```
 
-**React Component Testing:**
+**Mock Setup Pattern:**
 ```typescript
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+const OLD_ENV = process.env;
 
-it("should render and respond to clicks", async () => {
-  const user = userEvent.setup();
-  render(<Component />);
-
-  expect(screen.getByText("Button")).toBeInTheDocument();
-
-  await user.click(screen.getByRole("button"));
-  expect(mockFunction).toHaveBeenCalled();
+beforeEach(() => {
+  vi.clearAllMocks();
+  process.env = { ...OLD_ENV, DOCKLIGHT_DOKKU_SSH_TARGET: "dokku@server" };
+  delete process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET;
+  delete process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH;
+  mockSshInstance.connect.mockResolvedValue(undefined);
+  mockSshInstance.isConnected.mockReturnValue(true);
+  sshPool.closeAll();
 });
+
+afterEach(() => {
+  process.env = OLD_ENV;
+  sshPool.closeAll();
+});
+```
+
+**Timing Testing:**
+```typescript
+vi.useFakeTimers();
+
+// Test with fake timers
+vi.advanceTimersByTime(1000);
+
+vi.useRealTimers();
 ```
 
 ---
-
 *Testing analysis: 2026-02-28*
