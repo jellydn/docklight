@@ -58,21 +58,20 @@ export async function getPorts(
 		const ports: PortMapping[] = [];
 		const lines = result.stdout.split("\n").map((line) => stripAnsi(line));
 
-		let inMappingsSection = false;
 		for (const line of lines) {
-			if (line.includes("Port mappings for")) {
-				inMappingsSection = true;
-				continue;
-			}
-			if (!inMappingsSection) continue;
-
-			const match = line.trim().match(/^(http|https|tcp):(\d+):(\d+)$/);
-			if (match) {
-				ports.push({
-					scheme: match[1],
-					hostPort: Number.parseInt(match[2], 10),
-					containerPort: Number.parseInt(match[3], 10),
-				});
+			const mapMatch = line.match(/port map:\s+(.+)/i);
+			if (mapMatch) {
+				const mappings = mapMatch[1].trim().split(/\s+/);
+				for (const mapping of mappings) {
+					const match = mapping.match(/^(http|https|tcp):(\d+):(\d+)$/);
+					if (match) {
+						ports.push({
+							scheme: match[1],
+							hostPort: Number.parseInt(match[2], 10),
+							containerPort: Number.parseInt(match[3], 10),
+						});
+					}
+				}
 			}
 		}
 
