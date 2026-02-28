@@ -283,4 +283,137 @@ describe("Plugins", () => {
 			expect(installButton).not.toBeDisabled();
 		});
 	});
+
+	describe("with submitting states", () => {
+		it("should disable install button during plugin installation", async () => {
+			const user = userEvent.setup();
+			apiFetchMock.mockImplementation((endpoint: string) => {
+				if (endpoint === "/plugins") return Promise.resolve(mockPlugins);
+				if (endpoint === "/plugins/install") return new Promise(() => {}); // Never resolves
+				return Promise.reject(new Error("Unknown endpoint"));
+			});
+
+			render(
+				<MemoryRouter>
+					<Plugins />
+				</MemoryRouter>
+			);
+
+			await waitFor(() => {
+				expect(screen.getByText("Install Plugin")).toBeInTheDocument();
+			});
+
+			const repoInput = screen.getByPlaceholderText("Repository URL or owner/repo");
+			await user.type(repoInput, "dokku/dokku-postgres");
+
+			const installButton = screen.getByText("Install").closest("button");
+			await user.click(installButton!);
+
+			await waitFor(() => {
+				expect(installButton).toBeDisabled();
+			});
+		});
+
+		it("should disable popular plugin buttons during installation", async () => {
+			const user = userEvent.setup();
+			apiFetchMock.mockImplementation((endpoint: string) => {
+				if (endpoint === "/plugins") return Promise.resolve(mockPlugins);
+				if (endpoint === "/plugins/install") return new Promise(() => {}); // Never resolves
+				return Promise.reject(new Error("Unknown endpoint"));
+			});
+
+			render(
+				<MemoryRouter>
+					<Plugins />
+				</MemoryRouter>
+			);
+
+			await waitFor(() => {
+				expect(screen.getByText("Postgres")).toBeInTheDocument();
+			});
+
+			const postgresButton = screen.getByText("Postgres").closest("button");
+			expect(postgresButton).not.toBeDisabled();
+
+			// Type in repo input first to enable install button
+			const repoInput = screen.getByPlaceholderText("Repository URL or owner/repo");
+			await user.type(repoInput, "dokku/dokku-postgres");
+
+			// Click install to start submission
+			const installButton = screen.getByText("Install").closest("button");
+			await user.click(installButton!);
+
+			await waitFor(() => {
+				expect(postgresButton).toBeDisabled();
+			});
+		});
+
+		it("should disable plugin action buttons during operation", async () => {
+			const user = userEvent.setup();
+			apiFetchMock.mockImplementation((endpoint: string) => {
+				if (endpoint === "/plugins") return Promise.resolve(mockPlugins);
+				if (endpoint.includes("/disable")) return new Promise(() => {}); // Never resolves
+				return Promise.reject(new Error("Unknown endpoint"));
+			});
+
+			render(
+				<MemoryRouter>
+					<Plugins />
+				</MemoryRouter>
+			);
+
+			await waitFor(() => {
+				expect(screen.getByText("dokku-postgres")).toBeInTheDocument();
+			});
+
+			const disableButtons = screen.getAllByText("Disable");
+			const targetButton = disableButtons[0].closest("button");
+			await user.click(targetButton!);
+
+			await waitFor(() => {
+				expect(targetButton).toBeDisabled();
+			});
+
+			// Only the active plugin row should be disabled.
+			expect(screen.getAllByText("Uninstall")[0].closest("button")).toBeDisabled();
+			expect(screen.getAllByText("Uninstall")[1].closest("button")).not.toBeDisabled();
+		});
+
+		it("should disable all buttons for specific plugin during its operation", async () => {
+			const user = userEvent.setup();
+			apiFetchMock.mockImplementation((endpoint: string) => {
+				if (endpoint === "/plugins") return Promise.resolve(mockPlugins);
+				if (endpoint.includes("/enable")) return new Promise(() => {}); // Never resolves
+				return Promise.reject(new Error("Unknown endpoint"));
+			});
+
+			render(
+				<MemoryRouter>
+					<Plugins />
+				</MemoryRouter>
+			);
+
+			await waitFor(() => {
+				expect(screen.getByText("dokku-redis")).toBeInTheDocument();
+			});
+
+			// Click enable on redis (which is disabled)
+			const enableButtons = screen.getAllByText("Enable");
+			const redisEnableButton = enableButtons[0].closest("button");
+			await user.click(redisEnableButton!);
+
+			await waitFor(() => {
+				expect(redisEnableButton).toBeDisabled();
+			});
+
+			// The uninstall button for the same plugin should also be disabled
+			const redisContainer = redisEnableButton!.closest("div.border.rounded.p-4");
+			const redisUninstallButton = screen
+				.getAllByText("Uninstall")
+				.find((btn) => redisContainer?.contains(btn.closest("button")));
+
+			expect(redisUninstallButton).toBeDefined();
+			expect(redisUninstallButton?.closest("button")).toBeDisabled();
+		});
+	});
 });
