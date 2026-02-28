@@ -313,7 +313,12 @@ app.delete("/api/apps/:name/domains/:domain", async (req, res) => {
 app.get("/api/apps/:name/ports", async (req, res) => {
 	const { name } = req.params;
 	const ports = await getPorts(name);
-	res.json(ports);
+	if (!Array.isArray(ports)) {
+		const statusCode = ports.exitCode >= 400 && ports.exitCode < 600 ? ports.exitCode : 500;
+		res.status(statusCode).json(ports);
+		return;
+	}
+	res.json({ ports });
 });
 
 app.post("/api/apps/:name/ports", async (req, res) => {
@@ -341,6 +346,8 @@ app.delete("/api/apps/:name/ports", async (req, res) => {
 app.delete("/api/apps/:name/ports/all", async (req, res) => {
 	const { name } = req.params;
 	const result = await clearPorts(name);
+	if (!handleCommandResult(res, result)) return;
+
 	clearPrefix("apps:");
 	res.json(result);
 });
@@ -348,12 +355,21 @@ app.delete("/api/apps/:name/ports/all", async (req, res) => {
 app.get("/api/apps/:name/proxy", async (req, res) => {
 	const { name } = req.params;
 	const proxyReport = await getProxyReport(name);
+	if ("error" in proxyReport) {
+		const statusCode =
+			proxyReport.exitCode >= 400 && proxyReport.exitCode < 600 ? proxyReport.exitCode : 500;
+		res.status(statusCode).json(proxyReport);
+		return;
+	}
+
 	res.json(proxyReport);
 });
 
 app.post("/api/apps/:name/proxy/enable", async (req, res) => {
 	const { name } = req.params;
 	const result = await enableProxy(name);
+	if (!handleCommandResult(res, result)) return;
+
 	clearPrefix("apps:");
 	res.json(result);
 });
@@ -361,6 +377,8 @@ app.post("/api/apps/:name/proxy/enable", async (req, res) => {
 app.post("/api/apps/:name/proxy/disable", async (req, res) => {
 	const { name } = req.params;
 	const result = await disableProxy(name);
+	if (!handleCommandResult(res, result)) return;
+
 	clearPrefix("apps:");
 	res.json(result);
 });
@@ -368,7 +386,14 @@ app.post("/api/apps/:name/proxy/disable", async (req, res) => {
 app.get("/api/apps/:name/buildpacks", async (req, res) => {
 	const { name } = req.params;
 	const buildpacks = await getBuildpacks(name);
-	res.json(buildpacks);
+	if (!Array.isArray(buildpacks)) {
+		const statusCode =
+			buildpacks.exitCode >= 400 && buildpacks.exitCode < 600 ? buildpacks.exitCode : 500;
+		res.status(statusCode).json(buildpacks);
+		return;
+	}
+
+	res.json({ buildpacks });
 });
 
 app.post("/api/apps/:name/buildpacks", async (req, res) => {
@@ -405,6 +430,13 @@ app.delete("/api/apps/:name/buildpacks/all", async (req, res) => {
 app.get("/api/apps/:name/docker-options", async (req, res) => {
 	const { name } = req.params;
 	const dockerOptions = await getDockerOptions(name);
+	if ("error" in dockerOptions) {
+		const statusCode =
+			dockerOptions.exitCode >= 400 && dockerOptions.exitCode < 600 ? dockerOptions.exitCode : 500;
+		res.status(statusCode).json(dockerOptions);
+		return;
+	}
+
 	res.json(dockerOptions);
 });
 
@@ -444,6 +476,13 @@ app.delete("/api/apps/:name/docker-options/all", async (req, res) => {
 app.get("/api/apps/:name/network", async (req, res) => {
 	const { name } = req.params;
 	const networkReport = await getNetworkReport(name);
+	if ("error" in networkReport) {
+		const statusCode =
+			networkReport.exitCode >= 400 && networkReport.exitCode < 600 ? networkReport.exitCode : 500;
+		res.status(statusCode).json(networkReport);
+		return;
+	}
+
 	res.json(networkReport);
 });
 
@@ -472,6 +511,15 @@ app.delete("/api/apps/:name/network", async (req, res) => {
 app.get("/api/apps/:name/deployment", async (req, res) => {
 	const { name } = req.params;
 	const deploymentSettings = await getDeploymentSettings(name);
+	if ("error" in deploymentSettings) {
+		const statusCode =
+			deploymentSettings.exitCode >= 400 && deploymentSettings.exitCode < 600
+				? deploymentSettings.exitCode
+				: 500;
+		res.status(statusCode).json(deploymentSettings);
+		return;
+	}
+
 	res.json(deploymentSettings);
 });
 

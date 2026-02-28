@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ToastProvider.js";
 import { apiFetch } from "../lib/api.js";
-import { CreateAppResultSchema, DeploymentSettingsSchema } from "../lib/schemas.js";
+import { CommandResultSchema, CreateAppResultSchema } from "../lib/schemas.js";
 
 interface CreateAppDialogProps {
 	open: boolean;
@@ -64,9 +64,9 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 
 			if (deployBranch || buildDir || builder) {
 				try {
-					await apiFetch(
+					const result = await apiFetch(
 						`/apps/${encodeURIComponent(appName)}/deployment`,
-						DeploymentSettingsSchema,
+						CommandResultSchema,
 						{
 							method: "PUT",
 							body: JSON.stringify({
@@ -76,6 +76,10 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 							}),
 						}
 					);
+
+					if (result.exitCode !== 0) {
+						throw new Error(result.stderr || "Failed to apply advanced settings");
+					}
 				} catch (advErr) {
 					const warningMsg =
 						advErr instanceof Error ? advErr.message : "Failed to apply advanced settings";

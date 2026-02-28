@@ -1,6 +1,7 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
+import { shellQuote, splitShellWords } from "./shell.js";
 
 export interface DockerOptions {
 	build: string[];
@@ -61,19 +62,19 @@ export async function getDockerOptions(
 		const lines = result.stdout.split("\n").map((line) => stripAnsi(line));
 
 		for (const line of lines) {
-			const buildMatch = line.match(/^Docker options \(build\):\s*(.*)$/i);
+			const buildMatch = line.match(/^Docker options build:\s*(.*)$/i);
 			if (buildMatch?.[1].trim()) {
-				dockerOptions.build = buildMatch[1].trim().split(/\s+/);
+				dockerOptions.build = splitShellWords(buildMatch[1].trim());
 			}
 
-			const deployMatch = line.match(/^Docker options \(deploy\):\s*(.*)$/i);
+			const deployMatch = line.match(/^Docker options deploy:\s*(.*)$/i);
 			if (deployMatch?.[1].trim()) {
-				dockerOptions.deploy = deployMatch[1].trim().split(/\s+/);
+				dockerOptions.deploy = splitShellWords(deployMatch[1].trim());
 			}
 
-			const runMatch = line.match(/^Docker options \(run\):\s*(.*)$/i);
+			const runMatch = line.match(/^Docker options run:\s*(.*)$/i);
 			if (runMatch?.[1].trim()) {
-				dockerOptions.run = runMatch[1].trim().split(/\s+/);
+				dockerOptions.run = splitShellWords(runMatch[1].trim());
 			}
 		}
 
@@ -108,12 +109,14 @@ export async function addDockerOption(
 	}
 
 	try {
-		return executeCommand(`dokku docker-options:add ${name} ${phase} "${option}"`);
+		return executeCommand(
+			`dokku docker-options:add ${shellQuote(name)} ${shellQuote(phase)} ${shellQuote(option)}`
+		);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku docker-options:add ${name} ${phase} "${option}"`,
+			command: `dokku docker-options:add ${shellQuote(name)} ${shellQuote(phase)} ${shellQuote(option)}`,
 			exitCode: 1,
 		};
 	}
@@ -138,12 +141,14 @@ export async function removeDockerOption(
 	}
 
 	try {
-		return executeCommand(`dokku docker-options:remove ${name} ${phase} "${option}"`);
+		return executeCommand(
+			`dokku docker-options:remove ${shellQuote(name)} ${shellQuote(phase)} ${shellQuote(option)}`
+		);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku docker-options:remove ${name} ${phase} "${option}"`,
+			command: `dokku docker-options:remove ${shellQuote(name)} ${shellQuote(phase)} ${shellQuote(option)}`,
 			exitCode: 1,
 		};
 	}
@@ -163,12 +168,12 @@ export async function clearDockerOptions(
 	}
 
 	try {
-		return executeCommand(`dokku docker-options:clear ${name} ${phase}`);
+		return executeCommand(`dokku docker-options:clear ${shellQuote(name)} ${shellQuote(phase)}`);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku docker-options:clear ${name} ${phase}`,
+			command: `dokku docker-options:clear ${shellQuote(name)} ${shellQuote(phase)}`,
 			exitCode: 1,
 		};
 	}

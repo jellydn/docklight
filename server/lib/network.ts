@@ -1,6 +1,7 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
+import { shellQuote } from "./shell.js";
 
 export interface NetworkReport {
 	"attach-post-create": string;
@@ -112,14 +113,16 @@ export async function setNetworkProperty(
 
 	try {
 		if (value === "") {
-			return executeCommand(`dokku network:set ${name} ${key}`);
+			return executeCommand(`dokku network:set ${shellQuote(name)} ${shellQuote(key)}`);
 		}
-		return executeCommand(`dokku network:set ${name} ${key} ${value}`);
+		return executeCommand(
+			`dokku network:set ${shellQuote(name)} ${shellQuote(key)} ${shellQuote(value)}`
+		);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku network:set ${name} ${key} ${value}`,
+			command: `dokku network:set ${shellQuote(name)} ${shellQuote(key)} ${shellQuote(value)}`,
 			exitCode: 1,
 		};
 	}
@@ -140,12 +143,12 @@ export async function clearNetworkProperty(
 	}
 
 	try {
-		return executeCommand(`dokku network:set ${name} ${key}`);
+		return executeCommand(`dokku network:set ${shellQuote(name)} ${shellQuote(key)}`);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku network:set ${name} ${key}`,
+			command: `dokku network:set ${shellQuote(name)} ${shellQuote(key)}`,
 			exitCode: 1,
 		};
 	}

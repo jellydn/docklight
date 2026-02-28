@@ -1,6 +1,7 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
+import { shellQuote } from "./shell.js";
 
 export interface DeploymentSettings {
 	deployBranch: string;
@@ -109,12 +110,12 @@ export async function setDeployBranch(
 	}
 
 	try {
-		return executeCommand(`dokku git:set ${name} deploy-branch ${branch}`);
+		return executeCommand(`dokku git:set ${shellQuote(name)} deploy-branch ${shellQuote(branch)}`);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku git:set ${name} deploy-branch ${branch}`,
+			command: `dokku git:set ${shellQuote(name)} deploy-branch ${shellQuote(branch)}`,
 			exitCode: 1,
 		};
 	}
@@ -130,14 +131,14 @@ export async function setBuildDir(
 
 	try {
 		if (dir === "") {
-			return executeCommand(`dokku builder:set ${name} build-dir`);
+			return executeCommand(`dokku builder:set ${shellQuote(name)} build-dir`);
 		}
-		return executeCommand(`dokku builder:set ${name} build-dir ${dir}`);
+		return executeCommand(`dokku builder:set ${shellQuote(name)} build-dir ${shellQuote(dir)}`);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku builder:set ${name} build-dir ${dir}`,
+			command: `dokku builder:set ${shellQuote(name)} build-dir ${shellQuote(dir)}`,
 			exitCode: 1,
 		};
 	}
@@ -151,12 +152,12 @@ export async function clearBuildDir(
 	}
 
 	try {
-		return executeCommand(`dokku builder:set ${name} build-dir`);
+		return executeCommand(`dokku builder:set ${shellQuote(name)} build-dir`);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku builder:set ${name} build-dir`,
+			command: `dokku builder:set ${shellQuote(name)} build-dir`,
 			exitCode: 1,
 		};
 	}
@@ -178,14 +179,14 @@ export async function setBuilder(
 
 	try {
 		if (builder === "") {
-			return executeCommand(`dokku builder:set ${name} selected`);
+			return executeCommand(`dokku builder:set ${shellQuote(name)} selected`);
 		}
-		return executeCommand(`dokku builder:set ${name} selected ${builder}`);
+		return executeCommand(`dokku builder:set ${shellQuote(name)} selected ${shellQuote(builder)}`);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku builder:set ${name} selected ${builder}`,
+			command: `dokku builder:set ${shellQuote(name)} selected ${shellQuote(builder)}`,
 			exitCode: 1,
 		};
 	}

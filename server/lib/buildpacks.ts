@@ -1,6 +1,7 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
+import { shellQuote } from "./shell.js";
 
 export interface Buildpack {
 	index: number;
@@ -82,16 +83,16 @@ export async function addBuildpack(
 	}
 
 	try {
-		let command = `dokku buildpacks:add ${name} ${url}`;
+		let command = `dokku buildpacks:add ${shellQuote(name)} ${shellQuote(url)}`;
 		if (index !== undefined && index > 0) {
-			command = `dokku buildpacks:add ${name} --index ${index} ${url}`;
+			command = `dokku buildpacks:add ${shellQuote(name)} --index ${index} ${shellQuote(url)}`;
 		}
 		return executeCommand(command);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku buildpacks:add ${name} ${url}`,
+			command: `dokku buildpacks:add ${shellQuote(name)} ${shellQuote(url)}`,
 			exitCode: 1,
 		};
 	}
@@ -110,12 +111,12 @@ export async function removeBuildpack(
 	}
 
 	try {
-		return executeCommand(`dokku buildpacks:remove ${name} ${url}`);
+		return executeCommand(`dokku buildpacks:remove ${shellQuote(name)} ${shellQuote(url)}`);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku buildpacks:remove ${name} ${url}`,
+			command: `dokku buildpacks:remove ${shellQuote(name)} ${shellQuote(url)}`,
 			exitCode: 1,
 		};
 	}
@@ -129,12 +130,12 @@ export async function clearBuildpacks(
 	}
 
 	try {
-		return executeCommand(`dokku buildpacks:clear ${name}`);
+		return executeCommand(`dokku buildpacks:clear ${shellQuote(name)}`);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: `dokku buildpacks:clear ${name}`,
+			command: `dokku buildpacks:clear ${shellQuote(name)}`,
 			exitCode: 1,
 		};
 	}
