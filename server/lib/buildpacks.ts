@@ -88,7 +88,7 @@ export async function addBuildpack(
 		const err = error as { message?: string };
 		return {
 			error: err.message || "Unknown error occurred",
-			command: DokkuCommands.buildpacksAdd(name, url),
+			command: DokkuCommands.buildpacksAdd(name, url, index),
 			exitCode: 1,
 		};
 	}

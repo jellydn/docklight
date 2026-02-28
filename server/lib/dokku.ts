@@ -27,13 +27,15 @@ export const DokkuCommands = {
 
 	// Domains
 	domainsReport: (app: string) => `dokku domains:report ${app}`,
-	domainsAdd: (app: string, domain: string) => `dokku domains:add ${app} ${domain}`,
-	domainsRemove: (app: string, domain: string) => `dokku domains:remove ${app} ${domain}`,
+	domainsAdd: (app: string, domain: string) =>
+		`dokku domains:add ${shellQuote(app)} ${shellQuote(domain)}`,
+	domainsRemove: (app: string, domain: string) =>
+		`dokku domains:remove ${shellQuote(app)} ${shellQuote(domain)}`,
 
 	// Config
 	configShow: (app: string) => `dokku config:show ${app}`,
 	configSet: (app: string, key: string, value: string) =>
-		`dokku config:set ${app} ${key}='${value}'`,
+		`dokku config:set ${shellQuote(app)} ${shellQuote(key)}=${shellQuote(value)}`,
 	configUnset: (app: string, key: string) => `dokku config:unset ${app} ${key}`,
 
 	// Plugins
@@ -85,7 +87,7 @@ export const DokkuCommands = {
 	letsencryptReport: (app: string) => `dokku letsencrypt:report ${app}`,
 	letsencryptLs: () => "dokku letsencrypt:ls",
 	letsencryptSetEmail: (app: string, email: string) =>
-		`dokku letsencrypt:set ${app} email ${email}`,
+		`dokku letsencrypt:set ${shellQuote(app)} email ${shellQuote(email)}`,
 	letsencryptEnable: (app: string) => `dokku letsencrypt:enable ${app}`,
 	letsencryptAutoRenew: (app: string) => `dokku letsencrypt:auto-renew ${app}`,
 	certsReport: (app: string) => `dokku certs:report ${app}`,
@@ -111,12 +113,11 @@ export const DokkuCommands = {
 	dbLinks: (plugin: string, name: string) => `dokku ${plugin}:links ${name}`,
 	dbCreate: (plugin: string, name: string) => `dokku ${plugin}:create ${name}`,
 	dbLink: (plugin: string, name: string, app: string) => `dokku ${plugin}:link ${name} ${app}`,
-	dbUnlink: (plugin: string, name: string, app: string) =>
-		`dokku ${plugin}:unlink ${name} ${app}`,
+	dbUnlink: (plugin: string, name: string, app: string) => `dokku ${plugin}:unlink ${name} ${app}`,
 	dbDestroy: (plugin: string, name: string) => `dokku ${plugin}:destroy ${name} --force`,
 
 	// Logs
-	logsFollow: (app: string, lines: number) => `dokku logs ${app} -t -n ${lines}`,
+	logsFollow: (app: string, lines: number) => `dokku logs ${shellQuote(app)} -t -n ${lines}`,
 };
 
 /**

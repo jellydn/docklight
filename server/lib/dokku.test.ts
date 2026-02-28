@@ -64,13 +64,13 @@ describe("DokkuCommands", () => {
 
 		it("domainsAdd returns domains:add command", () => {
 			expect(DokkuCommands.domainsAdd("my-app", "example.com")).toBe(
-				"dokku domains:add my-app example.com"
+				"dokku domains:add 'my-app' 'example.com'"
 			);
 		});
 
 		it("domainsRemove returns domains:remove command", () => {
 			expect(DokkuCommands.domainsRemove("my-app", "example.com")).toBe(
-				"dokku domains:remove my-app example.com"
+				"dokku domains:remove 'my-app' 'example.com'"
 			);
 		});
 	});
@@ -82,7 +82,7 @@ describe("DokkuCommands", () => {
 
 		it("configSet returns config:set command with quoted value", () => {
 			expect(DokkuCommands.configSet("my-app", "KEY", "value")).toBe(
-				"dokku config:set my-app KEY='value'"
+				"dokku config:set 'my-app' 'KEY'='value'"
 			);
 		});
 
@@ -234,7 +234,7 @@ describe("DokkuCommands", () => {
 
 		it("letsencryptSetEmail returns letsencrypt:set email command", () => {
 			expect(DokkuCommands.letsencryptSetEmail("my-app", "admin@example.com")).toBe(
-				"dokku letsencrypt:set my-app email admin@example.com"
+				"dokku letsencrypt:set 'my-app' email 'admin@example.com'"
 			);
 		});
 
@@ -331,7 +331,7 @@ describe("DokkuCommands", () => {
 
 	describe("logs", () => {
 		it("logsFollow returns logs command with tail and follow flags", () => {
-			expect(DokkuCommands.logsFollow("my-app", 100)).toBe("dokku logs my-app -t -n 100");
+			expect(DokkuCommands.logsFollow("my-app", 100)).toBe("dokku logs 'my-app' -t -n 100");
 		});
 	});
 });
