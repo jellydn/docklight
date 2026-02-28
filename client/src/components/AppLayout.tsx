@@ -24,18 +24,20 @@ export function AppLayout() {
 		<div className="flex min-h-screen bg-gray-100">
 			{/* Mobile overlay */}
 			{sidebarOpen && (
-				<div
+				<button
+					type="button"
 					className="fixed inset-0 z-20 bg-black bg-opacity-50 md:hidden"
 					onClick={closeSidebar}
-					aria-hidden="true"
+					aria-label="Close menu"
 				/>
 			)}
 
 			{/* Sidebar */}
 			<aside
 				className={`fixed inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:z-auto ${
-					sidebarOpen ? "translate-x-0" : "-translate-x-full"
+					sidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
 				}`}
+				aria-hidden={!sidebarOpen}
 			>
 				<div className="flex items-center justify-between p-4">
 					<h1 className="text-xl font-bold">Docklight</h1>

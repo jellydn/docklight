@@ -843,15 +843,15 @@ export function AppDetail() {
 							{Object.keys(configVars).length > 0 ? (
 								<div className="overflow-x-auto">
 									<table className="min-w-full divide-y divide-gray-200">
-									<thead>
-										<tr>
-											<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Key</th>
-											<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
-												Value
-											</th>
-											<th className="px-4 py-2"></th>
-										</tr>
-									</thead>
+										<thead>
+											<tr>
+												<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Key</th>
+												<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
+													Value
+												</th>
+												<th className="px-4 py-2"></th>
+											</tr>
+										</thead>
 									<tbody className="divide-y divide-gray-200">
 										{Object.entries(configVars).map(([key, value]) => (
 											<tr key={key}>
