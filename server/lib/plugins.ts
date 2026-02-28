@@ -154,17 +154,16 @@ async function executePluginCommand(
 	command: string,
 	sudoPassword?: string
 ): Promise<CommandResult | PluginInputError> {
+	const SUDO_ERROR_REGEX = /sudo: .*password|a terminal is required|sudo: sorry, you must have a tty|Root-required command cannot run/i;
 	const result = await executeCommandAsRoot(command, 30000, sudoPassword);
 
-	// Add helpful error message for sudo-related failures
-	if (
-		result.exitCode !== 0 &&
-		/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty|Root-required command cannot run/i.test(
-			result.stderr
-		)
-	) {
-		result.stderr +=
-			"\n\nPlugin commands require root access. See https://github.com/jellydn/docklight/blob/main/docs/deployment.md#plugin-management-sudo-errors";
+	if (result.exitCode !== 0 && SUDO_ERROR_REGEX.test(result.stderr)) {
+		return {
+			...result,
+			stderr:
+				result.stderr +
+				"\n\nPlugin commands require root access. See https://github.com/jellydn/docklight/blob/main/docs/deployment.md#plugin-management-sudo-errors",
+		};
 	}
 
 	return result;

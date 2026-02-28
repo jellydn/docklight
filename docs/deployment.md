@@ -68,25 +68,21 @@ dokku config:set docklight \
 
 ### Step 2.6: Configure root access for plugin management (recommended)
 
-Plugin management commands (`plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`) require root privileges. The recommended approach is to use a dedicated root SSH target for these commands.
+Plugin management commands (`plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`) require root privileges. The recommended approach is to authorize the same SSH key used for the `dokku` user to also work for the `root` user.
 
 ```bash
 ssh root@<your-server-ip>
 
-# Generate a dedicated key for root access (as root user)
-ssh-keygen -t ed25519 -N "" -f /root/.ssh/docklight_root
-
-# Authorize the key for root user
-cat /root/.ssh/docklight_root.pub >> /root/.ssh/authorized_keys
-
-# Mount private key into Docklight container
-dokku storage:mount docklight /root/.ssh/docklight_root:/app/.ssh/id_ed25519_root
+# Authorize the SSH key created for the 'dokku' user in Step 2.5 to also be used by the 'root' user.
+# This allows a single key to be used for both regular and root-privileged commands.
+sudo sh -c 'cat /home/dokku/.ssh/docklight.pub >> /root/.ssh/authorized_keys'
 
 # Configure Docklight to use root SSH target for plugin commands
 dokku config:set docklight DOCKLIGHT_DOKKU_SSH_ROOT_TARGET=root@<your-server-ip>
 ```
 
 With this configuration:
+
 - Normal commands (apps, config, logs, etc.) run as the `dokku` user via `DOCKLIGHT_DOKKU_SSH_TARGET`
 - Plugin commands run as root via `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET`
 
@@ -127,6 +123,7 @@ git push dokku main
 ```
 
 Dokku will:
+
 1. Detect the `Dockerfile`
 2. Build the multi-stage Docker image (client + server)
 3. Start the container
@@ -256,6 +253,7 @@ dokku logs docklight --num 100
 ```
 
 Common issues:
+
 - `DOCKLIGHT_PASSWORD` not set → `dokku config:set docklight DOCKLIGHT_PASSWORD=...`
 - `dokku: not found` in dashboard → configure Step 2.5 (Dokku SSH access)
 - Port conflict → Dokku handles port mapping automatically, no manual config needed
@@ -263,6 +261,7 @@ Common issues:
 ### Build fails
 
 Check Docker build logs during `git push`. Common causes:
+
 - npm install fails → check `package.json` for issues
 - TypeScript compilation fails → run `bun run typecheck` locally first
 
