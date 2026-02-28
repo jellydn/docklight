@@ -1,12 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { apiFetch } from "../lib/api.js";
 import { logger } from "../lib/logger.js";
+import { AuthMeSchema } from "../lib/schemas.js";
 
 export function AppLayout() {
 	const navigate = useNavigate();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const [isAdmin, setIsAdmin] = useState(false);
+
+	useEffect(() => {
+		const fetchMe = async () => {
+			try {
+				const data = await apiFetch("/auth/me", AuthMeSchema);
+				setIsAdmin(data.user?.role === "admin");
+			} catch {
+				// Not authenticated or legacy mode — no role info
+			}
+		};
+		fetchMe();
+	}, []);
 
 	const handleLogout = async () => {
 		try {
@@ -76,6 +90,15 @@ export function AppLayout() {
 					<Link to="/audit" className="block px-4 py-2 hover:bg-gray-800" onClick={closeSidebar}>
 						Audit Logs
 					</Link>
+					{isAdmin && (
+						<Link
+							to="/users"
+							className="block px-4 py-2 hover:bg-gray-800"
+							onClick={closeSidebar}
+						>
+							Users
+						</Link>
+					)}
 					<button
 						onClick={handleLogout}
 						className="w-full text-left px-4 py-2 hover:bg-gray-800 mt-4"

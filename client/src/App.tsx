@@ -9,6 +9,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Databases } from "./pages/Databases";
 import { Login } from "./pages/Login";
 import { Plugins } from "./pages/Plugins";
+import { Users } from "./pages/Users";
 
 function App() {
 	return (
@@ -24,6 +25,7 @@ function App() {
 						<Route path="databases" element={<Databases />} />
 						<Route path="plugins" element={<Plugins />} />
 						<Route path="audit" element={<Audit />} />
+						<Route path="users" element={<Users />} />
 					</Route>
 				</Routes>
 				<Toaster

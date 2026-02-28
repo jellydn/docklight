@@ -4,8 +4,10 @@ import { z } from "zod";
 import { apiFetch } from "../lib/api.js";
 
 export function Login() {
+	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
+	const [multiUser, setMultiUser] = useState<boolean | null>(null);
 	const navigate = useNavigate();
 
 	useEffect(() => {
@@ -16,6 +18,16 @@ export function Login() {
 			} catch {}
 		};
 		checkAuth();
+
+		const checkMode = async () => {
+			try {
+				const result = await apiFetch<{ multiUser: boolean }>("/auth/mode");
+				setMultiUser(result.multiUser);
+			} catch {
+				setMultiUser(false);
+			}
+		};
+		checkMode();
 	}, [navigate]);
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -23,13 +35,14 @@ export function Login() {
 		setError("");
 
 		try {
+			const body = multiUser ? { username, password } : { password };
 			await apiFetch("/auth/login", z.object({ success: z.literal(true) }), {
 				method: "POST",
-				body: JSON.stringify({ password }),
+				body: JSON.stringify(body),
 			});
 			navigate("/dashboard");
 		} catch (_err) {
-			setError("Invalid password");
+			setError(multiUser ? "Invalid credentials" : "Invalid password");
 		}
 	};
 
@@ -41,6 +54,22 @@ export function Login() {
 				</div>
 				<h1 className="text-2xl font-bold mb-6 text-center">Docklight Login</h1>
 				<form onSubmit={handleSubmit} className="space-y-4">
+					{multiUser && (
+						<div>
+							<label htmlFor="username" className="block text-sm font-medium mb-2">
+								Username
+							</label>
+							<input
+								id="username"
+								type="text"
+								value={username}
+								onChange={(e) => setUsername(e.target.value)}
+								className="w-full px-3 py-2 border rounded-md"
+								required
+								autoComplete="username"
+							/>
+						</div>
+					)}
 					<div>
 						<label htmlFor="password" className="block text-sm font-medium mb-2">
 							Password
@@ -52,6 +81,7 @@ export function Login() {
 							onChange={(e) => setPassword(e.target.value)}
 							className="w-full px-3 py-2 border rounded-md"
 							required
+							autoComplete="current-password"
 						/>
 					</div>
 					{error && <div className="text-red-600 text-sm">{error}</div>}

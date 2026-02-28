@@ -172,3 +172,29 @@ export const DeploymentSettingsSchema = z.object({
 });
 
 export type DeploymentSettings = z.infer<typeof DeploymentSettingsSchema>;
+
+// User role
+export const UserRoleSchema = z.enum(["admin", "operator", "viewer"]);
+export type UserRole = z.infer<typeof UserRoleSchema>;
+
+// User schema (safe, no password hash)
+export const UserSchema = z.object({
+	id: z.number(),
+	username: z.string(),
+	role: UserRoleSchema,
+	createdAt: z.string(),
+});
+
+export type User = z.infer<typeof UserSchema>;
+
+// Auth me response
+export const AuthMeSchema = z.object({
+	authenticated: z.literal(true),
+	user: z
+		.object({
+			id: z.number(),
+			username: z.string(),
+			role: UserRoleSchema,
+		})
+		.optional(),
+});
