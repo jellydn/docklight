@@ -3,6 +3,8 @@
 - Example: Always validate with `isValidAppName()` before executing commands
 - Example: Return error objects with { error, command, exitCode, stderr } for error cases
 - Example: Clear cache with `clearPrefix('apps:')` after mutations
+- Example: Validate phase parameter (build/deploy/run) in docker-options and similar modules
+- Example: Use optional chain (?.) when accessing regex match groups to satisfy lint
 
 # Ralph Progress Log
 Started: Sat Feb 28 18:28:47 +08 2026
@@ -198,4 +200,21 @@ Started: Sat Feb 28 18:28:47 +08 2026
   - Use stripAnsi() to clean CLI output
   - Cache clearing only happens on successful operations (exitCode === 0)
   - Buildpack index is 1-based in Dokku CLI output
+---
+
+## Sat Feb 28 2026 - US-004
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Docker Options management API endpoints (server/lib/docker-options.ts, server/index.ts)
+- Created getDockerOptions, addDockerOption, removeDockerOption, clearDockerOptions functions
+- Added routes: GET /api/apps/:name/docker-options, POST /api/apps/:name/docker-options, DELETE /api/apps/:name/docker-options, DELETE /api/apps/:name/docker-options/all
+- Validates phase is one of: build, deploy, run
+- Validates app name with isValidAppName()
+- Clear cache after mutations (only on success)
+- Typecheck and lint pass
+- Files changed: server/lib/docker-options.ts (new), server/index.ts
+- **Learnings for future iterations:**
+  - Follow same pattern as buildpacks.ts for consistency
+  - Use stripAnsi() to clean CLI output
+  - Use optional chain (?.) when accessing regex match groups to satisfy biome lint
+  - Docker options are space-separated in the CLI output
 

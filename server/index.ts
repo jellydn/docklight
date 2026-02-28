@@ -38,6 +38,12 @@ import {
 } from "./lib/ports.js";
 import { addBuildpack, clearBuildpacks, getBuildpacks, removeBuildpack } from "./lib/buildpacks.js";
 import {
+	addDockerOption,
+	clearDockerOptions,
+	getDockerOptions,
+	removeDockerOption,
+} from "./lib/docker-options.js";
+import {
 	disablePlugin,
 	enablePlugin,
 	getPlugins,
@@ -404,6 +410,85 @@ app.delete("/api/apps/:name/buildpacks", async (req, res) => {
 app.delete("/api/apps/:name/buildpacks/all", async (req, res) => {
 	const { name } = req.params;
 	const result = await clearBuildpacks(name);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.get("/api/apps/:name/docker-options", async (req, res) => {
+	const { name } = req.params;
+	const dockerOptions = await getDockerOptions(name);
+	res.json(dockerOptions);
+});
+
+app.post("/api/apps/:name/docker-options", async (req, res) => {
+	const { name } = req.params;
+	const { phase, option } = req.body;
+
+	if (!phase || typeof phase !== "string") {
+		res.status(400).json({ error: "Phase is required (build, deploy, or run)" });
+		return;
+	}
+
+	if (!option || typeof option !== "string") {
+		res.status(400).json({ error: "Docker option is required" });
+		return;
+	}
+
+	const result = await addDockerOption(name, phase, option);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/docker-options", async (req, res) => {
+	const { name } = req.params;
+	const { phase, option } = req.body;
+
+	if (!phase || typeof phase !== "string") {
+		res.status(400).json({ error: "Phase is required (build, deploy, or run)" });
+		return;
+	}
+
+	if (!option || typeof option !== "string") {
+		res.status(400).json({ error: "Docker option is required" });
+		return;
+	}
+
+	const result = await removeDockerOption(name, phase, option);
+
+	if (result.exitCode !== 0) {
+		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+		res.status(statusCode).json(result);
+		return;
+	}
+
+	clearPrefix("apps:");
+	res.json(result);
+});
+
+app.delete("/api/apps/:name/docker-options/all", async (req, res) => {
+	const { name } = req.params;
+	const { phase } = req.body;
+
+	if (!phase || typeof phase !== "string") {
+		res.status(400).json({ error: "Phase is required (build, deploy, or run)" });
+		return;
+	}
+
+	const result = await clearDockerOptions(name, phase);
 
 	if (result.exitCode !== 0) {
 		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
