@@ -34,11 +34,13 @@ vi.mock("node-ssh", () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 
+type MockExecResult = { stdout: string; stderr: string; code: number; signal: null };
+
 function makeExecResult(
 	stdout: string,
 	stderr: string,
 	code: number
-): { stdout: string; stderr: string; code: number; signal: null } {
+): MockExecResult {
 	return { stdout, stderr, code, signal: null };
 }
 

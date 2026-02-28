@@ -23,6 +23,29 @@ function shellQuote(value: string): string {
 	return `'${value.replace(/'/g, "'\"'\"'")}'`;
 }
 
+function buildSudoCommand(command: string, password?: string): string {
+	if (!password) {
+		return `sudo -n ${command}`;
+	}
+	const trimmed = password.trim();
+	if (trimmed === "") {
+		return `sudo -n ${command}`;
+	}
+	return `printf '%s\\n' ${shellQuote(trimmed)} | sudo -S -p '' ${command}`;
+}
+
+function getSshTarget(options?: ExecuteCommandOptions): string | undefined {
+	const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
+	const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
+	const shouldPreferRootTarget = options?.preferRootTarget !== false;
+	return options?.asRoot && shouldPreferRootTarget ? rootTarget || defaultTarget : defaultTarget;
+}
+
+function getErrorMessage(error: unknown): string {
+	const err = error as { message?: string };
+	return err.message || "Unknown error";
+}
+
 function getSshUser(target: string): string | null {
 	const atIndex = target.indexOf("@");
 	if (atIndex <= 0) return null;
@@ -59,12 +82,7 @@ function parseTarget(target: string): { host: string; username: string; port: nu
 
 // Builds the command to run on the remote host (without the SSH wrapper).
 function buildRemoteCommand(command: string, options?: ExecuteCommandOptions): string {
-	const trimmedPassword = options?.sudoPassword?.trim();
-	return options?.asRoot
-		? trimmedPassword
-			? `printf '%s\\n' ${shellQuote(trimmedPassword)} | sudo -S -p '' ${command}`
-			: `sudo -n ${command}`
-		: command;
+	return options?.asRoot ? buildSudoCommand(command, options?.sudoPassword) : command;
 }
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -135,17 +153,8 @@ export class SSHPool {
 export const sshPool = new SSHPool();
 
 export function buildRuntimeCommand(command: string, options?: ExecuteCommandOptions): string {
-	const trimmedPassword = options?.sudoPassword?.trim();
-	const baseCommand = options?.asRoot
-		? trimmedPassword
-			? `printf '%s\\n' ${shellQuote(trimmedPassword)} | sudo -S -p '' ${command}`
-			: `sudo -n ${command}`
-		: command;
-	const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
-	const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
-	const shouldPreferRootTarget = options?.preferRootTarget !== false;
-	const target =
-		options?.asRoot && shouldPreferRootTarget ? rootTarget || defaultTarget : defaultTarget;
+	const baseCommand = options?.asRoot ? buildSudoCommand(command, options?.sudoPassword) : command;
+	const target = getSshTarget(options);
 	if (!target || !command.startsWith("dokku ")) {
 		return baseCommand;
 	}
@@ -165,21 +174,21 @@ async function executeViaPool(
 	options?: ExecuteCommandOptions
 ): Promise<CommandResult> {
 	const keyPath = process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim() || undefined;
+	const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
+	const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
 	const remoteCommand = buildRemoteCommand(command, options);
 
 	let ssh: NodeSSH;
 	try {
 		ssh = await sshPool.getConnection(target, keyPath);
 	} catch (connError) {
-		const connErr = connError as { message?: string };
-		const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
-		const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
+		const connErrMessage = getErrorMessage(connError);
 		const isRootTargetAuthError =
 			options?.asRoot &&
 			options?.preferRootTarget !== false &&
 			Boolean(rootTarget) &&
 			Boolean(defaultTarget) &&
-			/auth|permission denied/i.test(connErr.message || "");
+			/auth|permission denied/i.test(connErrMessage);
 
 		if (isRootTargetAuthError) {
 			return executeCommand(command, timeout, {
@@ -194,12 +203,12 @@ async function executeViaPool(
 		try {
 			ssh = await sshPool.getConnection(target, keyPath);
 		} catch (retryError) {
-			const retryErr = retryError as { message?: string };
+			const retryErrMessage = getErrorMessage(retryError);
 			const result: CommandResult = {
 				command,
 				exitCode: 1,
 				stdout: "",
-				stderr: `SSH connection failed (initial: ${connErr.message}, retry: ${retryErr.message})`,
+				stderr: `SSH connection failed (initial: ${connErrMessage}, retry: ${retryErrMessage})`,
 			};
 			saveCommand(result);
 			return result;
@@ -218,12 +227,12 @@ async function executeViaPool(
 			),
 		]);
 	} catch (execError) {
-		const execErr = execError as { message?: string };
+		const execErrMessage = getErrorMessage(execError);
 		const result: CommandResult = {
 			command,
 			exitCode: 1,
 			stdout: "",
-			stderr: execErr.message || "SSH command execution failed",
+			stderr: execErrMessage || "SSH command execution failed",
 		};
 		saveCommand(result);
 		return result;
@@ -279,9 +288,7 @@ export async function executeCommand(
 	}
 
 	// Use the SSH pool when a target is configured and the command is a Dokku command.
-	const shouldPreferRootTarget = options?.preferRootTarget !== false;
-	const sshTarget =
-		options?.asRoot && shouldPreferRootTarget ? rootTarget || defaultTarget : defaultTarget;
+	const sshTarget = getSshTarget(options);
 	if (sshTarget && command.startsWith("dokku ")) {
 		return executeViaPool(command, sshTarget, timeout, options);
 	}
