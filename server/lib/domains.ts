@@ -1,8 +1,37 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
+import { stripAnsi } from "./ansi.js";
 
-function stripAnsi(value: string): string {
-	return value.replaceAll("\u001b", "").replace(/\[[0-9;]*m/g, "");
+interface ValidationError {
+	error: string;
+	command: string;
+	exitCode: number;
+}
+
+function createDomainError(message: string): ValidationError {
+	return {
+		error: message,
+		command: "",
+		exitCode: 400,
+	};
+}
+
+function isValidDomain(domain: string): boolean {
+	const sanitizedDomain = domain.trim();
+
+	if (!sanitizedDomain || sanitizedDomain.length === 0) {
+		return false;
+	}
+
+	if (!/^[a-zA-Z0-9.-]+$/.test(sanitizedDomain)) {
+		return false;
+	}
+
+	if (/[;&$()|<>`'"\\]/.test(sanitizedDomain)) {
+		return false;
+	}
+
+	return true;
 }
 
 export async function getDomains(
@@ -67,41 +96,17 @@ export async function addDomain(
 	domain: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
 	if (!isValidAppName(name)) {
-		return {
-			error: "Invalid app name",
-			command: "",
-			exitCode: 400,
-		};
+		return createDomainError("Invalid app name");
 	}
 
-	// Basic domain format validation and sanitization
+	if (!isValidDomain(domain)) {
+		const sanitizedDomain = domain.trim();
+		if (!sanitizedDomain) return createDomainError("Domain cannot be empty");
+		if (!/^[a-zA-Z0-9.-]+$/.test(sanitizedDomain)) return createDomainError("Invalid domain format");
+		return createDomainError("Domain contains invalid characters");
+	}
+
 	const sanitizedDomain = domain.trim();
-
-	if (!sanitizedDomain || sanitizedDomain.length === 0) {
-		return {
-			error: "Domain cannot be empty",
-			command: "",
-			exitCode: 400,
-		};
-	}
-
-	// Basic format check (allow letters, numbers, hyphens, and dots)
-	if (!/^[a-zA-Z0-9.-]+$/.test(sanitizedDomain)) {
-		return {
-			error: "Invalid domain format",
-			command: "",
-			exitCode: 400,
-		};
-	}
-
-	// No shell characters
-	if (/[;&$()|<>`'"\\]/.test(sanitizedDomain)) {
-		return {
-			error: "Domain contains invalid characters",
-			command: "",
-			exitCode: 400,
-		};
-	}
 
 	try {
 		return executeCommand(`dokku domains:add ${name} ${sanitizedDomain}`);
@@ -120,32 +125,17 @@ export async function removeDomain(
 	domain: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
 	if (!isValidAppName(name)) {
-		return {
-			error: "Invalid app name",
-			command: "",
-			exitCode: 400,
-		};
+		return createDomainError("Invalid app name");
 	}
 
-	// Basic domain format validation and sanitization
+	if (!isValidDomain(domain)) {
+		const sanitizedDomain = domain.trim();
+		if (!sanitizedDomain) return createDomainError("Domain cannot be empty");
+		if (!/^[a-zA-Z0-9.-]+$/.test(sanitizedDomain)) return createDomainError("Invalid domain format");
+		return createDomainError("Domain contains invalid characters");
+	}
+
 	const sanitizedDomain = domain.trim();
-
-	if (!sanitizedDomain || sanitizedDomain.length === 0) {
-		return {
-			error: "Domain cannot be empty",
-			command: "",
-			exitCode: 400,
-		};
-	}
-
-	// No shell characters
-	if (/[;&$()|<>`'"\\]/.test(sanitizedDomain)) {
-		return {
-			error: "Domain contains invalid characters",
-			command: "",
-			exitCode: 400,
-		};
-	}
 
 	try {
 		return executeCommand(`dokku domains:remove ${name} ${sanitizedDomain}`);

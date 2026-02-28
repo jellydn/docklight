@@ -1,4 +1,5 @@
 import { executeCommand, executeCommandAsRoot, type CommandResult } from "./executor.js";
+import { stripAnsi } from "./ansi.js";
 
 interface PluginInputError {
 	error: string;
@@ -31,13 +32,6 @@ function isSafeRepository(repository: string): boolean {
 
 function isSafePluginName(name: string): boolean {
 	return /^[a-zA-Z0-9._-]+$/.test(name);
-}
-
-function stripAnsi(value: string): string {
-	return value
-		.split("\u001b")
-		.join("")
-		.replace(/\[[0-9;]*m/g, "");
 }
 
 function parsePluginLine(line: string): PluginInfo | null {

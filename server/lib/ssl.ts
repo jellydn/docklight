@@ -1,5 +1,13 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
+import { stripAnsi } from "./ansi.js";
+
+const INVALID_NAME_ERROR = {
+	error: "Invalid app name",
+	command: "",
+	exitCode: 400,
+	stderr: "App name must contain only lowercase letters, numbers, and hyphens",
+};
 
 export interface SSLStatus {
 	active: boolean;
@@ -11,10 +19,6 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function isValidEmail(email: string): boolean {
 	return EMAIL_PATTERN.test(email);
-}
-
-function stripAnsi(value: string): string {
-	return value.replaceAll("\u001b", "").replace(/\[[0-9;]*m/g, "");
 }
 
 function parseReportLine(line: string): { key: string; value: string } | null {
@@ -148,12 +152,7 @@ export async function getSSL(
 	appName: string
 ): Promise<SSLStatus | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(appName)) {
-		return {
-			error: "Invalid app name",
-			command: "",
-			exitCode: 400,
-			stderr: "App name must contain only lowercase letters, numbers, and hyphens",
-		};
+		return INVALID_NAME_ERROR;
 	}
 
 	try {
@@ -200,11 +199,7 @@ export async function enableSSL(
 	email?: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
 	if (!isValidAppName(appName)) {
-		return {
-			error: "Invalid app name",
-			command: "",
-			exitCode: 400,
-		};
+		return { error: "Invalid app name", exitCode: 400, command: "" };
 	}
 
 	const normalizedEmail = typeof email === "string" ? email.trim() : "";
@@ -232,11 +227,7 @@ export async function renewSSL(
 	appName: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
 	if (!isValidAppName(appName)) {
-		return {
-			error: "Invalid app name",
-			command: "",
-			exitCode: 400,
-		};
+		return { error: "Invalid app name", exitCode: 400, command: "" };
 	}
 
 	return executeCommand(`dokku letsencrypt:auto-renew ${appName}`);
