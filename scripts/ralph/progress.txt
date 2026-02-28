@@ -95,3 +95,21 @@ Started: Sat Feb 28 12:43:28 +08 2026
   - Used existing ToastProvider for success/error notifications
   - Pre-existing test failures in client tests (document not defined)
 ---
+
+## Sat Feb 28 2026 - US-009
+[Session: https://opncd.ai/s/5cfeab3c]
+- Implemented Stop and Start controls on App Detail page (client/src/pages/AppDetail.tsx)
+- Added 'Stop' button visible when app status is 'running' with orange styling
+- Added 'Start' button visible when app status is 'stopped' with green styling
+- Added confirmation dialog for Stop action before executing
+- Buttons call POST /api/apps/:name/stop or /start respectively
+- Show loading state (Stopping.../Starting...) during the action
+- Refresh app detail after action completes
+- Show success/error toast notification using existing ToastProvider
+- Typecheck and lint pass
+- Files changed: client/src/pages/AppDetail.tsx
+- **Learnings for future iterations:**
+  - Reused existing dialog patterns (showDeleteDialog, confirmDeleteApp pattern) for consistency
+  - Stop confirmation dialog explains the app will not serve requests until started again
+  - ChromeDevTools MCP not configured - skipped browser verification
+---
