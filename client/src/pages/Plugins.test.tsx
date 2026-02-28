@@ -59,7 +59,8 @@ describe("Plugins", () => {
 			</MemoryRouter>,
 		);
 
-		expect(screen.getByRole("status")).toBeInTheDocument();
+		const spinner = screen.getByText(/./, { selector: ".animate-spin" });
+		expect(spinner).toBeInTheDocument();
 	});
 
 	it("should render plugins page", async () => {
@@ -148,7 +149,8 @@ describe("Plugins", () => {
 		);
 
 		await vi.waitFor(() => {
-			expect(screen.getByText("Status: Enabled")).toBeInTheDocument();
+			// The enabled plugin with version shows "Status: Enabled • v1.0.0"
+			expect(screen.getByText(/Status: Enabled/)).toBeInTheDocument();
 			expect(screen.getByText("Status: Disabled")).toBeInTheDocument();
 			expect(screen.getByText("v1.0.0")).toBeInTheDocument();
 			expect(screen.getByText("v0.5.0")).toBeInTheDocument();
