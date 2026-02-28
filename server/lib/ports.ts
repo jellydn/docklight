@@ -59,7 +59,7 @@ export async function getPorts(
 		const lines = result.stdout.split("\n").map((line) => stripAnsi(line));
 
 		for (const line of lines) {
-			const mapMatch = line.match(/port map:\s+(.+)/i);
+			const mapMatch = line.match(/ports\s+map:\s+(.+)/i);
 			if (mapMatch) {
 				const mappings = mapMatch[1].trim().split(/\s+/);
 				for (const mapping of mappings) {
@@ -214,14 +214,14 @@ export async function getProxyReport(
 		let proxyType = "unknown";
 
 		for (const line of lines) {
-			const enabledMatch = line.match(/^(?:proxy.*)?\s*Enabled:\s*(\w+)/i);
+			const enabledMatch = line.match(/proxy\s+enabled:\s*(\w+)/i);
 			if (enabledMatch) {
 				enabled = enabledMatch[1].toLowerCase() === "true";
 			}
 
-			const typeMatch = line.match(/^(?:proxy.*)?\s*Type:\s*(\w+)/i);
-			if (typeMatch) {
-				proxyType = typeMatch[1];
+			const computedTypeMatch = line.match(/proxy\s+computed\s+type:\s*(\w+)/i);
+			if (computedTypeMatch) {
+				proxyType = computedTypeMatch[1];
 			}
 		}
 
