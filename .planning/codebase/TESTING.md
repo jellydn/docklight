@@ -1,232 +1,253 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-02-28
+**Analysis Date:** 2026-03-01
 
 ## Test Framework
 
 **Runner:**
-- Vitest (version 4.0.0)
-- Config: `/Users/huynhdung/src/tries/2026-02-28-jellydn-docklight-pr41/server/vitest.config.ts`
+
+- Vitest (latest)
+- Config: `server/vitest.config.ts`
+- Environment: node
 
 **Assertion Library:**
+
 - Vitest built-in assertions (expect)
 
 **Run Commands:**
+
 ```bash
-bun run test                 # Run all tests
-bun run test:watch          # Watch mode
-bun run test:coverage        # Run with coverage
-vitest run lib/*.test.ts     # Single test file
-vitest run -t "test name"    # Single test by name
+bun test                # Run all tests
+bun run test:watch      # Watch mode
+bun run test:coverage   # Run with coverage
+vitest run lib/apps.test.ts        # Single test file
+vitest run -t "should fetch app"  # Single test by name
 ```
 
 ## Test File Organization
 
 **Location:**
-- Co-located with source files (*.test.ts in same directory)
-- Example: `server/lib/apps.test.ts` for `server/lib/apps.ts`
+
+- Co-located with source files in `server/lib/`
+- Test file named `*.test.ts` alongside source `*.ts`
 
 **Naming:**
-- Pattern: `{filename}.test.ts`
-- Example: `dokku.test.ts`, `executor.test.ts`, `apps.test.ts`
+
+- Source: `apps.ts` → Test: `apps.test.ts`
+- Source: `executor.ts` → Test: `executor.test.ts`
 
 **Structure:**
+
 ```
-lib/
-├── apps.ts
-├── apps.test.ts
-├── dokku.ts
-├── dokku.test.ts
-├── executor.ts
-├── executor.test.ts
-└── ...
+server/lib/
+  apps.ts
+  apps.test.ts
+  auth.ts
+  auth.test.ts
+  executor.ts
+  executor.test.ts
 ```
 
 ## Test Structure
 
 **Suite Organization:**
-```typescript
-describe("FunctionName", () => {
-  describe("Subcategory", () => {
-    beforeEach(() => {
-      vi.clearAllMocks();
-    });
 
-    it("should handle specific scenario", () => {
-      // Arrange
-      // Act
-      // Assert
-    });
+```typescript
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { functionUnderTest } from "./module.js";
+import { dependency } from "./dependency.js";
+
+vi.mock("./dependency.js", () => ({
+  dependency: vi.fn(),
+}));
+
+describe("functionUnderTest", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should do something specific", () => {
+    // Arrange
+    mockDependency.mockReturnValue("test");
+
+    // Act
+    const result = functionUnderTest();
+
+    // Assert
+    expect(result).toBe("expected");
   });
 });
 ```
 
 **Patterns:**
-- **Setup**: beforeEach() calls vi.clearAllMocks() to reset mocks between tests
-- **Teardown**: afterEach() not used for cleanup (except for timing-related tests)
-- **Assertion**: Use expect().toBe(), expect().toEqual(), expect().resolves, etc.
+
+- Setup: `beforeEach` clears all mocks
+- Teardown: `afterEach` used for environment cleanup when needed
+- Assertion: Vitest `expect()` with matchers like `toBe()`, `toEqual()`, `toHaveBeenCalled()`
 
 ## Mocking
 
-**Framework:** Vitest vi module
+**Framework:** Vitest (vi)
 
 **Patterns:**
+
 ```typescript
+// Mock module before imports
 vi.mock("./executor.js", () => ({
   executeCommand: vi.fn(),
 }));
 
+// Cast to typed mock
 const mockExecuteCommand = executeCommand as ReturnType<typeof vi.fn>;
 
-vi.mocked(mockExecuteCommand).mockResolvedValue({
+// Mock implementation
+mockExecuteCommand.mockResolvedValue({
   command: "dokku apps:list",
   exitCode: 0,
-  stdout: "my-app\nanother-app",
+  stdout: "my-app",
   stderr: "",
 });
+
+// Multiple calls
+mockExecuteCommand
+  .mockResolvedValueOnce({
+    /* first call */
+  })
+  .mockResolvedValueOnce({
+    /* second call */
+  });
 ```
 
 **What to Mock:**
-- External dependencies (SSH, file system, database, process execution)
-- API calls to other modules
-- Dependencies that require complex setup or have side effects
+
+- External dependencies (executors, databases, loggers)
+- I/O operations (file system, network)
+- Modules that would have side effects
 
 **What NOT to Mock:**
-- Pure functions (no external dependencies)
-- Simple utility functions
-- Helper functions without I/O
-- Pure logic that can be tested directly
+
+- Pure functions and utilities
+- Business logic under test
+- Simple data transformations
 
 ## Fixtures and Factories
 
 **Test Data:**
+
 ```typescript
-const mockExecResult = { stdout: "app1\napp2", stderr: "", code: 0 };
-
-const mockApps: App[] = [
-  {
-    name: "my-app",
-    status: "running",
-    domains: ["my-app.example.com"],
-    lastDeployTime: "2024-01-15T10:30:00Z",
-  },
-];
-
-function makeExecResult(
-  stdout: string,
-  stderr: string,
-  code: number
-): CommandResult {
+// Helper functions for creating test data
+function makeExecResult(stdout: string, stderr: string, code: number) {
   return { stdout, stderr, code, signal: null };
 }
+
+// Inline test data
+const validNames = ["my-app", "app123", "test-app-v1"];
 ```
 
 **Location:**
-- Defined inline near the tests that use them
-- Factory functions defined as helper functions in the test file
+
+- Test data defined within test files
+- Helper functions at top of test file
+- No separate fixtures directory
 
 ## Coverage
 
-**Requirements:** No explicit coverage requirements documented
+**Requirements:** None enforced
 
 **View Coverage:**
+
 ```bash
-bun run test:coverage    # Generates coverage report in coverage/ directory
+bun run test:coverage
 ```
 
-**Configured Coverage:**
-```typescript
-coverage: {
-  provider: "v8",
-  reporter: ["text", "json", "html"],
-  include: ["lib/**/*.ts", "*.ts"],
-  exclude: ["node_modules/", "dist/", "**/*.test.ts"],
-}
-```
+**Coverage Config:**
+
+- Provider: v8
+- Reporters: text, json, html
+- Include: `lib/**/*.ts`, `*.ts`
+- Exclude: `node_modules/`, `dist/`, `**/*.test.ts`
 
 ## Test Types
 
 **Unit Tests:**
-- Scope: Individual functions and utilities
-- Approach: Mock external dependencies, test pure logic
-- Example: `apps.test.ts` tests validation functions, parsers
+
+- Test individual functions in isolation
+- Mock all external dependencies
+- Focus on lib/ modules (apps, auth, executor, etc.)
 
 **Integration Tests:**
-- Scope: Module interactions, data flow
-- Approach: Partially mock dependencies, test integration paths
-- Example: `index.test.ts` tests API routes with mocked business logic
+
+- Test module interactions
+- Some real dependencies allowed
+- Example: `executor.test.ts` tests SSH pool integration
 
 **E2E Tests:**
-- Framework: Not used (no test suite for full user flows)
+
+- Not used
 
 ## Common Patterns
 
 **Async Testing:**
+
 ```typescript
-it("should return apps on success", async () => {
+it("should handle async operations", async () => {
   mockExecuteCommand.mockResolvedValue({
-    command: "dokku --quiet apps:list",
-    exitCode: 0,
-    stdout: "app1\napp2",
-    stderr: "",
+    /* ... */
   });
-
   const result = await getApps();
-
-  expect(result).toEqual(["app1", "app2"]);
+  expect(result).toEqual([]);
 });
 ```
 
 **Error Testing:**
+
 ```typescript
-it("should return error on command failure", async () => {
+it("should return error on failure", async () => {
   mockExecuteCommand.mockResolvedValue({
-    command: "dokku apps:list",
     exitCode: 1,
-    stdout: "",
-    stderr: "Permission denied",
+    stderr: "App not found",
   });
-
-  const result = await getApps();
-
+  const result = await getAppDetail("nonexistent");
   expect(result).toEqual({
-    error: "Failed to list apps",
-    command: "dokku --quiet apps:list",
+    error: "Failed to get app details",
     exitCode: 1,
-    stderr: "Permission denied",
+    stderr: "App not found",
   });
 });
 ```
 
-**Mock Setup Pattern:**
+**Environment Mocking:**
+
 ```typescript
 const OLD_ENV = process.env;
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  process.env = { ...OLD_ENV, DOCKLIGHT_DOKKU_SSH_TARGET: "dokku@server" };
-  delete process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET;
-  delete process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH;
-  mockSshInstance.connect.mockResolvedValue(undefined);
-  mockSshInstance.isConnected.mockReturnValue(true);
-  sshPool.closeAll();
+  process.env = { ...OLD_ENV };
 });
 
 afterEach(() => {
   process.env = OLD_ENV;
-  sshPool.closeAll();
 });
 ```
 
-**Timing Testing:**
+**Testing Express Middleware:**
+
 ```typescript
-vi.useFakeTimers();
+it("should reject unauthorized requests", () => {
+  const req = { cookies: {} } as unknown as Request;
+  const res = {
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn(),
+  } as unknown as Response;
+  const next = vi.fn();
 
-// Test with fake timers
-vi.advanceTimersByTime(1000);
+  authMiddleware(req, res, next);
 
-vi.useRealTimers();
+  expect(res.status).toHaveBeenCalledWith(401);
+  expect(next).not.toHaveBeenCalled();
+});
 ```
 
 ---
-*Testing analysis: 2026-02-28*
+
+_Testing analysis: 2026-03-01_

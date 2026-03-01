@@ -1,0 +1,17 @@
+export { registerHealthRoutes } from "./health.js";
+export { registerAuthRoutes } from "./auth.js";
+export { registerUserRoutes } from "./users.js";
+export { registerCommandRoutes } from "./commands.js";
+export { registerAppRoutes } from "./apps.js";
+export { registerAppConfigRoutes } from "./app-config.js";
+export { registerAppDomainRoutes } from "./app-domains.js";
+export { registerAppPortRoutes } from "./app-ports.js";
+export { registerAppProxyRoutes } from "./app-proxy.js";
+export { registerAppBuildpackRoutes } from "./app-buildpacks.js";
+export { registerAppDockerOptionsRoutes } from "./app-docker-options.js";
+export { registerAppNetworkRoutes } from "./app-network.js";
+export { registerAppDeploymentRoutes } from "./app-deployment.js";
+export { registerAppSSLRoutes } from "./app-ssl.js";
+export { registerDatabaseRoutes } from "./databases.js";
+export { registerPluginRoutes } from "./plugins.js";
+export { registerServerRoutes } from "./server.js";

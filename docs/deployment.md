@@ -36,11 +36,8 @@ ssh root@<your-server-ip>
 # Create the app
 dokku apps:create docklight
 
-# Set a strong admin password
-dokku config:set docklight DOCKLIGHT_PASSWORD=<your-secure-password>
-
-# (Optional) Set a custom JWT secret — if not set, a default is used
-dokku config:set docklight DOCKLIGHT_SECRET=<random-secret-string>
+# Set a JWT secret (required in production — generates a secure random string)
+dokku config:set docklight JWT_SECRET=$(openssl rand -base64 32)
 ```
 
 ## Step 2.5: Configure Dokku CLI access from container (required)
@@ -160,7 +157,26 @@ Open your browser and navigate to:
 https://docklight.yourdomain.com
 ```
 
-You should see the login page. Enter the password you set in Step 2.
+You should see the login page.
+
+## Step 6.5: Create initial admin user
+
+Docklight uses multi-user authentication. After deployment, create your first admin user via SSH:
+
+```bash
+ssh root@<your-server-ip>
+
+# Access the running container
+dokku enter docklight
+
+# Create an admin user (you'll be prompted for password)
+bun run server/createUser.js admin
+
+# Exit the container
+exit
+```
+
+Now you can log in with the username and password you just created.
 
 ## Persistent Storage (Important)
 
@@ -254,9 +270,10 @@ dokku logs docklight --num 100
 
 Common issues:
 
-- `DOCKLIGHT_PASSWORD` not set → `dokku config:set docklight DOCKLIGHT_PASSWORD=...`
+- `JWT_SECRET` not set → `dokku config:set docklight JWT_SECRET=$(openssl rand -base64 32)`
 - `dokku: not found` in dashboard → configure Step 2.5 (Dokku SSH access)
 - Port conflict → Dokku handles port mapping automatically, no manual config needed
+- Can't log in → Make sure you've created an admin user via `dokku enter docklight` and `bun run server/createUser.js admin`
 
 ### Build fails
 
@@ -265,13 +282,15 @@ Check Docker build logs during `git push`. Common causes:
 - npm install fails → check `package.json` for issues
 - TypeScript compilation fails → run `bun run typecheck` locally first
 
-### Reset password
+### Reset user password
 
 ```bash
-dokku config:set docklight DOCKLIGHT_PASSWORD=new-password
+ssh root@<your-server-ip>
+dokku enter docklight
+bun run server/createUser.js <username>
 ```
 
-This automatically restarts the app.
+This will prompt you to enter a new password for the user. If the user doesn't exist, it will be created.
 
 ## Staging Environment (PR Preview)
 
@@ -311,8 +330,7 @@ ssh dokku@<your-server-ip> config:set docklight-staging \
   DOCKLIGHT_DOKKU_SSH_KEY_PATH='/app/.ssh/id_ed25519' \
   DOCKLIGHT_DOKKU_SSH_TARGET='dokku@<your-server-ip>' \
   DOCKLIGHT_DOKKU_SSH_ROOT_TARGET='root@<your-server-ip>' \
-  DOCKLIGHT_PASSWORD='staging-password' \
-  DOCKLIGHT_SECRET='staging-secret'
+  JWT_SECRET='staging-secret'
 
 # Mount the SSH key (same as production setup)
 dokku storage:mount docklight-staging /home/dokku/.ssh/docklight:/app/.ssh/id_ed25519
@@ -344,8 +362,9 @@ git push staging your-branch:main --force
 ## Security Recommendations
 
 1. **Always use HTTPS** — Enable Let's Encrypt (Step 5)
-2. **Strong password** — Use a long, random password
-3. **Restrict access** — Consider putting behind:
+2. **Strong JWT secret** — Use a long, random string for `JWT_SECRET`
+3. **Strong user passwords** — Create admin users with strong passwords
+4. **Restrict access** — Consider putting behind:
    - [Cloudflare Zero Trust](https://www.cloudflare.com/products/zero-trust/) (free tier available)
    - [Tailscale](https://tailscale.com/) (VPN-only access)
-4. **SSH fallback** — If Docklight crashes, you always have `ssh root@<your-server-ip>` to manage Dokku directly
+5. **SSH fallback** — If Docklight crashes, you always have `ssh root@<your-server-ip>` to manage Dokku directly

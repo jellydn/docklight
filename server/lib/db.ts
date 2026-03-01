@@ -2,12 +2,14 @@ import fs from "fs";
 import path from "path";
 import type { CommandResult } from "./executor.js";
 
+type Statement = {
+	run: (...args: unknown[]) => void;
+	all: (...args: unknown[]) => unknown[];
+	get: (...args: unknown[]) => unknown;
+};
+
 type Database = {
-	prepare: (sql: string) => {
-		run: (...args: unknown[]) => void;
-		all: (...args: unknown[]) => CommandHistory[];
-		get: (...args: unknown[]) => { count: number } | null;
-	};
+	prepare: (sql: string) => Statement;
 	exec: (sql: string) => void;
 };
 
@@ -42,6 +44,37 @@ function getDb(): Database {
 	  CREATE INDEX IF NOT EXISTS idx_command_history_createdAt ON command_history(createdAt);
 	  CREATE INDEX IF NOT EXISTS idx_command_history_exitCode ON command_history(exitCode);
 	  CREATE INDEX IF NOT EXISTS idx_command_history_command ON command_history(command);
+	`);
+
+	newDb.exec(`
+	  CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		username TEXT UNIQUE NOT NULL,
+		password_hash TEXT NOT NULL,
+		role TEXT NOT NULL DEFAULT 'viewer',
+		createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+	  )
+	`);
+
+	// Create audit_log table for RBAC user action auditing
+	newDb.exec(`
+	  CREATE TABLE IF NOT EXISTS audit_log (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER,
+		action TEXT NOT NULL,
+		resource TEXT,
+		details TEXT,
+		ip_address TEXT,
+		createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+	  )
+	`);
+
+	// Create indexes for audit_log performance
+	newDb.exec(`
+	  CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id);
+	  CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action);
+	  CREATE INDEX IF NOT EXISTS idx_audit_log_createdAt ON audit_log(createdAt);
 	`);
 
 	db = newDb;
@@ -144,6 +177,236 @@ export function getAuditLogs(filters: AuditLogFilters = {}): AuditLogResult {
 		 LIMIT ? OFFSET ?`
 	);
 	const logs = dataStmt.all(...params, limit, offset) as CommandHistory[];
+
+	return {
+		logs,
+		total,
+		limit,
+		offset,
+	};
+}
+
+// ---- User management ----
+
+export type UserRole = "admin" | "operator" | "viewer";
+
+export interface User {
+	id: number;
+	username: string;
+	password_hash: string;
+	role: UserRole;
+	createdAt: string;
+}
+
+export interface SafeUser {
+	id: number;
+	username: string;
+	role: UserRole;
+	createdAt: string;
+}
+
+export function createUser(username: string, passwordHash: string, role: UserRole): SafeUser {
+	const stmt = getDb().prepare(
+		"INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)"
+	);
+	stmt.run(username, passwordHash, role);
+	const user = getDb()
+		.prepare("SELECT id, username, role, createdAt FROM users WHERE username = ?")
+		.get(username) as SafeUser;
+	return user;
+}
+
+export function getUserByUsername(username: string): User | null {
+	const stmt = getDb().prepare(
+		"SELECT id, username, password_hash, role, createdAt FROM users WHERE username = ?"
+	);
+	return (stmt.get(username) as User) ?? null;
+}
+
+export function getUserById(id: number): SafeUser | null {
+	const stmt = getDb().prepare("SELECT id, username, role, createdAt FROM users WHERE id = ?");
+	return (stmt.get(id) as SafeUser) ?? null;
+}
+
+export function getAllUsers(): SafeUser[] {
+	const stmt = getDb().prepare(
+		"SELECT id, username, role, createdAt FROM users ORDER BY createdAt ASC"
+	);
+	return stmt.all() as SafeUser[];
+}
+
+export function updateUser(id: number, updates: { role?: UserRole; passwordHash?: string }): void {
+	const fields: string[] = [];
+	const params: unknown[] = [];
+
+	if (updates.role !== undefined) {
+		fields.push("role = ?");
+		params.push(updates.role);
+	}
+	if (updates.passwordHash !== undefined) {
+		fields.push("password_hash = ?");
+		params.push(updates.passwordHash);
+	}
+
+	if (fields.length === 0) return;
+
+	params.push(id);
+	const stmt = getDb().prepare(`UPDATE users SET ${fields.join(", ")} WHERE id = ?`);
+	stmt.run(...params);
+}
+
+export function demoteAdminWithGuard(
+	id: number,
+	newRole: UserRole
+): { success: boolean; error?: string } {
+	const db = getDb();
+
+	const adminBefore = db
+		.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'")
+		.get() as { count: number };
+
+	if (adminBefore.count <= 1) {
+		return { success: false, error: "Cannot demote the last admin user" };
+	}
+
+	db.prepare("UPDATE users SET role = ? WHERE id = ? AND role = 'admin'").run(newRole, id);
+
+	const adminAfter = db
+		.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'")
+		.get() as { count: number };
+
+	if (adminAfter.count >= adminBefore.count) {
+		return { success: false, error: "Cannot demote the last admin user" };
+	}
+
+	return { success: true };
+}
+
+export function deleteUserWithAdminGuard(id: number): { success: boolean; error?: string } {
+	const db = getDb();
+
+	const user = db
+		.prepare("SELECT role FROM users WHERE id = ?")
+		.get(id) as { role: UserRole } | undefined;
+
+	if (!user) {
+		return { success: false, error: "User not found" };
+	}
+
+	if (user.role === "admin") {
+		const adminCount = db
+			.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'")
+			.get() as { count: number };
+
+		if (adminCount.count <= 1) {
+			return { success: false, error: "Cannot delete the last admin user" };
+		}
+	}
+
+	db.prepare("DELETE FROM users WHERE id = ?").run(id);
+
+	return { success: true };
+}
+
+export function deleteUser(id: number): void {
+	getDb().prepare("DELETE FROM users WHERE id = ?").run(id);
+}
+
+export function getUserCount(): number {
+	const result = getDb().prepare("SELECT COUNT(*) as count FROM users").get() as {
+		count: number;
+	};
+	return result.count;
+}
+
+export function getAdminCount(): number {
+	const result = getDb()
+		.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'")
+		.get() as {
+		count: number;
+	};
+	return result.count;
+}
+
+export interface AuditLog {
+	id: number;
+	userId: number | null;
+	action: string;
+	resource: string | null;
+	details: string | null;
+	ipAddress: string | null;
+	createdAt: string;
+}
+
+export interface UserAuditLogFilters {
+	limit?: number;
+	offset?: number;
+	userId?: number;
+	action?: string;
+	since?: string;
+}
+
+export interface UserAuditLogResult {
+	logs: AuditLog[];
+	total: number;
+	limit: number;
+	offset: number;
+}
+
+export function insertAuditLog(
+	userId: number | null,
+	action: string,
+	resource: string | null = null,
+	details: string | null = null,
+	ipAddress: string | null = null
+): void {
+	const stmt = getDb().prepare(`
+    INSERT INTO audit_log (user_id, action, resource, details, ip_address)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+	stmt.run(userId, action, resource, details, ipAddress);
+}
+
+export function getUserAuditLogs(filters: UserAuditLogFilters = {}): UserAuditLogResult {
+	const limit = Math.min(filters.limit ?? 50, 500);
+	const offset = filters.offset ?? 0;
+
+	// Build WHERE clause conditions
+	const conditions: string[] = [];
+	const params: (number | string)[] = [];
+
+	if (filters.userId !== undefined) {
+		conditions.push("user_id = ?");
+		params.push(filters.userId);
+	}
+
+	if (filters.action) {
+		conditions.push("action = ?");
+		params.push(filters.action);
+	}
+
+	if (filters.since && isValidISODate(filters.since)) {
+		conditions.push("createdAt >= ?");
+		params.push(filters.since);
+	}
+
+	// Build WHERE clause
+	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+	// Get total count
+	const countStmt = getDb().prepare(`SELECT COUNT(*) as count FROM audit_log ${whereClause}`);
+	const countResult = countStmt.get(...params) as { count: number };
+	const total = countResult.count;
+
+	// Get paginated results
+	const dataStmt = getDb().prepare(
+		`SELECT id, user_id as userId, action, resource, details, ip_address as ipAddress, createdAt
+		 FROM audit_log
+		 ${whereClause}
+		 ORDER BY createdAt DESC
+		 LIMIT ? OFFSET ?`
+	);
+	const logs = dataStmt.all(...params, limit, offset) as AuditLog[];
 
 	return {
 		logs,

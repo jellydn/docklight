@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { apiFetch } from "../lib/api.js";
 
 export function Login() {
+	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
 	const navigate = useNavigate();
@@ -18,18 +19,18 @@ export function Login() {
 		checkAuth();
 	}, [navigate]);
 
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = async (e: FormEvent) => {
 		e.preventDefault();
 		setError("");
 
 		try {
 			await apiFetch("/auth/login", z.object({ success: z.literal(true) }), {
 				method: "POST",
-				body: JSON.stringify({ password }),
+				body: JSON.stringify({ username, password }),
 			});
 			navigate("/dashboard");
 		} catch (_err) {
-			setError("Invalid password");
+			setError("Invalid credentials");
 		}
 	};
 
@@ -42,6 +43,20 @@ export function Login() {
 				<h1 className="text-2xl font-bold mb-6 text-center">Docklight Login</h1>
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>
+						<label htmlFor="username" className="block text-sm font-medium mb-2">
+							Username
+						</label>
+						<input
+							id="username"
+							type="text"
+							value={username}
+							onChange={(e) => setUsername(e.target.value)}
+							className="w-full px-3 py-2 border rounded-md"
+							required
+							autoComplete="username"
+						/>
+					</div>
+					<div>
 						<label htmlFor="password" className="block text-sm font-medium mb-2">
 							Password
 						</label>
@@ -52,6 +67,7 @@ export function Login() {
 							onChange={(e) => setPassword(e.target.value)}
 							className="w-full px-3 py-2 border rounded-md"
 							required
+							autoComplete="current-password"
 						/>
 					</div>
 					{error && <div className="text-red-600 text-sm">{error}</div>}

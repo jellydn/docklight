@@ -65,7 +65,7 @@ Docklight is designed to run on the same VPS as Dokku.
 ```bash
 # On your Dokku server
 dokku apps:create docklight
-dokku config:set docklight DOCKLIGHT_PASSWORD=your-secure-password
+dokku config:set docklight JWT_SECRET=your-secure-random-secret
 
 # From your local machine
 git remote add dokku dokku@<your-server-ip>:docklight
@@ -83,7 +83,7 @@ cd ../client && bun install
 cd ..
 
 # Required env
-export DOCKLIGHT_PASSWORD=dev
+export JWT_SECRET=dev-secret-change-in-production
 
 # Terminal 1
 cd server && bun run dev
@@ -127,8 +127,7 @@ just build
 
 | Variable                          | Required                       | Description                                                                         |
 | --------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------- |
-| `DOCKLIGHT_PASSWORD`              | Yes                            | Admin login password                                                                |
-| `DOCKLIGHT_SECRET`                | No                             | JWT signing secret (auto-generated if unset)                                        |
+| `JWT_SECRET`                      | Yes (in production)            | JWT signing secret                                                                  |
 | `DOCKLIGHT_DOKKU_SSH_TARGET`      | No (recommended in production) | SSH target for Dokku commands, for example `dokku@<server-ip>`                      |
 | `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` | No                             | Optional root SSH target for root-required commands, for example `root@<server-ip>` |
 | `DOCKLIGHT_DOKKU_SSH_KEY_PATH`    | No                             | Private key path inside container                                                   |
@@ -139,10 +138,11 @@ just build
 
 Docklight executes Dokku commands on your server.
 
-- Always set a strong `DOCKLIGHT_PASSWORD`.
+- Always set a strong `JWT_SECRET`.
 - Always expose Docklight behind HTTPS.
 - Keep SSH fallback access to your server.
 - Command execution is restricted to an allowlist.
+- Create admin users via CLI or database for access.
 
 ### Plugin Management and Root Access
 

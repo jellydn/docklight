@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -14,10 +14,15 @@ describe("Login", () => {
 	beforeEach(async () => {
 		vi.clearAllMocks();
 		const { apiFetch } = await import("../lib/api.js");
-		apiFetchMock = apiFetch as any;
+		apiFetchMock = apiFetch as MockedFunction<typeof apiFetch>;
+		// Default: auth/me fails (not logged in)
+		apiFetchMock.mockImplementation((path: string) => {
+			if (path === "/auth/me") return Promise.reject(new Error("Unauthorized"));
+			return Promise.reject(new Error("Not found"));
+		});
 	});
 
-	it("should render the login form", async () => {
+	it("should render the login form with username and password fields", async () => {
 		render(
 			<MemoryRouter>
 				<Login />
@@ -25,12 +30,17 @@ describe("Login", () => {
 		);
 
 		expect(await screen.findByText("Docklight Login")).toBeInTheDocument();
+		expect(screen.getByLabelText("Username")).toBeInTheDocument();
 		expect(screen.getByLabelText("Password")).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "Login" })).toBeInTheDocument();
 	});
 
 	it("should show error message on failed login", async () => {
-		apiFetchMock.mockRejectedValue(new Error("Invalid password"));
+		apiFetchMock.mockImplementation((path: string) => {
+			if (path === "/auth/me") return Promise.reject(new Error("Unauthorized"));
+			if (path === "/auth/login") return Promise.reject(new Error("Invalid credentials"));
+			return Promise.reject(new Error("Not found"));
+		});
 
 		const user = userEvent.setup();
 		render(
@@ -39,19 +49,26 @@ describe("Login", () => {
 			</MemoryRouter>
 		);
 
+		await screen.findByText("Docklight Login");
+		const usernameInput = screen.getByLabelText("Username");
 		const passwordInput = screen.getByLabelText("Password");
 		const loginButton = screen.getByRole("button", { name: "Login" });
 
+		await user.type(usernameInput, "testuser");
 		await user.type(passwordInput, "wrong-password");
 		await user.click(loginButton);
 
 		await waitFor(() => {
-			expect(screen.getByText("Invalid password")).toBeInTheDocument();
+			expect(screen.getByText("Invalid credentials")).toBeInTheDocument();
 		});
 	});
 
-	it("should keep error visible until next form submit", async () => {
-		apiFetchMock.mockRejectedValue(new Error("Invalid password"));
+	it("should submit credentials on successful login", async () => {
+		apiFetchMock.mockImplementation((path: string) => {
+			if (path === "/auth/me") return Promise.reject(new Error("Unauthorized"));
+			if (path === "/auth/login") return Promise.resolve({ success: true });
+			return Promise.reject(new Error("Not found"));
+		});
 
 		const user = userEvent.setup();
 		render(
@@ -60,34 +77,12 @@ describe("Login", () => {
 			</MemoryRouter>
 		);
 
+		await screen.findByText("Docklight Login");
+		const usernameInput = screen.getByLabelText("Username");
 		const passwordInput = screen.getByLabelText("Password");
 		const loginButton = screen.getByRole("button", { name: "Login" });
 
-		await user.type(passwordInput, "wrong");
-		await user.click(loginButton);
-
-		await waitFor(() => {
-			expect(screen.getByText("Invalid password")).toBeInTheDocument();
-		});
-
-		// The Login component only clears error on form submit, not on typing
-		// So let's just verify the error is shown after failed login
-		expect(screen.getByText("Invalid password")).toBeInTheDocument();
-	});
-
-	it("should submit password on successful login", async () => {
-		apiFetchMock.mockResolvedValue({ success: true });
-
-		const user = userEvent.setup();
-		render(
-			<MemoryRouter>
-				<Login />
-			</MemoryRouter>
-		);
-
-		const passwordInput = screen.getByLabelText("Password");
-		const loginButton = screen.getByRole("button", { name: "Login" });
-
+		await user.type(usernameInput, "testuser");
 		await user.type(passwordInput, "correct-password");
 		await user.click(loginButton);
 
@@ -97,7 +92,7 @@ describe("Login", () => {
 				expect.any(Object),
 				expect.objectContaining({
 					method: "POST",
-					body: JSON.stringify({ password: "correct-password" }),
+					body: JSON.stringify({ username: "testuser", password: "correct-password" }),
 				})
 			);
 		});
