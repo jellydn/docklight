@@ -1,239 +1,161 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-02-28
+**Analysis Date:** 2026-03-01
 
 ## Directory Layout
 
 ```
-docklight/
-├── client/                    # React + Vite frontend
-│   ├── src/
-│   │   ├── components/       # Reusable UI components
-│   │   ├── pages/            # Page-level components
-│   │   ├── lib/              # Client utilities
-│   │   └── assets/           # Static assets
-│   ├── public/               # Static files
-│   └── dist/                 # Build output
-├── server/                    # Express + TypeScript backend
-│   ├── lib/                   # Core libraries
-│   └── dist/                  # Build output
-├── data/                      # SQLite database (generated)
-├── docs/                      # Documentation
-├── .github/workflows/         # CI/CD workflows
-├── scripts/                   # Build/utility scripts
-└── justfile                   # Task runner commands
+[docklight-root]/
+├── client/ # React SPA frontend
+├── server/ # Express backend
+├── data/ # SQLite database storage
+├── .github/ # GitHub Actions workflows
+├── .planning/ # Project planning documents
+├── docs/ # Additional documentation
+├── scripts/ # Build/utility scripts
+└── tasks/ # Task definitions
 ```
 
 ## Directory Purposes
 
-**server/lib/:**
-- Purpose: Core business logic and abstractions
-- Contains: Command builders, SSH executor, database, caching, auth, all feature modules
-- Key files:
-  - `dokku.ts` (240 lines) - Dokku command builders
-  - `executor.ts` (378 lines) - SSH connection pool and command execution
-  - `db.ts` (147 lines) - SQLite audit logging
-  - `cache.ts` (87 lines) - In-memory caching with TTL
-  - `apps.ts` (373 lines) - App management logic
-  - `auth.ts` (76 lines) - JWT authentication
-  - `allowlist.ts` (11 lines) - Security command validation
-  - `rate-limiter.ts` (66 lines) - Login rate limiting
+**client/:**
+- Purpose: React single-page application frontend
+- Contains: React components, pages, API client, styling, tests
+- Key files: `src/main.tsx`, `src/App.tsx`, `src/lib/api.ts`
 
-**client/src/:**
-- Purpose: React application source code
-- Contains: Pages, components, API client, schemas, utilities
-- Key files:
-  - `App.tsx` (44 lines) - Main app with router configuration
-  - `lib/api.ts` (89 lines) - API client with Zod validation
-  - `lib/schemas.ts` (174 lines) - Zod type definitions
-  - `pages/` - Route components (Dashboard, Apps, AppDetail, etc.)
-
-**client/src/pages/:**
-- Purpose: Page-level components for each route
-- Contains: Dashboard, Apps list, App detail, Databases, Plugins, Audit, Login
-- Key files:
-  - `Dashboard.tsx` (212 lines)
-  - `Apps.tsx` (127 lines)
-  - `AppDetail.tsx` (2770 lines)
-  - `Databases.tsx` (541 lines)
-  - `Plugins.tsx` (249 lines)
-  - `Audit.tsx` (338 lines)
-  - `Login.tsx` (68 lines)
-  - Test files for each page
-
-**client/src/components/:**
-- Purpose: Reusable UI components and page-level components
-- Contains: AppLayout, CreateAppDialog, CommandResult, ToastProvider, UI primitives
-- Key files:
-  - `AppLayout.tsx` (110 lines) - Main layout with navigation
-  - `ui/` - Radix UI primitives (button, dialog, input, card)
-  - Test files for components
-
-**client/src/lib/:**
-- Purpose: Client-side utilities and helpers
-- Contains: API client, schemas, command utilities, logging, plugin constants
-- Key files:
-  - `api.ts` (89 lines) - apiFetch with validation
-  - `schemas.ts` (174 lines) - Zod type definitions
-  - `command-utils.ts` (10 lines) - Command helpers
-  - `logger.ts` (8 lines) - Logger wrapper
-  - `utils.ts` (6 lines) - Utility functions
+**server/:**
+- Purpose: Express REST API backend with Dokku command execution
+- Contains: Route handlers, business logic, SSH execution, database, WebSocket
+- Key files: `index.ts`, `lib/executor.ts`, `lib/dokku.ts`, `lib/apps.ts`
 
 **data/:**
-- Purpose: SQLite database storage
-- Contains: `docklight.db` - Audit log history
-- Generated: Yes (on first run)
-- Committed: No
+- Purpose: SQLite database storage location
+- Contains: `docklight.db` (created at runtime if missing)
+- Key files: `docklight.db`
+
+**.github/:**
+- Purpose: GitHub Actions CI/CD workflows
+- Contains: Workflow definitions for testing and deployment
+- Key files: `workflows/`
+
+**.planning/:**
+- Purpose: Project planning and architecture documentation
+- Contains: Codebase analysis documents like this one
+- Key files: `codebase/ARCHITECTURE.md`, `codebase/STRUCTURE.md`
+
+**docs/:**
+- Purpose: Additional project documentation
+- Contains: Supplementary docs not in root README
+- Key files: (varies)
+
+**scripts/:**
+- Purpose: Build scripts and utilities
+- Contains: Automation scripts for development/deployment
+- Key files: `ralph/` (archive)
+
+**tasks/:**
+- Purpose: Task definitions and management
+- Contains: Project task tracking files
+- Key files: (varies)
 
 ## Key File Locations
 
 **Entry Points:**
-- `server/index.ts`: Main server entry point, API routes, middleware setup
-- `client/src/main.tsx`: React root render
-- `client/src/App.tsx`: React Router configuration
+- `server/index.ts`: Express server entry point with all route definitions
+- `client/src/main.tsx`: React app mounting point
+- `client/src/App.tsx`: Root component with routing configuration
 
 **Configuration:**
-- `server/package.json`: Backend dependencies and scripts
-- `client/package.json`: Frontend dependencies and scripts
-- `server/tsconfig.json`: TypeScript configuration
-- `client/tsconfig.json`: TypeScript configuration
-- `server/vitest.config.ts`: Testing configuration
-- `client/vitest.config.ts`: Testing configuration
-- `justfile`: Task runner commands
+- `server/package.json`: Server dependencies and scripts
+- `client/package.json`: Client dependencies and scripts
+- `justfile`: Quick commands for development (install, dev, test, lint, etc.)
+- `tsconfig.json`: TypeScript configuration (root, server, client)
+- `biome.json`: Code formatting and linting rules
 
 **Core Logic:**
-- `server/lib/dokku.ts`: Dokku command builder interface
-- `server/lib/executor.ts`: SSH connection pool and command execution
-- `server/lib/apps.ts`: App management logic
-- `server/lib/db.ts`: Audit logging
-- `server/lib/cache.ts`: Caching layer
-- `server/lib/auth.ts`: Authentication
+- `server/lib/executor.ts`: SSH command execution with pooling
+- `server/lib/dokku.ts`: Dokku CLI command builders
+- `server/lib/apps.ts`: App management business logic
+- `server/lib/databases.ts`: Database management business logic
+- `server/lib/plugins.ts`: Plugin management business logic
+- `server/lib/auth.ts`: Authentication and RBAC logic
+- `server/lib/db.ts`: SQLite database operations
+- `server/lib/cache.ts`: In-memory caching layer
+- `server/lib/websocket.ts`: Log streaming via WebSocket
 
 **Testing:**
-- `server/lib/*.test.ts`: Server unit tests
-- `client/src/pages/*.test.tsx`: Client page tests
-- `client/src/components/*.test.tsx`: Client component tests
-- `client/src/test/setup.ts`: Test setup
-
-**Deployment:**
-- `Dockerfile`: Multi-stage Docker build
-- `app.json`: Heroku/Cloud66 deployment config
-- `Procfile`: Process definition
-- `.github/workflows/ci.yml`: CI pipeline
-- `.github/workflows/deploy-production.yml`: Production deployment workflow
-- `.github/workflows/deploy-staging.yml`: Staging deployment workflow
+- `server/**/*.test.ts`: Vitest unit/integration tests
+- `client/src/**/*.test.tsx`: Vitest + Testing Library component tests
+- `client/src/test/`: Test utilities and setup
 
 ## Naming Conventions
 
 **Files:**
-- Modules: kebab-case (e.g., `command-executor.ts`, `dokku.ts`)
-- Test files: `*.test.ts` or `*.test.tsx`
-- Configuration: lowercase, hyphens for JSON (e.g., `biome.json`, `vitest.config.ts`)
-- Components: PascalCase for React components (e.g., `AppLayout.tsx`, `CreateAppDialog.tsx`)
+- kebab-case for most files: `command-executor.ts`, `app-detail.tsx`
+- PascalCase for React components: `AppLayout.tsx`, `CreateAppDialog.tsx`
+- `*.test.ts` for test files matching source file name
+- `*.test.tsx` for React component tests
 
 **Directories:**
-- Libraries: kebab-case (e.g., `lib/`, `src/components/`, `src/pages/`)
-- Feature modules: kebab-case (e.g., `client/src/pages/`, `server/lib/`)
-- Static assets: lowercase (e.g., `assets/`, `public/`)
+- kebab-case for directories: `client/src/pages/AppDetail/`
+- `lib/` for shared utilities
+- `components/` for reusable UI components
+- `pages/` for route page components
 
-**Types/Interfaces:**
-- PascalCase for types (e.g., `CommandResult`, `App`, `JWTPayload`)
-- CamelCase for functions and methods (e.g., `getApps()`, `login()`, `verifyToken()`)
-
-**Constants:**
-- SCREAMING_SNAKE_CASE (e.g., `ALLOWED_COMMANDS`, `DEFAULT_TTL`, `WINDOW_MS`)
+**Functions/Variables:**
+- camelCase for functions and variables: `getApps()`, `executeCommand()`
+- PascalCase for classes and interfaces: `SSHPool`, `CommandResult`
+- SCREAMING_SNAKE_CASE for constants: `API_BASE`, `PORT`
 
 ## Where to Add New Code
 
-**New Feature API Endpoint:**
-- Primary code: `server/index.ts` - Add route handler with API pattern
-- Lib module: `server/lib/feature-module.ts` - Implement business logic
-- Examples: `server/lib/apps.ts`, `server/lib/domains.ts`, `server/lib/ports.ts`
-- Validation: Add to `server/lib/schemas.ts` if adding new types
-- Tests: `server/lib/feature-module.test.ts`
+**New Feature:**
+- Primary code: `server/lib/[feature-name].ts`
+- Tests: `server/lib/[feature-name].test.ts`
+- Client UI: `client/src/pages/[PageName].tsx`
+- Client tests: `client/src/pages/[PageName].test.tsx`
 
-**New Frontend Page:**
-- Implementation: `client/src/pages/NewPage.tsx`
-- Routing: Add route in `client/src/App.tsx` under AppLayout
-- Components: Create page-specific components in `client/src/components/`
-- Tests: `client/src/pages/NewPage.test.tsx`
+**New Component/Module:**
+- Implementation: `client/src/components/[ComponentName].tsx`
+- Tests: `client/src/components/[ComponentName].test.tsx`
 
-**New API Client Function:**
-- Primary code: `client/src/lib/api.ts` - Add apiFetch call with schema
-- Validation: Add Zod schema in `client/src/lib/schemas.ts`
-- Usage: Import and call in page components
+**Utilities:**
+- Shared helpers: `server/lib/[utility-name].ts` (server), `client/src/lib/[utility-name].ts` (client)
+- Test utilities: `client/src/test/test-utils.tsx`
 
-**New Utility/Helper:**
-- Primary code: Create new file in `client/src/lib/` or `server/lib/`
-- Tests: Create corresponding `*.test.ts` or `*.test.tsx`
-- Documentation: Add JSDoc comments explaining usage
-
-**New Dokku Command:**
-- Primary code: Add method to `DokkuCommands` interface in `server/lib/dokku.ts`
-- Implementation: Create lib module to use the new command
-- Tests: Add tests in `server/lib/dokku.test.ts` and new module tests
-- Validation: Add allowlist entry if command needs to be allowed
-
-**New Database Schema:**
-- Primary code: Add tables to `server/lib/db.ts` exec function
-- Migration: If changing existing schema, handle migrations
-- Tests: Add tests in `server/lib/db.test.ts`
-- Types: Add TypeScript interfaces for new data structures
-
-**New Component:**
-- Implementation: Create new file in `client/src/components/` or `client/src/components/ui/`
-- Variants: Use cva for component variants in `components/ui/*`
-- Tests: Create corresponding `*.test.tsx` file
-
-**New Library Module:**
-- Location: `server/lib/` for backend, `client/src/lib/` for frontend
-- Tests: `lib/*.test.ts` or `lib/*.test.tsx`
-- Export: Add to `index.ts` if needed for import/export
-
-**New CI/CD Workflow:**
-- Location: `.github/workflows/`
-- Examples: `ci.yml`, `deploy-production.yml`
-- Follow existing patterns for GitHub Actions workflows
-
-**New Documentation:**
-- Location: `docs/` directory
-- Examples: `deployment.md`, `architecture.md`
-- Format: Markdown with clear headings and examples
+**New API Route:**
+- Route handler: Add to `server/index.ts`
+- Business logic: Add to appropriate `server/lib/[feature].ts`
+- Client API: Add to `client/src/lib/api.ts` (if complex) or inline fetch
+- Schema validation: Add to `client/src/lib/schemas.ts`
 
 ## Special Directories
 
-**data/:**
-- Purpose: SQLite database for audit logs
-- Generated: Yes (created on first run)
-- Committed: No (ignored by .gitignore)
-- Permissions: Read/write by server process
-
 **client/dist/:**
-- Purpose: Production build output
-- Generated: Yes (via `bun run build`)
-- Committed: No (ignored by .gitignore)
-- Content: Optimized static assets and HTML
+- Purpose: Production build output from Vite
+- Generated: Yes
+- Committed: No (gitignored)
 
 **server/dist/:**
-- Purpose: Production build output
-- Generated: Yes (via `bun run build`)
-- Committed: No (ignored by .gitignore)
-- Content: Transpiled TypeScript and dependencies
+- Purpose: Production build output from TypeScript compiler
+- Generated: Yes
+- Committed: No (gitignored)
 
-**client/public/:**
-- Purpose: Static files served directly
-- Content: `logo.svg`, favicon, other assets not bundled
-- Committed: Yes
+**node_modules/:**
+- Purpose: Installed npm dependencies
+- Generated: Yes
+- Committed: No (gitignored)
 
-**server/node_modules/:**
-- Purpose: Dependencies (backend)
-- Generated: Yes (via `bun install`)
-- Committed: No (ignored by .gitignore)
+**.git/:**
+- Purpose: Git repository metadata
+- Generated: Yes (by git init)
+- Committed: N/A (repository itself)
 
-**client/node_modules/:**
-- Purpose: Dependencies (frontend)
-- Generated: Yes (via `bun install`)
-- Committed: No (ignored by .gitignore)
+**data/:**
+- Purpose: Runtime database storage
+- Generated: Partially (database file created at runtime)
+- Committed: Directory yes, database file no (gitignored)
 
 ---
-*Structure analysis: 2026-02-28*
+
+*Structure analysis: 2026-03-01*

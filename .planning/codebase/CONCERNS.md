@@ -1,179 +1,237 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-02-28
+**Analysis Date:** 2026-03-01
 
 ## Tech Debt
 
-**No explicit tech debt documented** - Codebase is relatively new and clean
+**Large Component Files:**
+- Issue: `client/src/pages/AppDetail/index.tsx` (1,842 lines) - monolithic component handling multiple app detail views
+- Files: `client/src/pages/AppDetail/index.tsx`
+- Impact: Difficult to maintain, test, and understand; high cognitive load for changes
+- Fix approach: Split into smaller feature-based components or extract sub-page routing
+
+**Server Index File:**
+- Issue: `server/index.ts` (836 lines) - large main server file with many route handlers
+- Files: `server/index.ts`
+- Impact: Hard to navigate, difficult to find specific route handlers
+- Fix approach: Extract route handlers into separate router modules (e.g., `routes/apps.ts`, `routes/auth.ts`)
+
+**Test Coverage Gaps:**
+- Issue: Several source files lack corresponding test files
+- Files: `server/lib/ansi.ts`, `server/lib/shell.ts`, `server/lib/websocket.ts`, `server/lib/cache.ts`, `server/lib/logger.ts`, `server/lib/network.ts`, `server/lib/docker-options.ts`, `server/lib/buildpacks.ts`, `server/lib/deployment.ts`, `server/lib/domains.ts`, `server/lib/ports.ts`
+- Impact: Untested code paths may contain bugs; refactoring is risky
+- Fix approach: Add test files for each module, focus on critical paths first
 
 ## Known Bugs
 
-**No known bugs documented** - Issue tracking appears to be through GitHub Issues
+**Git Merge Conflict:**
+- Symptoms: Both-stage merge conflict markers present in auth test file
+- Files: `server/lib/auth.test.ts`
+- Trigger: Appears to be an unresolved merge from a branch
+- Workaround: Resolve merge conflict by accepting appropriate changes
 
 ## Security Considerations
 
-**Default JWT Secret:**
-- Risk: Using default secret "docklight-default-secret-change-in-production" allows JWT forgery
-- Files: `server/lib/auth.ts:5`
-- Current mitigation: Warning logged if DOCKLIGHT_SECRET not set
-- Recommendations: Enforce DOCKLIGHT_SECRET in production, fail to start if missing
+**Shell Command Execution:**
+- Risk: Direct shell command execution via SSH and local child_process
+- Files: `server/lib/executor.ts`, `server/lib/allowlist.ts`
+- Current mitigation:
+  - Command allowlist (`dokku`, `top`, `free`, `df`, `grep`, `awk`, `curl`)
+  - Input validation with regex patterns for app names, domains, config keys/values
+  - Shell quoting via `shellQuote()` function
+  - Comprehensive security test suite in `server/lib/security.test.ts`
+- Recommendations:
+  - Consider implementing command argument validation at a deeper level
+  - Review SSH key storage and rotation policies
+  - Add audit logging for all command executions (partially implemented via `saveCommand`)
 
-**Command Injection via SSH:**
-- Risk: Malicious app names or parameters could execute arbitrary commands
-- Files: `server/lib/allowlist.ts`, `server/lib/apps.ts`
-- Current mitigation: Command allowlist, regex validation for app names
-- Recommendations: Regular security audits, input fuzzing tests
+**Docker Options Security:**
+- Risk: Tests explicitly allow `--privileged` and `--network=host` flags
+- Files: `server/lib/docker-options.ts`, `server/lib/security.test.ts`
+- Current mitigation: Currently allowed but noted in security tests
+- Recommendations:
+  - Consider adding admin-only restrictions for dangerous Docker options
+  - Document security implications in UI
 
-**Rate Limiting:**
-- Risk: Brute force attacks on login endpoint
-- Files: `server/lib/rate-limiter.ts`, `server/lib/auth.ts`
-- Current mitigation: 5 attempts per 15-minute window
-- Recommendations: Consider account lockout after repeated failures
-
-**Authentication Cookie:**
-- Risk: CSRF if not properly configured
-- Files: `server/lib/auth.ts:50`
-- Current mitigation: httpOnly flag, secure flag in production
-- Recommendations: Consider adding SameSite attribute
+**Authentication:**
+- Risk: Legacy single-password mode alongside multi-user mode
+- Files: `server/lib/auth.ts`
+- Current mitigation: JWT-based auth with role-based access control
+- Recommendations:
+  - Consider deprecating single-password mode in favor of multi-user only
+  - Implement password complexity requirements
+  - Add MFA support
 
 ## Performance Bottlenecks
 
-**No caching for real-time data:**
-- Problem: Each API request may trigger SSH command to remote server
-- Files: `server/lib/executor.ts`, `server/lib/cache.ts`
-- Cause: Limited caching (only 30s TTL for app lists)
-- Improvement path: Increase cache TTL, implement cache invalidation on changes
+**App Detail Loading:**
+- Problem: Sequential or parallel execution of multiple dokku commands per app
+- Files: `server/lib/apps.ts` (fetchAppDetails function)
+- Cause: Each app requires separate `ps:report` and `domains:report` commands
+- Improvement path:
+  - Consider caching app details with appropriate invalidation
+  - Implement batch operations where dokku supports them
+  - Add request debouncing for frequently accessed apps
 
-**SSH connection overhead:**
-- Problem: Per-command SSH handshake when connection pool is cold
+**SSH Connection Overhead:**
+- Problem: SSH handshake overhead for each command (mitigated by pooling)
 - Files: `server/lib/executor.ts` (SSHPool class)
-- Cause: 5-minute idle timeout closes connections
-- Improvement path: Consider longer idle timeout, warm-up connections on startup
+- Cause: Network latency to remote dokku server
+- Improvement path:
+  - Already implemented: SSH connection pooling with 5-minute idle timeout
+  - Consider connection warmup on startup
+  - Add metrics for connection reuse rate
 
-**Large frontend bundle:**
-- Problem: AppDetail.tsx is 2770 lines - may impact initial load
-- Files: `client/src/pages/AppDetail.tsx`
-- Cause: Monolithic component with multiple features
-- Improvement path: Split into smaller components, implement code splitting
-
-**No database query optimization:**
-- Problem: SQLite audit log queries not optimized for large datasets
-- Files: `server/lib/db.ts`
-- Cause: No indexes defined on tables
-- Improvement path: Add indexes on commonly queried columns
+**Large Client Bundle:**
+- Problem: Client includes many dependencies and large icon library
+- Files: `client/src/`, `client/node_modules/lucide-react`
+- Cause: lucide-react exports all icons (37K+ lines of type definitions)
+- Improvement path:
+  - Use tree-shaking for icon imports (already available)
+  - Consider code splitting for route-based chunks
+  - Analyze bundle size with build tools
 
 ## Fragile Areas
 
-**SSH Connection Management:**
-- Files: `server/lib/executor.ts` (SSHPool class, lines 89-195)
-- Why fragile: Network issues can cause hanging connections, connection pool exhaustion
-- Safe modification: Always close connections in finally blocks, use timeouts
-- Test coverage: Good coverage for connection pool logic
+**Status Parsing Logic:**
+- Files: `server/lib/apps.ts` (parseStatus, parseDomains, parseProcesses functions)
+- Why fragile: Relies on regex parsing of dokku command output which may change between versions
+- Safe modification: Add version detection or structured output parsing if dokku provides it
+- Test coverage: Good coverage in `apps.test.ts` but should test against multiple dokku versions
 
-**WebSocket Log Streaming:**
-- Files: `server/lib/websocket.ts`, `server/lib/executor.ts`
-- Why fragile: Process spawning and cleanup can be tricky, zombie processes possible
-- Safe modification: Always kill child processes on disconnect, use proper cleanup
-- Test coverage: Limited - integration tests recommended
+**Error Handling Patterns:**
+- Files: Throughout `server/lib/*.ts` (repeated try-catch with `error: unknown`)
+- Why fragile: Generic error handling may lose context; inconsistent error response shapes
+- Safe modification: Create standardized error handling middleware
+- Test coverage: Partial - errors are tested but error types aren't consistently validated
 
-**Command Parsing:**
-- Files: `server/lib/apps.ts`, `server/lib/ports.ts`, `server/lib/domains.ts`
-- Why fragile: Depends on Dokku CLI output format which may change
-- Safe modification: Use strict parsers, validate output structure
-- Test coverage: Good - mocked Dokku responses
-
-**Dokku Command Builders:**
-- Files: `server/lib/dokku.ts` (240 lines)
-- Why fragile: Changes to Dokku CLI break all dependent code
-- Safe modification: Pin Dokku version, test against real Dokku instance
-- Test coverage: Unit tests for command builders
+**SSH Target Parsing:**
+- Files: `server/lib/executor.ts` (parseTarget function)
+- Why fragile: Limited IPv6 support, assumes specific format
+- Safe modification: Add comprehensive IPv6 support or use proper SSH URL parsing library
+- Test coverage: Needs dedicated tests for edge cases
 
 ## Scaling Limits
 
-**Concurrent SSH Connections:**
-- Current capacity: Limited by SSH pool size and server resources
-- Limit: No explicit connection limit configured
-- Scaling path: Implement connection pool size limits, queue system
+**Concurrent Command Execution:**
+- Current capacity: Limited by SSH connection pool (no explicit limit set)
+- Limit: May exhaust dokku server resources or hit file descriptor limits
+- Scaling path:
+  - Add configurable max concurrent connections
+  - Implement command queue with priority
+  - Add circuit breaker for failing dokku commands
 
-**SQLite Database:**
-- Current capacity: Suitable for single-server deployment
-- Limit: SQLite not optimized for high write concurrency
-- Scaling path: Migrate to PostgreSQL/MySQL for multi-server deployments
-
-**In-Memory Cache:**
-- Current capacity: Limited by Node.js heap size
-- Limit: Cache not shared across multiple server instances
-- Scaling path: Implement Redis or similar for distributed caching
+**Database Connections:**
+- Current capacity: better-sqlite3 (single-file, no connection pooling needed)
+- Limit: SQLite not suitable for high-concurrency write scenarios
+- Scaling path: Consider PostgreSQL for multi-instance deployments
 
 **WebSocket Connections:**
-- Current capacity: Limited by server memory and file descriptors
-- Limit: No connection limit configured
-- Scaling path: Implement Redis adapter for WebSocket pub/sub
+- Current capacity: No explicit limit in `server/lib/websocket.ts`
+- Limit: Memory and file descriptor limits
+- Scaling path: Add connection limits and cleanup for stale connections
 
 ## Dependencies at Risk
 
 **node-ssh:**
-- Risk: SSH library may have vulnerabilities or become unmaintained
-- Impact: Breaks all remote command execution
-- Migration plan: Consider using native SSH2 or alternative SSH libraries
+- Risk: SSH library dependency for remote command execution
+- Impact: Core functionality - remote dokku commands
+- Migration plan: Investigate native SSH alternatives or consider dokku HTTP API if available
 
 **better-sqlite3:**
-- Risk: Native module may have compilation issues on some platforms
-- Impact: Audit logging functionality
-- Migration plan: Consider sql.js (WASM) or other pure-JS SQLite implementations
+- Risk: Native module requiring compilation
+- Impact: User management and audit logging
+- Migration plan: Consider switching to sql.js for pure-JS or PostgreSQL for production scale
 
-**Express 5.0.0:**
-- Risk: Using major version that may have breaking changes
-- Impact: Middleware and route handling
-- Migration plan: Pin to stable version, monitor for breaking changes
+**Radix UI Components:**
+- Risk: Multiple component dependencies (dialog, button, card, input)
+- Impact: UI consistency and accessibility
+- Migration plan: Low risk - actively maintained, consider consolidating to a design system
 
 ## Missing Critical Features
 
-**User Management:**
-- Problem: Single admin user, no multi-user support
-- Blocks: Team collaboration, audit trails per user
+**Audit Log Export:**
+- Problem: Audit logs stored but no export/rotation mechanism
+- Blocks: Compliance requirements, log analysis
+- Impact: Cannot meet data retention policies
 
-**Role-Based Access Control:**
-- Problem: No permission system for different access levels
-- Blocks: Restricting sensitive operations to specific users
+**Backup/Restore:**
+- Problem: No backup mechanism for docklight configuration (users, settings)
+- Blocks: Disaster recovery, migration
+- Impact: Data loss risk in catastrophic failures
 
-**Configuration Backup/Restore:**
-- Problem: No way to backup or restore Docklight configuration
-- Blocks: Disaster recovery, migration between servers
+**Rate Limiting Configuration:**
+- Problem: Rate limits hardcoded in `server/lib/rate-limiter.ts`
+- Blocks: Customization per deployment
+- Impact: May be too restrictive or lenient for different use cases
 
-**Two-Factor Authentication:**
-- Problem: No 2FA support
-- Blocks: Enhanced security for production deployments
-
-**Health Check Endpoint:**
-- Problem: No /health endpoint for monitoring
-- Blocks: Proper health monitoring in production
+**Health Check Details:**
+- Problem: Basic `/api/health` endpoint doesn't check dokku connectivity
+- Blocks: Proper monitoring and alerting
+- Impact: False positive health status when dokku is unreachable
 
 ## Test Coverage Gaps
 
-**WebSocket Integration Tests:**
-- What's not tested: Real WebSocket connection lifecycle
+**Untested WebSocket Logic:**
+- What's not tested: Log streaming, connection management, reconnection logic
 - Files: `server/lib/websocket.ts`
-- Risk: Log streaming may fail in production
-- Priority: High
-
-**SSH Connection Pool Recovery:**
-- What's not tested: Connection recovery after network failure
-- Files: `server/lib/executor.ts`
-- Risk: Server may become unresponsive after network issues
+- Risk: Real-time log streaming may fail silently; connection leaks
 - Priority: Medium
 
-**End-to-End User Flows:**
-- What's not tested: Complete user journeys from UI to Dokku
-- Files: Client/server integration
-- Risk: UI/Backend integration bugs
-- Priority: Low (manual testing covers this)
+**Untested Cache Logic:**
+- What's not tested: Cache invalidation, TTL expiration, prefix clearing
+- Files: `server/lib/cache.ts`
+- Risk: Stale data served to users; inconsistent state
+- Priority: Medium
 
-**Error Boundary Components:**
-- What's not tested: React error boundary behavior
-- Files: `client/src/App.tsx`, `client/src/components/`
-- Risk: Poor error handling in production
+**Untested Network Settings:**
+- What's not tested: Network property setting and clearing
+- Files: `server/lib/network.ts`
+- Risk: Network configuration may not apply correctly
 - Priority: Low
 
+**Untested Docker Options:**
+- What's not tested: Adding, removing, clearing docker options
+- Files: `server/lib/docker-options.ts`
+- Risk: Container configuration may be incorrect
+- Priority: High (security-related)
+
+**Untested Buildpacks:**
+- What's not tested: Adding, removing, clearing buildpacks
+- Files: `server/lib/buildpacks.ts`
+- Risk: Build configuration may fail
+- Priority: Low
+
+**Untested Deployment Settings:**
+- What's not tested: Build dir, deploy branch, builder configuration
+- Files: `server/lib/deployment.ts`
+- Risk: Deployment configuration may be invalid
+- Priority: Medium
+
+**Untested Domain Management:**
+- What's not tested: Adding and removing domains
+- Files: `server/lib/domains.ts`
+- Risk: Domain routing may break
+- Priority: Medium
+
+**Untested Port Management:**
+- What's not tested: Port mapping, proxy settings
+- Files: `server/lib/ports.ts`
+- Risk: Network exposure may be incorrect
+- Priority: High (security-related)
+
+**Untested SSL Management:**
+- What's not tested: SSL enable, renew, certificate validation
+- Files: `server/lib/ssl.ts`
+- Risk: HTTPS may not work; certificates may expire
+- Priority: High (security-related)
+
+**Limited Client Test Coverage:**
+- What's not tested: Many UI components lack tests
+- Files: `client/src/components/`, `client/src/pages/`
+- Risk: UI regressions may slip through; refactoring is risky
+- Priority: Medium
+
 ---
-*Concerns audit: 2026-02-28*
+
+*Concerns audit: 2026-03-01*

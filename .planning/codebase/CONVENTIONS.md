@@ -1,132 +1,146 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-02-28
+**Analysis Date:** 2026-03-01
 
 ## Naming Patterns
 
 **Files:**
-- kebab-case (e.g., `command-executor.ts`, `dokku.ts`)
+- kebab-case (e.g., `command-executor.ts`, `rate-limiter.ts`, `web-socket.ts`)
+- Test files: `*.test.ts` co-located with source (e.g., `apps.test.ts` alongside `apps.ts`)
 
 **Functions:**
-- camelCase (e.g., `getApps`, `executeCommand`, `isValidAppName`)
+- camelCase (e.g., `getApps`, `isValidAppName`, `executeCommand`, `buildRuntimeCommand`)
+- Private/internal functions also use camelCase (e.g., `parseStatus`, `fetchAppDetails`)
 
 **Variables:**
-- camelCase (e.g., `mockExecuteCommand`, `commandResult`)
+- camelCase (e.g., `mockExecuteCommand`, `exitCode`, `stderr`)
+- Constants: SCREAMING_SNAKE_CASE (e.g., `UNKNOWN_ERROR`, `IDLE_TIMEOUT_MS`)
+- Regular expression patterns stored in constants (e.g., `INVALID_NAME_ERROR`)
 
-**Types/Interfaces:**
-- PascalCase (e.g., `CommandResult`, `SSHPool`, `AppDetail`)
-
-**Constants:**
-- SCREAMING_SNAKE_CASE (e.g., `ALLOWED_COMMANDS`, `WINDOW_MS`, `IDLE_TIMEOUT_MS`)
+**Types:**
+- `interface` for object shapes (e.g., `App`, `AppDetail`, `CommandResult`)
+- `type` for unions and primitives (e.g., `UserRole`)
+- PascalCase for type names (e.g., `JWTPayload`, `ExecuteCommandOptions`)
 
 ## Code Style
 
 **Formatting:**
 - Tool: Biome
-- Settings: Tabs (2 spaces), Strings: double quotes, Trailing commas: es5, Line width: 100, Semicolons: always
+- Key settings:
+  - Indent style: tabs
+  - Indent width: 2
+  - Line width: 100
+  - Quote style: double
+  - Trailing commas: es5
+  - Semicolons: always
 
 **Linting:**
-- Tool: Biome
-- Rules: Recommended + suspicious.noExplicitAny(off), style.useImportType(on), style.useNodejsImportProtocol(off), correctness.useParseIntRadix(off)
+- Tool: Biome (recommended rules enabled)
+- Key overrides:
+  - `noExplicitAny`: off (both server/client)
+  - `useImportType`: on
+  - `noNonNullAssertion`: off (client only)
+  - `noUnusedVariables`: warn (client only)
+  - `useExhaustiveDependencies`: off (client only)
 
 ## Import Organization
 
 **Order:**
-1. External dependencies (express, pino, node-ssh, etc.)
-2. Internal utilities (logger, executor, etc.)
-3. Types from other modules
+1. External dependencies (e.g., `import { describe, it, expect } from "vitest"`)
+2. Type-only imports from external (e.g., `import type { Request, Response } from "express"`)
+3. Internal module imports (e.g., `import { executeCommand } from "./executor.js"`)
+4. Type-only imports from internal (e.g., `import type { CommandResult } from "./executor.js"`)
 
 **Path Aliases:**
-- `@/` points to current directory (server/)
-- Used for import convenience: `import { logger } from "@/lib/logger.js";`
+- Server: `@/` points to `server/` (configured in `vitest.config.ts`)
+- Client: `@/` points to `client/src/`
+
+**Import Extensions:**
+- Always use `.js` extension for relative imports (TypeScript requirement)
+- Example: `import { apps } from "./apps.js"`
 
 ## Error Handling
 
 **Patterns:**
-- Use try-catch for async operations
-- Return error objects with exitCode, stderr, and context rather than throwing
-- Wrap errors with context: `logger.error({ err }, "Error message")`
-- Validation errors return 400 status with descriptive stderr messages
-
-```typescript
-try {
-  const result = await executeCommand(cmd);
-  return { ...result, exitCode: 0 };
-} catch (error: unknown) {
-  const err = error as { code?: number; message?: string };
-  return { exitCode: err.code || 1, stderr: err.message };
-}
-```
+- Async functions return error objects instead of throwing:
+  ```typescript
+  type ErrorResult = { error: string; command: string; exitCode: number; stderr: string };
+  ```
+- Use `try-catch` with type assertions for unknown errors
+- Extract error messages via helper functions: `const err = error as { message?: string }`
+- Return exit codes and stderr for CLI command results
+- Never expose shell execution directly to clients (use allowlist)
 
 ## Logging
 
 **Framework:** Pino (structured logging)
 
 **Patterns:**
-- Server uses `logger` from `server/lib/logger.ts`
-- Log errors with context: `logger.error({ err, command }, "Error message")`
-- HTTP requests automatically logged via pino-http middleware
-- Console transport in development, no transport in production
-- Log levels: info, warn, error
-
-```typescript
-logger.error(
-  {
-    err,
-    command,
-    path: req.path,
-  },
-  "Error message"
-);
-```
+- Import logger from `server/lib/logger.ts`
+- Use methods: `logger.info()`, `logger.error()`, `logger.warn()`
+- Log errors with context object: `logger.error({ err }, "Error message")`
+- HTTP requests logged automatically via pino-http middleware
+- Warnings for missing env vars in production
 
 ## Comments
 
 **When to Comment:**
-- Document complex logic (e.g., command builders, SSH pool behavior)
-- Document public API with JSDoc tags (@description, @param, @returns)
-- Explain non-obvious error handling strategies
-- Document security-critical code (command allowlists, input validation)
+- JSDoc for exported functions with `@description` tag
+- Comments explaining complex regex patterns
+- Comments for backward compatibility notes (e.g., "Legacy single-password login")
+- Inline comments for non-obvious logic
 
 **JSDoc/TSDoc:**
-- Use @description for function descriptions
-- Use @param for parameter documentation
-- Use @returns for return value documentation
-- Use @description for class/interface purposes
-- Comments use JSDoc format: `/** @description ... */`
+- Used for exported functions, especially with special behaviors
+- `@description` tag commonly used
+- Example:
+  ```typescript
+  /** @description Parses "user@host" or "user@host:port". Note: IPv6 not supported. */
+  function parseTarget(target: string): { host: string; username: string; port: number } | null
+  ```
 
 ## Function Design
 
-**Size:** Functions should be small and focused (typically < 50 lines)
-- Extract complex logic into helper functions
-- Keep single responsibility
+**Size:**
+- Prefer smaller, focused functions
+- Extract parsing logic into separate functions (e.g., `parseStatus`, `parseDomains`)
+- Helper functions for common operations (e.g., `withRuntimeHint`, `createValidationError`)
 
 **Parameters:**
 - Explicit types for all parameters
-- Use interfaces for complex parameter objects
-- Optional parameters with default values where appropriate
+- Use options objects for multiple parameters (e.g., `ExecuteCommandOptions`)
+- Destructure options in function signature when appropriate
 
 **Return Values:**
-- Simple values: direct return
-- Error scenarios: return error object with exitCode, stderr, and context
-- Async operations: Promise-based returns
-- Public functions often return union types of success/error patterns
+- Explicit return types on exported functions
+- Union types for error/success results
+- Prefer `Result`-style error objects over throwing
 
 ## Module Design
 
 **Exports:**
-- Named exports for functions and constants
-- Default export for main entry point (server/index.ts)
-- Barrel files: Not used in this codebase
+- Named exports for functions and types (default exports avoided)
+- Group related exports (e.g., `requireAdmin`, `requireOperator` middleware)
+- Type exports with `export type` or `export interface`
 
-**Structure:**
-- lib/ directory contains reusable utilities
-- Each module has one public API (exports in module-level scope)
-- Type definitions co-located with their usage or in separate .d.ts files
+**Barrel Files:**
+- Not commonly used; prefer direct imports
+- Test files import directly from source files
 
-**Testing:**
-- Co-located test files (*.test.ts in same directory as source)
-- No separate test directories for server
+## Security Conventions
+
+**Command Execution:**
+- All commands must pass through allowlist (`server/lib/allowlist.ts`)
+- Never allow user input to directly execute shell commands
+- Validate app names with regex: `/^[a-z0-9-]+$/`
+- Return error objects for invalid input (exitCode 400)
+
+**Authentication:**
+- JWT-based session tokens
+- HttpOnly, SameSite=strict cookies
+- Secure flag in production only
+- Multi-user and legacy single-password support
 
 ---
-*Convention analysis: 2026-02-28*
+
+*Convention analysis: 2026-03-01*
