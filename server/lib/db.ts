@@ -18,8 +18,8 @@ interface UserRoleRow {
 	role: UserRole;
 }
 
-const DATA_DIR = path.resolve(__dirname, "..", "..", "data");
-const DB_PATH = path.join(DATA_DIR, "docklight.db");
+const DB_PATH = path.resolve(process.env.DOCKLIGHT_DB_PATH || path.join("data", "docklight.db"));
+const DATA_DIR = path.dirname(DB_PATH);
 
 if (!fs.existsSync(DATA_DIR)) {
 	fs.mkdirSync(DATA_DIR, { recursive: true });

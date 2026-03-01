@@ -189,7 +189,9 @@ Now you can log in with the username and password you just created.
 
 ## Persistent Storage (Important)
 
-Docklight uses SQLite to store command history. By default, the database lives inside the container and is **lost on every redeploy**. To persist it:
+Docklight uses SQLite to store command history and user accounts. By default, the database path is controlled by the `DOCKLIGHT_DB_PATH` environment variable (defaults to `data/docklight.db` relative to the working directory). In the Docker container, this resolves to `/app/data/docklight.db`.
+
+Without persistent storage, the database is **lost on every redeploy**. To persist it:
 
 ```bash
 ssh root@<your-server-ip>
@@ -202,6 +204,12 @@ dokku storage:mount docklight /var/lib/dokku/data/storage/docklight:/app/data
 
 # Redeploy to apply
 dokku ps:rebuild docklight
+```
+
+Alternatively, you can set a custom database path:
+
+```bash
+dokku config:set docklight DOCKLIGHT_DB_PATH=/app/data/docklight.db
 ```
 
 ## Updating
