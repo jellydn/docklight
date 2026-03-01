@@ -316,9 +316,7 @@ describe("importBackup validation", () => {
 	it("should reject backup with no admin user", () => {
 		const result = importBackup({
 			...validBackup,
-			users: [
-				{ username: "user1", password_hash: "hash", role: "viewer", createdAt: "" },
-			],
+			users: [{ username: "user1", password_hash: "hash", role: "viewer", createdAt: "" }],
 		});
 		expect(result).toEqual({
 			success: false,
@@ -418,9 +416,9 @@ describe("backup SQL logic", () => {
 		);
 		upsert.run("admin", "admin-hash", "admin", "2024-01-01T00:00:00.000Z");
 
-		const users = testDb
-			.prepare("SELECT username FROM users ORDER BY id ASC")
-			.all() as { username: string }[];
+		const users = testDb.prepare("SELECT username FROM users ORDER BY id ASC").all() as {
+			username: string;
+		}[];
 
 		expect(users).toHaveLength(2);
 		expect(users.map((u) => u.username)).toContain("existing");

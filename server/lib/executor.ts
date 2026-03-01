@@ -85,6 +85,16 @@ function buildRemoteCommand(command: string, options?: ExecuteCommandOptions): s
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
+function addSudoHintIfNeeded(stderr: string, asRoot?: boolean): string {
+	if (
+		asRoot &&
+		/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty/i.test(stderr)
+	) {
+		return `${stderr}\nHint: configure passwordless sudo for Dokku commands or set DOCKLIGHT_DOKKU_SSH_TARGET to a root SSH user.`;
+	}
+	return stderr;
+}
+
 /** @description Maintains persistent SSH connections to avoid per-command handshake overhead. */
 export class SSHPool {
 	private connections = new Map<string, NodeSSH>();
@@ -256,13 +266,10 @@ async function executeViaPool(
 	}
 
 	const exitCode = execResult.code ?? 1;
-	let stderr = execResult.stderr.trim();
-
-	if (exitCode !== 0 && options?.asRoot) {
-		if (/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty/i.test(stderr)) {
-			stderr = `${stderr}\nHint: configure passwordless sudo for Dokku commands or set DOCKLIGHT_DOKKU_SSH_TARGET to a root SSH user.`;
-		}
-	}
+	const stderr = addSudoHintIfNeeded(
+		execResult.stderr.trim(),
+		exitCode !== 0 ? options?.asRoot : undefined
+	);
 
 	const result: CommandResult = {
 		command,
@@ -352,12 +359,7 @@ export async function executeCommand(
 				preferRootTarget: false,
 			});
 		}
-		if (
-			options?.asRoot &&
-			/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty/i.test(stderr)
-		) {
-			stderr = `${stderr}\nHint: configure passwordless sudo for Dokku commands or set DOCKLIGHT_DOKKU_SSH_TARGET to a root SSH user.`;
-		}
+		stderr = addSudoHintIfNeeded(stderr, options?.asRoot);
 		const result = {
 			command,
 			exitCode: err.code || 1,

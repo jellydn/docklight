@@ -71,7 +71,9 @@ import { setupLogStreaming } from "./websocket.js";
 // Helper: create a minimal mock socket
 function makeSocket(): net.Socket {
 	const emitter = new EventEmitter();
-	(emitter as unknown as { write: (data: string) => boolean }).write = vi.fn().mockReturnValue(true);
+	(emitter as unknown as { write: (data: string) => boolean }).write = vi
+		.fn()
+		.mockReturnValue(true);
 	(emitter as unknown as { destroy: () => void }).destroy = vi.fn();
 	return emitter as unknown as net.Socket;
 }
@@ -89,11 +91,7 @@ function makeReq(url: string, cookieHeader?: string): http.IncomingMessage {
 
 describe("setupLogStreaming", () => {
 	let server: http.Server;
-	let upgradeHandler: (
-		req: http.IncomingMessage,
-		socket: net.Socket,
-		head: Buffer
-	) => void;
+	let upgradeHandler: (req: http.IncomingMessage, socket: net.Socket, head: Buffer) => void;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -144,9 +142,9 @@ describe("setupLogStreaming", () => {
 		it("should respond 401 and destroy when no session cookie", () => {
 			const socket = makeSocket();
 			upgradeHandler(makeReq("/api/apps/my-app/logs/stream"), socket, Buffer.alloc(0));
-			expect(
-				(socket as unknown as { write: (d: string) => void }).write
-			).toHaveBeenCalledWith("HTTP/1.1 401 Unauthorized\r\n\r\n");
+			expect((socket as unknown as { write: (d: string) => void }).write).toHaveBeenCalledWith(
+				"HTTP/1.1 401 Unauthorized\r\n\r\n"
+			);
 			expect(socket.destroy).toHaveBeenCalled();
 		});
 
@@ -158,9 +156,9 @@ describe("setupLogStreaming", () => {
 				socket,
 				Buffer.alloc(0)
 			);
-			expect(
-				(socket as unknown as { write: (d: string) => void }).write
-			).toHaveBeenCalledWith("HTTP/1.1 401 Unauthorized\r\n\r\n");
+			expect((socket as unknown as { write: (d: string) => void }).write).toHaveBeenCalledWith(
+				"HTTP/1.1 401 Unauthorized\r\n\r\n"
+			);
 			expect(socket.destroy).toHaveBeenCalled();
 		});
 
@@ -176,10 +174,11 @@ describe("setupLogStreaming", () => {
 	});
 
 	describe("connection limit", () => {
+		const MAX_CONNECTIONS = Number(process.env.WS_MAX_CONNECTIONS ?? 50);
+
 		it("should return 503 and destroy socket when connection limit is reached", () => {
-			// Fill up the clients set to MAX_CONNECTIONS (default 50)
-			const MAX = Number(process.env.WS_MAX_CONNECTIONS ?? 50);
-			for (let i = 0; i < MAX; i++) {
+			// Fill up the clients set to MAX_CONNECTIONS
+			for (let i = 0; i < MAX_CONNECTIONS; i++) {
 				mockWss.clients.add({});
 			}
 
@@ -190,19 +189,18 @@ describe("setupLogStreaming", () => {
 				Buffer.alloc(0)
 			);
 
-			expect(
-				(socket as unknown as { write: (d: string) => void }).write
-			).toHaveBeenCalledWith("HTTP/1.1 503 Service Unavailable\r\n\r\n");
+			expect((socket as unknown as { write: (d: string) => void }).write).toHaveBeenCalledWith(
+				"HTTP/1.1 503 Service Unavailable\r\n\r\n"
+			);
 			expect(socket.destroy).toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
-				expect.objectContaining({ max: MAX }),
+				expect.objectContaining({ max: MAX_CONNECTIONS }),
 				"WebSocket connection limit reached"
 			);
 		});
 
 		it("should allow connection when below the limit", () => {
-			const MAX = Number(process.env.WS_MAX_CONNECTIONS ?? 50);
-			for (let i = 0; i < MAX - 1; i++) {
+			for (let i = 0; i < MAX_CONNECTIONS - 1; i++) {
 				mockWss.clients.add({});
 			}
 
@@ -225,3 +223,112 @@ describe("setupLogStreaming", () => {
 	});
 });
 
+describe("cleanup interval", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.useFakeTimers();
+
+		// Reset shared mock state
+		mockWss.clients.clear();
+		mockWss.on.mockReset();
+		mockWss.handleUpgrade.mockReset();
+		mockWss.emit.mockReset();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.clearAllMocks();
+	});
+
+	it("should terminate connections that do not respond to ping", () => {
+		const server = new EventEmitter() as unknown as http.Server;
+		(
+			server as unknown as { on: (event: string, handler: (...args: unknown[]) => void) => void }
+		).on = vi.fn();
+
+		vi.mocked(isValidAppName).mockReturnValue(true);
+		vi.mocked(verifyToken).mockReturnValue({ authenticated: true, username: "admin" });
+
+		setupLogStreaming(server);
+
+		const mockWs = {
+			isAlive: false,
+			lastActivityAt: Date.now(),
+			terminate: vi.fn(),
+			ping: vi.fn(),
+			on: vi.fn(),
+		};
+
+		mockWss.clients.add(mockWs);
+
+		const CLEANUP_INTERVAL_MS = Number(process.env.WS_CLEANUP_INTERVAL_MS) || 60 * 1000;
+		vi.advanceTimersByTime(CLEANUP_INTERVAL_MS);
+
+		expect(mockWs.terminate).toHaveBeenCalled();
+		expect(logger.info).toHaveBeenCalledWith("Terminating unresponsive WebSocket connection");
+	});
+
+	it("should terminate idle connections", () => {
+		const server = new EventEmitter() as unknown as http.Server;
+		(
+			server as unknown as { on: (event: string, handler: (...args: unknown[]) => void) => void }
+		).on = vi.fn();
+
+		vi.mocked(isValidAppName).mockReturnValue(true);
+		vi.mocked(verifyToken).mockReturnValue({ authenticated: true, username: "admin" });
+
+		setupLogStreaming(server);
+
+		const IDLE_TIMEOUT_MS = Number(process.env.WS_IDLE_TIMEOUT_MS) || 30 * 60 * 1000;
+		const oldTimestamp = Date.now() - IDLE_TIMEOUT_MS - 1000;
+
+		const mockWs = {
+			isAlive: true,
+			lastActivityAt: oldTimestamp,
+			terminate: vi.fn(),
+			ping: vi.fn(),
+			on: vi.fn(),
+		};
+
+		mockWss.clients.add(mockWs);
+
+		const CLEANUP_INTERVAL_MS = Number(process.env.WS_CLEANUP_INTERVAL_MS) || 60 * 1000;
+		vi.advanceTimersByTime(CLEANUP_INTERVAL_MS);
+
+		expect(mockWs.terminate).toHaveBeenCalled();
+		expect(logger.info).toHaveBeenCalledWith(
+			expect.objectContaining({ idleMs: expect.any(Number) }),
+			"Terminating idle WebSocket connection"
+		);
+	});
+
+	it("should log metrics when connections are terminated", () => {
+		const server = new EventEmitter() as unknown as http.Server;
+		(
+			server as unknown as { on: (event: string, handler: (...args: unknown[]) => void) => void }
+		).on = vi.fn();
+
+		vi.mocked(isValidAppName).mockReturnValue(true);
+		vi.mocked(verifyToken).mockReturnValue({ authenticated: true, username: "admin" });
+
+		setupLogStreaming(server);
+
+		const mockWs = {
+			isAlive: false,
+			lastActivityAt: Date.now(),
+			terminate: vi.fn(),
+			ping: vi.fn(),
+			on: vi.fn(),
+		};
+
+		mockWss.clients.add(mockWs);
+
+		const CLEANUP_INTERVAL_MS = Number(process.env.WS_CLEANUP_INTERVAL_MS) || 60 * 1000;
+		vi.advanceTimersByTime(CLEANUP_INTERVAL_MS);
+
+		expect(logger.info).toHaveBeenCalledWith(
+			expect.objectContaining({ terminated: 1, active: 0 }),
+			"WebSocket connection metrics"
+		);
+	});
+});

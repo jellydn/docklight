@@ -7,19 +7,11 @@ import { ToastProvider } from "./components/ToastProvider";
 import { AuthProvider } from "./contexts/auth-context.js";
 import { Login } from "./pages/Login";
 
-const Dashboard = lazy(() =>
-	import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })),
-);
+const Dashboard = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })));
 const Apps = lazy(() => import("./pages/Apps").then((m) => ({ default: m.Apps })));
-const AppDetail = lazy(() =>
-	import("./pages/AppDetail").then((m) => ({ default: m.AppDetail })),
-);
-const Databases = lazy(() =>
-	import("./pages/Databases").then((m) => ({ default: m.Databases })),
-);
-const Plugins = lazy(() =>
-	import("./pages/Plugins").then((m) => ({ default: m.Plugins })),
-);
+const AppDetail = lazy(() => import("./pages/AppDetail").then((m) => ({ default: m.AppDetail })));
+const Databases = lazy(() => import("./pages/Databases").then((m) => ({ default: m.Databases })));
+const Plugins = lazy(() => import("./pages/Plugins").then((m) => ({ default: m.Plugins })));
 const Audit = lazy(() => import("./pages/Audit").then((m) => ({ default: m.Audit })));
 const Users = lazy(() => import("./pages/Users").then((m) => ({ default: m.Users })));
 

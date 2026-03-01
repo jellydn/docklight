@@ -1,7 +1,8 @@
 import { spawn, type ChildProcess } from "child_process";
 import type http from "http";
 import type net from "net";
-import { WebSocketServer, type WebSocket as WS } from "ws";
+import { WebSocketServer } from "ws";
+import type { WebSocket as WS } from "ws";
 import { verifyToken } from "./auth.js";
 import { isValidAppName } from "./apps.js";
 import { buildRuntimeCommand } from "./executor.js";
@@ -18,6 +19,14 @@ interface ExtendedWebSocket extends WS {
 	lastActivityAt?: number;
 }
 
+interface ExtendedIncomingMessage extends http.IncomingMessage {
+	appName?: string;
+}
+
+function markActivity(ws: ExtendedWebSocket): void {
+	ws.lastActivityAt = Date.now();
+}
+
 export function setupLogStreaming(server: http.Server) {
 	const wss = new WebSocketServer({
 		noServer: true,
@@ -26,6 +35,7 @@ export function setupLogStreaming(server: http.Server) {
 	// Periodic cleanup: ping all connections and terminate stale ones
 	const cleanupInterval = setInterval(() => {
 		const now = Date.now();
+		const initialActive = wss.clients.size;
 		let terminated = 0;
 
 		wss.clients.forEach((client) => {
@@ -51,9 +61,9 @@ export function setupLogStreaming(server: http.Server) {
 			ws.ping();
 		});
 
-		if (terminated > 0 || wss.clients.size > 0) {
+		if (terminated > 0 || initialActive > 0) {
 			logger.info(
-				{ active: wss.clients.size, terminated },
+				{ active: initialActive - terminated, terminated },
 				"WebSocket connection metrics"
 			);
 		}
@@ -62,7 +72,7 @@ export function setupLogStreaming(server: http.Server) {
 	// Prevent the interval from keeping the process alive
 	cleanupInterval.unref();
 
-	server.on("upgrade", (req: http.IncomingMessage, socket: net.Socket, head: Buffer) => {
+	server.on("upgrade", (req: ExtendedIncomingMessage, socket: net.Socket, head: Buffer) => {
 		const pathname = new URL(req.url || "", `http://${req.headers.host}`).pathname;
 		const match = pathname.match(/^\/api\/apps\/([^/]+)\/logs\/stream$/);
 
@@ -78,16 +88,8 @@ export function setupLogStreaming(server: http.Server) {
 			return;
 		}
 
-		// Enforce connection limit before upgrading
-		if (wss.clients.size >= MAX_CONNECTIONS) {
-			logger.warn(
-				{ current: wss.clients.size, max: MAX_CONNECTIONS },
-				"WebSocket connection limit reached"
-			);
-			socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
-			socket.destroy();
-			return;
-		}
+		// Store validated appName for use in connection handler
+		req.appName = appName;
 
 		// Parse cookies from request headers
 		const cookies: Record<string, string> = {};
@@ -116,38 +118,45 @@ export function setupLogStreaming(server: http.Server) {
 			return;
 		}
 
+		// Enforce connection limit after authentication
+		if (wss.clients.size >= MAX_CONNECTIONS) {
+			logger.warn(
+				{ current: wss.clients.size, max: MAX_CONNECTIONS },
+				"WebSocket connection limit reached"
+			);
+			socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
+			socket.destroy();
+			return;
+		}
+
 		wss.handleUpgrade(req, socket, head, (ws: WS) => {
 			wss.emit("connection", ws, req);
 		});
 	});
 
-	wss.on("connection", (ws: ExtendedWebSocket, req: http.IncomingMessage) => {
-		const pathname = new URL(req.url || "", `http://${req.headers.host}`).pathname;
-		const match = pathname.match(/^\/api\/apps\/([^/]+)\/logs\/stream$/);
-
-		if (!match) {
+	wss.on("connection", (ws: ExtendedWebSocket, req: ExtendedIncomingMessage) => {
+		const appName = req.appName;
+		if (!appName) {
 			ws.close();
 			return;
 		}
 
 		// Initialize heartbeat state
 		ws.isAlive = true;
-		ws.lastActivityAt = Date.now();
+		markActivity(ws);
 
 		ws.on("pong", () => {
 			ws.isAlive = true;
-			ws.lastActivityAt = Date.now();
+			markActivity(ws);
 		});
 
 		logger.info({ active: wss.clients.size }, "WebSocket connection established");
-
-		const appName = match[1];
 		let lineCount = 100;
 		let logProcess: ChildProcess | null = null;
 
 		// Handle initial line count message
 		ws.on("message", (data: Buffer) => {
-			ws.lastActivityAt = Date.now();
+			markActivity(ws);
 			try {
 				const message = JSON.parse(data.toString());
 				if (typeof message.lines === "number" && [100, 500, 1000].includes(message.lines)) {
@@ -168,7 +177,7 @@ export function setupLogStreaming(server: http.Server) {
 		logProcess = spawn("sh", ["-lc", command]);
 
 		logProcess.stdout?.on("data", (data: Buffer) => {
-			ws.lastActivityAt = Date.now();
+			markActivity(ws);
 			const lines = data
 				.toString()
 				.split("\n")
@@ -179,7 +188,7 @@ export function setupLogStreaming(server: http.Server) {
 		});
 
 		logProcess.stderr?.on("data", (data: Buffer) => {
-			ws.lastActivityAt = Date.now();
+			markActivity(ws);
 			const lines = data
 				.toString()
 				.split("\n")
@@ -199,9 +208,12 @@ export function setupLogStreaming(server: http.Server) {
 		});
 
 		ws.on("close", () => {
-			logger.info({ active: wss.clients.size }, "WebSocket connection closed");
-			if (logProcess && !logProcess.killed) {
-				logProcess.kill();
+			const logProcessRef = logProcess;
+			setImmediate(() => {
+				logger.info({ active: wss.clients.size }, "WebSocket connection closed");
+			});
+			if (logProcessRef && !logProcessRef.killed) {
+				logProcessRef.kill();
 			}
 		});
 

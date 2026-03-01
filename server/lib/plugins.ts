@@ -158,9 +158,7 @@ async function executePluginCommand(
 	if (result.exitCode !== 0 && SUDO_ERROR_REGEX.test(result.stderr)) {
 		return {
 			...result,
-			stderr:
-				result.stderr +
-				"\n\nPlugin commands require root access. See https://github.com/jellydn/docklight/blob/main/docs/deployment.md#plugin-management-sudo-errors",
+			stderr: `${result.stderr}\n\nPlugin commands require root access. See https://github.com/jellydn/docklight/blob/main/docs/deployment.md#plugin-management-sudo-errors`,
 		};
 	}
 
