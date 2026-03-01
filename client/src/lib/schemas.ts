@@ -198,3 +198,14 @@ export const AuthMeSchema = z.object({
 		})
 		.optional(),
 });
+
+// Server configuration schema
+export const ServerConfigSchema = z.object({
+	dokkuSshTarget: z.string(),
+	dokkuSshRootTarget: z.string(),
+	dokkuSshKeyPath: z.string(),
+	dokkuSshOpts: z.string(),
+	logLevel: z.string(),
+});
+
+export type ServerConfig = z.infer<typeof ServerConfigSchema>;

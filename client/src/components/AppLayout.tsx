@@ -83,6 +83,15 @@ export function AppLayout() {
 							Users
 						</Link>
 					)}
+					{role === "admin" && (
+						<Link
+							to="/settings"
+							className="block px-4 py-2 hover:bg-gray-800"
+							onClick={closeSidebar}
+						>
+							Settings
+						</Link>
+					)}
 					<button
 						onClick={handleLogout}
 						className="w-full text-left px-4 py-2 hover:bg-gray-800 mt-4"

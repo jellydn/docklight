@@ -22,6 +22,9 @@ const Plugins = lazy(() =>
 );
 const Audit = lazy(() => import("./pages/Audit").then((m) => ({ default: m.Audit })));
 const Users = lazy(() => import("./pages/Users").then((m) => ({ default: m.Users })));
+const Settings = lazy(() =>
+	import("./pages/Settings").then((m) => ({ default: m.Settings })),
+);
 
 function App() {
 	return (
@@ -92,6 +95,16 @@ function App() {
 								<RequireAdmin>
 									<Suspense>
 										<Users />
+									</Suspense>
+								</RequireAdmin>
+							}
+						/>
+						<Route
+							path="settings"
+							element={
+								<RequireAdmin>
+									<Suspense>
+										<Settings />
 									</Suspense>
 								</RequireAdmin>
 							}
