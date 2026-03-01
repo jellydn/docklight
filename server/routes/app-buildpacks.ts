@@ -6,7 +6,7 @@ import {
 	removeBuildpack,
 } from "../lib/buildpacks.js";
 import { clearPrefix } from "../lib/cache.js";
-import { authMiddleware } from "../lib/auth.js";
+import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { getParam, handleCommandResult } from "./util.js";
 
 export function registerAppBuildpackRoutes(app: express.Application): void {
@@ -23,7 +23,7 @@ export function registerAppBuildpackRoutes(app: express.Application): void {
 		res.json({ buildpacks });
 	});
 
-	app.post("/api/apps/:name/buildpacks", authMiddleware, async (req, res) => {
+	app.post("/api/apps/:name/buildpacks", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { url, index } = req.body;
 
@@ -34,7 +34,7 @@ export function registerAppBuildpackRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.delete("/api/apps/:name/buildpacks", authMiddleware, async (req, res) => {
+	app.delete("/api/apps/:name/buildpacks", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { url } = req.body;
 
@@ -45,12 +45,17 @@ export function registerAppBuildpackRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.delete("/api/apps/:name/buildpacks/all", authMiddleware, async (req, res) => {
-		const name = getParam(req.params, "name");
-		const result = await clearBuildpacks(name);
-		if (!handleCommandResult(res, result)) return;
+	app.delete(
+		"/api/apps/:name/buildpacks/all",
+		authMiddleware,
+		requireOperator,
+		async (req, res) => {
+			const name = getParam(req.params, "name");
+			const result = await clearBuildpacks(name);
+			if (!handleCommandResult(res, result)) return;
 
-		clearPrefix("apps:");
-		res.json(result);
-	});
+			clearPrefix("apps:");
+			res.json(result);
+		}
+	);
 }

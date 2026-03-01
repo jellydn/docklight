@@ -1,7 +1,7 @@
 import type express from "express";
 import { addPort, clearPorts, getPorts, removePort } from "../lib/ports.js";
 import { clearPrefix } from "../lib/cache.js";
-import { authMiddleware } from "../lib/auth.js";
+import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { getParam, handleCommandResult } from "./util.js";
 
 export function registerAppPortRoutes(app: express.Application): void {
@@ -16,7 +16,7 @@ export function registerAppPortRoutes(app: express.Application): void {
 		res.json({ ports });
 	});
 
-	app.post("/api/apps/:name/ports", authMiddleware, async (req, res) => {
+	app.post("/api/apps/:name/ports", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { scheme, hostPort, containerPort } = req.body;
 
@@ -27,7 +27,7 @@ export function registerAppPortRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.delete("/api/apps/:name/ports", authMiddleware, async (req, res) => {
+	app.delete("/api/apps/:name/ports", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { scheme, hostPort, containerPort } = req.body;
 
@@ -38,7 +38,7 @@ export function registerAppPortRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.delete("/api/apps/:name/ports/all", authMiddleware, async (req, res) => {
+	app.delete("/api/apps/:name/ports/all", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const result = await clearPorts(name);
 		if (!handleCommandResult(res, result)) return;

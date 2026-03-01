@@ -6,7 +6,7 @@ import {
 	removeDockerOption,
 } from "../lib/docker-options.js";
 import { clearPrefix } from "../lib/cache.js";
-import { authMiddleware } from "../lib/auth.js";
+import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { getParam, handleCommandResult } from "./util.js";
 
 export function registerAppDockerOptionsRoutes(app: express.Application): void {
@@ -25,7 +25,7 @@ export function registerAppDockerOptionsRoutes(app: express.Application): void {
 		res.json(dockerOptions);
 	});
 
-	app.post("/api/apps/:name/docker-options", authMiddleware, async (req, res) => {
+	app.post("/api/apps/:name/docker-options", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { phase, option } = req.body;
 
@@ -36,25 +36,35 @@ export function registerAppDockerOptionsRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.delete("/api/apps/:name/docker-options", authMiddleware, async (req, res) => {
-		const name = getParam(req.params, "name");
-		const { phase, option } = req.body;
+	app.delete(
+		"/api/apps/:name/docker-options",
+		authMiddleware,
+		requireOperator,
+		async (req, res) => {
+			const name = getParam(req.params, "name");
+			const { phase, option } = req.body;
 
-		const result = await removeDockerOption(name, phase, option);
-		if (!handleCommandResult(res, result)) return;
+			const result = await removeDockerOption(name, phase, option);
+			if (!handleCommandResult(res, result)) return;
 
-		clearPrefix("apps:");
-		res.json(result);
-	});
+			clearPrefix("apps:");
+			res.json(result);
+		}
+	);
 
-	app.delete("/api/apps/:name/docker-options/all", authMiddleware, async (req, res) => {
-		const name = getParam(req.params, "name");
-		const { phase } = req.body;
+	app.delete(
+		"/api/apps/:name/docker-options/all",
+		authMiddleware,
+		requireOperator,
+		async (req, res) => {
+			const name = getParam(req.params, "name");
+			const { phase } = req.body;
 
-		const result = await clearDockerOptions(name, phase);
-		if (!handleCommandResult(res, result)) return;
+			const result = await clearDockerOptions(name, phase);
+			if (!handleCommandResult(res, result)) return;
 
-		clearPrefix("apps:");
-		res.json(result);
-	});
+			clearPrefix("apps:");
+			res.json(result);
+		}
+	);
 }

@@ -8,7 +8,7 @@ import {
 } from "../lib/databases.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
 import { logger } from "../lib/logger.js";
-import { authMiddleware } from "../lib/auth.js";
+import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { getParam } from "./util.js";
 
 export function registerDatabaseRoutes(app: express.Application): void {
@@ -32,14 +32,14 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		res.json(databases);
 	});
 
-	app.post("/api/databases", authMiddleware, async (req, res) => {
+	app.post("/api/databases", authMiddleware, requireOperator, async (req, res) => {
 		const { plugin, name } = req.body;
 		const result = await createDatabase(plugin, name);
 		clearPrefix("databases:");
 		res.json(result);
 	});
 
-	app.post("/api/databases/:name/link", authMiddleware, async (req, res) => {
+	app.post("/api/databases/:name/link", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { plugin, app } = req.body;
 		const result = await linkDatabase(plugin, name, app);
@@ -47,7 +47,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.post("/api/databases/:name/unlink", authMiddleware, async (req, res) => {
+	app.post("/api/databases/:name/unlink", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { plugin, app } = req.body;
 		const result = await unlinkDatabase(plugin, name, app);
@@ -55,7 +55,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.delete("/api/databases/:name", authMiddleware, async (req, res) => {
+	app.delete("/api/databases/:name", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { plugin, confirmName } = req.body;
 		const result = await destroyDatabase(plugin, name, confirmName);

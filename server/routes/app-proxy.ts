@@ -1,7 +1,7 @@
 import type express from "express";
 import { disableProxy, enableProxy, getProxyReport } from "../lib/ports.js";
 import { clearPrefix } from "../lib/cache.js";
-import { authMiddleware } from "../lib/auth.js";
+import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { getParam, handleCommandResult } from "./util.js";
 
 export function registerAppProxyRoutes(app: express.Application): void {
@@ -18,7 +18,7 @@ export function registerAppProxyRoutes(app: express.Application): void {
 		res.json(proxyReport);
 	});
 
-	app.post("/api/apps/:name/proxy/enable", authMiddleware, async (req, res) => {
+	app.post("/api/apps/:name/proxy/enable", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const result = await enableProxy(name);
 		if (!handleCommandResult(res, result)) return;
@@ -27,7 +27,7 @@ export function registerAppProxyRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.post("/api/apps/:name/proxy/disable", authMiddleware, async (req, res) => {
+	app.post("/api/apps/:name/proxy/disable", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const result = await disableProxy(name);
 		if (!handleCommandResult(res, result)) return;

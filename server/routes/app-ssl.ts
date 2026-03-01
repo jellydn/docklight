@@ -1,6 +1,6 @@
 import type express from "express";
 import { enableSSL, getSSL, renewSSL } from "../lib/ssl.js";
-import { authMiddleware } from "../lib/auth.js";
+import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { getParam } from "./util.js";
 
 export function registerAppSSLRoutes(app: express.Application): void {
@@ -10,7 +10,7 @@ export function registerAppSSLRoutes(app: express.Application): void {
 		res.json(ssl);
 	});
 
-	app.post("/api/apps/:name/ssl/enable", authMiddleware, async (req, res) => {
+	app.post("/api/apps/:name/ssl/enable", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { email } = req.body ?? {};
 		const result =
@@ -20,7 +20,7 @@ export function registerAppSSLRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.post("/api/apps/:name/ssl/renew", authMiddleware, async (req, res) => {
+	app.post("/api/apps/:name/ssl/renew", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const result = await renewSSL(name);
 		res.json(result);

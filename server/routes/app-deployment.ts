@@ -7,7 +7,7 @@ import {
 	setDeployBranch,
 } from "../lib/deployment.js";
 import { clearPrefix } from "../lib/cache.js";
-import { authMiddleware } from "../lib/auth.js";
+import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { getParam, type CommandResultLike } from "./util.js";
 
 export function registerAppDeploymentRoutes(app: express.Application): void {
@@ -26,7 +26,7 @@ export function registerAppDeploymentRoutes(app: express.Application): void {
 		res.json(deploymentSettings);
 	});
 
-	app.put("/api/apps/:name/deployment", authMiddleware, async (req, res) => {
+	app.put("/api/apps/:name/deployment", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { deployBranch, buildDir, builder } = req.body;
 		const promises: Promise<CommandResultLike>[] = [];
