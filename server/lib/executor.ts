@@ -229,8 +229,9 @@ async function executeViaPool(
 		}
 	}
 
-	let execResult: { stdout: string; stderr: string; code: number | null };
-	try {
+	const execWithTimeout = async (
+		conn: NodeSSH
+	): Promise<{ stdout: string; stderr: string; code: number | null }> => {
 		let timeoutId: ReturnType<typeof setTimeout> | null = null;
 		const timeoutPromise = new Promise<never>((_, reject) => {
 			timeoutId = setTimeout(
@@ -239,20 +240,45 @@ async function executeViaPool(
 			);
 		});
 		try {
-			execResult = await Promise.race([ssh.execCommand(remoteCommand), timeoutPromise]);
+			return await Promise.race([conn.execCommand(remoteCommand), timeoutPromise]);
 		} finally {
 			if (timeoutId) clearTimeout(timeoutId);
 		}
+	};
+
+	let execResult: { stdout: string; stderr: string; code: number | null };
+	try {
+		execResult = await execWithTimeout(ssh);
 	} catch (execError) {
 		const execErrMessage = getErrorMessage(execError);
-		const result: CommandResult = {
-			command,
-			exitCode: 1,
-			stdout: "",
-			stderr: execErrMessage || "SSH command execution failed",
-		};
-		saveCommand(result);
-		return result;
+		const isChannelError = /channel open failure|open failed/i.test(execErrMessage);
+
+		if (isChannelError) {
+			sshPool.closeConnection(target);
+			try {
+				const freshSsh = await sshPool.getConnection(target, keyPath);
+				execResult = await execWithTimeout(freshSsh);
+			} catch (retryError) {
+				const retryErrMessage = getErrorMessage(retryError);
+				const result: CommandResult = {
+					command,
+					exitCode: 1,
+					stdout: "",
+					stderr: `SSH channel failed, retry also failed: ${retryErrMessage}`,
+				};
+				saveCommand(result);
+				return result;
+			}
+		} else {
+			const result: CommandResult = {
+				command,
+				exitCode: 1,
+				stdout: "",
+				stderr: execErrMessage || "SSH command execution failed",
+			};
+			saveCommand(result);
+			return result;
+		}
 	}
 
 	const exitCode = execResult.code ?? 1;
