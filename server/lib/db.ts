@@ -255,6 +255,59 @@ export function updateUser(id: number, updates: { role?: UserRole; passwordHash?
 	stmt.run(...params);
 }
 
+export function demoteAdminWithGuard(
+	id: number,
+	newRole: UserRole
+): { success: boolean; error?: string } {
+	const db = getDb();
+
+	const adminBefore = db
+		.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'")
+		.get() as { count: number };
+
+	if (adminBefore.count <= 1) {
+		return { success: false, error: "Cannot demote the last admin user" };
+	}
+
+	db.prepare("UPDATE users SET role = ? WHERE id = ? AND role = 'admin'").run(newRole, id);
+
+	const adminAfter = db
+		.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'")
+		.get() as { count: number };
+
+	if (adminAfter.count >= adminBefore.count) {
+		return { success: false, error: "Cannot demote the last admin user" };
+	}
+
+	return { success: true };
+}
+
+export function deleteUserWithAdminGuard(id: number): { success: boolean; error?: string } {
+	const db = getDb();
+
+	const user = db
+		.prepare("SELECT role FROM users WHERE id = ?")
+		.get(id) as { role: UserRole } | undefined;
+
+	if (!user) {
+		return { success: false, error: "User not found" };
+	}
+
+	if (user.role === "admin") {
+		const adminCount = db
+			.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'")
+			.get() as { count: number };
+
+		if (adminCount.count <= 1) {
+			return { success: false, error: "Cannot delete the last admin user" };
+		}
+	}
+
+	db.prepare("DELETE FROM users WHERE id = ?").run(id);
+
+	return { success: true };
+}
+
 export function deleteUser(id: number): void {
 	getDb().prepare("DELETE FROM users WHERE id = ?").run(id);
 }

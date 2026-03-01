@@ -8,18 +8,7 @@ import {
 } from "../lib/deployment.js";
 import { clearPrefix } from "../lib/cache.js";
 import { authMiddleware } from "../lib/auth.js";
-import { getParam } from "./util.js";
-import type { CommandResult } from "../lib/executor.js";
-
-type CommandResultLike =
-	| CommandResult
-	| {
-			error: string;
-			exitCode: number;
-			command?: string;
-			stdout?: string;
-			stderr?: string;
-	  };
+import { getParam, type CommandResultLike } from "./util.js";
 
 export function registerAppDeploymentRoutes(app: express.Application): void {
 	app.get("/api/apps/:name/deployment", authMiddleware, async (req, res) => {

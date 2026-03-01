@@ -5,8 +5,9 @@ import {
 	getUserById,
 	updateUser,
 	deleteUser,
-	getAdminCount,
 	type UserRole,
+	demoteAdminWithGuard,
+	deleteUserWithAdminGuard,
 } from "../lib/db.js";
 import { authMiddleware, requireAdmin, hashPassword } from "../lib/auth.js";
 
@@ -38,8 +39,13 @@ export function registerUserRoutes(app: express.Application): void {
 			const passwordHash = await hashPassword(password);
 			const user = createUser(username, passwordHash, role);
 			res.status(201).json(user);
-		} catch (_err) {
-			res.status(409).json({ error: "Username already exists" });
+		} catch (err: unknown) {
+			const error = err as { code?: number; message?: string };
+			if (error.code === 19 && error.message?.includes("UNIQUE constraint failed")) {
+				res.status(409).json({ error: "Username already exists" });
+			} else {
+				res.status(500).json({ error: "Internal server error" });
+			}
 		}
 	});
 
@@ -68,12 +74,13 @@ export function registerUserRoutes(app: express.Application): void {
 				return;
 			}
 			if (existing.role === "admin" && role !== "admin") {
-				if (getAdminCount() <= 1) {
-					res.status(400).json({
-						error: "Cannot demote the last admin user",
-					});
+				const result = demoteAdminWithGuard(id, role);
+				if (!result.success) {
+					res.status(400).json({ error: result.error });
 					return;
 				}
+				res.json(getUserById(id));
+				return;
 			}
 			updates.role = role;
 		}
@@ -106,8 +113,13 @@ export function registerUserRoutes(app: express.Application): void {
 			return;
 		}
 
-		if (existing.role === "admin" && getAdminCount() <= 1) {
-			res.status(400).json({ error: "Cannot delete the last admin user" });
+		if (existing.role === "admin") {
+			const result = deleteUserWithAdminGuard(id);
+			if (!result.success) {
+				res.status(400).json({ error: result.error });
+				return;
+			}
+			res.json({ success: true });
 			return;
 		}
 

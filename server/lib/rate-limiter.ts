@@ -7,9 +7,31 @@ const AUTH_MAX_REQUESTS = 5;
 const AUTH_CHECK_MAX_REQUESTS = 300;
 
 function generateRateLimitKey(req: Parameters<RequestHandler>[0]): string {
-	const forwardedFor = req.headers["x-forwarded-for"];
-	const ip =
-		req.ip ?? (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor) ?? "unknown-ip";
+	let forwardedFor: string | undefined;
+	const forwardedForHeader = req.headers["x-forwarded-for"];
+	if (Array.isArray(forwardedForHeader)) {
+		forwardedFor = forwardedForHeader[0];
+	} else if (typeof forwardedForHeader === "string") {
+		forwardedFor = forwardedForHeader.split(",")[0]?.trim();
+	}
+
+	let ip = req.ip;
+
+	if (!ip && forwardedFor) {
+		ip = forwardedFor;
+	}
+
+	if (!ip) {
+		const remoteAddress =
+			(req.socket && (req.socket as { remoteAddress?: string }).remoteAddress) ||
+			(req.connection && (req.connection as { remoteAddress?: string }).remoteAddress);
+
+		if (remoteAddress) {
+			ip = remoteAddress;
+		} else {
+			ip = `unknown-ip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+		}
+	}
 
 	return ipKeyGenerator(ip);
 }

@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { apiFetch } from "../lib/api.js";
 import { AuthMeSchema } from "../lib/schemas.js";
 
 type RequireAdminProps = {
-	children: React.ReactNode;
+	children: ReactNode;
 };
 
 type AdminState = { status: "loading" } | { status: "authorized" } | { status: "unauthorized" };
