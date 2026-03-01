@@ -259,7 +259,11 @@ async function executeViaPool(
 	let stderr = execResult.stderr.trim();
 
 	if (exitCode !== 0 && options?.asRoot) {
-		if (/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty/i.test(stderr)) {
+		if (/sorry, try again|incorrect password attempt/i.test(stderr)) {
+			stderr = `Incorrect sudo password. Please check your password and try again.`;
+		} else if (
+			/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty/i.test(stderr)
+		) {
 			stderr = `${stderr}\nHint: configure passwordless sudo for Dokku commands or set DOCKLIGHT_DOKKU_SSH_TARGET to a root SSH user.`;
 		}
 	}
@@ -352,11 +356,14 @@ export async function executeCommand(
 				preferRootTarget: false,
 			});
 		}
-		if (
-			options?.asRoot &&
-			/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty/i.test(stderr)
-		) {
-			stderr = `${stderr}\nHint: configure passwordless sudo for Dokku commands or set DOCKLIGHT_DOKKU_SSH_TARGET to a root SSH user.`;
+		if (options?.asRoot) {
+			if (/sorry, try again|incorrect password attempt/i.test(stderr)) {
+				stderr = `Incorrect sudo password. Please check your password and try again.`;
+			} else if (
+				/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty/i.test(stderr)
+			) {
+				stderr = `${stderr}\nHint: configure passwordless sudo for Dokku commands or set DOCKLIGHT_DOKKU_SSH_TARGET to a root SSH user.`;
+			}
 		}
 		const result = {
 			command,
