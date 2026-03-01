@@ -9,7 +9,11 @@ vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
 }));
 
-const mockAuthState: { role: string; loading: boolean; canModify: boolean } = { role: "admin", loading: false, canModify: true };
+const mockAuthState: { role: string; loading: boolean; canModify: boolean } = {
+	role: "admin",
+	loading: false,
+	canModify: true,
+};
 
 vi.mock("../contexts/auth-context.js", () => ({
 	useAuth: () => mockAuthState,

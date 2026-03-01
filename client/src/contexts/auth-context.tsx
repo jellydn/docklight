@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode, type JSX } from "react";
 import { apiFetch } from "@/lib/api.js";
 import { AuthMeSchema } from "@/lib/schemas.js";
 import type { UserRole } from "@/lib/schemas.js";
@@ -15,12 +15,12 @@ const AuthContext = createContext<AuthContextValue>({
 	canModify: false,
 });
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
 	const [role, setRole] = useState<UserRole | null>(null);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		const fetchMe = async () => {
+		const fetchMe = async (): Promise<void> => {
 			try {
 				const data = await apiFetch("/auth/me", AuthMeSchema);
 				setRole(data.user?.role ?? null);

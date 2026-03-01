@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, JSX } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context.js";
 
@@ -6,7 +6,7 @@ type RequireAdminProps = {
 	children: ReactNode;
 };
 
-export function RequireAdmin({ children }: RequireAdminProps) {
+export function RequireAdmin({ children }: RequireAdminProps): JSX.Element {
 	const { role, loading } = useAuth();
 
 	if (loading) {
