@@ -187,7 +187,9 @@ export function Users() {
 								<tr>
 									<th className="px-6 py-3 font-medium text-gray-500">Username</th>
 									<th className="px-6 py-3 font-medium text-gray-500">Role</th>
-									<th className="px-6 py-3 font-medium text-gray-500 hidden sm:table-cell">Created</th>
+									<th className="px-6 py-3 font-medium text-gray-500 hidden sm:table-cell">
+										Created
+									</th>
 									<th className="px-6 py-3 font-medium text-gray-500">Actions</th>
 								</tr>
 							</thead>

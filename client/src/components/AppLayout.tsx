@@ -89,16 +89,14 @@ export function AppLayout() {
 					>
 						Logout
 					</button>
-					</nav>
-					{username && (
+				</nav>
+				{username && (
 					<div className="mt-auto border-t border-gray-700 p-4">
 						<p className="text-sm font-medium truncate">{username}</p>
-						{role && (
-							<p className="text-xs text-gray-400 capitalize">{role}</p>
-						)}
+						{role && <p className="text-xs text-gray-400 capitalize">{role}</p>}
 					</div>
-					)}
-					</aside>
+				)}
+			</aside>
 
 			<div className="flex flex-col flex-1 min-w-0">
 				{/* Mobile top bar */}
