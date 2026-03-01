@@ -13,6 +13,10 @@ vi.mock("../lib/auth.js", () => ({
 	requireAdmin: vi.fn((_req: Request, _res: Response, next: NextFunction) => next()),
 }));
 
+vi.mock("../lib/rate-limiter.js", () => ({
+	adminRateLimiter: vi.fn((_req: Request, _res: Response, next: NextFunction) => next()),
+}));
+
 vi.mock("../lib/logger.js", () => ({
 	logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));

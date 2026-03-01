@@ -1,6 +1,7 @@
 import type express from "express";
 import { authMiddleware, requireAdmin } from "../lib/auth.js";
 import { logger } from "../lib/logger.js";
+import { adminRateLimiter } from "../lib/rate-limiter.js";
 import {
 	getServerConfig,
 	updateServerConfig,
@@ -9,12 +10,12 @@ import {
 } from "../lib/server-config.js";
 
 export function registerServerConfigRoutes(app: express.Application): void {
-	app.get("/api/server/config", authMiddleware, requireAdmin, (_req, res) => {
+	app.get("/api/server/config", adminRateLimiter, authMiddleware, requireAdmin, (_req, res) => {
 		const config = getServerConfig();
 		res.json(config);
 	});
 
-	app.put("/api/server/config", authMiddleware, requireAdmin, (req, res) => {
+	app.put("/api/server/config", adminRateLimiter, authMiddleware, requireAdmin, (req, res) => {
 		const body = req.body as Partial<ServerConfig>;
 
 		if (!body || typeof body !== "object" || Array.isArray(body)) {
