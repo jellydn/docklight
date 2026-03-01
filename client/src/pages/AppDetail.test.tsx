@@ -273,7 +273,7 @@ describe("AppDetail", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByText(/git remote/i)).toBeInTheDocument();
+			expect(screen.getAllByText(/git remote/i)).toHaveLength(2);
 			expect(screen.getByText("dokku@test-app.example.com")).toBeInTheDocument();
 		});
 	});
