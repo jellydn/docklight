@@ -79,8 +79,14 @@ function parseTarget(target: string): { host: string; username: string; port: nu
 	return { host: hostPart, username, port: 22 };
 }
 
-function buildRemoteCommand(command: string, options?: ExecuteCommandOptions): string {
-	return options?.asRoot ? buildSudoCommand(command, options?.sudoPassword) : command;
+function buildRemoteCommand(
+	command: string,
+	target: string,
+	options?: ExecuteCommandOptions
+): string {
+	if (!options?.asRoot) return command;
+	if (getSshUser(target) === "root") return command;
+	return buildSudoCommand(command, options?.sudoPassword);
 }
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -191,7 +197,7 @@ async function executeViaPool(
 	const keyPath = process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim() || undefined;
 	const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
 	const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
-	const remoteCommand = buildRemoteCommand(command, options);
+	const remoteCommand = buildRemoteCommand(command, target, options);
 
 	let ssh: NodeSSH;
 	try {
