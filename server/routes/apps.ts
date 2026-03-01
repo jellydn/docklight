@@ -64,6 +64,13 @@ export function registerAppRoutes(app: express.Application): void {
 	app.post("/api/apps/:name/restart", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const result = await restartApp(name);
+
+		if (result.exitCode !== 0) {
+			const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+			res.status(statusCode).json(result);
+			return;
+		}
+
 		clearPrefix("apps:");
 		res.json(result);
 	});
@@ -71,6 +78,13 @@ export function registerAppRoutes(app: express.Application): void {
 	app.post("/api/apps/:name/rebuild", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const result = await rebuildApp(name);
+
+		if (result.exitCode !== 0) {
+			const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+			res.status(statusCode).json(result);
+			return;
+		}
+
 		clearPrefix("apps:");
 		res.json(result);
 	});
@@ -107,6 +121,13 @@ export function registerAppRoutes(app: express.Application): void {
 		const name = getParam(req.params, "name");
 		const { processType, count } = req.body;
 		const result = await scaleApp(name, processType, count);
+
+		if (result.exitCode !== 0) {
+			const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+			res.status(statusCode).json(result);
+			return;
+		}
+
 		clearPrefix("apps:");
 		res.json(result);
 	});
