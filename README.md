@@ -128,7 +128,8 @@ just build
 | Variable                          | Required                       | Description                                                                         |
 | --------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------- |
 | `DOCKLIGHT_PASSWORD`              | Yes                            | Admin login password                                                                |
-| `DOCKLIGHT_SECRET`                | No                             | JWT signing secret (auto-generated if unset)                                        |
+| `JWT_SECRET`                      | Yes (in production)            | JWT signing secret (also supports `DOCKLIGHT_SECRET` for compatibility)            |
+| `DOCKLIGHT_SECRET`                | Yes (in production)            | JWT signing secret (legacy name, use `JWT_SECRET` instead)                          |
 | `DOCKLIGHT_DOKKU_SSH_TARGET`      | No (recommended in production) | SSH target for Dokku commands, for example `dokku@<server-ip>`                      |
 | `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` | No                             | Optional root SSH target for root-required commands, for example `root@<server-ip>` |
 | `DOCKLIGHT_DOKKU_SSH_KEY_PATH`    | No                             | Private key path inside container                                                   |

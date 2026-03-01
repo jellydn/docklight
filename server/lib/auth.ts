@@ -8,7 +8,11 @@ import { logger } from "./logger.js";
 
 const scryptAsync = promisify(scrypt);
 
-const JWT_SECRET = process.env.DOCKLIGHT_SECRET || "docklight-default-secret-change-in-production";
+// JWT_SECRET takes precedence over DOCKLIGHT_SECRET for compatibility
+const JWT_SECRET =
+	process.env.JWT_SECRET ||
+	process.env.DOCKLIGHT_SECRET ||
+	"docklight-default-secret-change-in-production";
 const PASSWORD = process.env.DOCKLIGHT_PASSWORD;
 
 export interface JWTPayload {
@@ -34,13 +38,20 @@ if (!PASSWORD) {
 	logger.warn("DOCKLIGHT_PASSWORD environment variable not set. Set this for production!");
 }
 
-if (!process.env.DOCKLIGHT_SECRET) {
+// Validate JWT secret in production - supports both JWT_SECRET and DOCKLIGHT_SECRET
+const hasJwtSecret = Boolean(process.env.JWT_SECRET || process.env.DOCKLIGHT_SECRET);
+if (!hasJwtSecret) {
 	if (process.env.NODE_ENV === "production") {
+		logger.error(
+			"JWT secret not configured. Set JWT_SECRET or DOCKLIGHT_SECRET environment variable in production."
+		);
 		throw new Error(
-			"DOCKLIGHT_SECRET environment variable must be set in production. Aborting startup."
+			"JWT_SECRET or DOCKLIGHT_SECRET environment variable must be set in production. Aborting startup."
 		);
 	}
-	logger.warn("DOCKLIGHT_SECRET environment variable not set. Using default secret is insecure!");
+	logger.warn(
+		"JWT_SECRET or DOCKLIGHT_SECRET environment variable not set. Using default secret is insecure!"
+	);
 }
 
 export async function hashPassword(password: string): Promise<string> {

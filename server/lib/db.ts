@@ -224,9 +224,7 @@ export function getUserByUsername(username: string): User | null {
 }
 
 export function getUserById(id: number): SafeUser | null {
-	const stmt = getDb().prepare(
-		"SELECT id, username, role, createdAt FROM users WHERE id = ?"
-	);
+	const stmt = getDb().prepare("SELECT id, username, role, createdAt FROM users WHERE id = ?");
 	return (stmt.get(id) as SafeUser) ?? null;
 }
 
@@ -269,7 +267,9 @@ export function getUserCount(): number {
 }
 
 export function getAdminCount(): number {
-	const result = getDb().prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'").get() as {
+	const result = getDb()
+		.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'")
+		.get() as {
 		count: number;
 	};
 	return result.count;
@@ -305,7 +305,7 @@ export function insertAuditLog(
 	action: string,
 	resource: string | null = null,
 	details: string | null = null,
-	ipAddress: string | null = null,
+	ipAddress: string | null = null
 ): void {
 	const stmt = getDb().prepare(`
     INSERT INTO audit_log (user_id, action, resource, details, ip_address)

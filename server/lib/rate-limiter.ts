@@ -12,14 +12,9 @@ function generateRateLimitKey(req: Parameters<RequestHandler>[0]): string {
 	}
 
 	const forwardedFor = req.headers["x-forwarded-for"];
-	const fallbackIp = Array.isArray(forwardedFor)
-		? forwardedFor[0]
-		: forwardedFor || "unknown-ip";
+	const fallbackIp = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor || "unknown-ip";
 
-	const ip =
-		typeof fallbackIp === "string" && fallbackIp.length > 0
-			? fallbackIp
-			: "unknown-ip";
+	const ip = typeof fallbackIp === "string" && fallbackIp.length > 0 ? fallbackIp : "unknown-ip";
 
 	return ipKeyGenerator(ip);
 }

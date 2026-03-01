@@ -45,7 +45,7 @@
 **Auth Provider:**
 - Custom JWT-based authentication
 - Implementation: `/server/lib/auth.ts`
-- JWT secret: `DOCKLIGHT_SECRET` env var (required in production)
+- JWT secret: `JWT_SECRET` or `DOCKLIGHT_SECRET` env var (required in production)
 - Password: `DOCKLIGHT_PASSWORD` env var for default user
 - Role-Based Access Control (RBAC): admin, operator, viewer roles
 
@@ -82,7 +82,7 @@
 ## Environment Configuration
 
 **Required env vars:**
-- `DOCKLIGHT_SECRET` - JWT signing secret (required in production)
+- `JWT_SECRET` or `DOCKLIGHT_SECRET` - JWT signing secret (required in production)
 - `DOCKLIGHT_PASSWORD` - Default user password
 - `DOCKLIGHT_DOKKU_SSH_TARGET` - SSH target for Dokku commands (format: `dokku@host`)
 - `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` - Optional root user SSH target

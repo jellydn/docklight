@@ -39,8 +39,10 @@ dokku apps:create docklight
 # Set a strong admin password
 dokku config:set docklight DOCKLIGHT_PASSWORD=<your-secure-password>
 
-# (Optional) Set a custom JWT secret — if not set, a default is used
-dokku config:set docklight DOCKLIGHT_SECRET=<random-secret-string>
+# Set a JWT secret (required in production — generates a secure random string)
+dokku config:set docklight JWT_SECRET=$(openssl rand -base64 32)
+# Or use the legacy variable name:
+# dokku config:set docklight DOCKLIGHT_SECRET=$(openssl rand -base64 32)
 ```
 
 ## Step 2.5: Configure Dokku CLI access from container (required)
@@ -312,7 +314,7 @@ ssh dokku@<your-server-ip> config:set docklight-staging \
   DOCKLIGHT_DOKKU_SSH_TARGET='dokku@<your-server-ip>' \
   DOCKLIGHT_DOKKU_SSH_ROOT_TARGET='root@<your-server-ip>' \
   DOCKLIGHT_PASSWORD='staging-password' \
-  DOCKLIGHT_SECRET='staging-secret'
+  JWT_SECRET='staging-secret'
 
 # Mount the SSH key (same as production setup)
 dokku storage:mount docklight-staging /home/dokku/.ssh/docklight:/app/.ssh/id_ed25519
