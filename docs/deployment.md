@@ -37,8 +37,17 @@ ssh root@<your-server-ip>
 dokku apps:create docklight
 
 # Set a JWT secret (required in production — generates a secure random string)
-dokku config:set docklight JWT_SECRET=$(openssl rand -base64 32)
+dokku config:set docklight JWT_SECRET="$(openssl rand -base64 32)"
 ```
+
+Or as one-liners from your local machine:
+
+```bash
+ssh root@<your-server-ip> dokku apps:create docklight
+ssh root@<your-server-ip> dokku config:set docklight JWT_SECRET="$(openssl rand -base64 32)"
+```
+
+> **Note:** When using `ssh dokku@<your-server-ip>`, do **not** prefix commands with `dokku` — the dokku shell adds it automatically. Use `ssh dokku@<your-server-ip> config:set ...`, not `ssh dokku@<your-server-ip> dokku config:set ...`.
 
 ## Step 2.5: Configure Dokku CLI access from container (required)
 
@@ -166,11 +175,11 @@ Docklight uses multi-user authentication. After deployment, create your first ad
 ```bash
 ssh root@<your-server-ip>
 
-# Access the running container
-dokku enter docklight
+# Access the running container (Alpine-based, uses sh)
+dokku enter docklight web sh
 
 # Create an admin user (you'll be prompted for password)
-bun run server/createUser.js admin
+node server/dist/createUser.js admin
 
 # Exit the container
 exit
@@ -273,7 +282,7 @@ Common issues:
 - `JWT_SECRET` not set → `dokku config:set docklight JWT_SECRET=$(openssl rand -base64 32)`
 - `dokku: not found` in dashboard → configure Step 2.5 (Dokku SSH access)
 - Port conflict → Dokku handles port mapping automatically, no manual config needed
-- Can't log in → Make sure you've created an admin user via `dokku enter docklight` and `bun run server/createUser.js admin`
+- Can't log in → Make sure you've created an admin user via `dokku enter docklight web sh` and `node server/dist/createUser.js admin`
 
 ### Build fails
 
@@ -286,8 +295,8 @@ Check Docker build logs during `git push`. Common causes:
 
 ```bash
 ssh root@<your-server-ip>
-dokku enter docklight
-bun run server/createUser.js <username>
+dokku enter docklight web sh
+node server/dist/createUser.js <username>
 ```
 
 This will prompt you to enter a new password for the user. If the user doesn't exist, it will be created.
