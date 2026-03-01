@@ -3,6 +3,7 @@ import { Toaster } from "sonner";
 import { AppLayout } from "./components/AppLayout";
 import { RequireAdmin } from "./components/RequireAdmin";
 import { ToastProvider } from "./components/ToastProvider";
+import { AuthProvider } from "./contexts/auth-context";
 import { Audit } from "./pages/Audit";
 import { AppDetail } from "./pages/AppDetail";
 import { Apps } from "./pages/Apps";
@@ -18,7 +19,14 @@ function App() {
 			<BrowserRouter>
 				<Routes>
 					<Route path="/login" element={<Login />} />
-					<Route path="/" element={<AppLayout />}>
+					<Route
+						path="/"
+						element={
+							<AuthProvider>
+								<AppLayout />
+							</AuthProvider>
+						}
+					>
 						<Route index element={<Navigate to="/dashboard" />} />
 						<Route path="dashboard" element={<Dashboard />} />
 						<Route path="apps" element={<Apps />} />
