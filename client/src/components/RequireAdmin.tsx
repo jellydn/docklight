@@ -7,10 +7,7 @@ type RequireAdminProps = {
 	children: React.ReactNode;
 };
 
-type AdminState =
-	| { status: "loading" }
-	| { status: "authorized" }
-	| { status: "unauthorized" };
+type AdminState = { status: "loading" } | { status: "authorized" } | { status: "unauthorized" };
 
 export function RequireAdmin({ children }: RequireAdminProps) {
 	const [state, setState] = useState<AdminState>({ status: "loading" });
@@ -19,7 +16,9 @@ export function RequireAdmin({ children }: RequireAdminProps) {
 		const checkAdmin = async () => {
 			try {
 				const data = await apiFetch("/auth/me", AuthMeSchema);
-				setState(data.user?.role === "admin" ? { status: "authorized" } : { status: "unauthorized" });
+				setState(
+					data.user?.role === "admin" ? { status: "authorized" } : { status: "unauthorized" }
+				);
 			} catch {
 				setState({ status: "unauthorized" });
 			}

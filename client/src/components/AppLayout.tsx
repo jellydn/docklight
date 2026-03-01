@@ -91,11 +91,7 @@ export function AppLayout() {
 						Audit Logs
 					</Link>
 					{isAdmin && (
-						<Link
-							to="/users"
-							className="block px-4 py-2 hover:bg-gray-800"
-							onClick={closeSidebar}
-						>
+						<Link to="/users" className="block px-4 py-2 hover:bg-gray-800" onClick={closeSidebar}>
 							Users
 						</Link>
 					)}

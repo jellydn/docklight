@@ -213,9 +213,7 @@ export function Users() {
 													className="border rounded px-2 py-1 text-xs w-40"
 													autoComplete="new-password"
 												/>
-												{editError && (
-													<span className="text-red-600 text-xs">{editError}</span>
-												)}
+												{editError && <span className="text-red-600 text-xs">{editError}</span>}
 												<button
 													type="button"
 													onClick={() => handleEditSave(user.id)}
