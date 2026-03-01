@@ -177,4 +177,53 @@ describe("plugin state operations", () => {
 		});
 		expect(mockExecuteCommandAsRoot).not.toHaveBeenCalled();
 	});
+
+	it("does not add hint link when sudo password is incorrect", async () => {
+		mockExecuteCommandAsRoot.mockResolvedValue({
+			command: "dokku plugin:enable dokku-postgres",
+			exitCode: 1,
+			stdout: "",
+			stderr: "Incorrect sudo password. Please check your password and try again.",
+		});
+
+		const result = await enablePlugin("dokku-postgres");
+
+		expect(result.exitCode).toBe(1);
+		// The error message should be returned as-is without the hint link
+		expect(result.stderr).toBe(
+			"Incorrect sudo password. Please check your password and try again."
+		);
+		expect(result.stderr).not.toContain("Plugin commands require root access");
+	});
+
+	it("adds hint link when other sudo errors occur", async () => {
+		mockExecuteCommandAsRoot.mockResolvedValue({
+			command: "dokku plugin:enable dokku-postgres",
+			exitCode: 1,
+			stdout: "",
+			stderr: "sudo: a password is required",
+		});
+
+		const result = await enablePlugin("dokku-postgres");
+
+		expect(result.exitCode).toBe(1);
+		// Should add the hint link for other sudo errors
+		expect(result.stderr).toContain("Plugin commands require root access");
+		expect(result.stderr).toContain("docs/deployment.md#plugin-management-sudo-errors");
+	});
+
+	it("does not add hint link when root target error occurs", async () => {
+		mockExecuteCommandAsRoot.mockResolvedValue({
+			command: "dokku plugin:enable dokku-postgres",
+			exitCode: 1,
+			stdout: "",
+			stderr: "Root-required command cannot run through dokku SSH wrapper",
+		});
+
+		const result = await enablePlugin("dokku-postgres");
+
+		expect(result.exitCode).toBe(1);
+		// Should add the hint link for root target errors
+		expect(result.stderr).toContain("Plugin commands require root access");
+	});
 });

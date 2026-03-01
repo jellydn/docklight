@@ -61,6 +61,39 @@ describe("databases", () => {
 		expect(mockExecuteCommand).not.toHaveBeenCalledWith("dokku mysql:list");
 	});
 
+	it("getDatabases should filter out =====> header lines from plugin output", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku plugin:list",
+				exitCode: 0,
+				stdout: "dokku-mysql",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku mysql:list",
+				exitCode: 0,
+				stdout: "=====> MySQL services\nmydb",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku mysql:links mydb",
+				exitCode: 0,
+				stdout: "",
+				stderr: "",
+			});
+
+		const result = await getDatabases();
+
+		expect(result).toEqual([
+			{
+				name: "mydb",
+				plugin: "mysql",
+				linkedApps: [],
+				connectionInfo: "mysql://mydb@localhost",
+			},
+		]);
+	});
+
 	it("createDatabase should return clear error when plugin is not installed", async () => {
 		mockExecuteCommand.mockResolvedValueOnce({
 			command: "dokku plugin:list",

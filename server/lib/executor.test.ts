@@ -206,6 +206,32 @@ describe("executeCommand with SSH pool", () => {
 		expect(result.stderr).toContain("Hint:");
 	});
 
+	it("returns friendly error message when sudo password is incorrect", async () => {
+		process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET = "root@server";
+		mockSshInstance.execCommand.mockResolvedValue(makeExecResult("", "sudo: sorry, try again", 1));
+
+		const result = await executeCommand("dokku plugin:install repo", 30000, { asRoot: true });
+
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr).toBe(
+			"Incorrect sudo password. Please check your password and try again."
+		);
+	});
+
+	it("returns friendly error message for incorrect password attempt", async () => {
+		process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET = "root@server";
+		mockSshInstance.execCommand.mockResolvedValue(
+			makeExecResult("", "sudo: 1 incorrect password attempt", 1)
+		);
+
+		const result = await executeCommand("dokku plugin:install repo", 30000, { asRoot: true });
+
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr).toBe(
+			"Incorrect sudo password. Please check your password and try again."
+		);
+	});
+
 	it("retries once on connection failure and returns error if retry also fails", async () => {
 		mockSshInstance.connect.mockRejectedValue(new Error("Connection refused"));
 
@@ -251,6 +277,77 @@ describe("executeCommand with SSH pool", () => {
 		expect(result.exitCode).toBe(1);
 		expect(result.stderr).toContain("Command not allowed");
 		expect(mockSshInstance.execCommand).not.toHaveBeenCalled();
+	});
+
+	describe("SSH channel error retry", () => {
+		it("retries command with fresh connection when SSH channel open failure occurs", async () => {
+			let execCallCount = 0;
+			mockSshInstance.execCommand.mockImplementation(() => {
+				execCallCount++;
+				if (execCallCount === 1) {
+					return Promise.reject(new Error("Channel open failure"));
+				}
+				return Promise.resolve(makeExecResult("app1\napp2", "", 0));
+			});
+			mockSshInstance.connect.mockResolvedValue(undefined);
+			mockSshInstance.isConnected.mockReturnValue(true);
+
+			const result = await executeCommand("dokku apps:list");
+
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toBe("app1\napp2");
+			expect(execCallCount).toBe(2);
+			expect(mockSshInstance.connect).toHaveBeenCalledTimes(2);
+		});
+
+		it("returns error when channel open failure and retry also fails", async () => {
+			let execCallCount = 0;
+			mockSshInstance.execCommand.mockImplementation(() => {
+				execCallCount++;
+				if (execCallCount === 1) {
+					return Promise.reject(new Error("Channel open failure"));
+				}
+				return Promise.reject(new Error("Connection refused"));
+			});
+			mockSshInstance.connect.mockResolvedValue(undefined);
+			mockSshInstance.isConnected.mockReturnValue(true);
+
+			const result = await executeCommand("dokku apps:list");
+
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain("SSH channel failed, retry also failed");
+			expect(result.stderr).toContain("Connection refused");
+			expect(execCallCount).toBe(2);
+		});
+
+		it("does not retry for non-channel execution errors", async () => {
+			mockSshInstance.execCommand.mockRejectedValue(new Error("General SSH error"));
+
+			const result = await executeCommand("dokku apps:list");
+
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain("General SSH error");
+			expect(mockSshInstance.connect).toHaveBeenCalledTimes(1);
+		});
+
+		it("retries for 'open failed' channel errors", async () => {
+			let execCallCount = 0;
+			mockSshInstance.execCommand.mockImplementation(() => {
+				execCallCount++;
+				if (execCallCount === 1) {
+					return Promise.reject(new Error("SSH open failed"));
+				}
+				return Promise.resolve(makeExecResult("success", "", 0));
+			});
+			mockSshInstance.connect.mockResolvedValue(undefined);
+			mockSshInstance.isConnected.mockReturnValue(true);
+
+			const result = await executeCommand("dokku apps:list");
+
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toBe("success");
+			expect(execCallCount).toBe(2);
+		});
 	});
 });
 

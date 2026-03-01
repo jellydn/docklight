@@ -239,8 +239,9 @@ async function executeViaPool(
 		}
 	}
 
-	let execResult: { stdout: string; stderr: string; code: number | null };
-	try {
+	const execWithTimeout = async (
+		conn: NodeSSH
+	): Promise<{ stdout: string; stderr: string; code: number | null }> => {
 		let timeoutId: ReturnType<typeof setTimeout> | null = null;
 		const timeoutPromise = new Promise<never>((_, reject) => {
 			timeoutId = setTimeout(
@@ -249,27 +250,57 @@ async function executeViaPool(
 			);
 		});
 		try {
-			execResult = await Promise.race([ssh.execCommand(remoteCommand), timeoutPromise]);
+			return await Promise.race([conn.execCommand(remoteCommand), timeoutPromise]);
 		} finally {
 			if (timeoutId) clearTimeout(timeoutId);
 		}
+	};
+
+	let execResult: { stdout: string; stderr: string; code: number | null };
+	try {
+		execResult = await execWithTimeout(ssh);
 	} catch (execError) {
 		const execErrMessage = getErrorMessage(execError);
-		const result: CommandResult = {
-			command,
-			exitCode: 1,
-			stdout: "",
-			stderr: execErrMessage || "SSH command execution failed",
-		};
-		saveCommand(result);
-		return result;
+		const isChannelError = /channel open failure|open failed/i.test(execErrMessage);
+
+		if (isChannelError) {
+			sshPool.closeConnection(target);
+			try {
+				const freshSsh = await sshPool.getConnection(target, keyPath);
+				execResult = await execWithTimeout(freshSsh);
+			} catch (retryError) {
+				const retryErrMessage = getErrorMessage(retryError);
+				const result: CommandResult = {
+					command,
+					exitCode: 1,
+					stdout: "",
+					stderr: `SSH channel failed, retry also failed: ${retryErrMessage}`,
+				};
+				saveCommand(result);
+				return result;
+			}
+		} else {
+			const result: CommandResult = {
+				command,
+				exitCode: 1,
+				stdout: "",
+				stderr: execErrMessage || "SSH command execution failed",
+			};
+			saveCommand(result);
+			return result;
+		}
 	}
 
 	const exitCode = execResult.code ?? 1;
-	const stderr = addSudoHintIfNeeded(
-		execResult.stderr.trim(),
-		exitCode !== 0 ? options?.asRoot : undefined
-	);
+	let stderr = execResult.stderr.trim();
+
+	if (exitCode !== 0) {
+		if (/sorry, try again|incorrect password attempt/i.test(stderr)) {
+			stderr = `Incorrect sudo password. Please check your password and try again.`;
+		} else {
+			stderr = addSudoHintIfNeeded(stderr, options?.asRoot);
+		}
+	}
 
 	const result: CommandResult = {
 		command,
@@ -359,7 +390,11 @@ export async function executeCommand(
 				preferRootTarget: false,
 			});
 		}
-		stderr = addSudoHintIfNeeded(stderr, options?.asRoot);
+		if (/sorry, try again|incorrect password attempt/i.test(stderr)) {
+			stderr = `Incorrect sudo password. Please check your password and try again.`;
+		} else {
+			stderr = addSudoHintIfNeeded(stderr, options?.asRoot);
+		}
 		const result = {
 			command,
 			exitCode: err.code || 1,

@@ -69,7 +69,9 @@ export async function getDatabases(): Promise<
 				const listResult = await executeCommand(DokkuCommands.dbList(plugin));
 				if (listResult.exitCode !== 0) return [];
 
-				const dbLines = listResult.stdout.split("\n").filter((line) => line.trim());
+				const dbLines = listResult.stdout
+					.split("\n")
+					.filter((line) => line.trim() && !line.trim().startsWith("=====>"));
 
 				const dbs = await Promise.all(
 					dbLines.map(async (dbName) => {
