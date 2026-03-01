@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/auth-context.js";
 export function AppLayout() {
 	const navigate = useNavigate();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
-	const { role } = useAuth();
+	const { role, username } = useAuth();
 
 	const handleLogout = async () => {
 		try {
@@ -40,7 +40,7 @@ export function AppLayout() {
 			)}
 
 			{/* Sidebar */}
-			<aside className={sidebarClasses}>
+			<aside className={`${sidebarClasses} flex flex-col`}>
 				<div className="flex items-center justify-between p-4">
 					<div className="flex items-center gap-2">
 						<img src="/logo.svg" alt="Docklight logo" className="h-6 w-6" />
@@ -89,8 +89,16 @@ export function AppLayout() {
 					>
 						Logout
 					</button>
-				</nav>
-			</aside>
+					</nav>
+					{username && (
+					<div className="mt-auto border-t border-gray-700 p-4">
+						<p className="text-sm font-medium truncate">{username}</p>
+						{role && (
+							<p className="text-xs text-gray-400 capitalize">{role}</p>
+						)}
+					</div>
+					)}
+					</aside>
 
 			<div className="flex flex-col flex-1 min-w-0">
 				{/* Mobile top bar */}

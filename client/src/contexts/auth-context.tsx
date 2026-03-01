@@ -5,18 +5,21 @@ import type { UserRole } from "@/lib/schemas.js";
 
 interface AuthContextValue {
 	role: UserRole | null;
+	username: string | null;
 	loading: boolean;
 	canModify: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue>({
 	role: null,
+	username: null,
 	loading: true,
 	canModify: false,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
 	const [role, setRole] = useState<UserRole | null>(null);
+	const [username, setUsername] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
@@ -24,8 +27,10 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
 			try {
 				const data = await apiFetch("/auth/me", AuthMeSchema);
 				setRole(data.user?.role ?? null);
+				setUsername(data.user?.username ?? null);
 			} catch {
 				setRole(null);
+				setUsername(null);
 			} finally {
 				setLoading(false);
 			}
@@ -36,7 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
 	const canModify = role === "admin" || role === "operator";
 
 	return (
-		<AuthContext.Provider value={{ role, loading, canModify }}>{children}</AuthContext.Provider>
+		<AuthContext.Provider value={{ role, username, loading, canModify }}>
+			{children}
+		</AuthContext.Provider>
 	);
 }
 
