@@ -198,10 +198,3 @@ export const AuthMeSchema = z.object({
 		})
 		.optional(),
 });
-
-// Auth mode response
-export const AuthModeSchema = z.object({
-	multiUser: z.boolean(),
-});
-
-export type AuthMode = z.infer<typeof AuthModeSchema>;

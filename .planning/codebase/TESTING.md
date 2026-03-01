@@ -5,14 +5,17 @@
 ## Test Framework
 
 **Runner:**
+
 - Vitest (latest)
 - Config: `server/vitest.config.ts`
 - Environment: node
 
 **Assertion Library:**
+
 - Vitest built-in assertions (expect)
 
 **Run Commands:**
+
 ```bash
 bun test                # Run all tests
 bun run test:watch      # Watch mode
@@ -24,14 +27,17 @@ vitest run -t "should fetch app"  # Single test by name
 ## Test File Organization
 
 **Location:**
+
 - Co-located with source files in `server/lib/`
 - Test file named `*.test.ts` alongside source `*.ts`
 
 **Naming:**
+
 - Source: `apps.ts` → Test: `apps.test.ts`
 - Source: `executor.ts` → Test: `executor.test.ts`
 
 **Structure:**
+
 ```
 server/lib/
   apps.ts
@@ -45,6 +51,7 @@ server/lib/
 ## Test Structure
 
 **Suite Organization:**
+
 ```typescript
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { functionUnderTest } from "./module.js";
@@ -73,6 +80,7 @@ describe("functionUnderTest", () => {
 ```
 
 **Patterns:**
+
 - Setup: `beforeEach` clears all mocks
 - Teardown: `afterEach` used for environment cleanup when needed
 - Assertion: Vitest `expect()` with matchers like `toBe()`, `toEqual()`, `toHaveBeenCalled()`
@@ -82,6 +90,7 @@ describe("functionUnderTest", () => {
 **Framework:** Vitest (vi)
 
 **Patterns:**
+
 ```typescript
 // Mock module before imports
 vi.mock("./executor.js", () => ({
@@ -101,16 +110,22 @@ mockExecuteCommand.mockResolvedValue({
 
 // Multiple calls
 mockExecuteCommand
-  .mockResolvedValueOnce({ /* first call */ })
-  .mockResolvedValueOnce({ /* second call */ });
+  .mockResolvedValueOnce({
+    /* first call */
+  })
+  .mockResolvedValueOnce({
+    /* second call */
+  });
 ```
 
 **What to Mock:**
+
 - External dependencies (executors, databases, loggers)
 - I/O operations (file system, network)
 - Modules that would have side effects
 
 **What NOT to Mock:**
+
 - Pure functions and utilities
 - Business logic under test
 - Simple data transformations
@@ -118,6 +133,7 @@ mockExecuteCommand
 ## Fixtures and Factories
 
 **Test Data:**
+
 ```typescript
 // Helper functions for creating test data
 function makeExecResult(stdout: string, stderr: string, code: number) {
@@ -129,6 +145,7 @@ const validNames = ["my-app", "app123", "test-app-v1"];
 ```
 
 **Location:**
+
 - Test data defined within test files
 - Helper functions at top of test file
 - No separate fixtures directory
@@ -138,11 +155,13 @@ const validNames = ["my-app", "app123", "test-app-v1"];
 **Requirements:** None enforced
 
 **View Coverage:**
+
 ```bash
 bun run test:coverage
 ```
 
 **Coverage Config:**
+
 - Provider: v8
 - Reporters: text, json, html
 - Include: `lib/**/*.ts`, `*.ts`
@@ -151,30 +170,37 @@ bun run test:coverage
 ## Test Types
 
 **Unit Tests:**
+
 - Test individual functions in isolation
 - Mock all external dependencies
 - Focus on lib/ modules (apps, auth, executor, etc.)
 
 **Integration Tests:**
+
 - Test module interactions
 - Some real dependencies allowed
 - Example: `executor.test.ts` tests SSH pool integration
 
 **E2E Tests:**
+
 - Not used
 
 ## Common Patterns
 
 **Async Testing:**
+
 ```typescript
 it("should handle async operations", async () => {
-  mockExecuteCommand.mockResolvedValue({ /* ... */ });
+  mockExecuteCommand.mockResolvedValue({
+    /* ... */
+  });
   const result = await getApps();
   expect(result).toEqual([]);
 });
 ```
 
 **Error Testing:**
+
 ```typescript
 it("should return error on failure", async () => {
   mockExecuteCommand.mockResolvedValue({
@@ -191,11 +217,12 @@ it("should return error on failure", async () => {
 ```
 
 **Environment Mocking:**
+
 ```typescript
 const OLD_ENV = process.env;
 
 beforeEach(() => {
-  process.env = { ...OLD_ENV, DOCKLIGHT_PASSWORD: "test" };
+  process.env = { ...OLD_ENV };
 });
 
 afterEach(() => {
@@ -204,6 +231,7 @@ afterEach(() => {
 ```
 
 **Testing Express Middleware:**
+
 ```typescript
 it("should reject unauthorized requests", () => {
   const req = { cookies: {} } as unknown as Request;
@@ -222,4 +250,4 @@ it("should reject unauthorized requests", () => {
 
 ---
 
-*Testing analysis: 2026-03-01*
+_Testing analysis: 2026-03-01_

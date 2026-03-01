@@ -15,15 +15,14 @@ describe("Login", () => {
 		vi.clearAllMocks();
 		const { apiFetch } = await import("../lib/api.js");
 		apiFetchMock = apiFetch as MockedFunction<typeof apiFetch>;
-		// Default: auth/me fails (not logged in) and mode is legacy (no multi-user)
+		// Default: auth/me fails (not logged in)
 		apiFetchMock.mockImplementation((path: string) => {
 			if (path === "/auth/me") return Promise.reject(new Error("Unauthorized"));
-			if (path === "/auth/mode") return Promise.resolve({ multiUser: false });
 			return Promise.reject(new Error("Not found"));
 		});
 	});
 
-	it("should render the login form", async () => {
+	it("should render the login form with username and password fields", async () => {
 		render(
 			<MemoryRouter>
 				<Login />
@@ -31,32 +30,15 @@ describe("Login", () => {
 		);
 
 		expect(await screen.findByText("Docklight Login")).toBeInTheDocument();
+		expect(screen.getByLabelText("Username")).toBeInTheDocument();
 		expect(screen.getByLabelText("Password")).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "Login" })).toBeInTheDocument();
-	});
-
-	it("should show username field in multi-user mode", async () => {
-		apiFetchMock.mockImplementation((path: string) => {
-			if (path === "/auth/me") return Promise.reject(new Error("Unauthorized"));
-			if (path === "/auth/mode") return Promise.resolve({ multiUser: true });
-			return Promise.reject(new Error("Not found"));
-		});
-
-		render(
-			<MemoryRouter>
-				<Login />
-			</MemoryRouter>
-		);
-
-		expect(await screen.findByLabelText("Username")).toBeInTheDocument();
-		expect(screen.getByLabelText("Password")).toBeInTheDocument();
 	});
 
 	it("should show error message on failed login", async () => {
 		apiFetchMock.mockImplementation((path: string) => {
 			if (path === "/auth/me") return Promise.reject(new Error("Unauthorized"));
-			if (path === "/auth/mode") return Promise.resolve({ multiUser: false });
-			if (path === "/auth/login") return Promise.reject(new Error("Invalid password"));
+			if (path === "/auth/login") return Promise.reject(new Error("Invalid credentials"));
 			return Promise.reject(new Error("Not found"));
 		});
 
@@ -68,21 +50,22 @@ describe("Login", () => {
 		);
 
 		await screen.findByText("Docklight Login");
+		const usernameInput = screen.getByLabelText("Username");
 		const passwordInput = screen.getByLabelText("Password");
 		const loginButton = screen.getByRole("button", { name: "Login" });
 
+		await user.type(usernameInput, "testuser");
 		await user.type(passwordInput, "wrong-password");
 		await user.click(loginButton);
 
 		await waitFor(() => {
-			expect(screen.getByText("Invalid password")).toBeInTheDocument();
+			expect(screen.getByText("Invalid credentials")).toBeInTheDocument();
 		});
 	});
 
-	it("should submit password on successful legacy login", async () => {
+	it("should submit credentials on successful login", async () => {
 		apiFetchMock.mockImplementation((path: string) => {
 			if (path === "/auth/me") return Promise.reject(new Error("Unauthorized"));
-			if (path === "/auth/mode") return Promise.resolve({ multiUser: false });
 			if (path === "/auth/login") return Promise.resolve({ success: true });
 			return Promise.reject(new Error("Not found"));
 		});
@@ -95,9 +78,11 @@ describe("Login", () => {
 		);
 
 		await screen.findByText("Docklight Login");
+		const usernameInput = screen.getByLabelText("Username");
 		const passwordInput = screen.getByLabelText("Password");
 		const loginButton = screen.getByRole("button", { name: "Login" });
 
+		await user.type(usernameInput, "testuser");
 		await user.type(passwordInput, "correct-password");
 		await user.click(loginButton);
 
@@ -107,7 +92,7 @@ describe("Login", () => {
 				expect.any(Object),
 				expect.objectContaining({
 					method: "POST",
-					body: JSON.stringify({ password: "correct-password" }),
+					body: JSON.stringify({ username: "testuser", password: "correct-password" }),
 				})
 			);
 		});

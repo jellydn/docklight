@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { Request, Response, NextFunction } from "express";
 
 // Mock db and logger before importing auth
@@ -19,7 +19,6 @@ import {
 	hashPassword,
 	verifyPassword,
 	login,
-	loginWithCredentials,
 	generateToken,
 	verifyToken,
 	authMiddleware,
@@ -49,28 +48,10 @@ describe("hashPassword / verifyPassword", () => {
 	});
 });
 
-describe("login (legacy)", () => {
-	beforeEach(() => {
-		vi.stubEnv("DOCKLIGHT_PASSWORD", "testpassword");
-	});
-
-	afterEach(() => {
-		vi.unstubAllEnvs();
-	});
-
-	it("should return true for correct password", () => {
-		expect(login("testpassword")).toBe(true);
-	});
-
-	it("should return false for incorrect password", () => {
-		expect(login("wrongpassword")).toBe(false);
-	});
-});
-
-describe("loginWithCredentials", () => {
+describe("login", () => {
 	it("should return null when user not found", async () => {
 		vi.mocked(getUserByUsername).mockReturnValue(null);
-		const result = await loginWithCredentials("alice", "pass");
+		const result = await login("alice", "pass");
 		expect(result).toBeNull();
 	});
 
@@ -83,7 +64,7 @@ describe("loginWithCredentials", () => {
 			role: "admin",
 			createdAt: new Date().toISOString(),
 		});
-		const result = await loginWithCredentials("alice", "wrongpassword");
+		const result = await login("alice", "wrongpassword");
 		expect(result).toBeNull();
 	});
 
@@ -96,20 +77,13 @@ describe("loginWithCredentials", () => {
 			role: "admin",
 			createdAt: new Date().toISOString(),
 		});
-		const result = await loginWithCredentials("alice", "correctpassword");
+		const result = await login("alice", "correctpassword");
 		expect(result).toEqual({ id: 1, username: "alice", role: "admin" });
 	});
 });
 
 describe("generateToken / verifyToken", () => {
-	it("should generate a verifiable token without user info (legacy)", () => {
-		const token = generateToken();
-		const payload = verifyToken(token);
-		expect(payload?.authenticated).toBe(true);
-		expect(payload?.userId).toBeUndefined();
-	});
-
-	it("should include user info in token when provided", () => {
+	it("should generate a verifiable token with user info", () => {
 		const token = generateToken({ id: 1, username: "bob", role: "operator" });
 		const payload = verifyToken(token) as JWTPayload;
 		expect(payload.authenticated).toBe(true);
@@ -123,7 +97,7 @@ describe("generateToken / verifyToken", () => {
 	});
 
 	it("should include iat and exp in payload", () => {
-		const token = generateToken();
+		const token = generateToken({ id: 1, username: "test", role: "admin" });
 		const payload = verifyToken(token);
 		expect(payload?.iat).toBeDefined();
 		expect(payload?.exp).toBeDefined();
@@ -173,11 +147,14 @@ describe("authMiddleware", () => {
 });
 
 describe("requireRole", () => {
-	it("should allow legacy token (no role) through", () => {
-		const token = generateToken(); // no user → no role
+	it("should reject token without role", () => {
+		const token = generateToken({ id: 1, username: "test", role: "admin" });
+		const payload = verifyToken(token) as JWTPayload;
+		delete (payload as JWTPayload).role;
+
 		const req = {
 			cookies: { session: token },
-			user: { authenticated: true },
+			user: payload,
 		} as unknown as Request;
 		const res = {
 			status: vi.fn().mockReturnThis(),
@@ -187,7 +164,8 @@ describe("requireRole", () => {
 
 		requireRole("admin")(req, res, next);
 
-		expect(next).toHaveBeenCalled();
+		expect(res.status).toHaveBeenCalledWith(401);
+		expect(next).not.toHaveBeenCalled();
 	});
 
 	it("should allow matching role", () => {
@@ -227,7 +205,7 @@ describe("cookie management", () => {
 		const cookie = vi.fn();
 		const res = { cookie } as unknown as Response;
 
-		setAuthCookie(res);
+		setAuthCookie(res, { id: 1, username: "test", role: "admin" });
 
 		expect(cookie).toHaveBeenCalledWith(
 			"session",
@@ -246,7 +224,7 @@ describe("cookie management", () => {
 		const cookie = vi.fn();
 		const res = { cookie } as unknown as Response;
 
-		setAuthCookie(res);
+		setAuthCookie(res, { id: 1, username: "test", role: "admin" });
 
 		expect(cookie).toHaveBeenCalledWith(
 			"session",
@@ -265,7 +243,7 @@ describe("cookie management", () => {
 		const cookie = vi.fn();
 		const res = { cookie } as unknown as Response;
 
-		setAuthCookie(res);
+		setAuthCookie(res, { id: 1, username: "test", role: "admin" });
 
 		const call = cookie.mock.calls[0];
 		expect(call[2]).toHaveProperty("secure", false);

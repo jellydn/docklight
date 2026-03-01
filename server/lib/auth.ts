@@ -8,12 +8,8 @@ import { logger } from "./logger.js";
 
 const scryptAsync = promisify(scrypt);
 
-// JWT_SECRET takes precedence over DOCKLIGHT_SECRET for compatibility
 const JWT_SECRET =
-	process.env.JWT_SECRET ||
-	process.env.DOCKLIGHT_SECRET ||
-	"docklight-default-secret-change-in-production";
-const PASSWORD = process.env.DOCKLIGHT_PASSWORD;
+	process.env.JWT_SECRET || "docklight-default-secret-change-in-production";
 
 export interface JWTPayload {
 	authenticated: boolean;
@@ -34,24 +30,13 @@ declare global {
 	}
 }
 
-if (!PASSWORD) {
-	logger.warn("DOCKLIGHT_PASSWORD environment variable not set. Set this for production!");
-}
-
-// Validate JWT secret in production - supports both JWT_SECRET and DOCKLIGHT_SECRET
-const hasJwtSecret = Boolean(process.env.JWT_SECRET || process.env.DOCKLIGHT_SECRET);
-if (!hasJwtSecret) {
+// Validate JWT secret in production
+if (!process.env.JWT_SECRET) {
 	if (process.env.NODE_ENV === "production") {
-		logger.error(
-			"JWT secret not configured. Set JWT_SECRET or DOCKLIGHT_SECRET environment variable in production."
-		);
-		throw new Error(
-			"JWT_SECRET or DOCKLIGHT_SECRET environment variable must be set in production. Aborting startup."
-		);
+		logger.error("JWT_SECRET not configured. Set JWT_SECRET environment variable in production.");
+		throw new Error("JWT_SECRET environment variable must be set in production. Aborting startup.");
 	}
-	logger.warn(
-		"JWT_SECRET or DOCKLIGHT_SECRET environment variable not set. Using default secret is insecure!"
-	);
+	logger.warn("JWT_SECRET not set. Using default secret is insecure!");
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -93,13 +78,8 @@ export function verifyToken(token: string): JWTPayload | null {
 	}
 }
 
-/** Legacy single-password login (DOCKLIGHT_PASSWORD env var). */
-export function login(password: string): boolean {
-	return password === process.env.DOCKLIGHT_PASSWORD;
-}
-
-/** Multi-user login: validates username + password against the users table. */
-export async function loginWithCredentials(
+/** Login: validates username + password against the users table. */
+export async function login(
 	username: string,
 	password: string
 ): Promise<{ id: number; username: string; role: UserRole } | null> {
@@ -149,17 +129,14 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
 
 /**
  * Returns a middleware that only allows users with one of the specified roles.
- * When no role is present in the JWT (legacy single-password auth), the request
- * is allowed through for backward compatibility.
  */
 export function requireRole(
 	...roles: UserRole[]
 ): (req: Request, res: Response, next: NextFunction) => void {
 	return (req: Request, res: Response, next: NextFunction) => {
 		const user = req.user;
-		// Legacy auth token carries no role → allow through for backward compat
 		if (!user?.role) {
-			next();
+			res.status(401).json({ error: "Unauthorized" });
 			return;
 		}
 		if (!roles.includes(user.role)) {
