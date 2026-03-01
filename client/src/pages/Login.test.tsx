@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -14,7 +14,7 @@ describe("Login", () => {
 	beforeEach(async () => {
 		vi.clearAllMocks();
 		const { apiFetch } = await import("../lib/api.js");
-		apiFetchMock = apiFetch as any;
+		apiFetchMock = apiFetch as MockedFunction<typeof apiFetch>;
 		// Default: auth/me fails (not logged in) and mode is legacy (no multi-user)
 		apiFetchMock.mockImplementation((path: string) => {
 			if (path === "/auth/me") return Promise.reject(new Error("Unauthorized"));

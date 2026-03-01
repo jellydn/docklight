@@ -20,21 +20,21 @@ export function registerAuthRoutes(app: express.Application): void {
 				return;
 			}
 			const user = await loginWithCredentials(username, password);
-			if (user) {
-				setAuthCookie(res, user);
-				res.json({ success: true });
-			} else {
+			if (!user) {
 				res.status(401).json({ error: "Invalid credentials" });
+				return;
 			}
+			setAuthCookie(res, user);
+			res.json({ success: true });
 			return;
 		}
 
-		if (login(password)) {
-			setAuthCookie(res);
-			res.json({ success: true });
-		} else {
+		if (!login(password)) {
 			res.status(401).json({ error: "Invalid password" });
+			return;
 		}
+		setAuthCookie(res);
+		res.json({ success: true });
 	});
 
 	app.post("/api/auth/logout", (_req, res) => {

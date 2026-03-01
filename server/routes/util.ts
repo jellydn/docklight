@@ -30,10 +30,8 @@ export function handleCommandResult(res: express.Response, result: CommandResult
  */
 export function getParam(params: unknown, key: string): string {
 	const value = (params as Record<string, unknown>)[key];
-	if (Array.isArray(value)) {
-		return value[0] ?? "";
-	}
-	return (value as string) ?? "";
+	if (Array.isArray(value)) return value[0] ?? "";
+	return (value as string | undefined) ?? "";
 }
 
 /**
@@ -41,8 +39,6 @@ export function getParam(params: unknown, key: string): string {
  */
 export function getOptionalParam(params: unknown, key: string): string | undefined {
 	const value = (params as Record<string, unknown>)[key];
-	if (Array.isArray(value)) {
-		return value[0];
-	}
+	if (Array.isArray(value)) return value[0];
 	return value as string | undefined;
 }

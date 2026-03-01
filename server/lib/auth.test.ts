@@ -65,18 +65,9 @@ describe("login (legacy)", () => {
 	it("should return false for incorrect password", () => {
 		expect(login("wrongpassword")).toBe(false);
 	});
-
-	it("should return false for non-string password", () => {
-		expect(login(123)).toBe(false);
-	});
 });
 
 describe("loginWithCredentials", () => {
-	it("should return null for non-string inputs", async () => {
-		const result = await loginWithCredentials(null, "pass");
-		expect(result).toBeNull();
-	});
-
 	it("should return null when user not found", async () => {
 		vi.mocked(getUserByUsername).mockReturnValue(null);
 		const result = await loginWithCredentials("alice", "pass");

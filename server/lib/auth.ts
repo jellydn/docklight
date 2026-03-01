@@ -94,28 +94,15 @@ export function verifyToken(token: string): JWTPayload | null {
 }
 
 /** Legacy single-password login (DOCKLIGHT_PASSWORD env var). */
-export function login(password: unknown): boolean {
-	const envPassword = process.env.DOCKLIGHT_PASSWORD;
-	if (!envPassword) {
-		return false;
-	}
-
-	if (typeof password !== "string") {
-		return false;
-	}
-
-	return password === envPassword;
+export function login(password: string): boolean {
+	return password === process.env.DOCKLIGHT_PASSWORD;
 }
 
 /** Multi-user login: validates username + password against the users table. */
 export async function loginWithCredentials(
-	username: unknown,
-	password: unknown
+	username: string,
+	password: string
 ): Promise<{ id: number; username: string; role: UserRole } | null> {
-	if (typeof username !== "string" || typeof password !== "string") {
-		return null;
-	}
-
 	const user = getUserByUsername(username);
 	if (!user) return null;
 
