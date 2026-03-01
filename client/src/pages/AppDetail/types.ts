@@ -15,6 +15,7 @@ export interface CopySuccess {
 export interface AppDetailHeaderProps {
 	appName: string;
 	status: "running" | "stopped";
+	canModify: boolean;
 	onStop: () => void;
 	onStart: () => void;
 	onRestart: () => void;

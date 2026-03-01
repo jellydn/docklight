@@ -8,6 +8,7 @@ interface AppDeploymentProps {
 	buildDir: string;
 	builder: string;
 	submitting: boolean;
+	canModify: boolean;
 	onDeployBranchChange: (value: string) => void;
 	onBuildDirChange: (value: string) => void;
 	onBuilderChange: (value: string) => void;
@@ -23,6 +24,7 @@ export function AppDeployment({
 	buildDir,
 	builder,
 	submitting,
+	canModify,
 	onDeployBranchChange,
 	onBuildDirChange,
 	onBuilderChange,
@@ -92,16 +94,18 @@ export function AppDeployment({
 						<p className="mt-1 text-sm text-gray-500">The build strategy to use for this app</p>
 					</div>
 
-					<div className="pt-4">
-						<button
-							onClick={onSave}
-							disabled={submitting}
-							className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-							type="button"
-						>
-							{submitting ? "Saving..." : "Save Settings"}
-						</button>
-					</div>
+					{canModify && (
+						<div className="pt-4">
+							<button
+								onClick={onSave}
+								disabled={submitting}
+								className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+								type="button"
+							>
+								{submitting ? "Saving..." : "Save Settings"}
+							</button>
+						</div>
+					)}
 				</div>
 			)}
 		</div>

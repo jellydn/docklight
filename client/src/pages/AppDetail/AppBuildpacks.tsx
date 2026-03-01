@@ -8,6 +8,7 @@ interface AppBuildpacksProps {
 	newIndex: string;
 	submitting: boolean;
 	clearSubmitting: boolean;
+	canModify: boolean;
 	onUrlChange: (url: string) => void;
 	onIndexChange: (index: string) => void;
 	onAdd: () => void;
@@ -23,6 +24,7 @@ export function AppBuildpacks({
 	newIndex,
 	submitting,
 	clearSubmitting,
+	canModify,
 	onUrlChange,
 	onIndexChange,
 	onAdd,
@@ -64,61 +66,67 @@ export function AppBuildpacks({
 													</code>
 												</td>
 												<td className="px-3 py-2 text-right">
-													<button
-														onClick={() => onRemove(buildpack)}
-														className="text-red-600 hover:text-red-800"
-														title="Remove"
-														type="button"
-													>
-														🗑️
-													</button>
+													{canModify && (
+														<button
+															onClick={() => onRemove(buildpack)}
+															className="text-red-600 hover:text-red-800"
+															title="Remove"
+															type="button"
+														>
+															🗑️
+														</button>
+													)}
 												</td>
 											</tr>
 										))}
 									</tbody>
 								</table>
 							</div>
-							<button
-								onClick={onClearAll}
-								disabled={clearSubmitting}
-								className="text-red-600 hover:text-red-800 text-sm"
-								type="button"
-							>
-								Clear All
-							</button>
+							{canModify && (
+								<button
+									onClick={onClearAll}
+									disabled={clearSubmitting}
+									className="text-red-600 hover:text-red-800 text-sm"
+									type="button"
+								>
+									Clear All
+								</button>
+							)}
 						</>
 					) : (
 						<p className="text-gray-500">Auto-detected (no custom buildpacks set)</p>
 					)}
 
-					<div className="pt-4 border-t">
-						<h3 className="text-sm font-medium text-gray-700 mb-3">Add Buildpack</h3>
-						<div className="flex flex-col sm:flex-row gap-2 mb-2">
-							<input
-								type="text"
-								placeholder="Buildpack URL (e.g., https://github.com/heroku/heroku-buildpack-nodejs)"
-								value={newUrl}
-								onChange={(e) => onUrlChange(e.target.value)}
-								className="flex-1 border rounded px-3 py-2"
-							/>
-							<input
-								type="number"
-								placeholder="Index (optional)"
-								value={newIndex}
-								onChange={(e) => onIndexChange(e.target.value)}
-								min="1"
-								className="w-32 border rounded px-3 py-2"
-							/>
-							<button
-								onClick={onAdd}
-								disabled={!newUrl || submitting}
-								className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-								type="button"
-							>
-								Add
-							</button>
+					{canModify && (
+						<div className="pt-4 border-t">
+							<h3 className="text-sm font-medium text-gray-700 mb-3">Add Buildpack</h3>
+							<div className="flex flex-col sm:flex-row gap-2 mb-2">
+								<input
+									type="text"
+									placeholder="Buildpack URL (e.g., https://github.com/heroku/heroku-buildpack-nodejs)"
+									value={newUrl}
+									onChange={(e) => onUrlChange(e.target.value)}
+									className="flex-1 border rounded px-3 py-2"
+								/>
+								<input
+									type="number"
+									placeholder="Index (optional)"
+									value={newIndex}
+									onChange={(e) => onIndexChange(e.target.value)}
+									min="1"
+									className="w-32 border rounded px-3 py-2"
+								/>
+								<button
+									onClick={onAdd}
+									disabled={!newUrl || submitting}
+									className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+									type="button"
+								>
+									Add
+								</button>
+							</div>
 						</div>
-					</div>
+					)}
 				</div>
 			)}
 		</div>

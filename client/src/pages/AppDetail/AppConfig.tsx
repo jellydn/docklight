@@ -8,6 +8,7 @@ interface AppConfigProps {
 	newValue: string;
 	submitting: boolean;
 	visibleValues: Set<string>;
+	canModify: boolean;
 	onKeyChange: (key: string) => void;
 	onValueChange: (value: string) => void;
 	onAdd: () => void;
@@ -23,6 +24,7 @@ export function AppConfig({
 	newValue,
 	submitting,
 	visibleValues,
+	canModify,
 	onKeyChange,
 	onValueChange,
 	onAdd,
@@ -45,33 +47,35 @@ export function AppConfig({
 				</div>
 			) : (
 				<>
-					<div className="mb-6">
-						<h3 className="text-sm font-medium text-gray-700 mb-2">Add New Variable</h3>
-						<div className="flex flex-col sm:flex-row gap-2">
-							<input
-								type="text"
-								placeholder="Key"
-								value={newKey}
-								onChange={(e) => onKeyChange(e.target.value)}
-								className="flex-1 border rounded px-3 py-2"
-							/>
-							<input
-								type="text"
-								placeholder="Value"
-								value={newValue}
-								onChange={(e) => onValueChange(e.target.value)}
-								className="flex-1 border rounded px-3 py-2"
-							/>
-							<button
-								onClick={onAdd}
-								disabled={!newKey || !newValue || submitting}
-								className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-								type="button"
-							>
-								Set
-							</button>
+					{canModify && (
+						<div className="mb-6">
+							<h3 className="text-sm font-medium text-gray-700 mb-2">Add New Variable</h3>
+							<div className="flex flex-col sm:flex-row gap-2">
+								<input
+									type="text"
+									placeholder="Key"
+									value={newKey}
+									onChange={(e) => onKeyChange(e.target.value)}
+									className="flex-1 border rounded px-3 py-2"
+								/>
+								<input
+									type="text"
+									placeholder="Value"
+									value={newValue}
+									onChange={(e) => onValueChange(e.target.value)}
+									className="flex-1 border rounded px-3 py-2"
+								/>
+								<button
+									onClick={onAdd}
+									disabled={!newKey || !newValue || submitting}
+									className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+									type="button"
+								>
+									Set
+								</button>
+							</div>
 						</div>
-					</div>
+					)}
 
 					{Object.keys(configVars).length > 0 ? (
 						<div className="overflow-x-auto">
@@ -99,14 +103,16 @@ export function AppConfig({
 												</button>
 											</td>
 											<td className="px-4 py-2 text-right">
-												<button
-													onClick={() => onRemove(key)}
-													className="text-red-600 hover:text-red-800"
-													title="Remove"
-													type="button"
-												>
-													🗑️
-												</button>
+												{canModify && (
+													<button
+														onClick={() => onRemove(key)}
+														className="text-red-600 hover:text-red-800"
+														title="Remove"
+														type="button"
+													>
+														🗑️
+													</button>
+												)}
 											</td>
 										</tr>
 									))}

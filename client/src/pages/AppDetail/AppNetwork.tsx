@@ -7,6 +7,7 @@ interface AppNetworkProps {
 	submitting: boolean;
 	editingKey: string | null;
 	editValue: string;
+	canModify: boolean;
 	onStartEdit: (key: string, currentValue: string) => void;
 	onCancelEdit: () => void;
 	onSave: (key: string) => void;
@@ -30,6 +31,7 @@ export function AppNetwork({
 	submitting,
 	editingKey,
 	editValue,
+	canModify,
 	onStartEdit,
 	onCancelEdit,
 	onSave,
@@ -51,8 +53,9 @@ export function AppNetwork({
 			) : (
 				<div className="space-y-4">
 					<p className="text-sm text-gray-500 mb-4">
-						Configure network properties for this app. Click a value to edit, or use the clear
-						button to remove a setting.
+						{canModify
+							? "Configure network properties for this app. Click a value to edit, or use the clear button to remove a setting."
+							: "Network properties for this app."}
 					</p>
 
 					{NETWORK_KEYS.map((key) => {
@@ -64,7 +67,7 @@ export function AppNetwork({
 							<div key={key} className="flex items-center justify-between py-2 border-b">
 								<div className="flex-1">
 									<span className="font-medium text-gray-700">{key}</span>
-									{isEditing ? (
+									{isEditing && canModify ? (
 										<div className="flex items-center gap-2 mt-2">
 											<input
 												type="text"
@@ -97,14 +100,16 @@ export function AppNetwork({
 											) : (
 												<span className="text-gray-800 font-mono text-sm">{value}</span>
 											)}
-											<button
-												onClick={() => onStartEdit(key, value)}
-												className="text-blue-600 hover:text-blue-800 text-sm"
-												type="button"
-											>
-												{isNotSet ? "Set" : "Edit"}
-											</button>
-											{!isNotSet && (
+											{canModify && (
+												<button
+													onClick={() => onStartEdit(key, value)}
+													className="text-blue-600 hover:text-blue-800 text-sm"
+													type="button"
+												>
+													{isNotSet ? "Set" : "Edit"}
+												</button>
+											)}
+											{canModify && !isNotSet && (
 												<button
 													onClick={() => onClear(key)}
 													disabled={submitting}
