@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type http from "http";
-import type net from "net";
-import { EventEmitter } from "events";
-
-// --- shared mock state declared with vi.hoisted so it is available inside vi.mock factories ---
+import type http from "node:http";
+import type net from "node:net";
+import { EventEmitter } from "node:events";
 
 const mockWss = vi.hoisted(() => ({
 	clients: new Set<unknown>(),
@@ -11,8 +9,6 @@ const mockWss = vi.hoisted(() => ({
 	handleUpgrade: vi.fn(),
 	emit: vi.fn(),
 }));
-
-// --- mocks ---
 
 vi.mock("./auth.js", () => ({
 	verifyToken: vi.fn(),
@@ -56,7 +52,6 @@ vi.mock("child_process", () => ({
 
 vi.mock("ws", () => {
 	return {
-		// Regular function (not arrow) so it can be used as a constructor with `new`
 		WebSocketServer: vi.fn(function MockWebSocketServer() {
 			return mockWss;
 		}),

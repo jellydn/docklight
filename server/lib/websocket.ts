@@ -1,6 +1,6 @@
-import { spawn, type ChildProcess } from "child_process";
-import type http from "http";
-import type net from "net";
+import { spawn, type ChildProcess } from "node:child_process";
+import type http from "node:http";
+import type net from "node:net";
 import { WebSocketServer } from "ws";
 import type { WebSocket as WS } from "ws";
 import { verifyToken } from "./auth.js";
@@ -32,7 +32,6 @@ export function setupLogStreaming(server: http.Server) {
 		noServer: true,
 	});
 
-	// Periodic cleanup: ping all connections and terminate stale ones
 	const cleanupInterval = setInterval(() => {
 		const now = Date.now();
 		const initialActive = wss.clients.size;
@@ -41,7 +40,6 @@ export function setupLogStreaming(server: http.Server) {
 		wss.clients.forEach((client) => {
 			const ws = client as ExtendedWebSocket;
 
-			// Terminate if idle too long
 			if (ws.lastActivityAt !== undefined && now - ws.lastActivityAt > IDLE_TIMEOUT_MS) {
 				logger.info({ idleMs: now - ws.lastActivityAt }, "Terminating idle WebSocket connection");
 				ws.terminate();
@@ -49,7 +47,6 @@ export function setupLogStreaming(server: http.Server) {
 				return;
 			}
 
-			// Ping/pong heartbeat: terminate if previous ping was not answered
 			if (ws.isAlive === false) {
 				logger.info("Terminating unresponsive WebSocket connection");
 				ws.terminate();
@@ -69,7 +66,6 @@ export function setupLogStreaming(server: http.Server) {
 		}
 	}, CLEANUP_INTERVAL_MS);
 
-	// Prevent the interval from keeping the process alive
 	cleanupInterval.unref();
 
 	server.on("upgrade", (req: ExtendedIncomingMessage, socket: net.Socket, head: Buffer) => {
@@ -88,10 +84,8 @@ export function setupLogStreaming(server: http.Server) {
 			return;
 		}
 
-		// Store validated appName for use in connection handler
 		req.appName = appName;
 
-		// Parse cookies from request headers
 		const cookies: Record<string, string> = {};
 		const cookieHeader = req.headers.cookie;
 		if (cookieHeader) {
@@ -118,7 +112,6 @@ export function setupLogStreaming(server: http.Server) {
 			return;
 		}
 
-		// Enforce connection limit after authentication
 		if (wss.clients.size >= MAX_CONNECTIONS) {
 			logger.warn(
 				{ current: wss.clients.size, max: MAX_CONNECTIONS },
@@ -141,7 +134,6 @@ export function setupLogStreaming(server: http.Server) {
 			return;
 		}
 
-		// Initialize heartbeat state
 		ws.isAlive = true;
 		markActivity(ws);
 
@@ -154,7 +146,6 @@ export function setupLogStreaming(server: http.Server) {
 		let lineCount = 100;
 		let logProcess: ChildProcess | null = null;
 
-		// Handle initial line count message
 		ws.on("message", (data: Buffer) => {
 			markActivity(ws);
 			try {
