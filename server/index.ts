@@ -24,6 +24,7 @@ import {
 	registerDatabaseRoutes,
 	registerPluginRoutes,
 	registerServerRoutes,
+	registerAdminRoutes,
 } from "./routes/index.js";
 
 const PORT = process.env.PORT || 3001;
@@ -63,6 +64,7 @@ registerAppSSLRoutes(app);
 registerDatabaseRoutes(app);
 registerPluginRoutes(app);
 registerServerRoutes(app);
+registerAdminRoutes(app);
 
 // SPA fallback for client-side routing (must be after all API routes)
 app.get("/{*path}", (_req, res) => {
