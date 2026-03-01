@@ -71,3 +71,13 @@ export const authCheckRateLimiter: RequestHandler = rateLimit({
 	legacyHeaders: false,
 	keyGenerator: generateRateLimitKey,
 });
+
+const ADMIN_MAX_REQUESTS = 30;
+
+export const adminRateLimiter: RequestHandler = rateLimit({
+	windowMs: WINDOW_MS,
+	max: ADMIN_MAX_REQUESTS,
+	standardHeaders: true,
+	legacyHeaders: false,
+	keyGenerator: generateRateLimitKey,
+});

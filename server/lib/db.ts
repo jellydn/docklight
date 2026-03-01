@@ -11,6 +11,7 @@ type Statement = {
 type Database = {
 	prepare: (sql: string) => Statement;
 	exec: (sql: string) => void;
+	transaction: <T>(fn: (arg: T) => void) => (arg: T) => void;
 };
 
 interface UserRoleRow {
@@ -367,6 +368,96 @@ export function insertAuditLog(
     VALUES (?, ?, ?, ?, ?)
   `);
 	stmt.run(userId, action, resource, details, ipAddress);
+}
+
+// ---- Backup / Restore ----
+
+export interface BackupUser {
+	username: string;
+	password_hash: string;
+	role: UserRole;
+	createdAt: string;
+}
+
+export interface BackupData {
+	version: string;
+	timestamp: string;
+	users: BackupUser[];
+	envConfig: Record<string, boolean>;
+}
+
+const ENV_VARS_TO_REFERENCE = [
+	"JWT_SECRET",
+	"DOCKLIGHT_DOKKU_SSH_TARGET",
+	"DOCKLIGHT_DOKKU_SSH_ROOT_TARGET",
+	"DOCKLIGHT_DOKKU_SSH_KEY_PATH",
+	"DOCKLIGHT_DOKKU_SSH_OPTS",
+	"LOG_LEVEL",
+	"NODE_ENV",
+];
+
+export function exportBackup(): BackupData {
+	const users = getDb()
+		.prepare("SELECT username, password_hash, role, createdAt FROM users ORDER BY id ASC")
+		.all() as BackupUser[];
+
+	const envConfig: Record<string, boolean> = {};
+	for (const key of ENV_VARS_TO_REFERENCE) {
+		envConfig[key] = process.env[key] !== undefined;
+	}
+
+	return {
+		version: "1.0",
+		timestamp: new Date().toISOString(),
+		users,
+		envConfig,
+	};
+}
+
+const VALID_ROLES: UserRole[] = ["admin", "operator", "viewer"];
+
+export function importBackup(backup: BackupData): { success: boolean; error?: string } {
+	if (!backup || backup.version !== "1.0" || !Array.isArray(backup.users)) {
+		return { success: false, error: "Invalid backup format" };
+	}
+
+	for (const user of backup.users) {
+		if (!user.username || typeof user.username !== "string") {
+			return { success: false, error: "Invalid user: username must be a non-empty string" };
+		}
+		if (!user.password_hash || typeof user.password_hash !== "string") {
+			return { success: false, error: "Invalid user: password_hash must be a non-empty string" };
+		}
+		if (!VALID_ROLES.includes(user.role)) {
+			return {
+				success: false,
+				error: `Invalid user: role must be one of ${VALID_ROLES.join(", ")}`,
+			};
+		}
+	}
+
+	const hasAdmin = backup.users.some((u) => u.role === "admin");
+	if (!hasAdmin) {
+		return { success: false, error: "Backup must contain at least one admin user" };
+	}
+
+	const db = getDb();
+	const upsert = db.prepare(
+		"INSERT INTO users (username, password_hash, role, createdAt) VALUES (?, ?, ?, ?) ON CONFLICT(username) DO UPDATE SET password_hash = excluded.password_hash, role = excluded.role, createdAt = excluded.createdAt"
+	);
+
+	try {
+		const transaction = db.transaction((users: BackupUser[]) => {
+			for (const user of users) {
+				upsert.run(user.username, user.password_hash, user.role, user.createdAt);
+			}
+		});
+		transaction(backup.users);
+		return { success: true };
+	} catch (error: unknown) {
+		const err = error as { message?: string };
+		return { success: false, error: err.message ?? "Failed to restore backup" };
+	}
 }
 
 export function getUserAuditLogs(filters: UserAuditLogFilters = {}): UserAuditLogResult {
