@@ -8,8 +8,7 @@ import { logger } from "./logger.js";
 
 const scryptAsync = promisify(scrypt);
 
-const JWT_SECRET =
-	process.env.JWT_SECRET || "docklight-default-secret-change-in-production";
+const JWT_SECRET = process.env.JWT_SECRET || "docklight-default-secret-change-in-production";
 
 export interface JWTPayload {
 	authenticated: boolean;
