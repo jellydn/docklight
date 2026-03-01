@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateAppDialog } from "@/components/CreateAppDialog.js";
 import { apiFetch } from "../lib/api.js";
-import { useAuth } from "../contexts/auth-context.js";
+import { useAuth } from "@/contexts/auth-context.js";
 import {
 	ServerHealthSchema,
 	type ServerHealth,

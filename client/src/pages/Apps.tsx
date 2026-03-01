@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { CreateAppDialog } from "@/components/CreateAppDialog.js";
 import { apiFetch } from "../lib/api.js";
-import { useAuth } from "../contexts/auth-context.js";
+import { useAuth } from "@/contexts/auth-context.js";
 import { AppSchema, type App } from "../lib/schemas.js";
 
 export function Apps() {

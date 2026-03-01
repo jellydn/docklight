@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { apiFetch } from "../lib/api.js";
-import { AuthMeSchema } from "../lib/schemas.js";
-import type { UserRole } from "../lib/schemas.js";
+import { apiFetch } from "@/lib/api.js";
+import { AuthMeSchema } from "@/lib/schemas.js";
+import type { UserRole } from "@/lib/schemas.js";
 
 interface AuthContextValue {
 	role: UserRole | null;

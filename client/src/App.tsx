@@ -3,7 +3,7 @@ import { Toaster } from "sonner";
 import { AppLayout } from "./components/AppLayout";
 import { RequireAdmin } from "./components/RequireAdmin";
 import { ToastProvider } from "./components/ToastProvider";
-import { AuthProvider } from "./contexts/auth-context";
+import { AuthProvider } from "./contexts/auth-context.js";
 import { Audit } from "./pages/Audit";
 import { AppDetail } from "./pages/AppDetail";
 import { Apps } from "./pages/Apps";

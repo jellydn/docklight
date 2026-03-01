@@ -3,7 +3,7 @@ import { Link, Outlet, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { apiFetch } from "../lib/api.js";
 import { logger } from "../lib/logger.js";
-import { useAuth } from "../contexts/auth-context.js";
+import { useAuth } from "@/contexts/auth-context.js";
 
 export function AppLayout() {
 	const navigate = useNavigate();

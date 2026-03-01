@@ -3,7 +3,7 @@ import { z } from "zod";
 import { useToast } from "../components/ToastProvider";
 import { apiFetch } from "../lib/api.js";
 import { createErrorResult } from "../lib/command-utils.js";
-import { useAuth } from "../contexts/auth-context.js";
+import { useAuth } from "@/contexts/auth-context.js";
 import { POPULAR_PLUGIN_REPOS } from "../lib/plugin-constants.js";
 import { CommandResultSchema, type PluginInfo, PluginInfoSchema } from "../lib/schemas.js";
 
