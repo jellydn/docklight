@@ -7,6 +7,19 @@ const UsersArraySchema = z.array(UserSchema);
 
 const ROLES: UserRole[] = ["admin", "operator", "viewer"];
 
+const getRoleBadge = (role: UserRole) => {
+	const colors: Record<UserRole, string> = {
+		admin: "bg-purple-100 text-purple-800",
+		operator: "bg-blue-100 text-blue-800",
+		viewer: "bg-gray-100 text-gray-800",
+	};
+	return (
+		<span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${colors[role]}`}>
+			{role}
+		</span>
+	);
+};
+
 export function Users() {
 	const [users, setUsers] = useState<User[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -95,7 +108,7 @@ export function Users() {
 	};
 
 	return (
-		<div className="max-w-3xl mx-auto">
+		<div>
 			<h1 className="text-2xl font-bold mb-6">User Management</h1>
 
 			{/* Create user form */}
@@ -168,97 +181,99 @@ export function Users() {
 				{loading ? (
 					<p className="p-6 text-gray-500">Loading…</p>
 				) : (
-					<table className="w-full text-sm mt-4">
-						<thead className="bg-gray-50 text-left">
-							<tr>
-								<th className="px-6 py-3 font-medium text-gray-500">Username</th>
-								<th className="px-6 py-3 font-medium text-gray-500">Role</th>
-								<th className="px-6 py-3 font-medium text-gray-500">Created</th>
-								<th className="px-6 py-3 font-medium text-gray-500">Actions</th>
-							</tr>
-						</thead>
-						<tbody className="divide-y divide-gray-100">
-							{users.map((user) => (
-								<tr key={user.id}>
-									<td className="px-6 py-3 font-medium">{user.username}</td>
-									<td className="px-6 py-3">
-										{editId === user.id ? (
-											<select
-												value={editRole}
-												onChange={(e) => setEditRole(e.target.value as UserRole)}
-												className="border rounded px-2 py-1"
-											>
-												{ROLES.map((r) => (
-													<option key={r} value={r}>
-														{r}
-													</option>
-												))}
-											</select>
-										) : (
-											<span className="capitalize">{user.role}</span>
-										)}
-									</td>
-									<td className="px-6 py-3 text-gray-500">
-										{new Date(user.createdAt).toLocaleDateString()}
-									</td>
-									<td className="px-6 py-3">
-										{editId === user.id ? (
-											<div className="flex items-center gap-2 flex-wrap">
-												<input
-													type="password"
-													placeholder="New password (optional)"
-													aria-label={`New password for ${user.username}`}
-													value={editPassword}
-													onChange={(e) => setEditPassword(e.target.value)}
-													className="border rounded px-2 py-1 text-xs w-40"
-													autoComplete="new-password"
-												/>
-												{editError && <span className="text-red-600 text-xs">{editError}</span>}
-												<button
-													type="button"
-													onClick={() => handleEditSave(user.id)}
-													className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
-												>
-													Save
-												</button>
-												<button
-													type="button"
-													onClick={() => setEditId(null)}
-													className="px-3 py-1 bg-gray-200 rounded text-xs hover:bg-gray-300"
-												>
-													Cancel
-												</button>
-											</div>
-										) : (
-											<div className="flex items-center gap-2">
-												<button
-													type="button"
-													onClick={() => startEdit(user)}
-													className="px-3 py-1 bg-gray-100 rounded text-xs hover:bg-gray-200"
-												>
-													Edit
-												</button>
-												<button
-													type="button"
-													onClick={() => handleDelete(user.id, user.username)}
-													className="px-3 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200"
-												>
-													Delete
-												</button>
-											</div>
-										)}
-									</td>
-								</tr>
-							))}
-							{users.length === 0 && (
+					<div className="overflow-x-auto">
+						<table className="min-w-full text-sm mt-4">
+							<thead className="bg-gray-50 text-left">
 								<tr>
-									<td colSpan={4} className="px-6 py-4 text-center text-gray-400">
-										No users yet
-									</td>
+									<th className="px-6 py-3 font-medium text-gray-500">Username</th>
+									<th className="px-6 py-3 font-medium text-gray-500">Role</th>
+									<th className="px-6 py-3 font-medium text-gray-500 hidden sm:table-cell">Created</th>
+									<th className="px-6 py-3 font-medium text-gray-500">Actions</th>
 								</tr>
-							)}
-						</tbody>
-					</table>
+							</thead>
+							<tbody className="divide-y divide-gray-100">
+								{users.map((user) => (
+									<tr key={user.id}>
+										<td className="px-6 py-3 font-medium">{user.username}</td>
+										<td className="px-6 py-3 whitespace-nowrap">
+											{editId === user.id ? (
+												<select
+													value={editRole}
+													onChange={(e) => setEditRole(e.target.value as UserRole)}
+													className="border rounded px-2 py-1"
+												>
+													{ROLES.map((r) => (
+														<option key={r} value={r}>
+															{r}
+														</option>
+													))}
+												</select>
+											) : (
+												getRoleBadge(user.role)
+											)}
+										</td>
+										<td className="px-6 py-3 text-gray-500 whitespace-nowrap hidden sm:table-cell">
+											{new Date(user.createdAt).toLocaleDateString()}
+										</td>
+										<td className="px-6 py-3 whitespace-nowrap">
+											{editId === user.id ? (
+												<div className="flex items-center gap-2 flex-wrap">
+													<input
+														type="password"
+														placeholder="New password (optional)"
+														aria-label={`New password for ${user.username}`}
+														value={editPassword}
+														onChange={(e) => setEditPassword(e.target.value)}
+														className="border rounded px-2 py-1 text-xs w-40"
+														autoComplete="new-password"
+													/>
+													{editError && <span className="text-red-600 text-xs">{editError}</span>}
+													<button
+														type="button"
+														onClick={() => handleEditSave(user.id)}
+														className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+													>
+														Save
+													</button>
+													<button
+														type="button"
+														onClick={() => setEditId(null)}
+														className="px-3 py-1 bg-gray-200 rounded text-xs hover:bg-gray-300"
+													>
+														Cancel
+													</button>
+												</div>
+											) : (
+												<div className="flex items-center gap-2">
+													<button
+														type="button"
+														onClick={() => startEdit(user)}
+														className="px-3 py-1 bg-gray-100 rounded text-xs hover:bg-gray-200"
+													>
+														Edit
+													</button>
+													<button
+														type="button"
+														onClick={() => handleDelete(user.id, user.username)}
+														className="px-3 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200"
+													>
+														Delete
+													</button>
+												</div>
+											)}
+										</td>
+									</tr>
+								))}
+								{users.length === 0 && (
+									<tr>
+										<td colSpan={4} className="px-6 py-4 text-center text-gray-400">
+											No users yet
+										</td>
+									</tr>
+								)}
+							</tbody>
+						</table>
+					</div>
 				)}
 			</div>
 		</div>
