@@ -403,7 +403,7 @@ export function exportBackup(): BackupData {
 
 	const envConfig: Record<string, boolean> = {};
 	for (const key of ENV_VARS_TO_REFERENCE) {
-		envConfig[key] = Boolean(process.env[key]);
+		envConfig[key] = process.env[key] !== undefined;
 	}
 
 	return {
@@ -414,9 +414,26 @@ export function exportBackup(): BackupData {
 	};
 }
 
+const VALID_ROLES: UserRole[] = ["admin", "operator", "viewer"];
+
 export function importBackup(backup: BackupData): { success: boolean; error?: string } {
 	if (!backup || backup.version !== "1.0" || !Array.isArray(backup.users)) {
 		return { success: false, error: "Invalid backup format" };
+	}
+
+	for (const user of backup.users) {
+		if (!user.username || typeof user.username !== "string") {
+			return { success: false, error: "Invalid user: username must be a non-empty string" };
+		}
+		if (!user.password_hash || typeof user.password_hash !== "string") {
+			return { success: false, error: "Invalid user: password_hash must be a non-empty string" };
+		}
+		if (!VALID_ROLES.includes(user.role)) {
+			return {
+				success: false,
+				error: `Invalid user: role must be one of ${VALID_ROLES.join(", ")}`,
+			};
+		}
 	}
 
 	const hasAdmin = backup.users.some((u) => u.role === "admin");
@@ -426,13 +443,13 @@ export function importBackup(backup: BackupData): { success: boolean; error?: st
 
 	const db = getDb();
 	const upsert = db.prepare(
-		"INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?) ON CONFLICT(username) DO UPDATE SET password_hash = excluded.password_hash, role = excluded.role"
+		"INSERT INTO users (username, password_hash, role, createdAt) VALUES (?, ?, ?, ?) ON CONFLICT(username) DO UPDATE SET password_hash = excluded.password_hash, role = excluded.role, createdAt = excluded.createdAt"
 	);
 
 	try {
 		const transaction = db.transaction((users: BackupUser[]) => {
 			for (const user of users) {
-				upsert.run(user.username, user.password_hash, user.role);
+				upsert.run(user.username, user.password_hash, user.role, user.createdAt);
 			}
 		});
 		transaction(backup.users);
