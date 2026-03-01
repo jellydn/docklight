@@ -232,6 +232,45 @@ describe("executeCommand with SSH pool", () => {
 		);
 	});
 
+	it("does NOT add sudo when target user is root", async () => {
+		process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET = "root@server";
+		mockSshInstance.execCommand.mockResolvedValue(makeExecResult("plugin installed", "", 0));
+
+		const result = await executeCommand("dokku plugin:install repo", 30000, { asRoot: true });
+
+		expect(result.exitCode).toBe(0);
+		// Verify the command was sent WITHOUT sudo wrapper
+		expect(mockSshInstance.execCommand).toHaveBeenCalledWith("dokku plugin:install repo");
+		expect(mockSshInstance.execCommand).not.toHaveBeenCalledWith(
+			expect.stringContaining("sudo")
+		);
+	});
+
+	it("adds sudo when target user is not root", async () => {
+		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = "dokku@server";
+		process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET = "admin@server";
+		mockSshInstance.execCommand.mockResolvedValue(makeExecResult("plugin installed", "", 0));
+
+		const result = await executeCommand("dokku plugin:install repo", 30000, { asRoot: true });
+
+		expect(result.exitCode).toBe(0);
+		// Verify the command was sent WITH sudo wrapper
+		expect(mockSshInstance.execCommand).toHaveBeenCalledWith(
+			expect.stringContaining("sudo")
+		);
+	});
+
+	it("does NOT add sudo when root target has different username casing", async () => {
+		process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET = "ROOT@server";
+		mockSshInstance.execCommand.mockResolvedValue(makeExecResult("plugin installed", "", 0));
+
+		const result = await executeCommand("dokku plugin:install repo", 30000, { asRoot: true });
+
+		expect(result.exitCode).toBe(0);
+		// Verify the command was sent WITHOUT sudo wrapper (case insensitive)
+		expect(mockSshInstance.execCommand).toHaveBeenCalledWith("dokku plugin:install repo");
+	});
+
 	it("retries once on connection failure and returns error if retry also fails", async () => {
 		mockSshInstance.connect.mockRejectedValue(new Error("Connection refused"));
 

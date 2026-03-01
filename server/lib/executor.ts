@@ -214,7 +214,6 @@ async function executeViaPool(
 		if (isRootTargetAuthError) {
 			return executeCommand(command, timeout, {
 				asRoot: true,
-				sudoPassword: options?.sudoPassword,
 				preferRootTarget: false,
 			});
 		}
@@ -384,7 +383,6 @@ export async function executeCommand(
 		if (isRootTargetAuthError) {
 			return executeCommand(command, timeout, {
 				asRoot: true,
-				sudoPassword: options?.sudoPassword,
 				preferRootTarget: false,
 			});
 		}
