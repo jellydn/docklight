@@ -9,6 +9,10 @@ vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
 }));
 
+vi.mock("../contexts/auth-context.js", () => ({
+	useAuth: () => ({ role: "admin", loading: false, canModify: true }),
+}));
+
 const mockToastContext = {
 	addToast: vi.fn(),
 };
