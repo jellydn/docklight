@@ -161,7 +161,9 @@ async function executePluginCommand(
 			...result,
 			stderr: isWrongPassword
 				? result.stderr
-				: `${result.stderr}\n\nPlugin commands require root access. See https://github.com/jellydn/docklight/blob/main/docs/deployment.md#plugin-management-sudo-errors`,
+				: `${result.stderr}
+
+Plugin commands require root access. See https://github.com/jellydn/docklight/blob/main/docs/deployment.md#plugin-management-sudo-errors`,
 		};
 	}
 
