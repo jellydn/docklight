@@ -103,14 +103,22 @@ function createTestApp(): Express {
 		res.json({ status: "ok" });
 	});
 
-	app.post("/api/auth/login", (req, res) => {
-		const { password } = req.body;
-		if (login(password)) {
-			setAuthCookie(res);
-			res.json({ success: true });
-		} else {
-			res.status(401).json({ error: "Invalid password" });
+	app.post("/api/auth/login", async (req, res) => {
+		const { username, password } = req.body;
+
+		if (!username) {
+			res.status(400).json({ error: "Username is required" });
+			return;
 		}
+
+		const user = await login(username, password);
+		if (!user) {
+			res.status(401).json({ error: "Invalid credentials" });
+			return;
+		}
+
+		setAuthCookie(res, user);
+		res.json({ success: true });
 	});
 
 	app.post("/api/auth/logout", (_req, res) => {
@@ -420,29 +428,39 @@ describe("API Routes", () => {
 	});
 
 	describe("POST /api/auth/login", () => {
-		it("should return success on valid password", async () => {
-			vi.mocked(login).mockReturnValue(true);
+		it("should return success on valid credentials", async () => {
+			const mockUser = { id: 1, username: "testuser", role: "admin" as const };
+			vi.mocked(login).mockResolvedValue(mockUser);
 
 			const response = await request(app)
 				.post("/api/auth/login")
-				.send({ password: "valid-password" });
+				.send({ username: "testuser", password: "valid-password" });
 
 			expect(response.status).toBe(200);
 			expect(response.body).toEqual({ success: true });
-			expect(login).toHaveBeenCalledWith("valid-password");
-			expect(setAuthCookie).toHaveBeenCalled();
+			expect(login).toHaveBeenCalledWith("testuser", "valid-password");
+			expect(setAuthCookie).toHaveBeenCalledWith(expect.anything(), mockUser);
 		});
 
-		it("should return 401 on invalid password", async () => {
-			vi.mocked(login).mockReturnValue(false);
+		it("should return 401 on invalid credentials", async () => {
+			vi.mocked(login).mockResolvedValue(null);
 
 			const response = await request(app)
 				.post("/api/auth/login")
-				.send({ password: "wrong-password" });
+				.send({ username: "testuser", password: "wrong-password" });
 
 			expect(response.status).toBe(401);
-			expect(response.body).toEqual({ error: "Invalid password" });
+			expect(response.body).toEqual({ error: "Invalid credentials" });
 			expect(setAuthCookie).not.toHaveBeenCalled();
+		});
+
+		it("should return 400 when username is missing", async () => {
+			const response = await request(app)
+				.post("/api/auth/login")
+				.send({ password: "some-password" });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toEqual({ error: "Username is required" });
 		});
 	});
 
