@@ -3,6 +3,7 @@ import { z } from "zod";
 import { useToast } from "../components/ToastProvider";
 import { apiFetch } from "../lib/api.js";
 import { createErrorResult } from "../lib/command-utils.js";
+import { useAuth } from "../contexts/auth-context.js";
 import { POPULAR_PLUGIN_REPOS } from "../lib/plugin-constants.js";
 import {
 	type App,
@@ -15,6 +16,7 @@ import {
 const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"];
 
 export function Databases() {
+	const { canModify } = useAuth();
 	const { addToast } = useToast();
 	const [databases, setDatabases] = useState<Database[]>([]);
 	const [apps, setApps] = useState<App[]>([]);
@@ -286,79 +288,83 @@ export function Databases() {
 			<h1 className="text-2xl font-bold mb-6">Databases</h1>
 
 			{/* Install Plugin Form */}
-			<div className="bg-white rounded-lg shadow p-6 mb-6">
-				<h2 className="text-lg font-semibold mb-4">Install Dokku Plugin</h2>
-				<div className="grid gap-2 md:grid-cols-3">
-					<input
-						type="text"
-						placeholder="Repository URL or owner/repo"
-						value={pluginRepo}
-						onChange={(e) => setPluginRepo(e.target.value)}
-						className="border rounded px-3 py-2"
-					/>
-					<input
-						type="text"
-						placeholder="Plugin name (optional)"
-						value={pluginName}
-						onChange={(e) => setPluginName(e.target.value)}
-						className="border rounded px-3 py-2"
-					/>
-					<button
-						onClick={handleInstallPlugin}
-						disabled={!pluginRepo.trim() || installPluginSubmitting}
-						className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-					>
-						Install Plugin
-					</button>
-				</div>
-				<div className="flex flex-wrap gap-2 mt-3">
-					{POPULAR_PLUGIN_REPOS.map((plugin) => (
+			{canModify && (
+				<div className="bg-white rounded-lg shadow p-6 mb-6">
+					<h2 className="text-lg font-semibold mb-4">Install Dokku Plugin</h2>
+					<div className="grid gap-2 md:grid-cols-3">
+						<input
+							type="text"
+							placeholder="Repository URL or owner/repo"
+							value={pluginRepo}
+							onChange={(e) => setPluginRepo(e.target.value)}
+							className="border rounded px-3 py-2"
+						/>
+						<input
+							type="text"
+							placeholder="Plugin name (optional)"
+							value={pluginName}
+							onChange={(e) => setPluginName(e.target.value)}
+							className="border rounded px-3 py-2"
+						/>
 						<button
-							key={plugin.name}
-							onClick={() => {
-								setPluginRepo(plugin.repository);
-								setPluginName(plugin.name);
-							}}
-							className="text-sm border rounded px-2 py-1 hover:bg-gray-50"
+							onClick={handleInstallPlugin}
+							disabled={!pluginRepo.trim() || installPluginSubmitting}
+							className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 						>
-							{plugin.label}
+							Install Plugin
 						</button>
-					))}
+					</div>
+					<div className="flex flex-wrap gap-2 mt-3">
+						{POPULAR_PLUGIN_REPOS.map((plugin) => (
+							<button
+								key={plugin.name}
+								onClick={() => {
+									setPluginRepo(plugin.repository);
+									setPluginName(plugin.name);
+								}}
+								className="text-sm border rounded px-2 py-1 hover:bg-gray-50"
+							>
+								{plugin.label}
+							</button>
+						))}
+					</div>
 				</div>
-			</div>
+			)}
 
 			{/* Create Database Form */}
-			<div className="bg-white rounded-lg shadow p-6 mb-6">
-				<h2 className="text-lg font-semibold mb-4">Create New Database</h2>
-				<div className="flex flex-col sm:flex-row gap-2">
-					<select
-						value={newDbPlugin}
-						onChange={(e) => setNewDbPlugin(e.target.value)}
-						className="border rounded px-3 py-2"
-					>
-						<option value="">Select plugin</option>
-						{SUPPORTED_PLUGINS.map((plugin) => (
-							<option key={plugin} value={plugin}>
-								{plugin}
-							</option>
-						))}
-					</select>
-					<input
-						type="text"
-						placeholder="Database name"
-						value={newDbName}
-						onChange={(e) => setNewDbName(e.target.value)}
-						className="flex-1 border rounded px-3 py-2"
-					/>
-					<button
-						onClick={handleCreateDatabase}
-						disabled={!newDbPlugin || !newDbName || createDbSubmitting}
-						className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-					>
-						Create
-					</button>
+			{canModify && (
+				<div className="bg-white rounded-lg shadow p-6 mb-6">
+					<h2 className="text-lg font-semibold mb-4">Create New Database</h2>
+					<div className="flex flex-col sm:flex-row gap-2">
+						<select
+							value={newDbPlugin}
+							onChange={(e) => setNewDbPlugin(e.target.value)}
+							className="border rounded px-3 py-2"
+						>
+							<option value="">Select plugin</option>
+							{SUPPORTED_PLUGINS.map((plugin) => (
+								<option key={plugin} value={plugin}>
+									{plugin}
+								</option>
+							))}
+						</select>
+						<input
+							type="text"
+							placeholder="Database name"
+							value={newDbName}
+							onChange={(e) => setNewDbName(e.target.value)}
+							className="flex-1 border rounded px-3 py-2"
+						/>
+						<button
+							onClick={handleCreateDatabase}
+							disabled={!newDbPlugin || !newDbName || createDbSubmitting}
+							className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+						>
+							Create
+						</button>
+					</div>
 				</div>
-			</div>
+			)}
 
 			{/* Databases by Plugin */}
 			{Object.keys(groupedDatabases).length === 0 ? (
@@ -386,13 +392,15 @@ export function Databases() {
 												{db.linkedApps.map((app) => (
 													<li key={app} className="flex items-center justify-between py-1">
 														<span>{app}</span>
-														<button
-															onClick={() => handleUnlinkDatabase(db.name, app)}
-															className="ml-4 text-red-600 hover:text-red-800 text-sm"
-															title="Unlink"
-														>
-															Unlink
-														</button>
+														{canModify && (
+															<button
+																onClick={() => handleUnlinkDatabase(db.name, app)}
+																className="ml-4 text-red-600 hover:text-red-800 text-sm"
+																title="Unlink"
+															>
+																Unlink
+															</button>
+														)}
 													</li>
 												))}
 											</ul>
@@ -411,7 +419,7 @@ export function Databases() {
 									</div>
 
 									{/* Link App Form */}
-									{apps.length > 0 && (
+									{canModify && apps.length > 0 && (
 										<div className="mt-4 pt-4 border-t">
 											<div className="flex flex-col sm:flex-row gap-2">
 												<span className="text-sm font-medium text-gray-700 self-center">
@@ -446,14 +454,16 @@ export function Databases() {
 									)}
 
 									{/* Destroy Database Button */}
-									<div className="mt-4 pt-4 border-t">
-										<button
-											onClick={() => handleDestroyDatabase(db.name)}
-											className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 text-sm"
-										>
-											Destroy Database
-										</button>
-									</div>
+									{canModify && (
+										<div className="mt-4 pt-4 border-t">
+											<button
+												onClick={() => handleDestroyDatabase(db.name)}
+												className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 text-sm"
+											>
+												Destroy Database
+											</button>
+										</div>
+									)}
 								</div>
 							</div>
 						))}

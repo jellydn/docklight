@@ -4,9 +4,11 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { CreateAppDialog } from "@/components/CreateAppDialog.js";
 import { apiFetch } from "../lib/api.js";
+import { useAuth } from "../contexts/auth-context.js";
 import { AppSchema, type App } from "../lib/schemas.js";
 
 export function Apps() {
+	const { canModify } = useAuth();
 	const [apps, setApps] = useState<App[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export function Apps() {
 		<div>
 			<div className="mb-6 flex items-center justify-between">
 				<h1 className="text-2xl font-bold">Apps</h1>
-				<Button onClick={() => setCreateAppOpen(true)}>Create App</Button>
+				{canModify && <Button onClick={() => setCreateAppOpen(true)}>Create App</Button>}
 			</div>
 
 			{loading && (
@@ -57,7 +59,9 @@ export function Apps() {
 					{apps.length === 0 ? (
 						<div className="text-center py-12">
 							<p className="text-gray-500 mb-4">No apps found</p>
-							<Button onClick={() => setCreateAppOpen(true)}>Create your first app</Button>
+							{canModify && (
+								<Button onClick={() => setCreateAppOpen(true)}>Create your first app</Button>
+							)}
 						</div>
 					) : (
 						<div className="overflow-x-auto">
@@ -115,13 +119,15 @@ export function Apps() {
 				</div>
 			)}
 
-			<CreateAppDialog
-				open={createAppOpen}
-				onOpenChange={setCreateAppOpen}
-				onCreated={() => {
-					void fetchApps();
-				}}
-			/>
+			{canModify && (
+				<CreateAppDialog
+					open={createAppOpen}
+					onOpenChange={setCreateAppOpen}
+					onCreated={() => {
+						void fetchApps();
+					}}
+				/>
+			)}
 		</div>
 	);
 }

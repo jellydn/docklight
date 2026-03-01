@@ -3,10 +3,12 @@ import { z } from "zod";
 import { useToast } from "../components/ToastProvider";
 import { apiFetch } from "../lib/api.js";
 import { createErrorResult } from "../lib/command-utils.js";
+import { useAuth } from "../contexts/auth-context.js";
 import { POPULAR_PLUGIN_REPOS } from "../lib/plugin-constants.js";
 import { CommandResultSchema, type PluginInfo, PluginInfoSchema } from "../lib/schemas.js";
 
 export function Plugins() {
+	const { canModify } = useAuth();
 	const { addToast } = useToast();
 	const [plugins, setPlugins] = useState<PluginInfo[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -137,60 +139,62 @@ export function Plugins() {
 		<div>
 			<h1 className="text-2xl font-bold mb-6">Plugins</h1>
 
-			<div className="bg-white rounded-lg shadow p-6 mb-6">
-				<h2 className="text-lg font-semibold mb-4">Install Plugin</h2>
-				<div className="grid gap-2 md:grid-cols-3">
-					<input
-						type="text"
-						placeholder="Repository URL or owner/repo"
-						value={pluginRepo}
-						onChange={(e) => setPluginRepo(e.target.value)}
-						className="border rounded px-3 py-2"
-					/>
-					<input
-						type="text"
-						placeholder="Plugin name (optional)"
-						value={pluginName}
-						onChange={(e) => setPluginName(e.target.value)}
-						className="border rounded px-3 py-2"
-					/>
-					<button
-						onClick={handleInstallPlugin}
-						disabled={!pluginRepo.trim() || installSubmitting}
-						className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-					>
-						Install
-					</button>
-				</div>
-				<div className="mt-2">
-					<input
-						type="password"
-						placeholder="Sudo password (optional)"
-						value={sudoPassword}
-						onChange={(e) => setSudoPassword(e.target.value)}
-						className="border rounded px-3 py-2 w-full md:w-1/3"
-					/>
-				</div>
-				<p className="text-xs text-gray-500 mt-2">
-					Used only for plugin actions. Leave empty if passwordless sudo is configured.
-				</p>
-				<div className="flex flex-wrap gap-2 mt-3">
-					{POPULAR_PLUGIN_REPOS.map((plugin) => (
+			{canModify && (
+				<div className="bg-white rounded-lg shadow p-6 mb-6">
+					<h2 className="text-lg font-semibold mb-4">Install Plugin</h2>
+					<div className="grid gap-2 md:grid-cols-3">
+						<input
+							type="text"
+							placeholder="Repository URL or owner/repo"
+							value={pluginRepo}
+							onChange={(e) => setPluginRepo(e.target.value)}
+							className="border rounded px-3 py-2"
+						/>
+						<input
+							type="text"
+							placeholder="Plugin name (optional)"
+							value={pluginName}
+							onChange={(e) => setPluginName(e.target.value)}
+							className="border rounded px-3 py-2"
+						/>
 						<button
-							key={plugin.name}
-							disabled={installSubmitting}
-							onClick={() => {
-								if (installSubmitting) return;
-								setPluginRepo(plugin.repository);
-								setPluginName(plugin.name);
-							}}
-							className="text-sm border rounded px-2 py-1 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+							onClick={handleInstallPlugin}
+							disabled={!pluginRepo.trim() || installSubmitting}
+							className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 						>
-							{plugin.label}
+							Install
 						</button>
-					))}
+					</div>
+					<div className="mt-2">
+						<input
+							type="password"
+							placeholder="Sudo password (optional)"
+							value={sudoPassword}
+							onChange={(e) => setSudoPassword(e.target.value)}
+							className="border rounded px-3 py-2 w-full md:w-1/3"
+						/>
+					</div>
+					<p className="text-xs text-gray-500 mt-2">
+						Used only for plugin actions. Leave empty if passwordless sudo is configured.
+					</p>
+					<div className="flex flex-wrap gap-2 mt-3">
+						{POPULAR_PLUGIN_REPOS.map((plugin) => (
+							<button
+								key={plugin.name}
+								disabled={installSubmitting}
+								onClick={() => {
+									if (installSubmitting) return;
+									setPluginRepo(plugin.repository);
+									setPluginName(plugin.name);
+								}}
+								className="text-sm border rounded px-2 py-1 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+							>
+								{plugin.label}
+							</button>
+						))}
+					</div>
 				</div>
-			</div>
+			)}
 
 			<div className="bg-white rounded-lg shadow p-6">
 				<h2 className="text-lg font-semibold mb-4">Installed Plugins</h2>
@@ -212,32 +216,34 @@ export function Plugins() {
 											{plugin.version ? ` • v${plugin.version}` : ""}
 										</div>
 									</div>
-									<div className="flex gap-2">
-										{plugin.enabled ? (
+									{canModify && (
+										<div className="flex gap-2">
+											{plugin.enabled ? (
+												<button
+													onClick={() => runPluginAction(plugin.name, "disable")}
+													disabled={isPluginActionBusy}
+													className="border border-amber-500 text-amber-700 px-3 py-1 rounded hover:bg-amber-50 disabled:opacity-60 disabled:cursor-not-allowed"
+												>
+													Disable
+												</button>
+											) : (
+												<button
+													onClick={() => runPluginAction(plugin.name, "enable")}
+													disabled={isPluginActionBusy}
+													className="border border-green-500 text-green-700 px-3 py-1 rounded hover:bg-green-50 disabled:opacity-60 disabled:cursor-not-allowed"
+												>
+													Enable
+												</button>
+											)}
 											<button
-												onClick={() => runPluginAction(plugin.name, "disable")}
+												onClick={() => handleUninstall(plugin.name)}
 												disabled={isPluginActionBusy}
-												className="border border-amber-500 text-amber-700 px-3 py-1 rounded hover:bg-amber-50 disabled:opacity-60 disabled:cursor-not-allowed"
+												className="border border-red-500 text-red-700 px-3 py-1 rounded hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed"
 											>
-												Disable
+												Uninstall
 											</button>
-										) : (
-											<button
-												onClick={() => runPluginAction(plugin.name, "enable")}
-												disabled={isPluginActionBusy}
-												className="border border-green-500 text-green-700 px-3 py-1 rounded hover:bg-green-50 disabled:opacity-60 disabled:cursor-not-allowed"
-											>
-												Enable
-											</button>
-										)}
-										<button
-											onClick={() => handleUninstall(plugin.name)}
-											disabled={isPluginActionBusy}
-											className="border border-red-500 text-red-700 px-3 py-1 rounded hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed"
-										>
-											Uninstall
-										</button>
-									</div>
+										</div>
+									)}
 								</div>
 							);
 						})}
