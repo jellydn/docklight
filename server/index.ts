@@ -117,7 +117,6 @@ app.post("/api/auth/login", authRateLimiter, async (req, res) => {
 	const multiUser = getUserCount() > 0;
 
 	if (multiUser) {
-		// Multi-user mode: validate against users table
 		if (!username) {
 			res.status(400).json({ error: "Username is required" });
 			return;
@@ -132,7 +131,6 @@ app.post("/api/auth/login", authRateLimiter, async (req, res) => {
 		return;
 	}
 
-	// Legacy mode: only when no users exist
 	if (login(password)) {
 		setAuthCookie(res);
 		res.json({ success: true });

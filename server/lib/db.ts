@@ -275,8 +275,6 @@ export function getAdminCount(): number {
 	return result.count;
 }
 
-// ---- Audit Log for RBAC ----
-
 export interface AuditLog {
 	id: number;
 	userId: number | null;

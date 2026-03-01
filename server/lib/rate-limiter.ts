@@ -2,15 +2,10 @@ import type { RequestHandler } from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { logger } from "./logger.js";
 
-const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const WINDOW_MS = 15 * 60 * 1000;
 const AUTH_MAX_REQUESTS = 5;
-const AUTH_CHECK_MAX_REQUESTS = 300; // lenient limit for status-check endpoints
+const AUTH_CHECK_MAX_REQUESTS = 300;
 
-/**
- * Generates a deterministic rate limit key from the request.
- * Uses ipKeyGenerator helper for proper IPv6 support.
- * Falls back to x-forwarded-for header, then to a stable 'unknown-ip' key.
- */
 function generateRateLimitKey(req: Parameters<RequestHandler>[0]): string {
 	if ("ip" in req && req.ip) {
 		return ipKeyGenerator(req.ip);
@@ -29,14 +24,6 @@ function generateRateLimitKey(req: Parameters<RequestHandler>[0]): string {
 	return ipKeyGenerator(ip);
 }
 
-/**
- * Rate limiter configuration for authentication endpoints.
- *
- * Limits requests based on IP address with:
- * - 15-minute window
- * - 5 attempts per window
- * - Returns 429 status with retry-after header when limit exceeded
- */
 export const authRateLimiter: RequestHandler = rateLimit({
 	windowMs: WINDOW_MS,
 	max: AUTH_MAX_REQUESTS,
@@ -65,11 +52,6 @@ export const authRateLimiter: RequestHandler = rateLimit({
 	keyGenerator: generateRateLimitKey,
 });
 
-/**
- * Rate limiter for auth status-check endpoints (e.g. /auth/me, /auth/mode).
- * Allows up to 300 requests per 15-minute window to avoid impacting normal usage
- * while still preventing enumeration or abuse.
- */
 export const authCheckRateLimiter: RequestHandler = rateLimit({
 	windowMs: WINDOW_MS,
 	max: AUTH_CHECK_MAX_REQUESTS,
