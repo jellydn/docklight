@@ -7,25 +7,27 @@ type RequireAdminProps = {
 	children: React.ReactNode;
 };
 
+type AdminState =
+	| { status: "loading" }
+	| { status: "authorized" }
+	| { status: "unauthorized" };
+
 export function RequireAdmin({ children }: RequireAdminProps) {
-	const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-	const [loading, setLoading] = useState(true);
+	const [state, setState] = useState<AdminState>({ status: "loading" });
 
 	useEffect(() => {
 		const checkAdmin = async () => {
 			try {
 				const data = await apiFetch("/auth/me", AuthMeSchema);
-				setIsAdmin(data.user?.role === "admin");
+				setState(data.user?.role === "admin" ? { status: "authorized" } : { status: "unauthorized" });
 			} catch {
-				setIsAdmin(false);
-			} finally {
-				setLoading(false);
+				setState({ status: "unauthorized" });
 			}
 		};
 		checkAdmin();
 	}, []);
 
-	if (loading) {
+	if (state.status === "loading") {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
 				<div className="text-gray-500">Loading…</div>
@@ -33,7 +35,7 @@ export function RequireAdmin({ children }: RequireAdminProps) {
 		);
 	}
 
-	if (!isAdmin) {
+	if (state.status === "unauthorized") {
 		return <Navigate to="/dashboard" replace />;
 	}
 

@@ -41,6 +41,7 @@ import {
 	updateUser,
 	deleteUser,
 	getUserCount,
+	getAdminCount,
 	type UserRole,
 } from "./lib/db.js";
 import { addDomain, getDomains, removeDomain } from "./lib/domains.js";
@@ -215,10 +216,8 @@ app.put("/api/users/:id", requireAdmin, async (req, res) => {
 			res.status(400).json({ error: "Role must be 'admin', 'operator', or 'viewer'" });
 			return;
 		}
-		// Prevent demoting the last admin
 		if (existing.role === "admin" && role !== "admin") {
-			const adminCount = getAllUsers().filter((u) => u.role === "admin").length;
-			if (adminCount <= 1) {
+			if (getAdminCount() <= 1) {
 				res.status(400).json({ error: "Cannot demote the last admin user" });
 				return;
 			}
@@ -252,14 +251,9 @@ app.delete("/api/users/:id", requireAdmin, (req, res) => {
 		return;
 	}
 
-	// Prevent deleting the last admin
-	if (existing.role === "admin") {
-		const users = getAllUsers();
-		const adminCount = users.filter((u) => u.role === "admin").length;
-		if (adminCount <= 1) {
-			res.status(400).json({ error: "Cannot delete the last admin user" });
-			return;
-		}
+	if (existing.role === "admin" && getAdminCount() <= 1) {
+		res.status(400).json({ error: "Cannot delete the last admin user" });
+		return;
 	}
 
 	deleteUser(id);

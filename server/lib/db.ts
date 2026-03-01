@@ -238,17 +238,23 @@ export function getAllUsers(): SafeUser[] {
 }
 
 export function updateUser(id: number, updates: { role?: UserRole; passwordHash?: string }): void {
-	if (updates.role !== undefined && updates.passwordHash !== undefined) {
-		getDb()
-			.prepare("UPDATE users SET role = ?, password_hash = ? WHERE id = ?")
-			.run(updates.role, updates.passwordHash, id);
-	} else if (updates.role !== undefined) {
-		getDb().prepare("UPDATE users SET role = ? WHERE id = ?").run(updates.role, id);
-	} else if (updates.passwordHash !== undefined) {
-		getDb()
-			.prepare("UPDATE users SET password_hash = ? WHERE id = ?")
-			.run(updates.passwordHash, id);
+	const fields: string[] = [];
+	const params: unknown[] = [];
+
+	if (updates.role !== undefined) {
+		fields.push("role = ?");
+		params.push(updates.role);
 	}
+	if (updates.passwordHash !== undefined) {
+		fields.push("password_hash = ?");
+		params.push(updates.passwordHash);
+	}
+
+	if (fields.length === 0) return;
+
+	params.push(id);
+	const stmt = getDb().prepare(`UPDATE users SET ${fields.join(", ")} WHERE id = ?`);
+	stmt.run(...params);
 }
 
 export function deleteUser(id: number): void {
@@ -257,6 +263,13 @@ export function deleteUser(id: number): void {
 
 export function getUserCount(): number {
 	const result = getDb().prepare("SELECT COUNT(*) as count FROM users").get() as {
+		count: number;
+	};
+	return result.count;
+}
+
+export function getAdminCount(): number {
+	const result = getDb().prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'").get() as {
 		count: number;
 	};
 	return result.count;

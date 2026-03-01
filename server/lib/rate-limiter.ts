@@ -1,11 +1,33 @@
 import type { RequestHandler } from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
-import { randomUUID } from "crypto";
 import { logger } from "./logger.js";
 
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const AUTH_MAX_REQUESTS = 5;
 const AUTH_CHECK_MAX_REQUESTS = 300; // lenient limit for status-check endpoints
+
+/**
+ * Generates a deterministic rate limit key from the request.
+ * Uses ipKeyGenerator helper for proper IPv6 support.
+ * Falls back to x-forwarded-for header, then to a stable 'unknown-ip' key.
+ */
+function generateRateLimitKey(req: Parameters<RequestHandler>[0]): string {
+	if ("ip" in req && req.ip) {
+		return ipKeyGenerator(req.ip);
+	}
+
+	const forwardedFor = req.headers["x-forwarded-for"];
+	const fallbackIp = Array.isArray(forwardedFor)
+		? forwardedFor[0]
+		: forwardedFor || "unknown-ip";
+
+	const ip =
+		typeof fallbackIp === "string" && fallbackIp.length > 0
+			? fallbackIp
+			: "unknown-ip";
+
+	return ipKeyGenerator(ip);
+}
 
 /**
  * Rate limiter configuration for authentication endpoints.
@@ -18,24 +40,16 @@ const AUTH_CHECK_MAX_REQUESTS = 300; // lenient limit for status-check endpoints
 export const authRateLimiter: RequestHandler = rateLimit({
 	windowMs: WINDOW_MS,
 	max: AUTH_MAX_REQUESTS,
-	standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
-	legacyHeaders: false, // Disable `X-RateLimit-*` headers
-	skipFailedRequests: false, // Count all requests, including failed ones
-	skipSuccessfulRequests: false, // Count all requests, including successful ones
+	standardHeaders: true,
+	legacyHeaders: false,
+	skipFailedRequests: false,
+	skipSuccessfulRequests: false,
 
-	/**
-	 * Custom handler for rate limit exceeded responses.
-	 * Logs the rate limit event and returns a 429 status with retry-after header.
-	 */
 	handler: (req, res) => {
 		const retryAfter = Math.ceil(WINDOW_MS / 1000);
 
 		logger.warn(
-			{
-				ip: req.ip,
-				path: req.path,
-				retryAfter,
-			},
+			{ ip: req.ip, path: req.path, retryAfter },
 			"Rate limit exceeded for authentication endpoint"
 		);
 
@@ -48,22 +62,7 @@ export const authRateLimiter: RequestHandler = rateLimit({
 			});
 	},
 
-	/**
-	 * Key generator function that uses the client's IP address.
-	 * Uses ipKeyGenerator helper for proper IPv6 support.
-	 * Falls back to random UUID if IP cannot be determined.
-	 */
-	keyGenerator: (req) => {
-		if (req.ip) {
-			return ipKeyGenerator(req.ip);
-		}
-
-		logger.warn(
-			{ path: req.path },
-			"Could not determine IP for rate limiting. Using random key as fallback."
-		);
-		return randomUUID();
-	},
+	keyGenerator: generateRateLimitKey,
 });
 
 /**
@@ -76,17 +75,5 @@ export const authCheckRateLimiter: RequestHandler = rateLimit({
 	max: AUTH_CHECK_MAX_REQUESTS,
 	standardHeaders: true,
 	legacyHeaders: false,
-	keyGenerator: (req) => {
-		if (req.ip) {
-			return ipKeyGenerator(req.ip);
-		}
-		// Use x-forwarded-for as fallback, or a stable 'unknown-ip' key
-		const forwardedFor = req.headers["x-forwarded-for"];
-		const fallbackIp = Array.isArray(forwardedFor)
-			? forwardedFor[0]
-			: forwardedFor || "unknown-ip";
-		return ipKeyGenerator(
-			typeof fallbackIp === "string" && fallbackIp.length > 0 ? fallbackIp : "unknown-ip",
-		);
-	},
+	keyGenerator: generateRateLimitKey,
 });
