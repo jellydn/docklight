@@ -56,6 +56,27 @@ function getDb(): Database {
 	  )
 	`);
 
+	// Create audit_log table for RBAC user action auditing
+	newDb.exec(`
+	  CREATE TABLE IF NOT EXISTS audit_log (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER,
+		action TEXT NOT NULL,
+		resource TEXT,
+		details TEXT,
+		ip_address TEXT,
+		createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+	  )
+	`);
+
+	// Create indexes for audit_log performance
+	newDb.exec(`
+	  CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id);
+	  CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action);
+	  CREATE INDEX IF NOT EXISTS idx_audit_log_createdAt ON audit_log(createdAt);
+	`);
+
 	db = newDb;
 	return newDb;
 }
@@ -239,4 +260,94 @@ export function getUserCount(): number {
 		count: number;
 	};
 	return result.count;
+}
+
+// ---- Audit Log for RBAC ----
+
+export interface AuditLog {
+	id: number;
+	userId: number | null;
+	action: string;
+	resource: string | null;
+	details: string | null;
+	ipAddress: string | null;
+	createdAt: string;
+}
+
+export interface UserAuditLogFilters {
+	limit?: number;
+	offset?: number;
+	userId?: number;
+	action?: string;
+	since?: string;
+}
+
+export interface UserAuditLogResult {
+	logs: AuditLog[];
+	total: number;
+	limit: number;
+	offset: number;
+}
+
+export function insertAuditLog(
+	userId: number | null,
+	action: string,
+	resource: string | null = null,
+	details: string | null = null,
+	ipAddress: string | null = null,
+): void {
+	const stmt = getDb().prepare(`
+    INSERT INTO audit_log (user_id, action, resource, details, ip_address)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+	stmt.run(userId, action, resource, details, ipAddress);
+}
+
+export function getUserAuditLogs(filters: UserAuditLogFilters = {}): UserAuditLogResult {
+	const limit = Math.min(filters.limit ?? 50, 500);
+	const offset = filters.offset ?? 0;
+
+	// Build WHERE clause conditions
+	const conditions: string[] = [];
+	const params: (number | string)[] = [];
+
+	if (filters.userId !== undefined) {
+		conditions.push("user_id = ?");
+		params.push(filters.userId);
+	}
+
+	if (filters.action) {
+		conditions.push("action = ?");
+		params.push(filters.action);
+	}
+
+	if (filters.since && isValidISODate(filters.since)) {
+		conditions.push("createdAt >= ?");
+		params.push(filters.since);
+	}
+
+	// Build WHERE clause
+	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+	// Get total count
+	const countStmt = getDb().prepare(`SELECT COUNT(*) as count FROM audit_log ${whereClause}`);
+	const countResult = countStmt.get(...params) as { count: number };
+	const total = countResult.count;
+
+	// Get paginated results
+	const dataStmt = getDb().prepare(
+		`SELECT id, user_id as userId, action, resource, details, ip_address as ipAddress, createdAt
+		 FROM audit_log
+		 ${whereClause}
+		 ORDER BY createdAt DESC
+		 LIMIT ? OFFSET ?`
+	);
+	const logs = dataStmt.all(...params, limit, offset) as AuditLog[];
+
+	return {
+		logs,
+		total,
+		limit,
+		offset,
+	};
 }

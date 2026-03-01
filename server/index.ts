@@ -113,9 +113,14 @@ app.get("/api/health", (_req, res) => {
 
 app.post("/api/auth/login", authRateLimiter, async (req, res) => {
 	const { username, password } = req.body;
+	const multiUser = getUserCount() > 0;
 
-	if (username) {
+	if (multiUser) {
 		// Multi-user mode: validate against users table
+		if (!username) {
+			res.status(400).json({ error: "Username is required" });
+			return;
+		}
 		const user = await loginWithCredentials(username, password);
 		if (user) {
 			setAuthCookie(res, user);
@@ -123,14 +128,15 @@ app.post("/api/auth/login", authRateLimiter, async (req, res) => {
 		} else {
 			res.status(401).json({ error: "Invalid credentials" });
 		}
+		return;
+	}
+
+	// Legacy mode: only when no users exist
+	if (login(password)) {
+		setAuthCookie(res);
+		res.json({ success: true });
 	} else {
-		// Legacy mode: validate against DOCKLIGHT_PASSWORD env var
-		if (login(password)) {
-			setAuthCookie(res);
-			res.json({ success: true });
-		} else {
-			res.status(401).json({ error: "Invalid password" });
-		}
+		res.status(401).json({ error: "Invalid password" });
 	}
 });
 
@@ -208,6 +214,14 @@ app.put("/api/users/:id", requireAdmin, async (req, res) => {
 		if (!["admin", "operator", "viewer"].includes(role)) {
 			res.status(400).json({ error: "Role must be 'admin', 'operator', or 'viewer'" });
 			return;
+		}
+		// Prevent demoting the last admin
+		if (existing.role === "admin" && role !== "admin") {
+			const adminCount = getAllUsers().filter((u) => u.role === "admin").length;
+			if (adminCount <= 1) {
+				res.status(400).json({ error: "Cannot demote the last admin user" });
+				return;
+			}
 		}
 		updates.role = role;
 	}

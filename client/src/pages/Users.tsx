@@ -207,6 +207,7 @@ export function Users() {
 												<input
 													type="password"
 													placeholder="New password (optional)"
+													aria-label={`New password for ${user.username}`}
 													value={editPassword}
 													onChange={(e) => setEditPassword(e.target.value)}
 													className="border rounded px-2 py-1 text-xs w-40"

@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AppLayout } from "./components/AppLayout";
+import { RequireAdmin } from "./components/RequireAdmin";
 import { ToastProvider } from "./components/ToastProvider";
 import { Audit } from "./pages/Audit";
 import { AppDetail } from "./pages/AppDetail";
@@ -25,7 +26,14 @@ function App() {
 						<Route path="databases" element={<Databases />} />
 						<Route path="plugins" element={<Plugins />} />
 						<Route path="audit" element={<Audit />} />
-						<Route path="users" element={<Users />} />
+						<Route
+							path="users"
+							element={
+								<RequireAdmin>
+									<Users />
+								</RequireAdmin>
+							}
+						/>
 					</Route>
 				</Routes>
 				<Toaster

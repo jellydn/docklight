@@ -80,6 +80,13 @@ export const authCheckRateLimiter: RequestHandler = rateLimit({
 		if (req.ip) {
 			return ipKeyGenerator(req.ip);
 		}
-		return randomUUID();
+		// Use x-forwarded-for as fallback, or a stable 'unknown-ip' key
+		const forwardedFor = req.headers["x-forwarded-for"];
+		const fallbackIp = Array.isArray(forwardedFor)
+			? forwardedFor[0]
+			: forwardedFor || "unknown-ip";
+		return ipKeyGenerator(
+			typeof fallbackIp === "string" && fallbackIp.length > 0 ? fallbackIp : "unknown-ip",
+		);
 	},
 });

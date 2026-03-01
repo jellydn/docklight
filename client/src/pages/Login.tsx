@@ -35,6 +35,11 @@ export function Login() {
 		e.preventDefault();
 		setError("");
 
+		// Block submission until auth mode is resolved
+		if (multiUser === null) {
+			return;
+		}
+
 		try {
 			const body = multiUser ? { username, password } : { password };
 			await apiFetch("/auth/login", z.object({ success: z.literal(true) }), {
@@ -88,7 +93,8 @@ export function Login() {
 					{error && <div className="text-red-600 text-sm">{error}</div>}
 					<button
 						type="submit"
-						className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700"
+						disabled={multiUser === null}
+						className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
 					>
 						Login
 					</button>
