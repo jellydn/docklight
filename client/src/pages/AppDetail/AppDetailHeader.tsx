@@ -3,6 +3,7 @@ import type { AppDetailHeaderProps } from "./types.js";
 export function AppDetailHeader({
 	appName,
 	status,
+	canModify,
 	onStop,
 	onStart,
 	onRestart,
@@ -19,40 +20,42 @@ export function AppDetailHeader({
 				<h1 className="text-2xl font-bold">{appName}</h1>
 				<div className="mt-2">{getStatusBadge()}</div>
 			</div>
-			<div className="flex gap-2">
-				{status === "running" && (
+			{canModify && (
+				<div className="flex gap-2">
+					{status === "running" && (
+						<button
+							onClick={onStop}
+							className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700"
+							type="button"
+						>
+							Stop
+						</button>
+					)}
+					{status === "stopped" && (
+						<button
+							onClick={onStart}
+							className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+							type="button"
+						>
+							Start
+						</button>
+					)}
 					<button
-						onClick={onStop}
-						className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700"
+						onClick={onRestart}
+						className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
 						type="button"
 					>
-						Stop
+						Restart
 					</button>
-				)}
-				{status === "stopped" && (
 					<button
-						onClick={onStart}
-						className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+						onClick={onRebuild}
+						className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
 						type="button"
 					>
-						Start
+						Rebuild
 					</button>
-				)}
-				<button
-					onClick={onRestart}
-					className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-					type="button"
-				>
-					Restart
-				</button>
-				<button
-					onClick={onRebuild}
-					className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
-					type="button"
-				>
-					Rebuild
-				</button>
-			</div>
+				</div>
+			)}
 		</div>
 	);
 }

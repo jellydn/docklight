@@ -79,10 +79,9 @@ export function registerUserRoutes(app: express.Application): void {
 					res.status(400).json({ error: result.error });
 					return;
 				}
-				res.json(getUserById(id));
-				return;
+			} else {
+				updates.role = role;
 			}
-			updates.role = role;
 		}
 
 		if (password !== undefined) {

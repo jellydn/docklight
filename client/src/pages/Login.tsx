@@ -29,8 +29,13 @@ export function Login() {
 				body: JSON.stringify({ username, password }),
 			});
 			navigate("/dashboard");
-		} catch (_err) {
-			setError("Invalid credentials");
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "";
+			if (message.includes("Too many login attempts")) {
+				setError(message);
+			} else {
+				setError("Invalid credentials");
+			}
 		}
 	};
 

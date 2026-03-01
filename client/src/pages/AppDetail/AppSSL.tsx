@@ -6,6 +6,7 @@ interface AppSSLProps {
 	error: string | null;
 	email: string;
 	submitting: boolean;
+	canModify: boolean;
 	onEmailChange: (email: string) => void;
 	onEnable: () => void;
 	onRenew: () => void;
@@ -17,6 +18,7 @@ export function AppSSL({
 	error,
 	email,
 	submitting,
+	canModify,
 	onEmailChange,
 	onEnable,
 	onRenew,
@@ -65,45 +67,47 @@ export function AppSSL({
 						</div>
 					)}
 
-					<div className="pt-4 border-t">
-						{sslStatus?.active ? (
-							<button
-								onClick={onRenew}
-								disabled={submitting}
-								className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-								type="button"
-							>
-								Renew Certificate
-							</button>
-						) : (
-							<div className="space-y-3">
-								<div>
-									<label
-										htmlFor="ssl-email"
-										className="block text-sm font-medium text-gray-700 mb-1"
-									>
-										Let's Encrypt Email
-									</label>
-									<input
-										id="ssl-email"
-										type="email"
-										value={email}
-										onChange={(event) => onEmailChange(event.target.value)}
-										placeholder="you@example.com"
-										className="w-full max-w-md px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-									/>
-								</div>
+					{canModify && (
+						<div className="pt-4 border-t">
+							{sslStatus?.active ? (
 								<button
-									onClick={onEnable}
+									onClick={onRenew}
 									disabled={submitting}
-									className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+									className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 									type="button"
 								>
-									Enable Let's Encrypt
+									Renew Certificate
 								</button>
-							</div>
-						)}
-					</div>
+							) : (
+								<div className="space-y-3">
+									<div>
+										<label
+											htmlFor="ssl-email"
+											className="block text-sm font-medium text-gray-700 mb-1"
+										>
+											Let's Encrypt Email
+										</label>
+										<input
+											id="ssl-email"
+											type="email"
+											value={email}
+											onChange={(event) => onEmailChange(event.target.value)}
+											placeholder="you@example.com"
+											className="w-full max-w-md px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+										/>
+									</div>
+									<button
+										onClick={onEnable}
+										disabled={submitting}
+										className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+										type="button"
+									>
+										Enable Let's Encrypt
+									</button>
+								</div>
+							)}
+						</div>
+					)}
 				</div>
 			)}
 		</div>

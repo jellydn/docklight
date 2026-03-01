@@ -13,6 +13,10 @@ type Database = {
 	exec: (sql: string) => void;
 };
 
+interface UserRoleRow {
+	role: UserRole;
+}
+
 const DATA_DIR = path.resolve(__dirname, "..", "..", "data");
 const DB_PATH = path.join(DATA_DIR, "docklight.db");
 
@@ -285,9 +289,7 @@ export function demoteAdminWithGuard(
 export function deleteUserWithAdminGuard(id: number): { success: boolean; error?: string } {
 	const db = getDb();
 
-	const user = db
-		.prepare("SELECT role FROM users WHERE id = ?")
-		.get(id) as { role: UserRole } | undefined;
+	const user = db.prepare("SELECT role FROM users WHERE id = ?").get(id) as UserRoleRow | undefined;
 
 	if (!user) {
 		return { success: false, error: "User not found" };

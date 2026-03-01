@@ -6,6 +6,7 @@ interface AppOverviewProps {
 	hostname: string;
 	copySuccess: CopySuccess;
 	scaleChanges: Record<string, number>;
+	canModify: boolean;
 	onCopyRemote: () => void;
 	onCopyPush: () => void;
 	onScaleChange: (processType: string, count: number, currentCount: number) => void;
@@ -18,6 +19,7 @@ export function AppOverview({
 	hostname,
 	copySuccess,
 	scaleChanges,
+	canModify,
 	onCopyRemote,
 	onCopyPush,
 	onScaleChange,
@@ -104,21 +106,23 @@ export function AppOverview({
 											<span className="text-gray-600">Current:</span>
 											<span className="font-mono">{count}</span>
 										</div>
-										<div className="flex items-center space-x-2">
-											<span className="text-gray-600">Scale to:</span>
-											<input
-												type="number"
-												min="0"
-												max="100"
-												defaultValue={count}
-												onChange={(e) => onScaleChange(type, parseInt(e.target.value, 10), count)}
-												className="w-20 border rounded px-2 py-1"
-											/>
-										</div>
+										{canModify && (
+											<div className="flex items-center space-x-2">
+												<span className="text-gray-600">Scale to:</span>
+												<input
+													type="number"
+													min="0"
+													max="100"
+													defaultValue={count}
+													onChange={(e) => onScaleChange(type, parseInt(e.target.value, 10), count)}
+													className="w-20 border rounded px-2 py-1"
+												/>
+											</div>
+										)}
 									</div>
 								))}
 							</div>
-							{Object.keys(scaleChanges).length > 0 && (
+							{canModify && Object.keys(scaleChanges).length > 0 && (
 								<div className="mt-4">
 									<button
 										onClick={onApplyScale}
@@ -135,22 +139,24 @@ export function AppOverview({
 					)}
 				</div>
 
-				<div className="mt-8 pt-6 border-t border-red-200">
-					<div className="border border-red-300 rounded-lg p-4 bg-red-50">
-						<h3 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h3>
-						<p className="text-sm text-red-600 mb-4">
-							Deleting an app is irreversible. All data, logs, and configurations will be
-							permanently removed.
-						</p>
-						<button
-							onClick={onDeleteApp}
-							className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-							type="button"
-						>
-							Delete App
-						</button>
+				{canModify && (
+					<div className="mt-8 pt-6 border-t border-red-200">
+						<div className="border border-red-300 rounded-lg p-4 bg-red-50">
+							<h3 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h3>
+							<p className="text-sm text-red-600 mb-4">
+								Deleting an app is irreversible. All data, logs, and configurations will be
+								permanently removed.
+							</p>
+							<button
+								onClick={onDeleteApp}
+								className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+								type="button"
+							>
+								Delete App
+							</button>
+						</div>
 					</div>
-				</div>
+				)}
 			</div>
 		</div>
 	);

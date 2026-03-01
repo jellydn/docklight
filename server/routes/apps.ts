@@ -12,7 +12,7 @@ import {
 } from "../lib/apps.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
 import { logger } from "../lib/logger.js";
-import { authMiddleware } from "../lib/auth.js";
+import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { getParam } from "./util.js";
 
 export function registerAppRoutes(app: express.Application): void {
@@ -36,7 +36,7 @@ export function registerAppRoutes(app: express.Application): void {
 		res.json(apps);
 	});
 
-	app.post("/api/apps", authMiddleware, async (req, res) => {
+	app.post("/api/apps", authMiddleware, requireOperator, async (req, res) => {
 		const { name } = req.body;
 		if (!name || typeof name !== "string") {
 			res.status(400).json({ error: "App name is required" });
@@ -61,21 +61,35 @@ export function registerAppRoutes(app: express.Application): void {
 		res.json(app);
 	});
 
-	app.post("/api/apps/:name/restart", authMiddleware, async (req, res) => {
+	app.post("/api/apps/:name/restart", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const result = await restartApp(name);
+
+		if (result.exitCode !== 0) {
+			const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+			res.status(statusCode).json(result);
+			return;
+		}
+
 		clearPrefix("apps:");
 		res.json(result);
 	});
 
-	app.post("/api/apps/:name/rebuild", authMiddleware, async (req, res) => {
+	app.post("/api/apps/:name/rebuild", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const result = await rebuildApp(name);
+
+		if (result.exitCode !== 0) {
+			const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+			res.status(statusCode).json(result);
+			return;
+		}
+
 		clearPrefix("apps:");
 		res.json(result);
 	});
 
-	app.post("/api/apps/:name/stop", authMiddleware, async (req, res) => {
+	app.post("/api/apps/:name/stop", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const result = await stopApp(name);
 
@@ -89,7 +103,7 @@ export function registerAppRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.post("/api/apps/:name/start", authMiddleware, async (req, res) => {
+	app.post("/api/apps/:name/start", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const result = await startApp(name);
 
@@ -103,15 +117,22 @@ export function registerAppRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.post("/api/apps/:name/scale", authMiddleware, async (req, res) => {
+	app.post("/api/apps/:name/scale", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { processType, count } = req.body;
 		const result = await scaleApp(name, processType, count);
+
+		if (result.exitCode !== 0) {
+			const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+			res.status(statusCode).json(result);
+			return;
+		}
+
 		clearPrefix("apps:");
 		res.json(result);
 	});
 
-	app.delete("/api/apps/:name", authMiddleware, async (req, res) => {
+	app.delete("/api/apps/:name", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { confirmName } = req.body;
 		if (!confirmName || typeof confirmName !== "string") {

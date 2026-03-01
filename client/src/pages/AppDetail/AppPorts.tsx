@@ -10,6 +10,7 @@ interface AppPortsProps {
 	newContainerPort: string;
 	submitting: boolean;
 	proxySubmitting: boolean;
+	canModify: boolean;
 	onSchemeChange: (scheme: string) => void;
 	onHostPortChange: (port: string) => void;
 	onContainerPortChange: (port: string) => void;
@@ -30,6 +31,7 @@ export function AppPorts({
 	newContainerPort,
 	submitting,
 	proxySubmitting,
+	canModify,
 	onSchemeChange,
 	onHostPortChange,
 	onContainerPortChange,
@@ -84,14 +86,16 @@ export function AppPorts({
 												<td className="px-3 py-2">{port.hostPort}</td>
 												<td className="px-3 py-2">{port.containerPort}</td>
 												<td className="px-3 py-2 text-right">
-													<button
-														onClick={() => onRemove(port)}
-														className="text-red-600 hover:text-red-800"
-														title="Remove"
-														type="button"
-													>
-														🗑️
-													</button>
+													{canModify && (
+														<button
+															onClick={() => onRemove(port)}
+															className="text-red-600 hover:text-red-800"
+															title="Remove"
+															type="button"
+														>
+															🗑️
+														</button>
+													)}
 												</td>
 											</tr>
 										))}
@@ -102,53 +106,55 @@ export function AppPorts({
 							<p className="text-gray-500 mb-4">No port mappings configured.</p>
 						)}
 
-						<div className="flex flex-col sm:flex-row gap-2 mb-4">
-							<select
-								value={newScheme}
-								onChange={(e) => onSchemeChange(e.target.value)}
-								className="border rounded px-3 py-2"
-							>
-								<option value="http">http</option>
-								<option value="https">https</option>
-								<option value="tcp">tcp</option>
-							</select>
-							<input
-								type="number"
-								placeholder="Host Port"
-								value={newHostPort}
-								onChange={(e) => onHostPortChange(e.target.value)}
-								min="1"
-								max="65535"
-								className="w-32 border rounded px-3 py-2"
-							/>
-							<input
-								type="number"
-								placeholder="Container Port"
-								value={newContainerPort}
-								onChange={(e) => onContainerPortChange(e.target.value)}
-								min="1"
-								max="65535"
-								className="w-40 border rounded px-3 py-2"
-							/>
-							<button
-								onClick={onAdd}
-								disabled={!newHostPort || !newContainerPort || submitting}
-								className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-								type="button"
-							>
-								Add Port
-							</button>
-
-							{ports.length > 0 && (
+						{canModify && (
+							<div className="flex flex-col sm:flex-row gap-2 mb-4">
+								<select
+									value={newScheme}
+									onChange={(e) => onSchemeChange(e.target.value)}
+									className="border rounded px-3 py-2"
+								>
+									<option value="http">http</option>
+									<option value="https">https</option>
+									<option value="tcp">tcp</option>
+								</select>
+								<input
+									type="number"
+									placeholder="Host Port"
+									value={newHostPort}
+									onChange={(e) => onHostPortChange(e.target.value)}
+									min="1"
+									max="65535"
+									className="w-32 border rounded px-3 py-2"
+								/>
+								<input
+									type="number"
+									placeholder="Container Port"
+									value={newContainerPort}
+									onChange={(e) => onContainerPortChange(e.target.value)}
+									min="1"
+									max="65535"
+									className="w-40 border rounded px-3 py-2"
+								/>
 								<button
-									onClick={onClearAll}
-									className="text-red-600 hover:text-red-800 text-sm"
+									onClick={onAdd}
+									disabled={!newHostPort || !newContainerPort || submitting}
+									className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 									type="button"
 								>
-									Clear All Ports
+									Add Port
 								</button>
-							)}
-						</div>
+
+								{ports.length > 0 && (
+									<button
+										onClick={onClearAll}
+										className="text-red-600 hover:text-red-800 text-sm"
+										type="button"
+									>
+										Clear All Ports
+									</button>
+								)}
+							</div>
+						)}
 
 						<div className="pt-4 border-t">
 							<h3 className="text-sm font-medium text-gray-700 mb-3">Proxy</h3>
@@ -168,27 +174,29 @@ export function AppPorts({
 										<span className="ml-4 text-sm text-gray-500">Type: {proxyReport.type}</span>
 									)}
 								</div>
-								<div className="flex gap-2">
-									{proxyReport?.enabled ? (
-										<button
-											onClick={onDisableProxy}
-											disabled={proxySubmitting}
-											className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-											type="button"
-										>
-											Disable
-										</button>
-									) : (
-										<button
-											onClick={onEnableProxy}
-											disabled={proxySubmitting}
-											className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-											type="button"
-										>
-											Enable
-										</button>
-									)}
-								</div>
+								{canModify && (
+									<div className="flex gap-2">
+										{proxyReport?.enabled ? (
+											<button
+												onClick={onDisableProxy}
+												disabled={proxySubmitting}
+												className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+												type="button"
+											>
+												Disable
+											</button>
+										) : (
+											<button
+												onClick={onEnableProxy}
+												disabled={proxySubmitting}
+												className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+												type="button"
+											>
+												Enable
+											</button>
+										)}
+									</div>
+								)}
 							</div>
 						</div>
 					</div>

@@ -8,6 +8,7 @@ interface AppDockerOptionsProps {
 	newOption: string;
 	addSubmitting: boolean;
 	clearSubmitting: (phase: "build" | "deploy" | "run") => boolean;
+	canModify: boolean;
 	onPhaseChange: (phase: "build" | "deploy" | "run") => void;
 	onOptionChange: (option: string) => void;
 	onAdd: () => void;
@@ -23,6 +24,7 @@ export function AppDockerOptions({
 	newOption,
 	addSubmitting,
 	clearSubmitting,
+	canModify,
 	onPhaseChange,
 	onOptionChange,
 	onAdd,
@@ -49,7 +51,7 @@ export function AppDockerOptions({
 							<div key={phase} className="border rounded-lg p-4">
 								<div className="flex justify-between items-center mb-3">
 									<h3 className="text-sm font-medium text-gray-700 capitalize">{phase} Phase</h3>
-									{options.length > 0 && (
+									{canModify && options.length > 0 && (
 										<button
 											onClick={() => onClearPhase(phase)}
 											disabled={clearSubmitting(phase)}
@@ -69,14 +71,16 @@ export function AppDockerOptions({
 												className="flex items-center justify-between bg-gray-50 rounded px-3 py-2"
 											>
 												<code className="font-mono text-sm text-gray-800">{option}</code>
-												<button
-													onClick={() => onRemove(phase, option)}
-													className="text-red-600 hover:text-red-800 ml-4"
-													title="Remove"
-													type="button"
-												>
-													🗑️
-												</button>
+												{canModify && (
+													<button
+														onClick={() => onRemove(phase, option)}
+														className="text-red-600 hover:text-red-800 ml-4"
+														title="Remove"
+														type="button"
+													>
+														🗑️
+													</button>
+												)}
 											</li>
 										))}
 									</ul>
@@ -87,38 +91,40 @@ export function AppDockerOptions({
 						);
 					})}
 
-					<div className="pt-4 border-t">
-						<h3 className="text-sm font-medium text-gray-700 mb-3">Add Docker Option</h3>
-						<div className="flex flex-col sm:flex-row gap-2 mb-2">
-							<select
-								value={newPhase}
-								onChange={(e) => onPhaseChange(e.target.value as "build" | "deploy" | "run")}
-								className="border rounded px-3 py-2"
-							>
-								<option value="build">Build</option>
-								<option value="deploy">Deploy</option>
-								<option value="run">Run</option>
-							</select>
-							<input
-								type="text"
-								placeholder="e.g., --memory=512m --cpus=0.5"
-								value={newOption}
-								onChange={(e) => onOptionChange(e.target.value)}
-								className="flex-1 border rounded px-3 py-2 font-mono text-sm"
-							/>
-							<button
-								onClick={onAdd}
-								disabled={!newOption || addSubmitting}
-								className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-								type="button"
-							>
-								Add
-							</button>
+					{canModify && (
+						<div className="pt-4 border-t">
+							<h3 className="text-sm font-medium text-gray-700 mb-3">Add Docker Option</h3>
+							<div className="flex flex-col sm:flex-row gap-2 mb-2">
+								<select
+									value={newPhase}
+									onChange={(e) => onPhaseChange(e.target.value as "build" | "deploy" | "run")}
+									className="border rounded px-3 py-2"
+								>
+									<option value="build">Build</option>
+									<option value="deploy">Deploy</option>
+									<option value="run">Run</option>
+								</select>
+								<input
+									type="text"
+									placeholder="e.g., --memory=512m --cpus=0.5"
+									value={newOption}
+									onChange={(e) => onOptionChange(e.target.value)}
+									className="flex-1 border rounded px-3 py-2 font-mono text-sm"
+								/>
+								<button
+									onClick={onAdd}
+									disabled={!newOption || addSubmitting}
+									className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+									type="button"
+								>
+									Add
+								</button>
+							</div>
+							<p className="text-xs text-gray-500">
+								Enter Docker flags (e.g., --memory=512m, --cpus=0.5, --env VAR=value)
+							</p>
 						</div>
-						<p className="text-xs text-gray-500">
-							Enter Docker flags (e.g., --memory=512m, --cpus=0.5, --env VAR=value)
-						</p>
-					</div>
+					)}
 				</div>
 			)}
 		</div>

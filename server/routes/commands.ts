@@ -1,14 +1,15 @@
 import type express from "express";
 import { getAuditLogs, getRecentCommands } from "../lib/db.js";
+import { authMiddleware } from "../lib/auth.js";
 
 export function registerCommandRoutes(app: express.Application): void {
-	app.get("/api/commands", (req, res) => {
+	app.get("/api/commands", authMiddleware, (req, res) => {
 		const limit = Number.parseInt(req.query.limit as string) || 20;
 		const commands = getRecentCommands(limit);
 		res.json(commands);
 	});
 
-	app.get("/api/audit/logs", (req, res) => {
+	app.get("/api/audit/logs", authMiddleware, (req, res) => {
 		const limit = Number.parseInt(req.query.limit as string) || 50;
 		const offset = Number.parseInt(req.query.offset as string) || 0;
 		const startDate = req.query.startDate as string | undefined;

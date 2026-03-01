@@ -1,16 +1,27 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AppLayout } from "./components/AppLayout";
 import { RequireAdmin } from "./components/RequireAdmin";
 import { ToastProvider } from "./components/ToastProvider";
-import { Audit } from "./pages/Audit";
-import { AppDetail } from "./pages/AppDetail";
-import { Apps } from "./pages/Apps";
-import { Dashboard } from "./pages/Dashboard";
-import { Databases } from "./pages/Databases";
+import { AuthProvider } from "./contexts/auth-context.js";
 import { Login } from "./pages/Login";
-import { Plugins } from "./pages/Plugins";
-import { Users } from "./pages/Users";
+
+const Dashboard = lazy(() =>
+	import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })),
+);
+const Apps = lazy(() => import("./pages/Apps").then((m) => ({ default: m.Apps })));
+const AppDetail = lazy(() =>
+	import("./pages/AppDetail").then((m) => ({ default: m.AppDetail })),
+);
+const Databases = lazy(() =>
+	import("./pages/Databases").then((m) => ({ default: m.Databases })),
+);
+const Plugins = lazy(() =>
+	import("./pages/Plugins").then((m) => ({ default: m.Plugins })),
+);
+const Audit = lazy(() => import("./pages/Audit").then((m) => ({ default: m.Audit })));
+const Users = lazy(() => import("./pages/Users").then((m) => ({ default: m.Users })));
 
 function App() {
 	return (
@@ -18,19 +29,70 @@ function App() {
 			<BrowserRouter>
 				<Routes>
 					<Route path="/login" element={<Login />} />
-					<Route path="/" element={<AppLayout />}>
+					<Route
+						path="/"
+						element={
+							<AuthProvider>
+								<AppLayout />
+							</AuthProvider>
+						}
+					>
 						<Route index element={<Navigate to="/dashboard" />} />
-						<Route path="dashboard" element={<Dashboard />} />
-						<Route path="apps" element={<Apps />} />
-						<Route path="apps/:name" element={<AppDetail />} />
-						<Route path="databases" element={<Databases />} />
-						<Route path="plugins" element={<Plugins />} />
-						<Route path="audit" element={<Audit />} />
+						<Route
+							path="dashboard"
+							element={
+								<Suspense>
+									<Dashboard />
+								</Suspense>
+							}
+						/>
+						<Route
+							path="apps"
+							element={
+								<Suspense>
+									<Apps />
+								</Suspense>
+							}
+						/>
+						<Route
+							path="apps/:name"
+							element={
+								<Suspense>
+									<AppDetail />
+								</Suspense>
+							}
+						/>
+						<Route
+							path="databases"
+							element={
+								<Suspense>
+									<Databases />
+								</Suspense>
+							}
+						/>
+						<Route
+							path="plugins"
+							element={
+								<Suspense>
+									<Plugins />
+								</Suspense>
+							}
+						/>
+						<Route
+							path="audit"
+							element={
+								<Suspense>
+									<Audit />
+								</Suspense>
+							}
+						/>
 						<Route
 							path="users"
 							element={
 								<RequireAdmin>
-									<Users />
+									<Suspense>
+										<Users />
+									</Suspense>
 								</RequireAdmin>
 							}
 						/>

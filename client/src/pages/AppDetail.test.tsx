@@ -23,6 +23,10 @@ vi.mock("../components/ToastProvider", () => ({
 	useToast: () => mockToastContext,
 }));
 
+vi.mock("../contexts/auth-context.js", () => ({
+	useAuth: () => ({ role: "admin", loading: false, canModify: true }),
+}));
+
 const mockAppDetail: AppDetailData = {
 	name: "test-app",
 	status: "running",

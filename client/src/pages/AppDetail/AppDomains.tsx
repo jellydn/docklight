@@ -4,6 +4,7 @@ interface AppDomainsProps {
 	error: string | null;
 	newDomain: string;
 	submitting: boolean;
+	canModify: boolean;
 	onDomainChange: (domain: string) => void;
 	onAdd: () => void;
 	onRemove: (domain: string) => void;
@@ -15,6 +16,7 @@ export function AppDomains({
 	error,
 	newDomain,
 	submitting,
+	canModify,
 	onDomainChange,
 	onAdd,
 	onRemove,
@@ -35,26 +37,28 @@ export function AppDomains({
 				</div>
 			) : (
 				<>
-					<div className="mb-6">
-						<h3 className="text-sm font-medium text-gray-700 mb-2">Add New Domain</h3>
-						<div className="flex flex-col sm:flex-row gap-2">
-							<input
-								type="text"
-								placeholder="example.com"
-								value={newDomain}
-								onChange={(e) => onDomainChange(e.target.value)}
-								className="flex-1 border rounded px-3 py-2"
-							/>
-							<button
-								onClick={onAdd}
-								disabled={!newDomain || submitting}
-								className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-								type="button"
-							>
-								Add
-							</button>
+					{canModify && (
+						<div className="mb-6">
+							<h3 className="text-sm font-medium text-gray-700 mb-2">Add New Domain</h3>
+							<div className="flex flex-col sm:flex-row gap-2">
+								<input
+									type="text"
+									placeholder="example.com"
+									value={newDomain}
+									onChange={(e) => onDomainChange(e.target.value)}
+									className="flex-1 border rounded px-3 py-2"
+								/>
+								<button
+									onClick={onAdd}
+									disabled={!newDomain || submitting}
+									className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+									type="button"
+								>
+									Add
+								</button>
+							</div>
 						</div>
-					</div>
+					)}
 
 					{domains.length > 0 ? (
 						<table className="min-w-full divide-y divide-gray-200">
@@ -71,14 +75,16 @@ export function AppDomains({
 											<code className="bg-gray-100 px-2 py-1 rounded text-sm">{domain}</code>
 										</td>
 										<td className="px-4 py-2 text-right">
-											<button
-												onClick={() => onRemove(domain)}
-												className="text-red-600 hover:text-red-800"
-												title="Remove"
-												type="button"
-											>
-												🗑️
-											</button>
+											{canModify && (
+												<button
+													onClick={() => onRemove(domain)}
+													className="text-red-600 hover:text-red-800"
+													title="Remove"
+													type="button"
+												>
+													🗑️
+												</button>
+											)}
 										</td>
 									</tr>
 								))}

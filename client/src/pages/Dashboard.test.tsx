@@ -9,6 +9,16 @@ vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
 }));
 
+const mockAuthState: { role: string; loading: boolean; canModify: boolean } = {
+	role: "admin",
+	loading: false,
+	canModify: true,
+};
+
+vi.mock("../contexts/auth-context.js", () => ({
+	useAuth: () => mockAuthState,
+}));
+
 const mockToastContext = {
 	addToast: vi.fn(),
 	removeToast: vi.fn(),
@@ -63,6 +73,9 @@ describe("Dashboard", () => {
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
+		mockAuthState.role = "admin";
+		mockAuthState.canModify = true;
+		mockAuthState.loading = false;
 		const { apiFetch } = await import("../lib/api.js");
 		apiFetchMock = apiFetch as any;
 	});
@@ -269,6 +282,30 @@ describe("Dashboard", () => {
 			const createButtons = screen.getAllByText("Create App");
 			expect(createButtons.length).toBeGreaterThan(0);
 		});
+	});
+
+	it("should hide create app button for viewer role", async () => {
+		mockAuthState.role = "viewer";
+		mockAuthState.canModify = false;
+
+		apiFetchMock.mockImplementation((endpoint: string) => {
+			if (endpoint === "/server/health") return Promise.resolve(mockHealth);
+			if (endpoint === "/apps") return Promise.resolve(mockApps);
+			if (endpoint === "/commands?limit=20") return Promise.resolve(mockCommands);
+			return Promise.reject(new Error("Unknown endpoint"));
+		});
+
+		render(
+			<MemoryRouter>
+				<Dashboard />
+			</MemoryRouter>
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("Dashboard")).toBeInTheDocument();
+		});
+
+		expect(screen.queryByText("Create App")).not.toBeInTheDocument();
 	});
 
 	it("should display app status badges", async () => {

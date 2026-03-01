@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { useToast } from "../../components/ToastProvider";
 import { apiFetch } from "../../lib/api.js";
+import { useAuth } from "../../contexts/auth-context.js";
 import { createErrorResult } from "../../lib/command-utils.js";
 import { logger } from "../../lib/logger.js";
 import {
@@ -52,6 +53,7 @@ export function AppDetail() {
 	const { name } = useParams<{ name: string }>();
 	const navigate = useNavigate();
 	const { addToast } = useToast();
+	const { canModify } = useAuth();
 	const [app, setApp] = useState<AppDetailData | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -208,10 +210,10 @@ export function AppDetail() {
 	}, [activeTab, name, lineCount]);
 
 	useEffect(() => {
-		if (activeTab === "config" && name) {
+		if (activeTab === "config" && name && canModify) {
 			fetchConfigVars();
 		}
-	}, [activeTab, name]);
+	}, [activeTab, name, canModify]);
 
 	useEffect(() => {
 		if (activeTab === "domains" && name) {
@@ -1409,6 +1411,7 @@ export function AppDetail() {
 				<AppDetailHeader
 					appName={app.name}
 					status={app.status}
+					canModify={canModify}
 					onStop={handleStopApp}
 					onStart={handleStartApp}
 					onRestart={() => handleAction("restart")}
@@ -1691,6 +1694,7 @@ export function AppDetail() {
 					hostname={hostname}
 					copySuccess={copySuccess}
 					scaleChanges={scaleChanges}
+					canModify={canModify}
 					onCopyRemote={handleCopyRemote}
 					onCopyPush={handleCopyPush}
 					onScaleChange={handleScaleChange}
@@ -1720,6 +1724,7 @@ export function AppDetail() {
 					newValue={newConfigValue}
 					submitting={configAddSubmitting}
 					visibleValues={visibleValues}
+					canModify={canModify}
 					onKeyChange={setNewConfigKey}
 					onValueChange={setNewConfigValue}
 					onAdd={handleAddConfigVar}
@@ -1735,6 +1740,7 @@ export function AppDetail() {
 					error={domainsError}
 					newDomain={newDomain}
 					submitting={domainAddSubmitting}
+					canModify={canModify}
 					onDomainChange={setNewDomain}
 					onAdd={handleAddDomain}
 					onRemove={handleRemoveDomain}
@@ -1748,6 +1754,7 @@ export function AppDetail() {
 					error={sslError}
 					email={sslEmail}
 					submitting={sslSubmitting}
+					canModify={canModify}
 					onEmailChange={setSslEmail}
 					onEnable={handleEnableSSL}
 					onRenew={handleRenewSSL}
@@ -1764,6 +1771,7 @@ export function AppDetail() {
 						buildDir={buildDir}
 						builder={builder}
 						submitting={deploymentSubmitting}
+						canModify={canModify}
 						onDeployBranchChange={setDeployBranch}
 						onBuildDirChange={setBuildDir}
 						onBuilderChange={setBuilder}
@@ -1780,6 +1788,7 @@ export function AppDetail() {
 						newContainerPort={newContainerPort}
 						submitting={portAddSubmitting}
 						proxySubmitting={proxySubmitting}
+						canModify={canModify}
 						onSchemeChange={setNewPortScheme}
 						onHostPortChange={setNewHostPort}
 						onContainerPortChange={setNewContainerPort}
@@ -1798,6 +1807,7 @@ export function AppDetail() {
 						newIndex={newBuildpackIndex}
 						submitting={buildpackAddSubmitting}
 						clearSubmitting={clearBuildpacksSubmitting}
+						canModify={canModify}
 						onUrlChange={setNewBuildpackUrl}
 						onIndexChange={setNewBuildpackIndex}
 						onAdd={handleAddBuildpack}
@@ -1815,6 +1825,7 @@ export function AppDetail() {
 						clearSubmitting={(phase) =>
 							phase === pendingClearDockerPhase ? clearDockerPhaseSubmitting : false
 						}
+						canModify={canModify}
 						onPhaseChange={setNewDockerOptionPhase}
 						onOptionChange={setNewDockerOption}
 						onAdd={handleAddDockerOption}
@@ -1829,6 +1840,7 @@ export function AppDetail() {
 						submitting={networkSubmitting}
 						editingKey={editingNetworkKey}
 						editValue={networkEditValue}
+						canModify={canModify}
 						onStartEdit={handleStartEditNetwork}
 						onCancelEdit={handleCancelEditNetwork}
 						onSave={handleSaveNetworkProperty}

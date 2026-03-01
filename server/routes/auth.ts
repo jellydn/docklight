@@ -1,10 +1,5 @@
 import type express from "express";
-import {
-	authMiddleware,
-	clearAuthCookie,
-	login,
-	setAuthCookie,
-} from "../lib/auth.js";
+import { authMiddleware, clearAuthCookie, login, setAuthCookie } from "../lib/auth.js";
 import { authRateLimiter, authCheckRateLimiter } from "../lib/rate-limiter.js";
 
 export function registerAuthRoutes(app: express.Application): void {

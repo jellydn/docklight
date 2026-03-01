@@ -1,4 +1,5 @@
 import type express from "express";
+import type { Database } from "../lib/databases.js";
 import {
 	createDatabase,
 	destroyDatabase,
@@ -8,16 +9,28 @@ import {
 } from "../lib/databases.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
 import { logger } from "../lib/logger.js";
-import { authMiddleware } from "../lib/auth.js";
+import { authMiddleware, requireOperator } from "../lib/auth.js";
+import type { UserRole } from "../lib/db.js";
 import { getParam } from "./util.js";
 
+function filterConnectionInfoForViewer(
+	databases: Database[],
+	role?: UserRole
+): Omit<Database, "connectionInfo">[] {
+	if (role === "admin" || role === "operator") {
+		return databases;
+	}
+	return databases.map(({ connectionInfo: _, ...rest }) => rest);
+}
+
 export function registerDatabaseRoutes(app: express.Application): void {
-	app.get("/api/databases", authMiddleware, async (_req, res) => {
+	app.get("/api/databases", authMiddleware, async (req, res) => {
 		const cacheKey = "databases:list";
-		const cached = get(cacheKey);
+		const cached = get(cacheKey) as Database[] | null;
 
 		if (cached) {
-			res.json(cached);
+			const filtered = filterConnectionInfoForViewer(cached, req.user?.role);
+			res.json(filtered);
 			return;
 		}
 
@@ -29,17 +42,18 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		}
 
 		set(cacheKey, databases);
-		res.json(databases);
+		const filtered = filterConnectionInfoForViewer(databases, req.user?.role);
+		res.json(filtered);
 	});
 
-	app.post("/api/databases", authMiddleware, async (req, res) => {
+	app.post("/api/databases", authMiddleware, requireOperator, async (req, res) => {
 		const { plugin, name } = req.body;
 		const result = await createDatabase(plugin, name);
 		clearPrefix("databases:");
 		res.json(result);
 	});
 
-	app.post("/api/databases/:name/link", authMiddleware, async (req, res) => {
+	app.post("/api/databases/:name/link", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { plugin, app } = req.body;
 		const result = await linkDatabase(plugin, name, app);
@@ -47,7 +61,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.post("/api/databases/:name/unlink", authMiddleware, async (req, res) => {
+	app.post("/api/databases/:name/unlink", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { plugin, app } = req.body;
 		const result = await unlinkDatabase(plugin, name, app);
@@ -55,7 +69,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.delete("/api/databases/:name", authMiddleware, async (req, res) => {
+	app.delete("/api/databases/:name", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { plugin, confirmName } = req.body;
 		const result = await destroyDatabase(plugin, name, confirmName);
