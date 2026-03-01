@@ -278,6 +278,77 @@ describe("executeCommand with SSH pool", () => {
 		expect(result.stderr).toContain("Command not allowed");
 		expect(mockSshInstance.execCommand).not.toHaveBeenCalled();
 	});
+
+	describe("SSH channel error retry", () => {
+		it("retries command with fresh connection when SSH channel open failure occurs", async () => {
+			let execCallCount = 0;
+			mockSshInstance.execCommand.mockImplementation(() => {
+				execCallCount++;
+				if (execCallCount === 1) {
+					return Promise.reject(new Error("Channel open failure"));
+				}
+				return Promise.resolve(makeExecResult("app1\napp2", "", 0));
+			});
+			mockSshInstance.connect.mockResolvedValue(undefined);
+			mockSshInstance.isConnected.mockReturnValue(true);
+
+			const result = await executeCommand("dokku apps:list");
+
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toBe("app1\napp2");
+			expect(execCallCount).toBe(2);
+			expect(mockSshInstance.connect).toHaveBeenCalledTimes(2);
+		});
+
+		it("returns error when channel open failure and retry also fails", async () => {
+			let execCallCount = 0;
+			mockSshInstance.execCommand.mockImplementation(() => {
+				execCallCount++;
+				if (execCallCount === 1) {
+					return Promise.reject(new Error("Channel open failure"));
+				}
+				return Promise.reject(new Error("Connection refused"));
+			});
+			mockSshInstance.connect.mockResolvedValue(undefined);
+			mockSshInstance.isConnected.mockReturnValue(true);
+
+			const result = await executeCommand("dokku apps:list");
+
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain("SSH channel failed, retry also failed");
+			expect(result.stderr).toContain("Connection refused");
+			expect(execCallCount).toBe(2);
+		});
+
+		it("does not retry for non-channel execution errors", async () => {
+			mockSshInstance.execCommand.mockRejectedValue(new Error("General SSH error"));
+
+			const result = await executeCommand("dokku apps:list");
+
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain("General SSH error");
+			expect(mockSshInstance.connect).toHaveBeenCalledTimes(1);
+		});
+
+		it("retries for 'open failed' channel errors", async () => {
+			let execCallCount = 0;
+			mockSshInstance.execCommand.mockImplementation(() => {
+				execCallCount++;
+				if (execCallCount === 1) {
+					return Promise.reject(new Error("SSH open failed"));
+				}
+				return Promise.resolve(makeExecResult("success", "", 0));
+			});
+			mockSshInstance.connect.mockResolvedValue(undefined);
+			mockSshInstance.isConnected.mockReturnValue(true);
+
+			const result = await executeCommand("dokku apps:list");
+
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toBe("success");
+			expect(execCallCount).toBe(2);
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------
