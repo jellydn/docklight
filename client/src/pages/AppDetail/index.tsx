@@ -210,10 +210,10 @@ export function AppDetail() {
 	}, [activeTab, name, lineCount]);
 
 	useEffect(() => {
-		if (activeTab === "config" && name) {
+		if (activeTab === "config" && name && canModify) {
 			fetchConfigVars();
 		}
-	}, [activeTab, name]);
+	}, [activeTab, name, canModify]);
 
 	useEffect(() => {
 		if (activeTab === "domains" && name) {
