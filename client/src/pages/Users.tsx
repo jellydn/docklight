@@ -30,8 +30,8 @@ export function Users() {
 			const data = await apiFetch("/users", UsersArraySchema);
 			setUsers(data);
 			setError("");
-		} catch (_err) {
-			setError("Failed to load users");
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to load users");
 		} finally {
 			setLoading(false);
 		}
