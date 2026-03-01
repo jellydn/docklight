@@ -206,6 +206,32 @@ describe("executeCommand with SSH pool", () => {
 		expect(result.stderr).toContain("Hint:");
 	});
 
+	it("returns friendly error message when sudo password is incorrect", async () => {
+		process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET = "root@server";
+		mockSshInstance.execCommand.mockResolvedValue(makeExecResult("", "sudo: sorry, try again", 1));
+
+		const result = await executeCommand("dokku plugin:install repo", 30000, { asRoot: true });
+
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr).toBe(
+			"Incorrect sudo password. Please check your password and try again."
+		);
+	});
+
+	it("returns friendly error message for incorrect password attempt", async () => {
+		process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET = "root@server";
+		mockSshInstance.execCommand.mockResolvedValue(
+			makeExecResult("", "sudo: 1 incorrect password attempt", 1)
+		);
+
+		const result = await executeCommand("dokku plugin:install repo", 30000, { asRoot: true });
+
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr).toBe(
+			"Incorrect sudo password. Please check your password and try again."
+		);
+	});
+
 	it("retries once on connection failure and returns error if retry also fails", async () => {
 		mockSshInstance.connect.mockRejectedValue(new Error("Connection refused"));
 
