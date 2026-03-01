@@ -9,8 +9,14 @@ vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
 }));
 
+const mockAuthState: { role: string; loading: boolean; canModify: boolean } = {
+	role: "admin",
+	loading: false,
+	canModify: true,
+};
+
 vi.mock("../contexts/auth-context.js", () => ({
-	useAuth: () => ({ role: "admin", loading: false, canModify: true }),
+	useAuth: () => mockAuthState,
 }));
 
 const mockToastContext = {
@@ -42,6 +48,9 @@ describe("Apps", () => {
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
+		mockAuthState.role = "admin";
+		mockAuthState.canModify = true;
+		mockAuthState.loading = false;
 		const { apiFetch } = await import("../lib/api.js");
 		apiFetchMock = apiFetch as any;
 	});
@@ -126,6 +135,25 @@ describe("Apps", () => {
 		await waitFor(() => {
 			expect(screen.getByText("Create New App")).toBeInTheDocument();
 		});
+	});
+
+	it("should hide create app button for viewer role", async () => {
+		mockAuthState.role = "viewer";
+		mockAuthState.canModify = false;
+
+		apiFetchMock.mockResolvedValue(mockApps);
+
+		render(
+			<MemoryRouter>
+				<Apps />
+			</MemoryRouter>
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("my-app")).toBeInTheDocument();
+		});
+
+		expect(screen.queryByText("Create App")).not.toBeInTheDocument();
 	});
 
 	it("should display app names as links", async () => {

@@ -9,8 +9,10 @@ vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
 }));
 
+const mockAuthState: { role: string; loading: boolean; canModify: boolean } = { role: "admin", loading: false, canModify: true };
+
 vi.mock("../contexts/auth-context.js", () => ({
-	useAuth: () => ({ role: "admin", loading: false, canModify: true }),
+	useAuth: () => mockAuthState,
 }));
 
 const mockToastContext = {
@@ -44,6 +46,9 @@ describe("Plugins", () => {
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
+		mockAuthState.role = "admin";
+		mockAuthState.canModify = true;
+		mockAuthState.loading = false;
 		// Mock window.confirm
 		global.confirm = vi.fn(() => true) as any;
 		const { apiFetch } = await import("../lib/api.js");
@@ -286,6 +291,31 @@ describe("Plugins", () => {
 			const installButton = screen.getByText("Install").closest("button");
 			expect(installButton).not.toBeDisabled();
 		});
+	});
+
+	it("should hide modification controls for viewer role", async () => {
+		mockAuthState.role = "viewer";
+		mockAuthState.canModify = false;
+
+		apiFetchMock.mockImplementation((endpoint: string) => {
+			if (endpoint === "/plugins") return Promise.resolve(mockPlugins);
+			return Promise.resolve([]);
+		});
+
+		render(
+			<MemoryRouter>
+				<Plugins />
+			</MemoryRouter>
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("dokku-postgres")).toBeInTheDocument();
+		});
+
+		expect(screen.queryByText("Install Plugin")).not.toBeInTheDocument();
+		expect(screen.queryByText("Disable")).not.toBeInTheDocument();
+		expect(screen.queryByText("Enable")).not.toBeInTheDocument();
+		expect(screen.queryByText("Uninstall")).not.toBeInTheDocument();
 	});
 
 	describe("with submitting states", () => {

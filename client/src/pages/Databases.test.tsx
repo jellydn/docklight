@@ -9,8 +9,14 @@ vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
 }));
 
+const mockAuthState: { role: string; loading: boolean; canModify: boolean } = {
+	role: "admin",
+	loading: false,
+	canModify: true,
+};
+
 vi.mock("../contexts/auth-context.js", () => ({
-	useAuth: () => ({ role: "admin", loading: false, canModify: true }),
+	useAuth: () => mockAuthState,
 }));
 
 const mockToastContext = {
@@ -56,6 +62,9 @@ describe("Databases", () => {
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
+		mockAuthState.role = "admin";
+		mockAuthState.canModify = true;
+		mockAuthState.loading = false;
 		const { apiFetch } = await import("../lib/api.js");
 		apiFetchMock = apiFetch as any;
 	});
@@ -315,6 +324,32 @@ describe("Databases", () => {
 		await waitFor(() => {
 			expect(screen.getByText("Confirm Destroy")).toBeInTheDocument();
 		});
+	});
+
+	it("should hide modification controls for viewer role", async () => {
+		mockAuthState.role = "viewer";
+		mockAuthState.canModify = false;
+
+		apiFetchMock.mockImplementation((endpoint: string) => {
+			if (endpoint === "/databases") return Promise.resolve(mockDatabases);
+			if (endpoint === "/apps") return Promise.resolve(mockApps);
+			return Promise.resolve([]);
+		});
+
+		render(
+			<MemoryRouter>
+				<Databases />
+			</MemoryRouter>
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("postgres-test-db")).toBeInTheDocument();
+		});
+
+		expect(screen.queryByText("Create New Database")).not.toBeInTheDocument();
+		expect(screen.queryByText("Install Dokku Plugin")).not.toBeInTheDocument();
+		expect(screen.queryByText("Destroy Database")).not.toBeInTheDocument();
+		expect(screen.queryByText("Unlink")).not.toBeInTheDocument();
 	});
 
 	describe("with submitting states", () => {
