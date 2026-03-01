@@ -24,6 +24,8 @@ import {
 	verifyToken,
 	authMiddleware,
 	requireRole,
+	setAuthCookie,
+	clearAuthCookie,
 } from "./auth.js";
 import type { JWTPayload } from "./auth.js";
 
@@ -234,7 +236,6 @@ describe("cookie management", () => {
 		const cookie = vi.fn();
 		const res = { cookie } as unknown as Response;
 
-		const { setAuthCookie } = require("./auth.js");
 		setAuthCookie(res);
 
 		expect(cookie).toHaveBeenCalledWith(
@@ -254,7 +255,6 @@ describe("cookie management", () => {
 		const cookie = vi.fn();
 		const res = { cookie } as unknown as Response;
 
-		const { setAuthCookie } = require("./auth.js");
 		setAuthCookie(res);
 
 		expect(cookie).toHaveBeenCalledWith(
@@ -274,7 +274,6 @@ describe("cookie management", () => {
 		const cookie = vi.fn();
 		const res = { cookie } as unknown as Response;
 
-		const { setAuthCookie } = require("./auth.js");
 		setAuthCookie(res);
 
 		const call = cookie.mock.calls[0];
@@ -287,7 +286,6 @@ describe("cookie management", () => {
 		const clearCookie = vi.fn();
 		const res = { clearCookie } as unknown as Response;
 
-		const { clearAuthCookie } = require("./auth.js");
 		clearAuthCookie(res);
 
 		expect(clearCookie).toHaveBeenCalledWith("session");

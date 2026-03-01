@@ -22,7 +22,6 @@ import {
 	loginWithCredentials,
 	setAuthCookie,
 	requireAdmin,
-	requireOperator,
 } from "./lib/auth.js";
 import { clearPrefix, get, set } from "./lib/cache.js";
 import { getConfig, setConfig, unsetConfig } from "./lib/config.js";
