@@ -1,5 +1,6 @@
 import type express from "express";
 import type { CommandResult } from "../lib/executor.js";
+import { insertAuditLog } from "../lib/db.js";
 
 export type CommandResultLike =
 	| CommandResult
@@ -52,5 +53,27 @@ export function getIpAddress(req: express.Request): string | undefined {
 		(req.headers["x-real-ip"] as string | undefined) ||
 		req.socket.remoteAddress ||
 		undefined
+	);
+}
+
+/**
+ * Logs an audit event for user actions
+ * @param req - Express request object (must have user attached by authMiddleware)
+ * @param action - Action name (e.g., "app:create", "user:update")
+ * @param resource - Resource identifier (e.g., app name, username)
+ * @param details - Additional details object (will be JSON stringified)
+ */
+export function auditLog(
+	req: express.Request,
+	action: string,
+	resource: string | null = null,
+	details: Record<string, unknown> | null = null
+): void {
+	insertAuditLog(
+		req.user?.userId ?? null,
+		action,
+		resource,
+		details ? JSON.stringify(details) : null,
+		getIpAddress(req)
 	);
 }

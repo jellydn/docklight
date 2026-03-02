@@ -11,9 +11,7 @@ import { clearPrefix, get, set } from "../lib/cache.js";
 import { logger } from "../lib/logger.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
 import type { UserRole } from "../lib/db.js";
-import { insertAuditLog } from "../lib/db.js";
-import { getParam } from "./util.js";
-import { getIpAddress } from "./util.js";
+import { getParam, auditLog } from "./util.js";
 
 function filterConnectionInfoForViewer(
 	databases: Database[],
@@ -53,14 +51,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const result = await createDatabase(plugin, name);
 
 		if (result.exitCode === 0) {
-			// Audit log database creation
-			insertAuditLog(
-				req.user?.userId ?? null,
-				"database:create",
-				name,
-				JSON.stringify({ plugin, name }),
-				getIpAddress(req)
-			);
+			auditLog(req, "database:create", name, { plugin, name });
 		}
 
 		clearPrefix("databases:");
@@ -73,14 +64,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const result = await linkDatabase(plugin, name, app);
 
 		if (result.exitCode === 0) {
-			// Audit log database link
-			insertAuditLog(
-				req.user?.userId ?? null,
-				"database:link",
-				name,
-				JSON.stringify({ plugin, database: name, app }),
-				getIpAddress(req)
-			);
+			auditLog(req, "database:link", name, { plugin, database: name, app });
 		}
 
 		clearPrefix("databases:");
@@ -93,14 +77,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const result = await unlinkDatabase(plugin, name, app);
 
 		if (result.exitCode === 0) {
-			// Audit log database unlink
-			insertAuditLog(
-				req.user?.userId ?? null,
-				"database:unlink",
-				name,
-				JSON.stringify({ plugin, database: name, app }),
-				getIpAddress(req)
-			);
+			auditLog(req, "database:unlink", name, { plugin, database: name, app });
 		}
 
 		clearPrefix("databases:");
@@ -113,14 +90,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const result = await destroyDatabase(plugin, name, confirmName);
 
 		if (result.exitCode === 0) {
-			// Audit log database destruction
-			insertAuditLog(
-				req.user?.userId ?? null,
-				"database:destroy",
-				name,
-				JSON.stringify({ plugin, name }),
-				getIpAddress(req)
-			);
+			auditLog(req, "database:destroy", name, { plugin, name });
 		}
 
 		clearPrefix("databases:");
