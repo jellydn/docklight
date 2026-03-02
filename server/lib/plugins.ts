@@ -1,13 +1,6 @@
-import { executeCommand, executeCommandAsRoot, type CommandResult } from "./executor.js";
+import { executeCommand } from "./executor.js";
 import { DokkuCommands } from "./dokku.js";
 import { stripAnsi } from "./ansi.js";
-
-interface PluginInputError {
-	error: string;
-	command: string;
-	exitCode: number;
-	stderr?: string;
-}
 
 export interface PluginInfo {
 	name: string;
@@ -15,20 +8,11 @@ export interface PluginInfo {
 	version?: string;
 }
 
-function normalizeRepository(input: string): string | null {
-	const trimmed = input.trim();
-	if (!trimmed) return null;
-
-	const shorthand = trimmed.match(/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/);
-	if (shorthand) {
-		return `https://github.com/${trimmed}.git`;
-	}
-
-	return trimmed;
-}
-
-function isSafeRepository(repository: string): boolean {
-	return /^[a-zA-Z0-9@:/._-]+$/.test(repository);
+interface PluginInputError {
+	error: string;
+	command: string;
+	exitCode: number;
+	stderr?: string;
 }
 
 function isSafePluginName(name: string): boolean {
@@ -66,27 +50,6 @@ function parsePluginLine(line: string): PluginInfo | null {
 	};
 }
 
-function validatePluginName(name: string): PluginInputError | null {
-	const normalizedName = name.trim();
-	if (!normalizedName) {
-		return {
-			error: "Plugin name is required",
-			command: "",
-			exitCode: 400,
-		};
-	}
-
-	if (!isSafePluginName(normalizedName)) {
-		return {
-			error: "Plugin name contains invalid characters",
-			command: "",
-			exitCode: 400,
-		};
-	}
-
-	return null;
-}
-
 export async function getPlugins(): Promise<PluginInfo[] | PluginInputError> {
 	const result = await executeCommand(DokkuCommands.pluginList());
 	if (result.exitCode !== 0) {
@@ -103,96 +66,4 @@ export async function getPlugins(): Promise<PluginInfo[] | PluginInputError> {
 		.split("\n")
 		.map((line) => parsePluginLine(line))
 		.filter((plugin): plugin is PluginInfo => plugin !== null);
-}
-
-export async function installPlugin(
-	repository: string,
-	name?: string,
-	sudoPassword?: string
-): Promise<CommandResult | PluginInputError> {
-	const normalizedRepository = normalizeRepository(repository);
-	if (!normalizedRepository) {
-		return {
-			error: "Plugin repository is required",
-			command: "",
-			exitCode: 400,
-			stdout: "",
-			stderr: "",
-		};
-	}
-
-	if (!isSafeRepository(normalizedRepository)) {
-		return {
-			error: "Plugin repository contains invalid characters",
-			command: "",
-			exitCode: 400,
-			stdout: "",
-			stderr: "",
-		};
-	}
-
-	const normalizedName = name?.trim();
-	if (normalizedName && !isSafePluginName(normalizedName)) {
-		return {
-			error: "Plugin name contains invalid characters",
-			command: "",
-			exitCode: 400,
-			stdout: "",
-			stderr: "",
-		};
-	}
-
-	const command = DokkuCommands.pluginInstall(normalizedRepository, normalizedName || undefined);
-
-	return executePluginCommand(command, sudoPassword);
-}
-
-async function executePluginCommand(
-	command: string,
-	sudoPassword?: string
-): Promise<CommandResult | PluginInputError> {
-	const SUDO_ERROR_REGEX =
-		/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty|Root-required command cannot run|Incorrect sudo password/i;
-	const result = await executeCommandAsRoot(command, 30000, sudoPassword);
-
-	if (result.exitCode !== 0 && SUDO_ERROR_REGEX.test(result.stderr)) {
-		const isWrongPassword = /Incorrect sudo password/i.test(result.stderr);
-		return {
-			...result,
-			stderr: isWrongPassword
-				? result.stderr
-				: `${result.stderr}
-
-Plugin commands require root access. See https://github.com/jellydn/docklight/blob/main/docs/deployment.md#plugin-management-sudo-errors`,
-		};
-	}
-
-	return result;
-}
-
-export async function uninstallPlugin(
-	name: string,
-	sudoPassword?: string
-): Promise<CommandResult | PluginInputError> {
-	const validationError = validatePluginName(name);
-	if (validationError) return validationError;
-	return executePluginCommand(DokkuCommands.pluginUninstall(name.trim()), sudoPassword);
-}
-
-export async function enablePlugin(
-	name: string,
-	sudoPassword?: string
-): Promise<CommandResult | PluginInputError> {
-	const validationError = validatePluginName(name);
-	if (validationError) return validationError;
-	return executePluginCommand(DokkuCommands.pluginEnable(name.trim()), sudoPassword);
-}
-
-export async function disablePlugin(
-	name: string,
-	sudoPassword?: string
-): Promise<CommandResult | PluginInputError> {
-	const validationError = validatePluginName(name);
-	if (validationError) return validationError;
-	return executePluginCommand(DokkuCommands.pluginDisable(name.trim()), sudoPassword);
 }

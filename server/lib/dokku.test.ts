@@ -95,30 +95,6 @@ describe("DokkuCommands", () => {
 		it("pluginList returns plugin:list command", () => {
 			expect(DokkuCommands.pluginList()).toBe("dokku plugin:list");
 		});
-
-		it("pluginInstall returns plugin:install command without name", () => {
-			expect(DokkuCommands.pluginInstall("https://github.com/dokku/dokku-postgres.git")).toBe(
-				"dokku plugin:install https://github.com/dokku/dokku-postgres.git"
-			);
-		});
-
-		it("pluginInstall returns plugin:install command with name", () => {
-			expect(
-				DokkuCommands.pluginInstall("https://github.com/dokku/dokku-postgres.git", "postgres")
-			).toBe("dokku plugin:install https://github.com/dokku/dokku-postgres.git postgres");
-		});
-
-		it("pluginUninstall returns plugin:uninstall command", () => {
-			expect(DokkuCommands.pluginUninstall("postgres")).toBe("dokku plugin:uninstall postgres");
-		});
-
-		it("pluginEnable returns plugin:enable command", () => {
-			expect(DokkuCommands.pluginEnable("postgres")).toBe("dokku plugin:enable postgres");
-		});
-
-		it("pluginDisable returns plugin:disable command", () => {
-			expect(DokkuCommands.pluginDisable("postgres")).toBe("dokku plugin:disable postgres");
-		});
 	});
 
 	describe("ports and proxy", () => {
