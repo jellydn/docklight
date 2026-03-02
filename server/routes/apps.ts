@@ -14,7 +14,8 @@ import {
 import { clearPrefix, get, set } from "../lib/cache.js";
 import { logger } from "../lib/logger.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
-import { getParam } from "./util.js";
+import { insertAuditLog } from "../lib/db.js";
+import { getParam, getIpAddress } from "./util.js";
 
 function getUserId(req: express.Request): string | undefined {
 	const user = req.user as JWTPayload | undefined;
@@ -59,6 +60,15 @@ export function registerAppRoutes(app: express.Application): void {
 			return;
 		}
 
+		// Audit log app creation
+		insertAuditLog(
+			req.user?.userId ?? null,
+			"app:create",
+			name,
+			JSON.stringify({ name }),
+			getIpAddress(req)
+		);
+
 		clearPrefix("apps:");
 		res.status(201).json({ success: true, name });
 	});
@@ -81,6 +91,15 @@ export function registerAppRoutes(app: express.Application): void {
 			return;
 		}
 
+		// Audit log app restart
+		insertAuditLog(
+			req.user?.userId ?? null,
+			"app:restart",
+			name,
+			JSON.stringify({ app: name }),
+			getIpAddress(req)
+		);
+
 		clearPrefix("apps:");
 		res.json(result);
 	});
@@ -95,6 +114,15 @@ export function registerAppRoutes(app: express.Application): void {
 			res.status(statusCode).json(result);
 			return;
 		}
+
+		// Audit log app rebuild
+		insertAuditLog(
+			req.user?.userId ?? null,
+			"app:rebuild",
+			name,
+			JSON.stringify({ app: name }),
+			getIpAddress(req)
+		);
 
 		clearPrefix("apps:");
 		res.json(result);
@@ -111,6 +139,15 @@ export function registerAppRoutes(app: express.Application): void {
 			return;
 		}
 
+		// Audit log app stop
+		insertAuditLog(
+			req.user?.userId ?? null,
+			"app:stop",
+			name,
+			JSON.stringify({ app: name }),
+			getIpAddress(req)
+		);
+
 		clearPrefix("apps:");
 		res.json(result);
 	});
@@ -125,6 +162,15 @@ export function registerAppRoutes(app: express.Application): void {
 			res.status(statusCode).json(result);
 			return;
 		}
+
+		// Audit log app start
+		insertAuditLog(
+			req.user?.userId ?? null,
+			"app:start",
+			name,
+			JSON.stringify({ app: name }),
+			getIpAddress(req)
+		);
 
 		clearPrefix("apps:");
 		res.json(result);
@@ -141,6 +187,15 @@ export function registerAppRoutes(app: express.Application): void {
 			res.status(statusCode).json(result);
 			return;
 		}
+
+		// Audit log app scale
+		insertAuditLog(
+			req.user?.userId ?? null,
+			"app:scale",
+			name,
+			JSON.stringify({ app: name, processType, count }),
+			getIpAddress(req)
+		);
 
 		clearPrefix("apps:");
 		res.json(result);
@@ -161,6 +216,15 @@ export function registerAppRoutes(app: express.Application): void {
 			res.status(statusCode).json(result);
 			return;
 		}
+
+		// Audit log app destruction
+		insertAuditLog(
+			req.user?.userId ?? null,
+			"app:destroy",
+			name,
+			JSON.stringify({ app: name }),
+			getIpAddress(req)
+		);
 
 		clearPrefix("apps:");
 		res.json(result);
