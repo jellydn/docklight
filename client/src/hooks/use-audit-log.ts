@@ -7,6 +7,7 @@ interface UseAuditLogParams<T> {
 	fetchUrl: string;
 	schema: z.ZodSchema<{ logs: T[]; total: number }>;
 	fetchDeps: unknown[];
+	filterParams?: string;
 }
 
 interface UseAuditLogResult<T> {
@@ -23,6 +24,7 @@ export function useAuditLog<T>({
 	fetchUrl,
 	schema,
 	fetchDeps,
+	filterParams,
 }: UseAuditLogParams<T>): UseAuditLogResult<T> {
 	const [logs, setLogs] = useState<T[]>([]);
 	const [total, setTotal] = useState(0);
@@ -40,6 +42,14 @@ export function useAuditLog<T>({
 				offset: offset.toString(),
 			});
 
+			// Merge filter params if provided
+			if (filterParams) {
+				const filterParamsObj = new URLSearchParams(filterParams);
+				filterParamsObj.forEach((value, key) => {
+					params.append(key, value);
+				});
+			}
+
 			const separator = fetchUrl.includes("?") ? "&" : "?";
 			const result = await apiFetch(`${fetchUrl}${separator}${params.toString()}`, schema);
 			setLogs(result.logs);
@@ -53,7 +63,8 @@ export function useAuditLog<T>({
 
 	useEffect(() => {
 		fetchLogs();
-	}, [offset, ...fetchDeps]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [offset, filterParams, ...fetchDeps]);
 
 	return {
 		logs,
@@ -102,9 +113,10 @@ export function useAuditLogWithFilters<T, F extends Record<string, string>>({
 	};
 
 	const { logs, total, loading, error, refresh } = useAuditLog({
-		fetchUrl: `${fetchUrl}?${getQueryString()}`,
+		fetchUrl: fetchUrl,
 		schema,
 		fetchDeps: [offset, ...Object.values(filters), ...fetchDeps],
+		filterParams: getQueryString(),
 	});
 
 	const setFilter = <K extends keyof F>(key: K, value: F[K]) => {
