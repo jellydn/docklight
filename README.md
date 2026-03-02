@@ -134,14 +134,13 @@ just build
 
 ## 🔧 Environment Variables
 
-| Variable                          | Required                       | Description                                                                         |
-| --------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------- |
-| `JWT_SECRET`                      | Yes (in production)            | JWT signing secret                                                                  |
-| `DOCKLIGHT_DOKKU_SSH_TARGET`      | No (recommended in production) | SSH target for Dokku commands, for example `dokku@<server-ip>`                      |
-| `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` | No                             | Optional root SSH target for root-required commands, for example `root@<server-ip>` |
-| `DOCKLIGHT_DOKKU_SSH_KEY_PATH`    | No                             | Private key path inside container                                                   |
-| `DOCKLIGHT_DOKKU_SSH_OPTS`        | No                             | Extra SSH options                                                                   |
-| `PORT`                            | No                             | Server port (default `3001`)                                                        |
+| Variable                       | Required                       | Description                                                    |
+| ------------------------------ | ------------------------------ | -------------------------------------------------------------- |
+| `JWT_SECRET`                   | Yes (in production)            | JWT signing secret                                             |
+| `DOCKLIGHT_DOKKU_SSH_TARGET`   | No (recommended in production) | SSH target for Dokku commands, for example `dokku@<server-ip>` |
+| `DOCKLIGHT_DOKKU_SSH_KEY_PATH` | No                             | Private key path inside container                              |
+| `DOCKLIGHT_DOKKU_SSH_OPTS`     | No                             | Extra SSH options                                              |
+| `PORT`                         | No                             | Server port (default `3001`)                                   |
 
 ## 🔒 Security Notes
 
@@ -152,23 +151,6 @@ Docklight executes Dokku commands on your server.
 - Keep SSH fallback access to your server.
 - Command execution is restricted to an allowlist.
 - Create admin users via CLI or database for access.
-
-### Plugin Management and Root Access
-
-Some plugin commands (`plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`) require root privileges.
-
-Recommended:
-
-- Set `DOCKLIGHT_DOKKU_SSH_TARGET` to `dokku@<server-ip>`
-- Set `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` to `root@<server-ip>`
-
-Alternative:
-
-- Configure passwordless sudo for plugin commands on the `dokku` user.
-
-Troubleshooting details:
-
-- [docs/deployment.md#plugin-management-sudo-errors](docs/deployment.md#plugin-management-sudo-errors)
 
 ## 📦 Project Structure
 

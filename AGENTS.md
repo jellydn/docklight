@@ -193,7 +193,6 @@ Server:
 - `LOG_LEVEL` - Logging level (default: "info")
 - `NODE_ENV` - Environment (development/production)
 - `DOCKLIGHT_DOKKU_SSH_TARGET` - SSH target (e.g., "dokku@server-ip")
-- `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` - Root SSH target for plugin management
 - `DOCKLIGHT_DOKKU_SSH_KEY_PATH` - Path to SSH private key
 - `DOCKLIGHT_DOKKU_SSH_OPTS` - Custom SSH options
 - `DOCKLIGHT_DB_PATH` - SQLite database path (default: `data/docklight.db`)
