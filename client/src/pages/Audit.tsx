@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useState, useEffect } from "react";
 import { z } from "zod";
 import {
 	CommandHistorySchema,
@@ -7,8 +7,8 @@ import {
 	type CommandHistory,
 } from "../lib/schemas.js";
 import { useAuditLogWithFilters } from "../hooks/use-audit-log.js";
-import { AuditFilters } from "../components/audit-filters.tsx";
-import { AuditPagination } from "../components/audit-pagination.tsx";
+import { AuditFilters } from "../components/audit-filters.js";
+import { AuditPagination } from "../components/audit-pagination.js";
 
 type ExitCodeFilter = "all" | "success" | "error";
 type AuditTab = "commands" | "users";
@@ -48,6 +48,20 @@ const defaultUserFilters: UserFilters = {
 	action: "",
 };
 
+function AuditLoadingState() {
+	return (
+		<div className="flex justify-center items-center py-12">
+			<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+		</div>
+	);
+}
+
+function AuditErrorState({ error }: { error: string }) {
+	return (
+		<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">{error}</div>
+	);
+}
+
 export function Audit() {
 	const [activeTab, setActiveTab] = useState<AuditTab>("commands");
 
@@ -85,13 +99,14 @@ export function Audit() {
 		fetchDeps: [],
 	});
 
-	// Initialize filters with defaults on first render
-	if (Object.keys(commandFilters).length === 0) {
-		resetCommandFilters(defaultCommandFilters);
-	}
-	if (Object.keys(userFilters).length === 0) {
-		resetUserFilters(defaultUserFilters);
-	}
+	useEffect(() => {
+		if (Object.keys(commandFilters).length === 0) {
+			resetCommandFilters(defaultCommandFilters);
+		}
+		if (Object.keys(userFilters).length === 0) {
+			resetUserFilters(defaultUserFilters);
+		}
+	}, []);
 
 	// Expanded rows for details
 	const [expandedCommandRows, setExpandedCommandRows] = useState<Set<number>>(new Set());
@@ -201,17 +216,15 @@ export function Audit() {
 						onFilterChange={setCommandFilter}
 						onReset={() => resetCommandFilters(defaultCommandFilters)}
 						total={commandTotal}
+						singularLabel="command"
+						pluralLabel="commands"
 					/>
 
 					{/* Command Logs Table */}
 					{commandLoading ? (
-						<div className="flex justify-center items-center py-12">
-							<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
-						</div>
+						<AuditLoadingState />
 					) : commandError ? (
-						<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-							{commandError}
-						</div>
+						<AuditErrorState error={commandError} />
 					) : commandLogs.length === 0 ? (
 						<div className="bg-white rounded-lg shadow p-6">
 							<p className="text-gray-500">No audit logs found matching your filters.</p>
@@ -322,17 +335,15 @@ export function Audit() {
 						onFilterChange={setUserFilter}
 						onReset={() => resetUserFilters(defaultUserFilters)}
 						total={userTotal}
+						singularLabel="log"
+						pluralLabel="logs"
 					/>
 
 					{/* User Audit Logs Table */}
 					{userLoading ? (
-						<div className="flex justify-center items-center py-12">
-							<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
-						</div>
+						<AuditLoadingState />
 					) : userError ? (
-						<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-							{userError}
-						</div>
+						<AuditErrorState error={userError} />
 					) : userLogs.length === 0 ? (
 						<div className="bg-white rounded-lg shadow p-6">
 							<p className="text-gray-500">No user audit logs found matching your filters.</p>
