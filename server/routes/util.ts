@@ -1,6 +1,7 @@
 import type express from "express";
 import type { CommandResult } from "../lib/executor.js";
 import { insertAuditLog } from "../lib/db.js";
+import { logger } from "../lib/logger.js";
 
 export type CommandResultLike =
 	| CommandResult
@@ -97,4 +98,24 @@ export function auditLog(
 		details ? JSON.stringify(details) : null,
 		getIpAddress(req)
 	);
+}
+
+/**
+ * Safely logs an audit event, catching and logging any errors
+ * @param req - Express request object (must have user attached by authMiddleware)
+ * @param action - Action name (e.g., "app:create", "user:update")
+ * @param resource - Resource identifier (e.g., app name, username)
+ * @param details - Additional details object (will be JSON stringified)
+ */
+export function safeAuditLog(
+	req: express.Request,
+	action: string,
+	resource: string | null = null,
+	details: Record<string, unknown> | null = null
+): void {
+	try {
+		auditLog(req, action, resource, details);
+	} catch (error: unknown) {
+		logger.error({ err: error as Error, action }, "Failed to write audit log");
+	}
 }
