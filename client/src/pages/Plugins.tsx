@@ -46,25 +46,25 @@ export function Plugins() {
 			<div className="bg-white rounded-lg shadow p-6">
 				<h2 className="text-lg font-semibold mb-4">Installed Plugins</h2>
 				{plugins.length === 0 ? (
-				<div>
-					<p className="text-gray-500 mb-4">No plugins found</p>
-					<div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-						<h3 className="font-semibold mb-2">How to install plugins</h3>
-						<p className="text-sm text-gray-700 mb-2">
-							To install a Dokku plugin, run the following command on your server:
-						</p>
-						<code className="block bg-white border rounded px-3 py-1.5 text-sm font-mono select-all">
-							sudo dokku plugin:install &lt;repository-url&gt;
-						</code>
-						<p className="text-sm text-gray-700 mt-2">
-							For example, to install the Postgres plugin:
-						</p>
-						<code className="block bg-white border rounded px-3 py-1.5 text-sm font-mono select-all mt-1">
-							sudo dokku plugin:install https://github.com/dokku/dokku-postgres.git
-						</code>
+					<div>
+						<p className="text-gray-500 mb-4">No plugins found</p>
+						<div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+							<h3 className="font-semibold mb-2">How to install plugins</h3>
+							<p className="text-sm text-gray-700 mb-2">
+								To install a Dokku plugin, run the following command on your server:
+							</p>
+							<code className="block bg-white border rounded px-3 py-1.5 text-sm font-mono select-all">
+								sudo dokku plugin:install &lt;repository-url&gt;
+							</code>
+							<p className="text-sm text-gray-700 mt-2">
+								For example, to install the Postgres plugin:
+							</p>
+							<code className="block bg-white border rounded px-3 py-1.5 text-sm font-mono select-all mt-1">
+								sudo dokku plugin:install https://github.com/dokku/dokku-postgres.git
+							</code>
+						</div>
 					</div>
-				</div>
-			) : (
+				) : (
 					<div className="space-y-3">
 						{plugins.map((plugin) => (
 							<div

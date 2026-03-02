@@ -47,7 +47,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await waitFor(() => {
@@ -66,7 +66,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await waitFor(() => {
@@ -75,9 +75,7 @@ describe("Plugins", () => {
 
 		expect(screen.getByText("No plugins found")).toBeInTheDocument();
 		expect(screen.getByText("How to install plugins")).toBeInTheDocument();
-		expect(
-			screen.getByText(/sudo dokku plugin:install <repository-url>/),
-		).toBeInTheDocument();
+		expect(screen.getByText(/sudo dokku plugin:install <repository-url>/)).toBeInTheDocument();
 	});
 
 	it("should render error state when API fails", async () => {
@@ -87,7 +85,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await waitFor(() => {
@@ -102,7 +100,7 @@ describe("Plugins", () => {
 		render(
 			<MemoryRouter>
 				<Plugins />
-			</MemoryRouter>,
+			</MemoryRouter>
 		);
 
 		await waitFor(() => {

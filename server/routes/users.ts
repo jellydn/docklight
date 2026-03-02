@@ -124,7 +124,11 @@ export function registerUserRoutes(app: express.Application): void {
 			req.user?.userId ?? null,
 			"user:update",
 			existing.username,
-			JSON.stringify({ username: existing.username, role, passwordChanged: password !== undefined }),
+			JSON.stringify({
+				username: existing.username,
+				role,
+				passwordChanged: password !== undefined,
+			}),
 			getIpAddress(req)
 		);
 

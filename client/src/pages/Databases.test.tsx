@@ -148,7 +148,7 @@ describe("Databases", () => {
 		await waitFor(() => {
 			expect(screen.getByText("Install a Database Plugin")).toBeInTheDocument();
 			expect(
-				screen.getByText(/Run one of these commands on your Dokku server/),
+				screen.getByText(/Run one of these commands on your Dokku server/)
 			).toBeInTheDocument();
 		});
 	});

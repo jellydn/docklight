@@ -1,7 +1,11 @@
 import { Fragment, useEffect, useState } from "react";
 import { z } from "zod";
 import { apiFetch } from "../lib/api.js";
-import { CommandHistorySchema, UserAuditLogResultSchema, type UserAuditLog } from "../lib/schemas.js";
+import {
+	CommandHistorySchema,
+	UserAuditLogResultSchema,
+	type UserAuditLog,
+} from "../lib/schemas.js";
 
 const AuditLogResultSchema = z.object({
 	logs: z.array(CommandHistorySchema),
@@ -187,11 +191,7 @@ export function Audit() {
 			deploy: "bg-purple-100 text-purple-800",
 		};
 		const color = colorMap[action] || "bg-gray-100 text-gray-800";
-		return (
-			<span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>
-				{action}
-			</span>
-		);
+		return <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>{action}</span>;
 	};
 
 	const commandTotalPages = Math.ceil(commandTotal / ITEMS_PER_PAGE);
@@ -237,10 +237,7 @@ export function Audit() {
 						<h2 className="text-lg font-semibold mb-4">Filters</h2>
 						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
 							<div>
-								<label
-									htmlFor="startDate"
-									className="block text-sm font-medium text-gray-700 mb-1"
-								>
+								<label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
 									Start Date
 								</label>
 								<input
@@ -255,10 +252,7 @@ export function Audit() {
 								/>
 							</div>
 							<div>
-								<label
-									htmlFor="endDate"
-									className="block text-sm font-medium text-gray-700 mb-1"
-								>
+								<label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
 									End Date
 								</label>
 								<input
@@ -273,10 +267,7 @@ export function Audit() {
 								/>
 							</div>
 							<div>
-								<label
-									htmlFor="command"
-									className="block text-sm font-medium text-gray-700 mb-1"
-								>
+								<label htmlFor="command" className="block text-sm font-medium text-gray-700 mb-1">
 									Command Search
 								</label>
 								<input
@@ -292,10 +283,7 @@ export function Audit() {
 								/>
 							</div>
 							<div>
-								<label
-									htmlFor="exitCode"
-									className="block text-sm font-medium text-gray-700 mb-1"
-								>
+								<label htmlFor="exitCode" className="block text-sm font-medium text-gray-700 mb-1">
 									Exit Code
 								</label>
 								<select
@@ -337,9 +325,7 @@ export function Audit() {
 						</div>
 					) : commandLogs.length === 0 ? (
 						<div className="bg-white rounded-lg shadow p-6">
-							<p className="text-gray-500">
-								No audit logs found matching your filters.
-							</p>
+							<p className="text-gray-500">No audit logs found matching your filters.</p>
 						</div>
 					) : (
 						<div className="bg-white rounded-lg shadow overflow-hidden">
@@ -381,9 +367,7 @@ export function Audit() {
 															onClick={() => toggleCommandRowExpansion(log.id)}
 															className="text-blue-600 hover:text-blue-800"
 														>
-															{expandedCommandRows.has(log.id)
-																? "Hide Details"
-																: "View Details"}
+															{expandedCommandRows.has(log.id) ? "Hide Details" : "View Details"}
 														</button>
 													</td>
 												</tr>
@@ -392,31 +376,23 @@ export function Audit() {
 														<td colSpan={4} className="px-4 py-4">
 															<div className="space-y-3">
 																<div>
-																	<h4 className="text-sm font-medium text-gray-700 mb-1">
-																		Stdout
-																	</h4>
+																	<h4 className="text-sm font-medium text-gray-700 mb-1">Stdout</h4>
 																	{log.stdout ? (
 																		<pre className="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-x-auto max-h-40 overflow-y-auto">
 																			{log.stdout}
 																		</pre>
 																	) : (
-																		<p className="text-gray-400 text-sm">
-																			No output
-																		</p>
+																		<p className="text-gray-400 text-sm">No output</p>
 																	)}
 																</div>
 																<div>
-																	<h4 className="text-sm font-medium text-gray-700 mb-1">
-																		Stderr
-																	</h4>
+																	<h4 className="text-sm font-medium text-gray-700 mb-1">Stderr</h4>
 																	{log.stderr ? (
 																		<pre className="bg-gray-900 text-red-400 p-3 rounded text-xs overflow-x-auto max-h-40 overflow-y-auto">
 																			{log.stderr}
 																		</pre>
 																	) : (
-																		<p className="text-gray-400 text-sm">
-																			No errors
-																		</p>
+																		<p className="text-gray-400 text-sm">No errors</p>
 																	)}
 																</div>
 															</div>
@@ -434,18 +410,14 @@ export function Audit() {
 								<div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200">
 									<div className="flex-1 flex justify-between sm:hidden">
 										<button
-											onClick={() =>
-												setCommandOffset(Math.max(0, commandOffset - ITEMS_PER_PAGE))
-											}
+											onClick={() => setCommandOffset(Math.max(0, commandOffset - ITEMS_PER_PAGE))}
 											disabled={commandOffset === 0}
 											className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
 										>
 											Previous
 										</button>
 										<button
-											onClick={() =>
-												setCommandOffset(commandOffset + ITEMS_PER_PAGE)
-											}
+											onClick={() => setCommandOffset(commandOffset + ITEMS_PER_PAGE)}
 											disabled={commandOffset + ITEMS_PER_PAGE >= commandTotal}
 											className="ml-3 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
 										>
@@ -455,8 +427,7 @@ export function Audit() {
 									<div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
 										<div>
 											<p className="text-sm text-gray-700">
-												Showing{" "}
-												<span className="font-medium">{commandOffset + 1}</span> to{" "}
+												Showing <span className="font-medium">{commandOffset + 1}</span> to{" "}
 												<span className="font-medium">
 													{Math.min(commandOffset + ITEMS_PER_PAGE, commandTotal)}
 												</span>{" "}
@@ -467,9 +438,7 @@ export function Audit() {
 											<nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
 												<button
 													onClick={() =>
-														setCommandOffset(
-															Math.max(0, commandOffset - ITEMS_PER_PAGE)
-														)
+														setCommandOffset(Math.max(0, commandOffset - ITEMS_PER_PAGE))
 													}
 													disabled={commandOffset === 0}
 													className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
@@ -480,9 +449,7 @@ export function Audit() {
 													Page {commandCurrentPage} of {commandTotalPages}
 												</span>
 												<button
-													onClick={() =>
-														setCommandOffset(commandOffset + ITEMS_PER_PAGE)
-													}
+													onClick={() => setCommandOffset(commandOffset + ITEMS_PER_PAGE)}
 													disabled={commandOffset + ITEMS_PER_PAGE >= commandTotal}
 													className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
 												>
@@ -539,10 +506,7 @@ export function Audit() {
 								/>
 							</div>
 							<div>
-								<label
-									htmlFor="userId"
-									className="block text-sm font-medium text-gray-700 mb-1"
-								>
+								<label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-1">
 									User ID
 								</label>
 								<input
@@ -558,10 +522,7 @@ export function Audit() {
 								/>
 							</div>
 							<div>
-								<label
-									htmlFor="action"
-									className="block text-sm font-medium text-gray-700 mb-1"
-								>
+								<label htmlFor="action" className="block text-sm font-medium text-gray-700 mb-1">
 									Action
 								</label>
 								<input
@@ -601,9 +562,7 @@ export function Audit() {
 						</div>
 					) : userLogs.length === 0 ? (
 						<div className="bg-white rounded-lg shadow p-6">
-							<p className="text-gray-500">
-								No user audit logs found matching your filters.
-							</p>
+							<p className="text-gray-500">No user audit logs found matching your filters.</p>
 						</div>
 					) : (
 						<div className="bg-white rounded-lg shadow overflow-hidden">
@@ -655,9 +614,7 @@ export function Audit() {
 															onClick={() => toggleUserRowExpansion(log.id)}
 															className="text-blue-600 hover:text-blue-800"
 														>
-															{expandedUserRows.has(log.id)
-																? "Hide Details"
-																: "View Details"}
+															{expandedUserRows.has(log.id) ? "Hide Details" : "View Details"}
 														</button>
 													</td>
 												</tr>
@@ -674,9 +631,7 @@ export function Audit() {
 																			{log.details}
 																		</pre>
 																	) : (
-																		<p className="text-gray-400 text-sm">
-																			No details
-																		</p>
+																		<p className="text-gray-400 text-sm">No details</p>
 																	)}
 																</div>
 															</div>
@@ -694,9 +649,7 @@ export function Audit() {
 								<div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200">
 									<div className="flex-1 flex justify-between sm:hidden">
 										<button
-											onClick={() =>
-												setUserOffset(Math.max(0, userOffset - ITEMS_PER_PAGE))
-											}
+											onClick={() => setUserOffset(Math.max(0, userOffset - ITEMS_PER_PAGE))}
 											disabled={userOffset === 0}
 											className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
 										>
@@ -713,8 +666,7 @@ export function Audit() {
 									<div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
 										<div>
 											<p className="text-sm text-gray-700">
-												Showing{" "}
-												<span className="font-medium">{userOffset + 1}</span> to{" "}
+												Showing <span className="font-medium">{userOffset + 1}</span> to{" "}
 												<span className="font-medium">
 													{Math.min(userOffset + ITEMS_PER_PAGE, userTotal)}
 												</span>{" "}
@@ -724,11 +676,7 @@ export function Audit() {
 										<div>
 											<nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
 												<button
-													onClick={() =>
-														setUserOffset(
-															Math.max(0, userOffset - ITEMS_PER_PAGE)
-														)
-													}
+													onClick={() => setUserOffset(Math.max(0, userOffset - ITEMS_PER_PAGE))}
 													disabled={userOffset === 0}
 													className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
 												>

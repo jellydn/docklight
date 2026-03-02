@@ -22,13 +22,7 @@ export function registerAuthRoutes(app: express.Application): void {
 		setAuthCookie(res, user);
 
 		// Audit log successful login
-		insertAuditLog(
-			user.id,
-			"login",
-			null,
-			JSON.stringify({ username }),
-			getIpAddress(req)
-		);
+		insertAuditLog(user.id, "login", null, JSON.stringify({ username }), getIpAddress(req));
 
 		res.json({ success: true });
 	});
