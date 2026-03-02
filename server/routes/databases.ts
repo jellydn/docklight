@@ -11,7 +11,9 @@ import { clearPrefix, get, set } from "../lib/cache.js";
 import { logger } from "../lib/logger.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
 import type { UserRole } from "../lib/db.js";
+import { insertAuditLog } from "../lib/db.js";
 import { getParam } from "./util.js";
+import { getIpAddress } from "./util.js";
 
 function filterConnectionInfoForViewer(
 	databases: Database[],
@@ -49,6 +51,18 @@ export function registerDatabaseRoutes(app: express.Application): void {
 	app.post("/api/databases", authMiddleware, requireOperator, async (req, res) => {
 		const { plugin, name } = req.body;
 		const result = await createDatabase(plugin, name);
+
+		if (result.exitCode === 0) {
+			// Audit log database creation
+			insertAuditLog(
+				req.user?.userId ?? null,
+				"database:create",
+				name,
+				JSON.stringify({ plugin, name }),
+				getIpAddress(req)
+			);
+		}
+
 		clearPrefix("databases:");
 		res.json(result);
 	});
@@ -57,6 +71,18 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const name = getParam(req.params, "name");
 		const { plugin, app } = req.body;
 		const result = await linkDatabase(plugin, name, app);
+
+		if (result.exitCode === 0) {
+			// Audit log database link
+			insertAuditLog(
+				req.user?.userId ?? null,
+				"database:link",
+				name,
+				JSON.stringify({ plugin, database: name, app }),
+				getIpAddress(req)
+			);
+		}
+
 		clearPrefix("databases:");
 		res.json(result);
 	});
@@ -65,6 +91,18 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const name = getParam(req.params, "name");
 		const { plugin, app } = req.body;
 		const result = await unlinkDatabase(plugin, name, app);
+
+		if (result.exitCode === 0) {
+			// Audit log database unlink
+			insertAuditLog(
+				req.user?.userId ?? null,
+				"database:unlink",
+				name,
+				JSON.stringify({ plugin, database: name, app }),
+				getIpAddress(req)
+			);
+		}
+
 		clearPrefix("databases:");
 		res.json(result);
 	});
@@ -73,6 +111,18 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const name = getParam(req.params, "name");
 		const { plugin, confirmName } = req.body;
 		const result = await destroyDatabase(plugin, name, confirmName);
+
+		if (result.exitCode === 0) {
+			// Audit log database destruction
+			insertAuditLog(
+				req.user?.userId ?? null,
+				"database:destroy",
+				name,
+				JSON.stringify({ plugin, name }),
+				getIpAddress(req)
+			);
+		}
+
 		clearPrefix("databases:");
 		res.json(result);
 	});
