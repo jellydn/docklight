@@ -5,165 +5,148 @@
 ## Directory Layout
 
 ```
-./
-├── server/          # Express backend with TypeScript
-├── client/          # React + Vite frontend
-├── docs/            # Project documentation
-├── tasks/           # Task tracking (PRDs, issues)
-└── .planning/       # Planning artifacts
+docklight/
+├── server/              # Backend Express application
+│   ├── dist/           # Compiled TypeScript output (generated)
+│   ├── lib/            # Core business logic modules
+│   ├── routes/         # API route handlers
+│   ├── index.ts        # Server entry point
+│   └── package.json    # Server dependencies
+├── client/             # Frontend React application
+│   ├── dist/           # Built production files (generated)
+│   ├── src/
+│   │   ├── components/ # Reusable React components
+│   │   ├── contexts/   # React context providers
+│   │   ├── lib/        # Client utilities
+│   │   ├── pages/      # Page components
+│   │   └── main.tsx    # Client entry point
+│   └── package.json    # Client dependencies
+├── .github/            # GitHub Actions workflows
+├── justfile            # Development commands
+├── Dockerfile          # Multi-stage container build
+└── README.md           # Project documentation
 ```
 
 ## Directory Purposes
 
 **server/:**
 - Purpose: Express backend API server
-- Contains: TypeScript source files, routes, lib modules, tests
-- Key files:
-  - `server/index.ts` - Entry point
-  - `server/lib/executor.ts` - Command execution
-  - `server/lib/db.ts` - Database
-  - `server/lib/auth.ts` - Authentication
-  - `server/lib/dokku.ts` - CLI wrapper
+- Contains: Route handlers, business logic, SSH execution, database
+- Key files: `server/index.ts`, `server/lib/executor.ts`, `server/lib/db.ts`
 
 **client/:**
-- Purpose: React SPA frontend
-- Contains: TypeScript/TSX source, components, pages, utilities
-- Key files:
-  - `client/src/main.tsx` - Entry point
-  - `client/src/App.tsx` - Router setup
-  - `client/src/lib/api.ts` - API client
-  - `client/src/contexts/auth-context.tsx` - Auth state
+- Purpose: React frontend single-page application
+- Contains: React components, pages, API client, styling
+- Key files: `client/src/main.tsx`, `client/src/App.tsx`, `client/src/lib/api.ts`
 
-**docs/:**
-- Purpose: Project documentation
-- Contains: Deployment guides, API docs
+**server/lib/:**
+- Purpose: Core business logic and service modules
+- Contains: Command execution, auth, database, WebSocket, Dokku operations
+- Key files: `executor.ts`, `auth.ts`, `db.ts`, `websocket.ts`, `apps.ts`
 
-**tasks/:**
-- Purpose: Task tracking and requirements
-- Contains: PRD documents, feature specs
+**server/routes/:**
+- Purpose: HTTP API endpoint handlers
+- Contains: Route modules organized by domain (apps, auth, logs, etc.)
+- Key files: `apps.ts`, `auth.ts`, `app-logs.ts`, `plugins.ts`
 
-**.planning/:**
-- Purpose: Planning artifacts
-- Contains: Architecture analysis, structure diagrams
+**client/src/pages/:**
+- Purpose: Page-level React components
+- Contains: Apps list, App detail, Dashboard, Login, Users, Plugins
+- Key files: `Apps.tsx`, `AppDetail/index.tsx`, `Dashboard.tsx`, `Login.tsx`
+
+**client/src/components/:**
+- Purpose: Reusable UI components
+- Contains: Layout components, dialogs, UI primitives
+- Key files: `AppLayout.tsx`, `RequireAdmin.tsx`, `ui/` (Radix UI wrappers)
+
+**client/src/lib/:**
+- Purpose: Client utilities and helpers
+- Contains: API client, validation schemas, utilities
+- Key files: `api.ts`, `schemas.ts`, `utils.ts`, `command-utils.ts`
 
 ## Key File Locations
 
 **Entry Points:**
-- `server/index.ts` - Server bootstrap
-- `client/src/main.tsx` - Client bootstrap
+- `server/index.ts`: Express server initialization and middleware setup
+- `client/src/main.tsx`: React app mounting and initialization
 
 **Configuration:**
-- `server/package.json` - Backend deps
-- `client/package.json` - Frontend deps
-- `server/tsconfig.json` - Backend TypeScript config
-- `client/tsconfig.json` - Frontend TypeScript config
-- `justfile` - Task runner commands
+- `server/tsconfig.json`: Server TypeScript configuration
+- `client/tsconfig.json`: Client TypeScript configuration with `@/*` path alias
+- `client/vite.config.ts`: Vite build configuration with proxy
+- `biome.json`: Shared linting and formatting rules
+- `.env.example`: Environment variable template
 
 **Core Logic:**
-- `server/lib/executor.ts` - Command execution (418 lines)
-- `server/lib/dokku.ts` - CLI command builder (244 lines)
-- `server/lib/apps.ts` - App management (991 lines)
-- `server/lib/auth.ts` - Authentication (151 lines)
-- `server/lib/db.ts` - Database operations
-
-**API Routes:**
-- `server/routes/index.ts` - Route registration
-- `server/routes/apps.ts` - App management routes
-- `server/routes/auth.ts` - Authentication routes
-- `server/routes/util.ts` - Route utilities
+- `server/lib/executor.ts`: Command execution via SSH with connection pooling
+- `server/lib/auth.ts`: JWT authentication and session management
+- `server/lib/db.ts`: SQLite database operations
+- `server/lib/cache.ts`: In-memory caching with TTL
+- `server/lib/websocket.ts`: Real-time log streaming
+- `server/lib/apps.ts`: Application management operations
 
 **Testing:**
-- `server/index.test.ts` - Server integration tests
-- `server/lib/*.test.ts` - Unit tests for lib modules
-- `client/src/**/*.test.tsx` - React component tests
+- `server/**/*.test.ts`: Co-located unit/integration tests
+- `client/src/**/*.test.tsx`: Co-located component tests
+- `server/vitest.config.ts`: Vitest configuration for server
+- `client/vitest.config.ts`: Vitest configuration for client
 
 ## Naming Conventions
 
 **Files:**
-- `*.test.ts` - Server unit tests
-- `*.test.tsx` - Client component tests
-- `*.ts` - Source files
-- `*.tsx` - React components
-- kebab-case for all files: `command-executor.ts`, `user-auth.tsx`
+- kebab-case: `command-executor.ts`, `app-layout.tsx`
+- Test files: Same name with `.test.ts` suffix
+- Page directories: PascalCase or kebab-case (`AppDetail/`, `Apps.tsx`)
 
-**Directories:**
-- `pages/` - Page components
-- `components/` - Reusable UI components
-- `components/ui/` - Radix UI primitives (tailwind)
-- `lib/` - Shared utilities and helpers
-- `routes/` - API route handlers
-- `contexts/` - React contexts
-- `pages/AppDetail/` - Sub-pages with kebab-case names
+**Functions:**
+- camelCase: `getApps`, `executeCommand`, `validateUser`
+- Async functions: Prefix with `async` keyword
+
+**Variables:**
+- camelCase: `jwtSecret`, `sshTarget`, `commandResult`
+- Constants: SCREAMING_SNAKE_CASE (`MAX_RETRIES`, `DEFAULT_TTL`)
+
+**Types:**
+- Interfaces: PascalCase (`CommandResult`, `User`, `App`)
+- Type aliases: PascalCase (`CommandResultLike`, `JwtPayload`)
 
 ## Where to Add New Code
 
-**New API Endpoint:**
-- Primary code: `server/routes/`
-- Service logic: `server/lib/`
-- Register route: Update `server/routes/index.ts`
-- Write tests: Create `*.test.ts` in `server/lib/`
+**New Feature:**
+- Primary code: `server/lib/[feature].ts` (backend logic)
+- Routes: `server/routes/[feature].ts` (API endpoints)
+- Primary code: `client/src/pages/[Feature].tsx` (UI)
+- Tests: `server/lib/[feature].test.ts`, `client/src/pages/[Feature].test.tsx`
 
-**New Frontend Page:**
-- Create file in `client/src/pages/`
-- Add routes in `client/src/App.tsx`
-- Create test: PageName.test.tsx in same directory
+**New Component/Module:**
+- Implementation: `client/src/components/[Component].tsx`
+- Export from: `client/src/components/index.ts` (if widely used)
 
-**New Shared Component:**
-- Create in `client/src/components/`
-- For UI primitives: `client/src/components/ui/`
-- Create test: ComponentName.test.tsx
-
-**New Utility Function:**
-- Create in `server/lib/` or `client/src/lib/`
-- Export via barrel file: `*.ts` files with `export * from "./module.js"`
+**Utilities:**
+- Shared helpers: `client/src/lib/[utility].ts` (client)
+- Shared helpers: `server/lib/[utility].ts` (server)
 
 ## Special Directories
 
-**server/lib/:**
-- Purpose: Core business logic and utilities
+**node_modules/:**
+- Purpose: Installed dependencies
+- Generated: Yes
+- Committed: No (gitignored)
+
+**dist/ (both server and client):**
+- Purpose: Compiled/built output
+- Generated: Yes
+- Committed: No (gitignored)
+
+**.github/workflows/:**
+- Purpose: CI/CD automation
 - Generated: No
 - Committed: Yes
-- Contains: 24+ TypeScript modules (auth, db, apps, executor, websocket, etc.)
 
-**server/routes/:**
-- Purpose: HTTP API endpoints organized by domain
-- Generated: No
-- Committed: Yes
-- Contains: 19 route files organized by resource type
-
-**client/src/pages/:**
-- Purpose: Page components for different views
-- Generated: No
-- Committed: Yes
-- Contains: 8+ page components (Apps, AppDetail, Dashboard, Databases, etc.)
-
-**client/src/components/:**
-- Purpose: Reusable UI components
-- Generated: No
-- Committed: Yes
-- Contains: 4+ components (AppLayout, ToastProvider, etc.)
-
-**server/dist/:**
-- Purpose: Compiled TypeScript for production
-- Generated: Yes (after `bun run build`)
-- Committed: No (gitignore)
-
-**client/dist/:**
-- Purpose: Built production assets
-- Generated: Yes (after `bun run build`)
-- Committed: No (gitignore)
-
-**client/src/test/:**
-- Purpose: Client test setup
-- Generated: No
-- Committed: Yes
-- Contains: Test configuration
-
-**server/test-data/:**
-- Purpose: Test data fixtures
-- Generated: No
-- Committed: Yes
-- Contains: Sample responses for testing
+**data/:
+- Purpose: SQLite database storage
+- Generated: Yes (database file created on first run)
+- Committed: No (gitignored, contains .gitkeep)
 
 ---
 

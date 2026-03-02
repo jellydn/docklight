@@ -1,7 +1,6 @@
 # Codebase Concerns
 
 **Analysis Date:** 2026-03-02
-**Last Updated:** 2026-03-02
 
 ## Tech Debt
 
@@ -39,11 +38,11 @@
   - Add audit logging for all destructive operations
 
 **WebSocket Authentication:**
-- ~~Risk: WebSocket connections require valid JWT but connection limit is global~~ ✅ **RESOLVED**
+- Risk: WebSocket connections require valid JWT but connection limit is global
 - Files: `server/lib/websocket.ts`
-- Current mitigation: JWT verification, 50 connection max, 30-min idle timeout, **per-user connection limits (WS_MAX_CONNECTIONS_PER_USER)**
-- ~~Recommendations:~~
-  - ~~Consider per-user connection limits~~ ✅ Implemented
+- Current mitigation: JWT verification, 50 connection max, 30-min idle timeout
+- Recommendations:
+  - Consider per-user connection limits
   - Add WebSocket-specific rate limiting
 
 **JWT Secret:**
@@ -55,20 +54,12 @@
   - Implement key rotation mechanism
 
 **Cookie Security:**
-- ~~Risk: HttpOnly cookies used but SameSite setting not explicitly configured~~ ✅ **RESOLVED**
+- Risk: HttpOnly cookies used but SameSite setting not explicitly configured
 - Files: `server/lib/auth.ts`, `server/routes/auth.ts`
-- Current mitigation: HttpOnly flag set, **SameSite=Strict**, Secure flag in production
-- ~~Recommendations:~~
-  - ~~Explicitly set SameSite=Strict or SameSite=Lax~~ ✅ Implemented
-  - Consider Secure flag for HTTPS-only deployments (✅ Already set via `process.env.NODE_ENV === "production"`)
-
-**No HTTPS Enforcement:**
-- ~~Risk: Application can run over HTTP, exposing credentials~~ ✅ **RESOLVED**
-- Files: `server/index.ts`
-- Current mitigation: **HTTPS redirect middleware in production**
-- ~~Recommendations:~~
-  - ~~Add middleware to redirect HTTP to HTTPS in production~~ ✅ Implemented
-  - Document HTTPS requirement in deployment docs
+- Current mitigation: HttpOnly flag set
+- Recommendations:
+  - Explicitly set SameSite=Strict or SameSite=Lax
+  - Consider Secure flag for HTTPS-only deployments
 
 ## Performance Bottlenecks
 
@@ -85,16 +76,10 @@
 - Improvement path: Current implementation uses connection pooling with TTL, which is appropriate for typical Dokku administration workloads
 
 **No Response Caching:**
-- ~~Problem: All API requests execute fresh Dokku commands~~ ✅ **IMPROVED**
+- Problem: All API requests execute fresh Dokku commands
 - Files: `server/routes/*.ts`
 - Cause: Real-time data preference
-- Current state: In-memory cache (`server/lib/cache.ts`) is now used in:
-  - `apps.ts` - app list and details
-  - `plugins.ts` - plugin list
-  - `app-domains.ts` - app domains
-  - `app-ports.ts` - app ports
-  - `app-network.ts` - app network config
-- Remaining: Other app-specific routes could benefit from caching
+- Improvement path: Add configurable caching for read-heavy endpoints (app list, plugin list)
 
 ## Fragile Areas
 
@@ -125,9 +110,8 @@
 
 **Command Execution Rate:**
 - Current capacity: Limited by SSH connection throughput and Dokku server responsiveness
-- ~~Limit: No explicit rate limiting on command execution (only auth endpoints)~~ ✅ **RESOLVED**
-- Current mitigation: **Per-user command rate limiting via `CommandRateLimiter` class** (10 commands/minute per user, configurable)
-- Scaling path: Add per-user command rate limiting (✅ Implemented)
+- Limit: No explicit rate limiting on command execution (only auth endpoints)
+- Scaling path: Add per-user command rate limiting
 
 **SQLite Database:**
 - Current capacity: Suitable for single-server deployments (< 1000 users)

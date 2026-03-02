@@ -64,7 +64,7 @@
 8. Response returns → client receives data and updates UI
 
 **Log Streaming Flow:**
-1. User opens app logs → `server/routes/app-ports.ts` GET /api/apps/:name/logs/stream
+1. User opens app logs → `server/routes/app-logs.ts` GET /api/apps/:name/logs/stream
 2. WebSocket connection established → `server/lib/websocket.ts` setupLogStreaming
 3. SSH tunnel opens → `dokku logs` command runs via SSH connection pool
 4. Real-time output streams → WebSocket messages sent to client
@@ -160,7 +160,7 @@
 - Route params validation
 - Request body type checking
 - Command allowlist validation
-- No schema validation libraries (simple validation)
+- Schema validation with zod
 
 **Authentication:** JWT-based session management
 - Location: `server/lib/auth.ts`
