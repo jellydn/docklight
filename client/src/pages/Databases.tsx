@@ -4,7 +4,6 @@ import { useToast } from "../components/ToastProvider";
 import { apiFetch } from "../lib/api.js";
 import { createErrorResult } from "../lib/command-utils.js";
 import { useAuth } from "@/contexts/auth-context.js";
-import { POPULAR_PLUGIN_REPOS } from "../lib/plugin-constants.js";
 import {
 	type App,
 	AppSchema,
@@ -14,6 +13,14 @@ import {
 } from "../lib/schemas.js";
 
 const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"];
+
+const PLUGIN_INSTALL_COMMANDS = [
+	{ label: "Postgres", command: "sudo dokku plugin:install https://github.com/dokku/dokku-postgres.git" },
+	{ label: "Redis", command: "sudo dokku plugin:install https://github.com/dokku/dokku-redis.git" },
+	{ label: "MySQL", command: "sudo dokku plugin:install https://github.com/dokku/dokku-mysql.git" },
+	{ label: "MariaDB", command: "sudo dokku plugin:install https://github.com/dokku/dokku-mariadb.git" },
+	{ label: "Mongo", command: "sudo dokku plugin:install https://github.com/dokku/dokku-mongo.git" },
+] as const;
 
 export function Databases() {
 	const { canModify } = useAuth();
@@ -26,8 +33,6 @@ export function Databases() {
 	// Create database form state
 	const [newDbPlugin, setNewDbPlugin] = useState("");
 	const [newDbName, setNewDbName] = useState("");
-	const [pluginRepo, setPluginRepo] = useState("");
-	const [pluginName, setPluginName] = useState("");
 
 	// Link database state
 	const [linkDbName, setLinkDbName] = useState("");
@@ -45,7 +50,6 @@ export function Databases() {
 	const [confirmDestroyName, setConfirmDestroyName] = useState("");
 	const [destroySubmitting, setDestroySubmitting] = useState(false);
 	const [createDbSubmitting, setCreateDbSubmitting] = useState(false);
-	const [installPluginSubmitting, setInstallPluginSubmitting] = useState(false);
 	const [linkSubmitting, setLinkSubmitting] = useState(false);
 
 	// Connection info visibility
@@ -93,36 +97,6 @@ export function Databases() {
 			);
 		} finally {
 			setCreateDbSubmitting(false);
-		}
-	};
-
-	const handleInstallPlugin = async () => {
-		if (!pluginRepo.trim() || installPluginSubmitting) return;
-
-		setInstallPluginSubmitting(true);
-		try {
-			const body: { repository: string; name?: string } = { repository: pluginRepo.trim() };
-			if (pluginName.trim()) body.name = pluginName.trim();
-
-			const result = await apiFetch("/plugins/install", CommandResultSchema, {
-				method: "POST",
-				body: JSON.stringify(body),
-			});
-			addToast(result.exitCode === 0 ? "success" : "error", "Plugin installation", result);
-
-			if (result.exitCode === 0) {
-				setPluginRepo("");
-				setPluginName("");
-				fetchData();
-			}
-		} catch (err) {
-			const trimmedName = pluginName.trim();
-			const command = trimmedName
-				? `dokku plugin:install ${pluginRepo.trim()} ${trimmedName}`
-				: `dokku plugin:install ${pluginRepo.trim()}`;
-			addToast("error", "Failed to install plugin", createErrorResult(command, err));
-		} finally {
-			setInstallPluginSubmitting(false);
 		}
 	};
 
@@ -287,45 +261,21 @@ export function Databases() {
 		<div>
 			<h1 className="text-2xl font-bold mb-6">Databases</h1>
 
-			{/* Install Plugin Form */}
-			{canModify && (
-				<div className="bg-white rounded-lg shadow p-6 mb-6">
-					<h2 className="text-lg font-semibold mb-4">Install Dokku Plugin</h2>
-					<div className="grid gap-2 md:grid-cols-3">
-						<input
-							type="text"
-							placeholder="Repository URL or owner/repo"
-							value={pluginRepo}
-							onChange={(e) => setPluginRepo(e.target.value)}
-							className="border rounded px-3 py-2"
-						/>
-						<input
-							type="text"
-							placeholder="Plugin name (optional)"
-							value={pluginName}
-							onChange={(e) => setPluginName(e.target.value)}
-							className="border rounded px-3 py-2"
-						/>
-						<button
-							onClick={handleInstallPlugin}
-							disabled={!pluginRepo.trim() || installPluginSubmitting}
-							className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-						>
-							Install Plugin
-						</button>
-					</div>
-					<div className="flex flex-wrap gap-2 mt-3">
-						{POPULAR_PLUGIN_REPOS.map((plugin) => (
-							<button
-								key={plugin.name}
-								onClick={() => {
-									setPluginRepo(plugin.repository);
-									setPluginName(plugin.name);
-								}}
-								className="text-sm border rounded px-2 py-1 hover:bg-gray-50"
-							>
-								{plugin.label}
-							</button>
+			{/* Install Plugin Guide */}
+			{databases.length === 0 && (
+				<div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+					<h2 className="text-lg font-semibold mb-2">Install a Database Plugin</h2>
+					<p className="text-sm text-gray-700 mb-3">
+						Run one of these commands on your Dokku server to install a database plugin:
+					</p>
+					<div className="space-y-2">
+						{PLUGIN_INSTALL_COMMANDS.map((plugin) => (
+							<div key={plugin.label} className="flex items-center gap-2">
+								<span className="text-sm font-medium w-20">{plugin.label}:</span>
+								<code className="flex-1 bg-white border rounded px-3 py-1.5 text-sm font-mono select-all">
+									{plugin.command}
+								</code>
+							</div>
 						))}
 					</div>
 				</div>
