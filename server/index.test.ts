@@ -684,7 +684,6 @@ describe("API Routes", () => {
 			expect(response.status).toBe(200);
 			expect(response.body).toEqual(mockPlugins);
 		});
-
 	});
 
 	describe("SSL routes", () => {

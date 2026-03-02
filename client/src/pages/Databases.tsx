@@ -15,10 +15,16 @@ import {
 const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"];
 
 const PLUGIN_INSTALL_COMMANDS = [
-	{ label: "Postgres", command: "sudo dokku plugin:install https://github.com/dokku/dokku-postgres.git" },
+	{
+		label: "Postgres",
+		command: "sudo dokku plugin:install https://github.com/dokku/dokku-postgres.git",
+	},
 	{ label: "Redis", command: "sudo dokku plugin:install https://github.com/dokku/dokku-redis.git" },
 	{ label: "MySQL", command: "sudo dokku plugin:install https://github.com/dokku/dokku-mysql.git" },
-	{ label: "MariaDB", command: "sudo dokku plugin:install https://github.com/dokku/dokku-mariadb.git" },
+	{
+		label: "MariaDB",
+		command: "sudo dokku plugin:install https://github.com/dokku/dokku-mariadb.git",
+	},
 	{ label: "Mongo", command: "sudo dokku plugin:install https://github.com/dokku/dokku-mongo.git" },
 ] as const;
 

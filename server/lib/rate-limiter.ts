@@ -43,7 +43,10 @@ export class CommandRateLimiter {
 		history.timestamps = validTimestamps;
 
 		if (validTimestamps.length >= this.maxRequests) {
-			const oldestTimestamp = validTimestamps.reduce((min, ts) => Math.min(min, ts), validTimestamps[0]);
+			const oldestTimestamp = validTimestamps.reduce(
+				(min, ts) => Math.min(min, ts),
+				validTimestamps[0]
+			);
 			const resetAt = new Date(oldestTimestamp + this.windowMs);
 			return { allowed: false, resetAt };
 		}
