@@ -1,6 +1,8 @@
 import type express from "express";
 import { authMiddleware, clearAuthCookie, login, setAuthCookie } from "../lib/auth.js";
 import { authRateLimiter, authCheckRateLimiter } from "../lib/rate-limiter.js";
+import { insertAuditLog } from "../lib/db.js";
+import { getIpAddress } from "./util.js";
 
 export function registerAuthRoutes(app: express.Application): void {
 	app.post("/api/auth/login", authRateLimiter, async (req, res) => {
@@ -18,10 +20,31 @@ export function registerAuthRoutes(app: express.Application): void {
 		}
 
 		setAuthCookie(res, user);
+
+		// Audit log successful login
+		insertAuditLog(
+			user.id,
+			"login",
+			null,
+			JSON.stringify({ username }),
+			getIpAddress(req)
+		);
+
 		res.json({ success: true });
 	});
 
-	app.post("/api/auth/logout", (_req, res) => {
+	app.post("/api/auth/logout", authMiddleware, (req, res) => {
+		const user = req.user;
+
+		// Audit log logout before clearing cookie
+		insertAuditLog(
+			user?.userId ?? null,
+			"logout",
+			null,
+			user?.username ? JSON.stringify({ username: user.username }) : null,
+			getIpAddress(req)
+		);
+
 		clearAuthCookie(res);
 		res.json({ success: true });
 	});
