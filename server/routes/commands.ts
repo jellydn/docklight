@@ -47,21 +47,26 @@ export function registerCommandRoutes(app: express.Application): void {
 	});
 
 	app.get("/api/audit/user-logs", authMiddleware, requireAdmin, (req, res) => {
-		const limit = Number.parseInt(req.query.limit as string) || 50;
-		const offset = Number.parseInt(req.query.offset as string) || 0;
+		const parsedLimit = Number.parseInt(req.query.limit as string, 10);
+		const parsedOffset = Number.parseInt(req.query.offset as string, 10);
+		const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 500) : 50;
+		const offset = Number.isFinite(parsedOffset) ? Math.max(parsedOffset, 0) : 0;
 		const startDate = req.query.startDate as string | undefined;
 		const endDate = req.query.endDate as string | undefined;
-		const userIdQuery = req.query.userId as string | undefined;
+		const userId = req.query.userId as string | undefined;
 		const action = req.query.action as string | undefined;
 
-		const parsedUserId = userIdQuery ? Number.parseInt(userIdQuery, 10) : undefined;
+		if (userId !== undefined && !/^\d+$/.test(userId)) {
+			res.status(400).json({ error: "Invalid userId filter" });
+			return;
+		}
 
 		const result = getUserAuditLogs({
 			limit,
 			offset,
 			startDate,
 			endDate,
-			userId: parsedUserId !== undefined && !Number.isNaN(parsedUserId) ? parsedUserId : undefined,
+			userId: userId !== undefined ? Number.parseInt(userId, 10) : undefined,
 			action,
 		});
 
