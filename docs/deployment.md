@@ -178,8 +178,8 @@ ssh root@<your-server-ip>
 # Access the running container (Alpine-based, uses sh)
 dokku enter docklight web sh
 
-# Create an admin user (you'll be prompted for password)
-node server/dist/createUser.js admin
+# Create an admin user (password can be passed as argument or will be prompted)
+node server/dist/createUser.js admin your-password-here
 
 # Exit the container
 exit
@@ -290,7 +290,7 @@ Common issues:
 - `JWT_SECRET` not set → `dokku config:set docklight JWT_SECRET=$(openssl rand -base64 32)`
 - `dokku: not found` in dashboard → configure Step 2.5 (Dokku SSH access)
 - Port conflict → Dokku handles port mapping automatically, no manual config needed
-- Can't log in → Make sure you've created an admin user via `dokku enter docklight web sh` and `node server/dist/createUser.js admin`
+- Can't log in → Make sure you've created an admin user via `dokku enter docklight web sh` and `node server/dist/createUser.js admin your-password-here`
 
 ### Build fails
 
@@ -304,10 +304,10 @@ Check Docker build logs during `git push`. Common causes:
 ```bash
 ssh root@<your-server-ip>
 dokku enter docklight web sh
-node server/dist/createUser.js <username>
+node server/dist/createUser.js <username> <new-password>
 ```
 
-This will prompt you to enter a new password for the user. If the user doesn't exist, it will be created.
+This will update the password for the user. If the user doesn't exist, it will be created.
 
 ## Staging Environment (PR Preview)
 
@@ -331,10 +331,10 @@ cat ~/.ssh/dokku_deploy.pub | ssh root@<your-server-ip> dokku ssh-keys:add githu
 
 Go to **GitHub repo → Settings → Secrets and variables → Actions** and add:
 
-| Secret | Value |
-|---|---|
+| Secret          | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
 | `DOKKU_SSH_KEY` | Contents of `~/.ssh/dokku_deploy` (the private key, including `-----BEGIN/END-----` lines) |
-| `DOKKU_HOST` | Your server IP or hostname (e.g., `95.111.232.131`) |
+| `DOKKU_HOST`    | Your server IP or hostname (e.g., `95.111.232.131`)                                        |
 
 #### 3. Create the staging app on Dokku
 
