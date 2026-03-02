@@ -43,12 +43,54 @@ function isSshWarningOnly(stderr: string): boolean {
 	);
 }
 
-/** @description Parses "user@host" or "user@host:port". Note: IPv6 not supported. */
+/**
+ * @description Parses SSH target strings with full IPv6 support.
+ * Supports: "user@host", "user@host:port", "user@[ipv6]", "user@[ipv6]:port",
+ * and "ssh://user@host:port" URLs.
+ */
 function parseTarget(target: string): { host: string; username: string; port: number } | null {
-	const atIndex = target.indexOf("@");
+	const input = target.trim();
+
+	// Handle ssh:// URL format
+	if (input.startsWith("ssh://")) {
+		try {
+			const url = new URL(input);
+			const username = url.username;
+			// URL.hostname keeps brackets for IPv6 (e.g. "[::1]"), so strip them
+			const hostname = url.hostname;
+			const host = hostname.startsWith("[") ? hostname.slice(1, -1) : hostname;
+			const port = url.port ? Number(url.port) : 22;
+			if (!host || !username) return null;
+			return { host, username, port };
+		} catch {
+			return null;
+		}
+	}
+
+	const atIndex = input.indexOf("@");
 	if (atIndex <= 0) return null;
-	const username = target.slice(0, atIndex).trim();
-	const hostPart = target.slice(atIndex + 1).trim();
+	const username = input.slice(0, atIndex).trim();
+	const hostPart = input.slice(atIndex + 1).trim();
+
+	// Handle bracketed IPv6: user@[::1] or user@[::1]:2222
+	if (hostPart.startsWith("[")) {
+		const closeBracket = hostPart.indexOf("]");
+		if (closeBracket === -1) return null;
+		const host = hostPart.slice(1, closeBracket);
+		const afterBracket = hostPart.slice(closeBracket + 1);
+		if (afterBracket === "") {
+			return { host, username, port: 22 };
+		}
+		if (afterBracket.startsWith(":")) {
+			const parsedPort = Number(afterBracket.slice(1));
+			if (Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort <= 65535) {
+				return { host, username, port: parsedPort };
+			}
+		}
+		return null;
+	}
+
+	// Handle regular "host" or "host:port"
 	const colonIndex = hostPart.lastIndexOf(":");
 	if (colonIndex >= 0) {
 		const parsedPort = Number(hostPart.slice(colonIndex + 1));

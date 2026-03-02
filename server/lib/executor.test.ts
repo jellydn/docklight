@@ -86,6 +86,38 @@ describe("SSHPool", () => {
 		expect(mockSshInstance.connect).toHaveBeenCalledWith(expect.objectContaining({ port: 22 }));
 	});
 
+	it("parses bracketed IPv6 without port", async () => {
+		await pool.getConnection("dokku@[2001:db8::1]");
+		expect(mockSshInstance.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ host: "2001:db8::1", username: "dokku", port: 22 })
+		);
+	});
+
+	it("parses bracketed IPv6 with port", async () => {
+		await pool.getConnection("dokku@[2001:db8::1]:2222");
+		expect(mockSshInstance.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ host: "2001:db8::1", username: "dokku", port: 2222 })
+		);
+	});
+
+	it("parses ssh:// URL format", async () => {
+		await pool.getConnection("ssh://dokku@myhost:2222");
+		expect(mockSshInstance.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ host: "myhost", username: "dokku", port: 2222 })
+		);
+	});
+
+	it("parses ssh:// URL with IPv6 host", async () => {
+		await pool.getConnection("ssh://dokku@[2001:db8::1]:2222");
+		expect(mockSshInstance.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ host: "2001:db8::1", username: "dokku", port: 2222 })
+		);
+	});
+
+	it("throws for malformed bracketed IPv6 (no closing bracket)", async () => {
+		await expect(pool.getConnection("dokku@[2001:db8::1")).rejects.toThrow("Invalid SSH target");
+	});
+
 	it("passes privateKeyPath when keyPath is provided", async () => {
 		await pool.getConnection("dokku@host", "/home/user/.ssh/id_rsa");
 		expect(mockSshInstance.connect).toHaveBeenCalledWith(
