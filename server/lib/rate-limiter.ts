@@ -39,30 +39,18 @@ export class CommandRateLimiter {
 			userCommandHistory.set(userId, history);
 		}
 
-		history.timestamps = history.timestamps.filter((ts) => ts > windowStart);
+		const validTimestamps = history.timestamps.filter((ts) => ts > windowStart);
+		history.timestamps = validTimestamps;
 
-		if (history.timestamps.length >= this.maxRequests) {
-			const oldestTimestamp = Math.min(...history.timestamps);
+		if (validTimestamps.length >= this.maxRequests) {
+			const oldestTimestamp = validTimestamps.reduce((min, ts) => Math.min(min, ts), validTimestamps[0]);
 			const resetAt = new Date(oldestTimestamp + this.windowMs);
 			return { allowed: false, resetAt };
 		}
 
 		history.timestamps.push(now);
 
-		this.cleanup(userId, windowStart);
-
 		return { allowed: true };
-	}
-
-	private cleanup(userId: string, windowStart: number): void {
-		const history = userCommandHistory.get(userId);
-		if (!history) return;
-
-		history.timestamps = history.timestamps.filter((ts) => ts > windowStart);
-
-		if (history.timestamps.length === 0) {
-			userCommandHistory.delete(userId);
-		}
 	}
 
 	reset(userId: string): void {

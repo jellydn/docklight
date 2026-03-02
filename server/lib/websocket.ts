@@ -55,6 +55,16 @@ function removeFromPerUserTracking(
 	}
 }
 
+function sendLogLines(ws: ExtendedWebSocket, data: Buffer, isError: boolean): void {
+	markActivity(ws);
+	const lines = data.toString().split("\n");
+	for (const line of lines) {
+		if (line.trim()) {
+			ws.send(JSON.stringify({ line, error: isError }));
+		}
+	}
+}
+
 export function setupLogStreaming(server: http.Server) {
 	const wss = new WebSocketServer({
 		noServer: true,
@@ -229,27 +239,9 @@ export function setupLogStreaming(server: http.Server) {
 		const command = buildRuntimeCommand(dokkuCommand);
 		logProcess = spawn("sh", ["-lc", command]);
 
-		logProcess.stdout?.on("data", (data: Buffer) => {
-			markActivity(ws);
-			const lines = data
-				.toString()
-				.split("\n")
-				.filter((line: string) => line.trim());
-			lines.forEach((line: string) => {
-				ws.send(JSON.stringify({ line }));
-			});
-		});
+		logProcess.stdout?.on("data", (data: Buffer) => sendLogLines(ws, data, false));
 
-		logProcess.stderr?.on("data", (data: Buffer) => {
-			markActivity(ws);
-			const lines = data
-				.toString()
-				.split("\n")
-				.filter((line: string) => line.trim());
-			lines.forEach((line: string) => {
-				ws.send(JSON.stringify({ line, error: true }));
-			});
-		});
+		logProcess.stderr?.on("data", (data: Buffer) => sendLogLines(ws, data, true));
 
 		logProcess.on("error", (error: Error) => {
 			ws.send(JSON.stringify({ error: error.message }));
