@@ -210,7 +210,7 @@ async function executeViaPool(
 		execResult = await execWithTimeout(ssh);
 	} catch (execError) {
 		const execErrMessage = getErrorMessage(execError);
-		const isChannelError = /channel open failure|open failed/i.test(execErrMessage);
+		const isChannelError = /channel open failure|open failed|unable to exec/i.test(execErrMessage);
 
 		if (isChannelError) {
 			sshPool.closeConnection(target);
