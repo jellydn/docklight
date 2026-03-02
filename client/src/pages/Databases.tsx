@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { useToast } from "../components/ToastProvider";
+import { useToast } from "../components/ToastProvider.js";
 import { apiFetch } from "../lib/api.js";
 import { createErrorResult } from "../lib/command-utils.js";
 import { useAuth } from "@/contexts/auth-context.js";

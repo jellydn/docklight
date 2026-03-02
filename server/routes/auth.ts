@@ -1,7 +1,7 @@
 import type express from "express";
 import { authMiddleware, clearAuthCookie, login, setAuthCookie } from "../lib/auth.js";
 import { authRateLimiter, authCheckRateLimiter } from "../lib/rate-limiter.js";
-import { safeAuditLog } from "./util.js";
+import { safeAuditLogWithUserId } from "./util.js";
 
 export function registerAuthRoutes(app: express.Application): void {
 	app.post("/api/auth/login", authRateLimiter, async (req, res) => {
@@ -20,15 +20,15 @@ export function registerAuthRoutes(app: express.Application): void {
 
 		setAuthCookie(res, user);
 
-		safeAuditLog(req, "login", null, { username });
+		safeAuditLogWithUserId(req, user.id, "login", null, { username });
 
 		res.json({ success: true });
 	});
 
-	app.post("/api/auth/logout", (req, res) => {
+	app.post("/api/auth/logout", authMiddleware, (req, res) => {
 		const user = req.user;
 
-		safeAuditLog(req, "logout", null, user?.username ? { username: user.username } : null);
+		safeAuditLogWithUserId(req, user?.userId ?? null, "logout", null, user?.username ? { username: user.username } : null);
 
 		clearAuthCookie(res);
 		res.json({ success: true });

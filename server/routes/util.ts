@@ -59,13 +59,14 @@ export function getIpAddress(req: express.Request): string | undefined {
 			(remoteAddress.startsWith("127.") ||
 				remoteAddress.startsWith("10.") ||
 				remoteAddress.startsWith("192.168.") ||
-				remoteAddress.startsWith("172.16.") ||
-				remoteAddress.startsWith("172.17.") ||
-				remoteAddress.startsWith("172.18.") ||
-				remoteAddress.startsWith("172.19.") ||
-				remoteAddress.startsWith("172.2") ||
-				remoteAddress.startsWith("172.30.") ||
-				remoteAddress.startsWith("172.31.")));
+				(remoteAddress.startsWith("172.") &&
+					// Only match 172.16.0.0 - 172.31.255.255 (RFC 1918 private range)
+					(() => {
+						const parts = remoteAddress.split(".");
+						if (parts.length !== 4) return false;
+						const second = parseInt(parts[1], 10);
+						return second >= 16 && second <= 31;
+					})())));
 
 	if (isTrustedProxy) {
 		return (
@@ -117,5 +118,29 @@ export function safeAuditLog(
 		auditLog(req, action, resource, details);
 	} catch (error: unknown) {
 		logger.error({ err: error as Error, action }, "Failed to write audit log");
+	}
+}
+
+/**
+ * Logs an audit event with a specific userId, bypassing req.user lookup
+ * Useful for actions where the userId is known but may not be in req.user (e.g., login)
+ */
+export function safeAuditLogWithUserId(
+	req: express.Request,
+	userId: number | null,
+	action: string,
+	resource: string | null = null,
+	details: Record<string, unknown> | null = null
+): void {
+	try {
+		insertAuditLog(
+			userId,
+			action,
+			resource,
+			details ? JSON.stringify(details) : null,
+			getIpAddress(req)
+		);
+	} catch (error: unknown) {
+		logger.error({ err: error as Error, action, userId }, "Failed to write audit log");
 	}
 }
