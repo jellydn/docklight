@@ -241,9 +241,7 @@ describe("executeCommand with SSH pool", () => {
 		expect(result.exitCode).toBe(0);
 		// Verify the command was sent WITHOUT sudo wrapper
 		expect(mockSshInstance.execCommand).toHaveBeenCalledWith("dokku plugin:install repo");
-		expect(mockSshInstance.execCommand).not.toHaveBeenCalledWith(
-			expect.stringContaining("sudo")
-		);
+		expect(mockSshInstance.execCommand).not.toHaveBeenCalledWith(expect.stringContaining("sudo"));
 	});
 
 	it("adds sudo when target user is not root", async () => {
@@ -255,9 +253,7 @@ describe("executeCommand with SSH pool", () => {
 
 		expect(result.exitCode).toBe(0);
 		// Verify the command was sent WITH sudo wrapper
-		expect(mockSshInstance.execCommand).toHaveBeenCalledWith(
-			expect.stringContaining("sudo")
-		);
+		expect(mockSshInstance.execCommand).toHaveBeenCalledWith(expect.stringContaining("sudo"));
 	});
 
 	it("does NOT add sudo when root target has different username casing", async () => {
