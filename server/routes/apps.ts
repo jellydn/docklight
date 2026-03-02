@@ -14,7 +14,7 @@ import {
 import { clearPrefix, get, set } from "../lib/cache.js";
 import { logger } from "../lib/logger.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
-import { getParam, auditLog } from "./util.js";
+import { getParam, safeAuditLog } from "./util.js";
 
 function getUserId(req: express.Request): string | undefined {
 	const user = req.user as JWTPayload | undefined;
@@ -59,7 +59,7 @@ export function registerAppRoutes(app: express.Application): void {
 			return;
 		}
 
-		auditLog(req, "app:create", name, { name });
+		safeAuditLog(req, "app:create", name, { name });
 
 		clearPrefix("apps:");
 		res.status(201).json({ success: true, name });
@@ -83,7 +83,7 @@ export function registerAppRoutes(app: express.Application): void {
 			return;
 		}
 
-		auditLog(req, "app:restart", name, { app: name });
+		safeAuditLog(req, "app:restart", name, { app: name });
 
 		clearPrefix("apps:");
 		res.json(result);
@@ -100,7 +100,7 @@ export function registerAppRoutes(app: express.Application): void {
 			return;
 		}
 
-		auditLog(req, "app:rebuild", name, { app: name });
+		safeAuditLog(req, "app:rebuild", name, { app: name });
 
 		clearPrefix("apps:");
 		res.json(result);
@@ -117,7 +117,7 @@ export function registerAppRoutes(app: express.Application): void {
 			return;
 		}
 
-		auditLog(req, "app:stop", name, { app: name });
+		safeAuditLog(req, "app:stop", name, { app: name });
 
 		clearPrefix("apps:");
 		res.json(result);
@@ -134,7 +134,7 @@ export function registerAppRoutes(app: express.Application): void {
 			return;
 		}
 
-		auditLog(req, "app:start", name, { app: name });
+		safeAuditLog(req, "app:start", name, { app: name });
 
 		clearPrefix("apps:");
 		res.json(result);
@@ -152,7 +152,7 @@ export function registerAppRoutes(app: express.Application): void {
 			return;
 		}
 
-		auditLog(req, "app:scale", name, { app: name, processType, count });
+		safeAuditLog(req, "app:scale", name, { app: name, processType, count });
 
 		clearPrefix("apps:");
 		res.json(result);
@@ -174,7 +174,7 @@ export function registerAppRoutes(app: express.Application): void {
 			return;
 		}
 
-		auditLog(req, "app:destroy", name, { app: name });
+		safeAuditLog(req, "app:destroy", name, { app: name });
 
 		clearPrefix("apps:");
 		res.json(result);

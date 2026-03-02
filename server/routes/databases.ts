@@ -11,7 +11,7 @@ import { clearPrefix, get, set } from "../lib/cache.js";
 import { logger } from "../lib/logger.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
 import type { UserRole } from "../lib/db.js";
-import { getParam, auditLog } from "./util.js";
+import { getParam, safeAuditLog } from "./util.js";
 
 function filterConnectionInfoForViewer(
 	databases: Database[],
@@ -51,7 +51,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const result = await createDatabase(plugin, name);
 
 		if (result.exitCode === 0) {
-			auditLog(req, "database:create", name, { plugin, name });
+			safeAuditLog(req, "database:create", name, { plugin, name });
 		}
 
 		clearPrefix("databases:");
@@ -64,7 +64,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const result = await linkDatabase(plugin, name, app);
 
 		if (result.exitCode === 0) {
-			auditLog(req, "database:link", name, { plugin, database: name, app });
+			safeAuditLog(req, "database:link", name, { plugin, database: name, app });
 		}
 
 		clearPrefix("databases:");
@@ -77,7 +77,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const result = await unlinkDatabase(plugin, name, app);
 
 		if (result.exitCode === 0) {
-			auditLog(req, "database:unlink", name, { plugin, database: name, app });
+			safeAuditLog(req, "database:unlink", name, { plugin, database: name, app });
 		}
 
 		clearPrefix("databases:");
@@ -90,7 +90,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const result = await destroyDatabase(plugin, name, confirmName);
 
 		if (result.exitCode === 0) {
-			auditLog(req, "database:destroy", name, { plugin, name });
+			safeAuditLog(req, "database:destroy", name, { plugin, name });
 		}
 
 		clearPrefix("databases:");

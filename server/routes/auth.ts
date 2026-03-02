@@ -28,7 +28,13 @@ export function registerAuthRoutes(app: express.Application): void {
 	app.post("/api/auth/logout", authMiddleware, (req, res) => {
 		const user = req.user;
 
-		safeAuditLogWithUserId(req, user?.userId ?? null, "logout", null, user?.username ? { username: user.username } : null);
+		safeAuditLogWithUserId(
+			req,
+			user?.userId ?? null,
+			"logout",
+			null,
+			user?.username ? { username: user.username } : null
+		);
 
 		clearAuthCookie(res);
 		res.json({ success: true });

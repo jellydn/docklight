@@ -11,7 +11,7 @@ import {
 } from "../lib/db.js";
 import { authMiddleware, requireAdmin, hashPassword } from "../lib/auth.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
-import { auditLog } from "./util.js";
+import { safeAuditLog } from "./util.js";
 
 export function registerUserRoutes(app: express.Application): void {
 	app.get("/api/users", authMiddleware, requireAdmin, (_req, res) => {
@@ -50,7 +50,7 @@ export function registerUserRoutes(app: express.Application): void {
 			const passwordHash = await hashPassword(password);
 			const user = createUser(username, passwordHash, role);
 
-			auditLog(req, "user:create", username, { username, role });
+			safeAuditLog(req, "user:create", username, { username, role });
 
 			clearPrefix("users:");
 			res.status(201).json(user);
@@ -111,7 +111,7 @@ export function registerUserRoutes(app: express.Application): void {
 
 		updateUser(id, updates);
 
-		auditLog(req, "user:update", existing.username, {
+		safeAuditLog(req, "user:update", existing.username, {
 			username: existing.username,
 			role,
 			passwordChanged: password !== undefined,
@@ -143,7 +143,7 @@ export function registerUserRoutes(app: express.Application): void {
 			}
 
 			// Audit log admin user deletion
-			auditLog(req, "user:delete", existing.username, {
+			safeAuditLog(req, "user:delete", existing.username, {
 				username: existing.username,
 				role: existing.role,
 			});
@@ -155,7 +155,7 @@ export function registerUserRoutes(app: express.Application): void {
 
 		deleteUser(id);
 
-		auditLog(req, "user:delete", existing.username, {
+		safeAuditLog(req, "user:delete", existing.username, {
 			username: existing.username,
 			role: existing.role,
 		});
