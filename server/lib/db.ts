@@ -498,7 +498,8 @@ export function getUserAuditLogs(filters: UserAuditLogFilters = {}): UserAuditLo
 
 	// Get paginated results
 	const dataStmt = getDb().prepare(
-		`SELECT id, user_id as userId, action, resource, details, ip_address as ipAddress, createdAt
+		`SELECT id, user_id as userId, action, resource, details, ip_address as ipAddress,
+		        strftime('%Y-%m-%dT%H:%M:%SZ', createdAt) as createdAt
 		 FROM audit_log
 		 ${whereClause}
 		 ORDER BY createdAt DESC
