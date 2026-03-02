@@ -1,6 +1,6 @@
 import type express from "express";
 import { getAuditLogs, getRecentCommands, getUserAuditLogs } from "../lib/db.js";
-import { authMiddleware } from "../lib/auth.js";
+import { authMiddleware, requireAdmin } from "../lib/auth.js";
 import { get, set } from "../lib/cache.js";
 
 export function registerCommandRoutes(app: express.Application): void {
@@ -46,20 +46,22 @@ export function registerCommandRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.get("/api/audit/user-logs", authMiddleware, (req, res) => {
+	app.get("/api/audit/user-logs", authMiddleware, requireAdmin, (req, res) => {
 		const limit = Number.parseInt(req.query.limit as string) || 50;
 		const offset = Number.parseInt(req.query.offset as string) || 0;
 		const startDate = req.query.startDate as string | undefined;
 		const endDate = req.query.endDate as string | undefined;
-		const userId = req.query.userId as string | undefined;
+		const userIdQuery = req.query.userId as string | undefined;
 		const action = req.query.action as string | undefined;
+
+		const parsedUserId = userIdQuery ? Number.parseInt(userIdQuery, 10) : undefined;
 
 		const result = getUserAuditLogs({
 			limit,
 			offset,
 			startDate,
 			endDate,
-			userId: userId !== undefined ? Number.parseInt(userId) : undefined,
+			userId: parsedUserId !== undefined && !Number.isNaN(parsedUserId) ? parsedUserId : undefined,
 			action,
 		});
 

@@ -54,7 +54,7 @@ export const CommandHistorySchema = z.object({
 	exitCode: z.number(),
 	stdout: z.string(),
 	stderr: z.string(),
-	createdAt: z.string(),
+	createdAt: z.string().datetime(),
 });
 
 export type CommandHistory = z.infer<typeof CommandHistorySchema>;
@@ -182,7 +182,7 @@ export const UserSchema = z.object({
 	id: z.number(),
 	username: z.string(),
 	role: UserRoleSchema,
-	createdAt: z.string(),
+	createdAt: z.string().datetime(),
 });
 
 export type User = z.infer<typeof UserSchema>;
@@ -207,7 +207,7 @@ export const UserAuditLogSchema = z.object({
 	resource: z.string().nullable(),
 	details: z.string().nullable(),
 	ipAddress: z.string().nullable(),
-	createdAt: z.string(),
+	createdAt: z.string().datetime(),
 });
 
 export type UserAuditLog = z.infer<typeof UserAuditLogSchema>;

@@ -46,14 +46,35 @@ export function getOptionalParam(params: unknown, key: string): string | undefin
 
 /**
  * Gets the IP address from the request, checking common proxy headers
+ * Only trusts X-Forwarded-For and X-Real-IP headers if request is from a trusted proxy
  */
 export function getIpAddress(req: express.Request): string | undefined {
-	return (
-		(req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0].trim() ||
-		(req.headers["x-real-ip"] as string | undefined) ||
-		req.socket.remoteAddress ||
-		undefined
-	);
+	const trustProxy = req.app?.get("trust proxy") as boolean | undefined;
+	const remoteAddress = req.socket?.remoteAddress;
+
+	const isTrustedProxy =
+		trustProxy === true ||
+		(remoteAddress &&
+			(remoteAddress.startsWith("127.") ||
+				remoteAddress.startsWith("10.") ||
+				remoteAddress.startsWith("192.168.") ||
+				remoteAddress.startsWith("172.16.") ||
+				remoteAddress.startsWith("172.17.") ||
+				remoteAddress.startsWith("172.18.") ||
+				remoteAddress.startsWith("172.19.") ||
+				remoteAddress.startsWith("172.2") ||
+				remoteAddress.startsWith("172.30.") ||
+				remoteAddress.startsWith("172.31.")));
+
+	if (isTrustedProxy) {
+		return (
+			(req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0].trim() ||
+			(req.headers["x-real-ip"] as string | undefined) ||
+			remoteAddress
+		);
+	}
+
+	return remoteAddress;
 }
 
 /**
