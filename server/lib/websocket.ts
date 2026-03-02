@@ -3,7 +3,7 @@ import type http from "node:http";
 import type net from "node:net";
 import { WebSocketServer } from "ws";
 import type { WebSocket as WS } from "ws";
-import { verifyToken } from "./auth.js";
+import { verifyToken, type JWTPayload } from "./auth.js";
 import { isValidAppName } from "./apps.js";
 import { buildRuntimeCommand } from "./executor.js";
 import { logger } from "./logger.js";
@@ -11,26 +11,57 @@ import { DokkuCommands } from "./dokku.js";
 import { isCommandAllowed } from "./allowlist.js";
 
 const MAX_CONNECTIONS = Number(process.env.WS_MAX_CONNECTIONS ?? 50);
+const MAX_CONNECTIONS_PER_USER = Number(process.env.WS_MAX_CONNECTIONS_PER_USER ?? 5);
 const IDLE_TIMEOUT_MS = Number(process.env.WS_IDLE_TIMEOUT_MS ?? 30 * 60 * 1000); // 30 minutes
 const CLEANUP_INTERVAL_MS = Number(process.env.WS_CLEANUP_INTERVAL_MS ?? 60 * 1000); // 1 minute
 
 interface ExtendedWebSocket extends WS {
 	isAlive?: boolean;
 	lastActivityAt?: number;
+	userId?: number | string;
 }
 
 interface ExtendedIncomingMessage extends http.IncomingMessage {
 	appName?: string;
+	userId?: number | string;
 }
 
 function markActivity(ws: ExtendedWebSocket): void {
 	ws.lastActivityAt = Date.now();
 }
 
+function getUserIdentifier(payload: JWTPayload): number | string {
+	return payload.userId ?? payload.username ?? "anonymous";
+}
+
+function getUserConnectionCount(
+	userId: number | string,
+	connectionsPerUser: Map<number | string, Set<ExtendedWebSocket>>
+): number {
+	return connectionsPerUser.get(userId)?.size ?? 0;
+}
+
+function removeFromPerUserTracking(
+	userId: number | string,
+	ws: ExtendedWebSocket,
+	connectionsPerUser: Map<number | string, Set<ExtendedWebSocket>>
+): void {
+	const userConnections = connectionsPerUser.get(userId);
+	if (userConnections) {
+		userConnections.delete(ws);
+		if (userConnections.size === 0) {
+			connectionsPerUser.delete(userId);
+		}
+	}
+}
+
 export function setupLogStreaming(server: http.Server) {
 	const wss = new WebSocketServer({
 		noServer: true,
 	});
+
+	// Track connections per user for per-user limits
+	const connectionsPerUser = new Map<number | string, Set<ExtendedWebSocket>>();
 
 	const cleanupInterval = setInterval(() => {
 		const now = Date.now();
@@ -112,6 +143,24 @@ export function setupLogStreaming(server: http.Server) {
 			return;
 		}
 
+		const userId = getUserIdentifier(payload);
+		req.userId = userId;
+
+		// Check per-user connection limit
+		if (getUserConnectionCount(userId, connectionsPerUser) >= MAX_CONNECTIONS_PER_USER) {
+			logger.warn(
+				{
+					userId,
+					current: getUserConnectionCount(userId, connectionsPerUser),
+					max: MAX_CONNECTIONS_PER_USER,
+				},
+				"WebSocket per-user connection limit reached"
+			);
+			socket.write("HTTP/1.1 429 Too Many Requests\r\n\r\n");
+			socket.destroy();
+			return;
+		}
+
 		if (wss.clients.size >= MAX_CONNECTIONS) {
 			logger.warn(
 				{ current: wss.clients.size, max: MAX_CONNECTIONS },
@@ -134,6 +183,19 @@ export function setupLogStreaming(server: http.Server) {
 			return;
 		}
 
+		const userId = req.userId;
+		if (userId) {
+			ws.userId = userId;
+			// Track connection per user
+			if (!connectionsPerUser.has(userId)) {
+				connectionsPerUser.set(userId, new Set());
+			}
+			const userConnections = connectionsPerUser.get(userId);
+			if (userConnections) {
+				userConnections.add(ws);
+			}
+		}
+
 		ws.isAlive = true;
 		markActivity(ws);
 
@@ -142,7 +204,7 @@ export function setupLogStreaming(server: http.Server) {
 			markActivity(ws);
 		});
 
-		logger.info({ active: wss.clients.size }, "WebSocket connection established");
+		logger.info({ userId, active: wss.clients.size }, "WebSocket connection established");
 		let lineCount = 100;
 		let logProcess: ChildProcess | null = null;
 
@@ -201,10 +263,13 @@ export function setupLogStreaming(server: http.Server) {
 		ws.on("close", () => {
 			const logProcessRef = logProcess;
 			setImmediate(() => {
-				logger.info({ active: wss.clients.size }, "WebSocket connection closed");
+				logger.info({ userId, active: wss.clients.size }, "WebSocket connection closed");
 			});
 			if (logProcessRef && !logProcessRef.killed) {
 				logProcessRef.kill();
+			}
+			if (userId) {
+				removeFromPerUserTracking(userId, ws, connectionsPerUser);
 			}
 		});
 
@@ -212,6 +277,9 @@ export function setupLogStreaming(server: http.Server) {
 			logger.error({ err: error }, "WebSocket error");
 			if (logProcess && !logProcess.killed) {
 				logProcess.kill();
+			}
+			if (userId) {
+				removeFromPerUserTracking(userId, ws, connectionsPerUser);
 			}
 		});
 	});
