@@ -42,3 +42,15 @@ export function getOptionalParam(params: unknown, key: string): string | undefin
 	if (Array.isArray(value)) return value[0];
 	return value as string | undefined;
 }
+
+/**
+ * Gets the IP address from the request, checking common proxy headers
+ */
+export function getIpAddress(req: express.Request): string | undefined {
+	return (
+		(req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0].trim() ||
+		(req.headers["x-real-ip"] as string | undefined) ||
+		req.socket.remoteAddress ||
+		undefined
+	);
+}

@@ -346,7 +346,8 @@ export interface UserAuditLogFilters {
 	offset?: number;
 	userId?: number;
 	action?: string;
-	since?: string;
+	startDate?: string;
+	endDate?: string;
 }
 
 export interface UserAuditLogResult {
@@ -477,9 +478,14 @@ export function getUserAuditLogs(filters: UserAuditLogFilters = {}): UserAuditLo
 		params.push(filters.action);
 	}
 
-	if (filters.since && isValidISODate(filters.since)) {
+	if (filters.startDate && isValidISODate(filters.startDate)) {
 		conditions.push("createdAt >= ?");
-		params.push(filters.since);
+		params.push(filters.startDate);
+	}
+
+	if (filters.endDate && isValidISODate(filters.endDate)) {
+		conditions.push("createdAt <= ?");
+		params.push(filters.endDate);
 	}
 
 	// Build WHERE clause
