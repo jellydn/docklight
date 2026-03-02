@@ -43,7 +43,7 @@ Docklight is designed to run on the same VPS as Dokku.
 - SSL management with Let's Encrypt.
 - Audit logs for command history and filtering.
 - Command transparency: exact CLI command, exit code, stdout/stderr.
-- Simple auth with admin password and JWT session.
+- Simple auth with username/password and JWT session.
 
 ## 🧱 Tech Stack
 
@@ -91,6 +91,15 @@ cd server && bun run dev
 # Terminal 2
 cd client && bun run dev
 ```
+
+**First-time setup**: After starting the server, create an admin user:
+
+```bash
+cd server
+npx tsx createUser.ts admin your-password-here
+```
+
+Then open http://localhost:5173 and log in with the credentials you created.
 
 Or use `just`:
 
