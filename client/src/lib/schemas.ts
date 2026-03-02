@@ -198,3 +198,26 @@ export const AuthMeSchema = z.object({
 		})
 		.optional(),
 });
+
+// User audit log schema
+export const UserAuditLogSchema = z.object({
+	id: z.number(),
+	userId: z.number().nullable(),
+	action: z.string(),
+	resource: z.string().nullable(),
+	details: z.string().nullable(),
+	ipAddress: z.string().nullable(),
+	createdAt: z.string().datetime(),
+});
+
+export type UserAuditLog = z.infer<typeof UserAuditLogSchema>;
+
+// User audit log result schema
+export const UserAuditLogResultSchema = z.object({
+	logs: z.array(UserAuditLogSchema),
+	total: z.number(),
+	limit: z.number(),
+	offset: z.number(),
+});
+
+export type UserAuditLogResult = z.infer<typeof UserAuditLogResultSchema>;

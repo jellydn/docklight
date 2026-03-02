@@ -93,6 +93,14 @@ function isValidISODate(date: string): boolean {
 	return d instanceof Date && !Number.isNaN(d.getTime());
 }
 
+/**
+ * Normalizes an end date filter to ISO 8601 format.
+ * If the date is date-only (YYYY-MM-DD), appends end-of-day time.
+ */
+function normalizeEndDateFilter(endDate: string): string {
+	return /^\d{4}-\d{2}-\d{2}$/.test(endDate) ? `${endDate}T23:59:59.999Z` : endDate;
+}
+
 export interface CommandHistory {
 	id: number;
 	command: string;
@@ -145,13 +153,14 @@ export function getAuditLogs(filters: AuditLogFilters = {}): AuditLogResult {
 	const params: (string | number)[] = [];
 
 	if (filters.startDate && isValidISODate(filters.startDate)) {
-		conditions.push("createdAt >= ?");
+		conditions.push("datetime(createdAt) >= datetime(?)");
 		params.push(filters.startDate);
 	}
 
 	if (filters.endDate && isValidISODate(filters.endDate)) {
-		conditions.push("createdAt <= ?");
-		params.push(filters.endDate);
+		const endDate = normalizeEndDateFilter(filters.endDate);
+		conditions.push("datetime(createdAt) <= datetime(?)");
+		params.push(endDate);
 	}
 
 	if (filters.command) {
@@ -346,7 +355,8 @@ export interface UserAuditLogFilters {
 	offset?: number;
 	userId?: number;
 	action?: string;
-	since?: string;
+	startDate?: string;
+	endDate?: string;
 }
 
 export interface UserAuditLogResult {
@@ -477,9 +487,15 @@ export function getUserAuditLogs(filters: UserAuditLogFilters = {}): UserAuditLo
 		params.push(filters.action);
 	}
 
-	if (filters.since && isValidISODate(filters.since)) {
-		conditions.push("createdAt >= ?");
-		params.push(filters.since);
+	if (filters.startDate && isValidISODate(filters.startDate)) {
+		conditions.push("datetime(createdAt) >= datetime(?)");
+		params.push(filters.startDate);
+	}
+
+	if (filters.endDate && isValidISODate(filters.endDate)) {
+		const endDate = normalizeEndDateFilter(filters.endDate);
+		conditions.push("datetime(createdAt) <= datetime(?)");
+		params.push(endDate);
 	}
 
 	// Build WHERE clause
@@ -492,7 +508,8 @@ export function getUserAuditLogs(filters: UserAuditLogFilters = {}): UserAuditLo
 
 	// Get paginated results
 	const dataStmt = getDb().prepare(
-		`SELECT id, user_id as userId, action, resource, details, ip_address as ipAddress, createdAt
+		`SELECT id, user_id as userId, action, resource, details, ip_address as ipAddress,
+		        strftime('%Y-%m-%dT%H:%M:%SZ', createdAt) as createdAt
 		 FROM audit_log
 		 ${whereClause}
 		 ORDER BY createdAt DESC

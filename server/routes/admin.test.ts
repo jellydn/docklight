@@ -5,6 +5,7 @@ import request from "supertest";
 vi.mock("../lib/db.js", () => ({
 	exportBackup: vi.fn(),
 	importBackup: vi.fn(),
+	insertAuditLog: vi.fn(),
 }));
 
 vi.mock("../lib/auth.js", () => ({

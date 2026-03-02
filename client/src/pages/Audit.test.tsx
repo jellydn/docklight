@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { Audit } from "./Audit";
-import type { CommandHistory } from "../lib/schemas.js";
+import type { CommandHistory, UserAuditLog } from "../lib/schemas.js";
 
 vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
@@ -185,7 +185,7 @@ describe("Audit", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByText("3 logs found")).toBeInTheDocument();
+			expect(screen.getByText("3 commands found")).toBeInTheDocument();
 		});
 	});
 
@@ -204,7 +204,7 @@ describe("Audit", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByText("1 log found")).toBeInTheDocument();
+			expect(screen.getByText("1 command found")).toBeInTheDocument();
 		});
 	});
 
@@ -340,6 +340,329 @@ describe("Audit", () => {
 
 		await waitFor(() => {
 			expect(screen.getByText("No errors")).toBeInTheDocument();
+		});
+	});
+
+	const mockUserLogs: UserAuditLog[] = [
+		{
+			id: 1,
+			userId: 1,
+			action: "login",
+			resource: null,
+			details: null,
+			ipAddress: "192.168.1.100",
+			createdAt: "2024-01-15T10:30:00Z",
+		},
+		{
+			id: 2,
+			userId: 2,
+			action: "apps:create",
+			resource: "my-app",
+			details: '{"name": "my-app"}',
+			ipAddress: "192.168.1.101",
+			createdAt: "2024-01-15T10:31:00Z",
+		},
+		{
+			id: 3,
+			userId: 1,
+			action: "apps:delete",
+			resource: "old-app",
+			details: null,
+			ipAddress: "192.168.1.100",
+			createdAt: "2024-01-15T10:32:00Z",
+		},
+	];
+
+	const mockUserLogResult = {
+		logs: mockUserLogs,
+		total: 3,
+		limit: 50,
+		offset: 0,
+	};
+
+	it("should switch to user actions tab when clicked", async () => {
+		// Arrange
+		const user = userEvent.setup();
+		apiFetchMock.mockImplementation((url: string) => {
+			if (url.includes("/audit/user-logs")) {
+				return Promise.resolve(mockUserLogResult);
+			}
+			return Promise.resolve(mockLogResult);
+		});
+
+		render(
+			<MemoryRouter>
+				<Audit />
+			</MemoryRouter>
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("Audit Logs")).toBeInTheDocument();
+		});
+
+		// Act
+		const userActionsTab = screen.getByRole("button", { name: "User Actions" });
+		await user.click(userActionsTab);
+
+		// Assert
+		await waitFor(() => {
+			expect(screen.getAllByText("User ID")).toHaveLength(2); // filter label + table header
+			expect(screen.getAllByText("Action")).toHaveLength(2); // filter label + table header
+			expect(screen.getAllByText("Resource")).toHaveLength(1); // table header only
+			expect(screen.getAllByText("IP Address")).toHaveLength(1); // table header only
+		});
+	});
+
+	it("should display user audit logs with data", async () => {
+		// Arrange
+		const user = userEvent.setup();
+		apiFetchMock.mockImplementation((url: string) => {
+			if (url.includes("/audit/user-logs")) {
+				return Promise.resolve(mockUserLogResult);
+			}
+			return Promise.resolve(mockLogResult);
+		});
+
+		render(
+			<MemoryRouter>
+				<Audit />
+			</MemoryRouter>
+		);
+
+		// Act - switch to user actions tab
+		const userActionsTab = screen.getByRole("button", { name: "User Actions" });
+		await user.click(userActionsTab);
+
+		// Assert
+		await waitFor(() => {
+			expect(screen.getAllByText("1")).toHaveLength(2); // appears twice in table
+			expect(screen.getAllByText("2")).toHaveLength(1); // appears once
+			expect(screen.getByText("login")).toBeInTheDocument();
+			expect(screen.getByText("apps:create")).toBeInTheDocument();
+			expect(screen.getByText("apps:delete")).toBeInTheDocument();
+		});
+	});
+
+	it("should display N/A for null userId", async () => {
+		// Arrange
+		const user = userEvent.setup();
+		const logsWithNullUser: UserAuditLog[] = [
+			{
+				id: 1,
+				userId: null,
+				action: "system:startup",
+				resource: null,
+				details: null,
+				ipAddress: null,
+				createdAt: "2024-01-15T10:30:00Z",
+			},
+		];
+		apiFetchMock.mockImplementation((url: string) => {
+			if (url.includes("/audit/user-logs")) {
+				return Promise.resolve({
+					logs: logsWithNullUser,
+					total: 1,
+					limit: 50,
+					offset: 0,
+				});
+			}
+			return Promise.resolve(mockLogResult);
+		});
+
+		render(
+			<MemoryRouter>
+				<Audit />
+			</MemoryRouter>
+		);
+
+		// Act
+		const userActionsTab = screen.getByRole("button", { name: "User Actions" });
+		await user.click(userActionsTab);
+
+		// Assert
+		await waitFor(() => {
+			expect(screen.getAllByText("N/A")).toHaveLength(3); // userId, resource, ipAddress
+		});
+	});
+
+	it("should display N/A for null resource", async () => {
+		// Arrange
+		const user = userEvent.setup();
+		const logsWithNullResource: UserAuditLog[] = [
+			{
+				id: 1,
+				userId: 1,
+				action: "login",
+				resource: null,
+				details: null,
+				ipAddress: "192.168.1.1",
+				createdAt: "2024-01-15T10:30:00Z",
+			},
+		];
+		apiFetchMock.mockResolvedValue({
+			logs: logsWithNullResource,
+			total: 1,
+			limit: 50,
+			offset: 0,
+		});
+
+		render(
+			<MemoryRouter>
+				<Audit />
+			</MemoryRouter>
+		);
+
+		// Act
+		const userActionsTab = screen.getByRole("button", { name: "User Actions" });
+		await user.click(userActionsTab);
+
+		// Assert
+		await waitFor(() => {
+			const resourceCells = screen.getAllByText("N/A");
+			expect(resourceCells.length).toBeGreaterThan(0);
+		});
+	});
+
+	it("should display action badges with correct colors", async () => {
+		// Arrange
+		const user = userEvent.setup();
+		apiFetchMock.mockResolvedValue(mockUserLogResult);
+
+		render(
+			<MemoryRouter>
+				<Audit />
+			</MemoryRouter>
+		);
+
+		// Act
+		const userActionsTab = screen.getByRole("button", { name: "User Actions" });
+		await user.click(userActionsTab);
+
+		// Assert
+		await waitFor(() => {
+			expect(screen.getByText("login")).toBeInTheDocument();
+			expect(screen.getByText("apps:create")).toBeInTheDocument();
+			expect(screen.getByText("apps:delete")).toBeInTheDocument();
+		});
+	});
+
+	it("should expand user log details when view details is clicked", async () => {
+		// Arrange
+		const user = userEvent.setup();
+		apiFetchMock.mockResolvedValue(mockUserLogResult);
+
+		render(
+			<MemoryRouter>
+				<Audit />
+			</MemoryRouter>
+		);
+
+		// Act - switch to user actions tab
+		const userActionsTab = screen.getByRole("button", { name: "User Actions" });
+		await user.click(userActionsTab);
+
+		await waitFor(() => {
+			const viewButtons = screen.getAllByText("View Details");
+			expect(viewButtons.length).toBeGreaterThan(0);
+		});
+
+		const viewButtons = screen.getAllByText("View Details");
+		await user.click(viewButtons[0]);
+
+		// Assert
+		await waitFor(() => {
+			expect(screen.getByText("Details")).toBeInTheDocument();
+		});
+	});
+
+	it("should display no details message when details is empty", async () => {
+		// Arrange
+		const user = userEvent.setup();
+		const logsWithEmptyDetails: UserAuditLog[] = [
+			{
+				id: 1,
+				userId: 1,
+				action: "login",
+				resource: null,
+				details: null,
+				ipAddress: "192.168.1.1",
+				createdAt: "2024-01-15T10:30:00Z",
+			},
+		];
+		apiFetchMock.mockResolvedValue({
+			logs: logsWithEmptyDetails,
+			total: 1,
+			limit: 50,
+			offset: 0,
+		});
+
+		render(
+			<MemoryRouter>
+				<Audit />
+			</MemoryRouter>
+		);
+
+		// Act
+		const userActionsTab = screen.getByRole("button", { name: "User Actions" });
+		await user.click(userActionsTab);
+
+		const viewButtons = await screen.findAllByText("View Details");
+		await user.click(viewButtons[0]);
+
+		// Assert
+		await waitFor(() => {
+			expect(screen.getByText("No details")).toBeInTheDocument();
+		});
+	});
+
+	it("should display filters for user audit logs", async () => {
+		// Arrange
+		const user = userEvent.setup();
+		apiFetchMock.mockResolvedValue(mockUserLogResult);
+
+		render(
+			<MemoryRouter>
+				<Audit />
+			</MemoryRouter>
+		);
+
+		// Act
+		const userActionsTab = screen.getByRole("button", { name: "User Actions" });
+		await user.click(userActionsTab);
+
+		// Assert
+		await waitFor(() => {
+			expect(screen.getByLabelText("User ID")).toBeInTheDocument();
+			expect(screen.getByLabelText("Action")).toBeInTheDocument();
+			expect(screen.getByText("Reset Filters")).toBeInTheDocument();
+		});
+	});
+
+	it("should show empty state for user audit logs when no logs", async () => {
+		// Arrange
+		const user = userEvent.setup();
+		apiFetchMock.mockResolvedValue({
+			logs: [],
+			total: 0,
+			limit: 50,
+			offset: 0,
+		});
+
+		render(
+			<MemoryRouter>
+				<Audit />
+			</MemoryRouter>
+		);
+
+		// Act
+		const userActionsTab = screen.getByRole("button", { name: "User Actions" });
+		await user.click(userActionsTab);
+
+		// Assert
+		await waitFor(() => {
+			expect(
+				screen.getByText("No user audit logs found matching your filters.")
+			).toBeInTheDocument();
 		});
 	});
 });

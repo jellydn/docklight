@@ -1,6 +1,6 @@
 import type express from "express";
-import { getAuditLogs, getRecentCommands } from "../lib/db.js";
-import { authMiddleware } from "../lib/auth.js";
+import { getAuditLogs, getRecentCommands, getUserAuditLogs } from "../lib/db.js";
+import { authMiddleware, requireAdmin } from "../lib/auth.js";
 import { get, set } from "../lib/cache.js";
 
 export function registerCommandRoutes(app: express.Application): void {
@@ -41,6 +41,33 @@ export function registerCommandRoutes(app: express.Application): void {
 			endDate,
 			command,
 			exitCode: exitCode as "all" | "success" | "error",
+		});
+
+		res.json(result);
+	});
+
+	app.get("/api/audit/user-logs", authMiddleware, requireAdmin, (req, res) => {
+		const parsedLimit = Number.parseInt(req.query.limit as string, 10);
+		const parsedOffset = Number.parseInt(req.query.offset as string, 10);
+		const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 500) : 50;
+		const offset = Number.isFinite(parsedOffset) ? Math.max(parsedOffset, 0) : 0;
+		const startDate = req.query.startDate as string | undefined;
+		const endDate = req.query.endDate as string | undefined;
+		const userId = req.query.userId as string | undefined;
+		const action = req.query.action as string | undefined;
+
+		if (userId !== undefined && !/^\d+$/.test(userId)) {
+			res.status(400).json({ error: "Invalid userId filter" });
+			return;
+		}
+
+		const result = getUserAuditLogs({
+			limit,
+			offset,
+			startDate,
+			endDate,
+			userId: userId !== undefined ? Number.parseInt(userId, 10) : undefined,
+			action,
 		});
 
 		res.json(result);

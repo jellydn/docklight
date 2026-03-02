@@ -2,7 +2,7 @@ import type express from "express";
 import { getConfig, setConfig, unsetConfig } from "../lib/config.js";
 import { clearPrefix } from "../lib/cache.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
-import { getParam } from "./util.js";
+import { getParam, safeAuditLog } from "./util.js";
 
 export function registerAppConfigRoutes(app: express.Application): void {
 	app.get("/api/apps/:name/config", authMiddleware, requireOperator, async (req, res) => {
@@ -15,6 +15,11 @@ export function registerAppConfigRoutes(app: express.Application): void {
 		const name = getParam(req.params, "name");
 		const { key, value } = req.body;
 		const result = await setConfig(name, key, value);
+
+		if (result.exitCode === 0) {
+			safeAuditLog(req, "config:set", name, { app: name, key });
+		}
+
 		clearPrefix("apps:");
 		res.json(result);
 	});
@@ -23,6 +28,11 @@ export function registerAppConfigRoutes(app: express.Application): void {
 		const name = getParam(req.params, "name");
 		const key = getParam(req.params, "key");
 		const result = await unsetConfig(name, key);
+
+		if (result.exitCode === 0) {
+			safeAuditLog(req, "config:unset", name, { app: name, key });
+		}
+
 		clearPrefix("apps:");
 		res.json(result);
 	});

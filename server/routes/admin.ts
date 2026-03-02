@@ -2,11 +2,15 @@ import type express from "express";
 import { exportBackup, importBackup, type BackupData } from "../lib/db.js";
 import { authMiddleware, requireAdmin } from "../lib/auth.js";
 import { adminRateLimiter } from "../lib/rate-limiter.js";
+import { safeAuditLog } from "./util.js";
 
 export function registerAdminRoutes(app: express.Application): void {
-	app.get("/api/admin/backup", adminRateLimiter, authMiddleware, requireAdmin, (_req, res) => {
+	app.get("/api/admin/backup", adminRateLimiter, authMiddleware, requireAdmin, (req, res) => {
 		const backup = exportBackup();
 		const filename = `docklight-backup-${new Date().toISOString().slice(0, 10)}.json`;
+
+		safeAuditLog(req, "admin:backup", null, { filename });
+
 		res.setHeader("Content-Type", "application/json");
 		res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
 		res.json(backup);
@@ -26,6 +30,11 @@ export function registerAdminRoutes(app: express.Application): void {
 			res.status(400).json({ error: result.error });
 			return;
 		}
+
+		safeAuditLog(req, "admin:restore", null, {
+			version: backup.version,
+			timestamp: backup.timestamp,
+		});
 
 		res.json({ success: true });
 	});

@@ -11,6 +11,7 @@ import {
 } from "../lib/db.js";
 import { authMiddleware, requireAdmin, hashPassword } from "../lib/auth.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
+import { safeAuditLog } from "./util.js";
 
 export function registerUserRoutes(app: express.Application): void {
 	app.get("/api/users", authMiddleware, requireAdmin, (_req, res) => {
@@ -48,6 +49,9 @@ export function registerUserRoutes(app: express.Application): void {
 		try {
 			const passwordHash = await hashPassword(password);
 			const user = createUser(username, passwordHash, role);
+
+			safeAuditLog(req, "user:create", username, { username, role });
+
 			clearPrefix("users:");
 			res.status(201).json(user);
 		} catch (err: unknown) {
@@ -106,6 +110,13 @@ export function registerUserRoutes(app: express.Application): void {
 		}
 
 		updateUser(id, updates);
+
+		safeAuditLog(req, "user:update", existing.username, {
+			username: existing.username,
+			role,
+			passwordChanged: password !== undefined,
+		});
+
 		clearPrefix("users:");
 		res.json(getUserById(id));
 	});
@@ -130,12 +141,25 @@ export function registerUserRoutes(app: express.Application): void {
 				res.status(400).json({ error: result.error });
 				return;
 			}
+
+			// Audit log admin user deletion
+			safeAuditLog(req, "user:delete", existing.username, {
+				username: existing.username,
+				role: existing.role,
+			});
+
 			clearPrefix("users:");
 			res.json({ success: true });
 			return;
 		}
 
 		deleteUser(id);
+
+		safeAuditLog(req, "user:delete", existing.username, {
+			username: existing.username,
+			role: existing.role,
+		});
+
 		clearPrefix("users:");
 		res.json({ success: true });
 	});

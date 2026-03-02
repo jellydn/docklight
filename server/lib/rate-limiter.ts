@@ -8,7 +8,7 @@ const AUTH_CHECK_MAX_REQUESTS = 300;
 
 // Command execution rate limiting (separate from auth rate limit)
 const COMMAND_WINDOW_MS = 60 * 1000; // 1 minute
-const COMMAND_MAX_REQUESTS = 10;
+const COMMAND_MAX_REQUESTS = 30;
 
 interface UserCommandHistory {
 	timestamps: number[];
