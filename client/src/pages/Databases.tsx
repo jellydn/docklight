@@ -319,6 +319,15 @@ export function Databases() {
 							Create
 						</button>
 					</div>
+					{newDbPlugin && (
+						<p className="mt-2 text-xs text-gray-500">
+							Ensure the plugin is installed on your Dokku server first via SSH:{" "}
+							<code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono select-all">
+								{PLUGIN_INSTALL_COMMANDS.find((p) => p.label.toLowerCase() === newDbPlugin)
+									?.command ?? `sudo dokku plugin:install <plugin-url>`}
+							</code>
+						</p>
+					)}
 				</div>
 			)}
 
