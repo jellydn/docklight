@@ -13,8 +13,14 @@ export function registerPluginRoutes(app: express.Application): void {
 			return;
 		}
 
-		const plugins = await getPlugins();
-		set(cacheKey, plugins);
-		res.json(plugins);
+		const result = await getPlugins();
+
+		if ("exitCode" in result && result.exitCode !== 0) {
+			res.status(500).json({ error: result.error });
+			return;
+		}
+
+		set(cacheKey, result);
+		res.json(result);
 	});
 }
