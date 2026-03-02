@@ -33,12 +33,8 @@ export interface DokkuCommands {
 	configSet(app: string, key: string, value: string): string;
 	configUnset(app: string, key: string): string;
 
-	// Plugins
+	// Plugins (read-only)
 	pluginList(): string;
-	pluginInstall(repo: string, name?: string): string;
-	pluginUninstall(name: string): string;
-	pluginEnable(name: string): string;
-	pluginDisable(name: string): string;
 
 	// Ports
 	portsReport(app: string): string;
@@ -135,13 +131,8 @@ export const DokkuCommands: DokkuCommands = {
 		`dokku config:set ${shellQuote(app)} ${shellQuote(key)}=${shellQuote(value)}`,
 	configUnset: (app: string, key: string): string => `dokku config:unset ${app} ${key}`,
 
-	// Plugins
+	// Plugins (read-only)
 	pluginList: (): string => "dokku plugin:list",
-	pluginInstall: (repo: string, name?: string): string =>
-		name ? `dokku plugin:install ${repo} ${name}` : `dokku plugin:install ${repo}`,
-	pluginUninstall: (name: string): string => `dokku plugin:uninstall ${name}`,
-	pluginEnable: (name: string): string => `dokku plugin:enable ${name}`,
-	pluginDisable: (name: string): string => `dokku plugin:disable ${name}`,
 
 	// Ports
 	portsReport: (app: string): string => `dokku ports:report ${app}`,

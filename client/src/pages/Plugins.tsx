@@ -1,125 +1,29 @@
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { useToast } from "../components/ToastProvider";
 import { apiFetch } from "../lib/api.js";
-import { createErrorResult } from "../lib/command-utils.js";
-import { useAuth } from "@/contexts/auth-context.js";
-import { POPULAR_PLUGIN_REPOS } from "../lib/plugin-constants.js";
-import { CommandResultSchema, type PluginInfo, PluginInfoSchema } from "../lib/schemas.js";
+import type { PluginInfo } from "../lib/schemas.js";
+import { PluginInfoSchema } from "../lib/schemas.js";
 
 export function Plugins() {
-	const { canModify } = useAuth();
-	const { addToast } = useToast();
 	const [plugins, setPlugins] = useState<PluginInfo[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [pluginRepo, setPluginRepo] = useState("");
-	const [pluginName, setPluginName] = useState("");
-	const [sudoPassword, setSudoPassword] = useState("");
-	const [installSubmitting, setInstallSubmitting] = useState(false);
-	const [pluginActionSubmitting, setPluginActionSubmitting] = useState<string | null>(null);
-
-	const fetchPlugins = async () => {
-		setLoading(true);
-		setError(null);
-		try {
-			const pluginData = await apiFetch("/plugins", z.array(PluginInfoSchema));
-			setPlugins(pluginData);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to load plugins");
-		} finally {
-			setLoading(false);
-		}
-	};
 
 	useEffect(() => {
+		const fetchPlugins = async () => {
+			setLoading(true);
+			setError(null);
+			try {
+				const pluginData = await apiFetch("/plugins", z.array(PluginInfoSchema));
+				setPlugins(pluginData);
+			} catch (err) {
+				setError(err instanceof Error ? err.message : "Failed to load plugins");
+			} finally {
+				setLoading(false);
+			}
+		};
 		fetchPlugins();
 	}, []);
-
-	const handleInstallPlugin = async () => {
-		if (!pluginRepo.trim() || installSubmitting) return;
-
-		setInstallSubmitting(true);
-		try {
-			const body: { repository: string; name?: string; sudoPassword?: string } = {
-				repository: pluginRepo.trim(),
-			};
-			if (pluginName.trim()) body.name = pluginName.trim();
-			if (sudoPassword.trim()) body.sudoPassword = sudoPassword;
-
-			const result = await apiFetch("/plugins/install", CommandResultSchema, {
-				method: "POST",
-				body: JSON.stringify(body),
-			});
-			addToast(result.exitCode === 0 ? "success" : "error", "Plugin installation", result);
-
-			if (result.exitCode === 0) {
-				setPluginRepo("");
-				setPluginName("");
-				fetchPlugins();
-			}
-		} catch (err) {
-			const trimmedName = pluginName.trim();
-			const command = trimmedName
-				? `dokku plugin:install ${pluginRepo.trim()} ${trimmedName}`
-				: `dokku plugin:install ${pluginRepo.trim()}`;
-			addToast("error", "Failed to install plugin", createErrorResult(command, err));
-		} finally {
-			setInstallSubmitting(false);
-		}
-	};
-
-	const runPluginAction = async (
-		pluginNameValue: string,
-		action: "enable" | "disable" | "uninstall"
-	) => {
-		if (pluginActionSubmitting) return;
-
-		const getCommandForAction = (action: "enable" | "disable" | "uninstall"): string => {
-			const commands = {
-				enable: `dokku plugin:enable ${pluginNameValue}`,
-				disable: `dokku plugin:disable ${pluginNameValue}`,
-				uninstall: `dokku plugin:uninstall ${pluginNameValue}`,
-			};
-			return commands[action];
-		};
-
-		setPluginActionSubmitting(pluginNameValue);
-		try {
-			const result = await apiFetch(
-				action === "uninstall"
-					? `/plugins/${encodeURIComponent(pluginNameValue)}`
-					: `/plugins/${encodeURIComponent(pluginNameValue)}/${action}`,
-				CommandResultSchema,
-				{
-					method: action === "uninstall" ? "DELETE" : "POST",
-					body: sudoPassword.trim() ? JSON.stringify({ sudoPassword }) : undefined,
-				}
-			);
-			addToast(
-				result.exitCode === 0 ? "success" : "error",
-				`Plugin ${action}${action === "disable" ? "d" : "ed"}`,
-				result
-			);
-			if (result.exitCode === 0) {
-				fetchPlugins();
-			}
-		} catch (err) {
-			addToast(
-				"error",
-				`Failed to ${action} plugin`,
-				createErrorResult(getCommandForAction(action), err)
-			);
-		} finally {
-			setPluginActionSubmitting(null);
-		}
-	};
-
-	const handleUninstall = async (pluginNameValue: string) => {
-		const confirmed = window.confirm(`Uninstall plugin "${pluginNameValue}"?`);
-		if (!confirmed) return;
-		await runPluginAction(pluginNameValue, "uninstall");
-	};
 
 	if (loading) {
 		return (
@@ -139,114 +43,43 @@ export function Plugins() {
 		<div>
 			<h1 className="text-2xl font-bold mb-6">Plugins</h1>
 
-			{canModify && (
-				<div className="bg-white rounded-lg shadow p-6 mb-6">
-					<h2 className="text-lg font-semibold mb-4">Install Plugin</h2>
-					<div className="grid gap-2 md:grid-cols-3">
-						<input
-							type="text"
-							placeholder="Repository URL or owner/repo"
-							value={pluginRepo}
-							onChange={(e) => setPluginRepo(e.target.value)}
-							className="border rounded px-3 py-2"
-						/>
-						<input
-							type="text"
-							placeholder="Plugin name (optional)"
-							value={pluginName}
-							onChange={(e) => setPluginName(e.target.value)}
-							className="border rounded px-3 py-2"
-						/>
-						<button
-							onClick={handleInstallPlugin}
-							disabled={!pluginRepo.trim() || installSubmitting}
-							className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-						>
-							Install
-						</button>
-					</div>
-					<div className="mt-2">
-						<input
-							type="password"
-							placeholder="Sudo password (optional)"
-							value={sudoPassword}
-							onChange={(e) => setSudoPassword(e.target.value)}
-							className="border rounded px-3 py-2 w-full md:w-1/3"
-						/>
-					</div>
-					<p className="text-xs text-gray-500 mt-2">
-						Used only for plugin actions. Leave empty if passwordless sudo is configured.
-					</p>
-					<div className="flex flex-wrap gap-2 mt-3">
-						{POPULAR_PLUGIN_REPOS.map((plugin) => (
-							<button
-								key={plugin.name}
-								disabled={installSubmitting}
-								onClick={() => {
-									if (installSubmitting) return;
-									setPluginRepo(plugin.repository);
-									setPluginName(plugin.name);
-								}}
-								className="text-sm border rounded px-2 py-1 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
-							>
-								{plugin.label}
-							</button>
-						))}
-					</div>
-				</div>
-			)}
-
 			<div className="bg-white rounded-lg shadow p-6">
 				<h2 className="text-lg font-semibold mb-4">Installed Plugins</h2>
 				{plugins.length === 0 ? (
-					<p className="text-gray-500">No plugins found</p>
-				) : (
+				<div>
+					<p className="text-gray-500 mb-4">No plugins found</p>
+					<div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+						<h3 className="font-semibold mb-2">How to install plugins</h3>
+						<p className="text-sm text-gray-700 mb-2">
+							To install a Dokku plugin, run the following command on your server:
+						</p>
+						<code className="block bg-white border rounded px-3 py-1.5 text-sm font-mono select-all">
+							sudo dokku plugin:install &lt;repository-url&gt;
+						</code>
+						<p className="text-sm text-gray-700 mt-2">
+							For example, to install the Postgres plugin:
+						</p>
+						<code className="block bg-white border rounded px-3 py-1.5 text-sm font-mono select-all mt-1">
+							sudo dokku plugin:install https://github.com/dokku/dokku-postgres.git
+						</code>
+					</div>
+				</div>
+			) : (
 					<div className="space-y-3">
-						{plugins.map((plugin) => {
-							const isPluginActionBusy = pluginActionSubmitting === plugin.name;
-							return (
-								<div
-									key={plugin.name}
-									className="border rounded p-4 flex items-center justify-between gap-4"
-								>
-									<div>
-										<div className="font-medium">{plugin.name}</div>
-										<div className="text-sm text-gray-600">
-											Status: {plugin.enabled ? "Enabled" : "Disabled"}
-											{plugin.version ? ` • v${plugin.version}` : ""}
-										</div>
+						{plugins.map((plugin) => (
+							<div
+								key={plugin.name}
+								className="border rounded p-4 flex items-center justify-between gap-4"
+							>
+								<div>
+									<div className="font-medium">{plugin.name}</div>
+									<div className="text-sm text-gray-600">
+										Status: {plugin.enabled ? "Enabled" : "Disabled"}
+										{plugin.version ? ` • v${plugin.version}` : ""}
 									</div>
-									{canModify && (
-										<div className="flex gap-2">
-											{plugin.enabled ? (
-												<button
-													onClick={() => runPluginAction(plugin.name, "disable")}
-													disabled={isPluginActionBusy}
-													className="border border-amber-500 text-amber-700 px-3 py-1 rounded hover:bg-amber-50 disabled:opacity-60 disabled:cursor-not-allowed"
-												>
-													Disable
-												</button>
-											) : (
-												<button
-													onClick={() => runPluginAction(plugin.name, "enable")}
-													disabled={isPluginActionBusy}
-													className="border border-green-500 text-green-700 px-3 py-1 rounded hover:bg-green-50 disabled:opacity-60 disabled:cursor-not-allowed"
-												>
-													Enable
-												</button>
-											)}
-											<button
-												onClick={() => handleUninstall(plugin.name)}
-												disabled={isPluginActionBusy}
-												className="border border-red-500 text-red-700 px-3 py-1 rounded hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed"
-											>
-												Uninstall
-											</button>
-										</div>
-									)}
 								</div>
-							);
-						})}
+							</div>
+						))}
 					</div>
 				)}
 			</div>

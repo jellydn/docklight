@@ -132,7 +132,7 @@ describe("Databases", () => {
 		});
 	});
 
-	it("should display install plugin form", async () => {
+	it("should display install plugin guide when no databases", async () => {
 		apiFetchMock.mockImplementation((endpoint: string) => {
 			if (endpoint === "/databases") return Promise.resolve([]);
 			if (endpoint === "/apps") return Promise.resolve([]);
@@ -146,8 +146,10 @@ describe("Databases", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByText("Install Dokku Plugin")).toBeInTheDocument();
-			expect(screen.getByPlaceholderText("Repository URL or owner/repo")).toBeInTheDocument();
+			expect(screen.getByText("Install a Database Plugin")).toBeInTheDocument();
+			expect(
+				screen.getByText(/Run one of these commands on your Dokku server/),
+			).toBeInTheDocument();
 		});
 	});
 
@@ -251,7 +253,7 @@ describe("Databases", () => {
 		});
 	});
 
-	it("should display popular plugin buttons", async () => {
+	it("should display plugin install commands", async () => {
 		apiFetchMock.mockImplementation((endpoint: string) => {
 			if (endpoint === "/databases") return Promise.resolve([]);
 			if (endpoint === "/apps") return Promise.resolve([]);
@@ -265,9 +267,9 @@ describe("Databases", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByText("Postgres")).toBeInTheDocument();
-			expect(screen.getByText("Redis")).toBeInTheDocument();
-			expect(screen.getByText("MySQL")).toBeInTheDocument();
+			expect(screen.getByText("Postgres:")).toBeInTheDocument();
+			expect(screen.getByText("Redis:")).toBeInTheDocument();
+			expect(screen.getByText("MySQL:")).toBeInTheDocument();
 		});
 	});
 
@@ -399,36 +401,6 @@ describe("Databases", () => {
 			await act(async () => {
 				createResolver!();
 				await Promise.resolve();
-			});
-		});
-
-		it("should disable install plugin button during installation", async () => {
-			const user = userEvent.setup();
-			apiFetchMock.mockImplementation((endpoint: string) => {
-				if (endpoint === "/databases") return Promise.resolve([]);
-				if (endpoint === "/apps") return Promise.resolve([]);
-				if (endpoint.includes("plugins/install")) return new Promise(() => {}); // Never resolves
-				return Promise.reject(new Error("Unknown endpoint"));
-			});
-
-			render(
-				<MemoryRouter>
-					<Databases />
-				</MemoryRouter>
-			);
-
-			await waitFor(() => {
-				expect(screen.getByText("Install Dokku Plugin")).toBeInTheDocument();
-			});
-
-			const repoInput = screen.getByPlaceholderText("Repository URL or owner/repo");
-			await user.type(repoInput, "dokku/dokku-postgres");
-
-			const installButton = screen.getByText("Install Plugin").closest("button");
-			await user.click(installButton!);
-
-			await waitFor(() => {
-				expect(installButton).toBeDisabled();
 			});
 		});
 

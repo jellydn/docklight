@@ -72,36 +72,6 @@ dokku config:set docklight \
   DOCKLIGHT_DOKKU_SSH_KEY_PATH=/app/.ssh/id_ed25519
 ```
 
-### Step 2.6: Configure root access for plugin management (recommended)
-
-Plugin management commands (`plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`) require root privileges. The recommended approach is to authorize the same SSH key used for the `dokku` user to also work for the `root` user.
-
-```bash
-ssh root@<your-server-ip>
-
-# Authorize the SSH key created for the 'dokku' user in Step 2.5 to also be used by the 'root' user.
-# This allows a single key to be used for both regular and root-privileged commands.
-sudo sh -c 'cat /home/dokku/.ssh/docklight.pub >> /root/.ssh/authorized_keys'
-
-# Configure Docklight to use root SSH target for plugin commands
-dokku config:set docklight DOCKLIGHT_DOKKU_SSH_ROOT_TARGET=root@<your-server-ip>
-```
-
-With this configuration:
-
-- Normal commands (apps, config, logs, etc.) run as the `dokku` user via `DOCKLIGHT_DOKKU_SSH_TARGET`
-- Plugin commands run as root via `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET`
-
-**Alternative: Passwordless sudo**
-
-If you prefer not to use root SSH, configure passwordless sudo for the dokku user:
-
-```bash
-# On your Dokku server, as root
-echo "dokku ALL=(ALL) NOPASSWD: /usr/local/bin/dokku plugin:*" | sudo tee /etc/sudoers.d/docklight
-sudo chmod 0440 /etc/sudoers.d/docklight
-```
-
 ## Step 3: Configure domain (optional but recommended)
 
 ```bash
@@ -178,8 +148,8 @@ ssh root@<your-server-ip>
 # Access the running container (Alpine-based, uses sh)
 dokku enter docklight web sh
 
-# Create an admin user (you'll be prompted for password)
-node server/dist/createUser.js admin
+# Create an admin user (password can be passed as argument or will be prompted)
+node server/dist/createUser.js admin your-password-here
 
 # Exit the container
 exit
@@ -227,41 +197,6 @@ Dokku performs zero-downtime deploys by default.
 
 ## Troubleshooting
 
-### Plugin management sudo errors
-
-When installing, enabling, disabling, or uninstalling plugins, you may encounter errors like:
-
-```
-sudo: no password was provided
-sudo: a terminal is required to read the password
-sorry, you must have a tty to run sudo
-```
-
-These errors occur because plugin commands require root access, and the default `dokku` user cannot run sudo commands interactively.
-
-**Solution 1: Use DOCKLIGHT_DOKKU_SSH_ROOT_TARGET (Recommended)**
-
-Follow [Step 2.6](#step-26-configure-root-access-for-plugin-management-recommended) to configure a dedicated root SSH target.
-
-**Solution 2: Configure passwordless sudo**
-
-```bash
-# On your Dokku server, as root
-echo "dokku ALL=(ALL) NOPASSWD: /usr/local/bin/dokku plugin:*" | sudo tee /etc/sudoers.d/docklight
-sudo chmod 0440 /etc/sudoers.d/docklight
-```
-
-**Solution 3: Use root as DOCKLIGHT_DOKKU_SSH_TARGET**
-
-Not recommended for security reasons, but you can set both SSH targets to root:
-
-```bash
-dokku config:set docklight DOCKLIGHT_DOKKU_SSH_TARGET=root@<your-server-ip>
-dokku config:set docklight DOCKLIGHT_DOKKU_SSH_ROOT_TARGET=root@<your-server-ip>
-```
-
-### "Permission denied" on git push
-
 Your SSH key isn't registered with Dokku:
 
 ```bash
@@ -290,7 +225,7 @@ Common issues:
 - `JWT_SECRET` not set → `dokku config:set docklight JWT_SECRET=$(openssl rand -base64 32)`
 - `dokku: not found` in dashboard → configure Step 2.5 (Dokku SSH access)
 - Port conflict → Dokku handles port mapping automatically, no manual config needed
-- Can't log in → Make sure you've created an admin user via `dokku enter docklight web sh` and `node server/dist/createUser.js admin`
+- Can't log in → Make sure you've created an admin user via `dokku enter docklight web sh` and `node server/dist/createUser.js admin your-password-here`
 
 ### Build fails
 
@@ -304,10 +239,10 @@ Check Docker build logs during `git push`. Common causes:
 ```bash
 ssh root@<your-server-ip>
 dokku enter docklight web sh
-node server/dist/createUser.js <username>
+node server/dist/createUser.js <username> <new-password>
 ```
 
-This will prompt you to enter a new password for the user. If the user doesn't exist, it will be created.
+This will update the password for the user. If the user doesn't exist, it will be created.
 
 ## Staging Environment (PR Preview)
 
@@ -331,10 +266,10 @@ cat ~/.ssh/dokku_deploy.pub | ssh root@<your-server-ip> dokku ssh-keys:add githu
 
 Go to **GitHub repo → Settings → Secrets and variables → Actions** and add:
 
-| Secret | Value |
-|---|---|
+| Secret          | Value                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------ |
 | `DOKKU_SSH_KEY` | Contents of `~/.ssh/dokku_deploy` (the private key, including `-----BEGIN/END-----` lines) |
-| `DOKKU_HOST` | Your server IP or hostname (e.g., `95.111.232.131`) |
+| `DOKKU_HOST`    | Your server IP or hostname (e.g., `95.111.232.131`)                                        |
 
 #### 3. Create the staging app on Dokku
 
@@ -346,7 +281,6 @@ ssh dokku@<your-server-ip> apps:create docklight-staging
 ssh dokku@<your-server-ip> config:set docklight-staging \
   DOCKLIGHT_DOKKU_SSH_KEY_PATH='/app/.ssh/id_ed25519' \
   DOCKLIGHT_DOKKU_SSH_TARGET='dokku@<your-server-ip>' \
-  DOCKLIGHT_DOKKU_SSH_ROOT_TARGET='root@<your-server-ip>' \
   JWT_SECRET='staging-secret'
 
 # Mount the SSH key (same as production setup)

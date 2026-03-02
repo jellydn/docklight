@@ -40,7 +40,6 @@ The downloaded file looks like:
   "envConfig": {
     "JWT_SECRET": true,
     "DOCKLIGHT_DOKKU_SSH_TARGET": true,
-    "DOCKLIGHT_DOKKU_SSH_ROOT_TARGET": false,
     "DOCKLIGHT_DOKKU_SSH_KEY_PATH": true,
     "DOCKLIGHT_DOKKU_SSH_OPTS": false,
     "LOG_LEVEL": false,

@@ -16,9 +16,6 @@ export interface CommandResult {
 }
 
 interface ExecuteCommandOptions {
-	asRoot?: boolean;
-	sudoPassword?: string;
-	preferRootTarget?: boolean;
 	userId?: string;
 }
 
@@ -26,33 +23,13 @@ function shellQuote(value: string): string {
 	return `'${value.replace(/'/g, "'\"'\"'")}'`;
 }
 
-function buildSudoCommand(command: string, password?: string): string {
-	if (!password) {
-		return `sudo -n ${command}`;
-	}
-	const trimmed = password.trim();
-	if (trimmed === "") {
-		return `sudo -n ${command}`;
-	}
-	return `printf '%s\\n' ${shellQuote(trimmed)} | sudo -S -p '' ${command}`;
-}
-
-function getSshTarget(options?: ExecuteCommandOptions): string | undefined {
-	const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
-	const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
-	const shouldPreferRootTarget = options?.preferRootTarget !== false;
-	return options?.asRoot && shouldPreferRootTarget ? rootTarget || defaultTarget : defaultTarget;
+function getSshTarget(): string | undefined {
+	return process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
 }
 
 function getErrorMessage(error: unknown): string {
 	const err = error as { message?: string };
 	return err.message || "Unknown error";
-}
-
-function getSshUser(target: string): string | null {
-	const atIndex = target.indexOf("@");
-	if (atIndex <= 0) return null;
-	return target.slice(0, atIndex).trim().toLowerCase();
 }
 
 function isSshWarningOnly(stderr: string): boolean {
@@ -80,16 +57,6 @@ function parseTarget(target: string): { host: string; username: string; port: nu
 		}
 	}
 	return { host: hostPart, username, port: 22 };
-}
-
-function buildRemoteCommand(
-	command: string,
-	target: string,
-	options?: ExecuteCommandOptions
-): string {
-	if (!options?.asRoot) return command;
-	if (getSshUser(target) === "root") return command;
-	return buildSudoCommand(command, options?.sudoPassword);
 }
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -176,11 +143,10 @@ export class SSHPool {
 
 export const sshPool = new SSHPool();
 
-export function buildRuntimeCommand(command: string, options?: ExecuteCommandOptions): string {
-	const baseCommand = options?.asRoot ? buildSudoCommand(command, options?.sudoPassword) : command;
-	const target = getSshTarget(options);
+export function buildRuntimeCommand(command: string): string {
+	const target = getSshTarget();
 	if (!target || !command.startsWith("dokku ")) {
-		return baseCommand;
+		return command;
 	}
 
 	const keyPath = process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim();
@@ -188,51 +154,23 @@ export function buildRuntimeCommand(command: string, options?: ExecuteCommandOpt
 		process.env.DOCKLIGHT_DOKKU_SSH_OPTS?.trim() ||
 		"-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10";
 	const keyOption = keyPath ? `-i ${shellQuote(keyPath)}` : "";
-	return `ssh ${sshOptions} ${keyOption} ${shellQuote(target)} ${shellQuote(baseCommand)}`.trim();
+	return `ssh ${sshOptions} ${keyOption} ${shellQuote(target)} ${shellQuote(command)}`.trim();
 }
 
 async function executeViaPool(
 	command: string,
 	target: string,
-	timeout: number,
-	options?: ExecuteCommandOptions
+	timeout: number
 ): Promise<CommandResult> {
 	const keyPath = process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim() || undefined;
-	const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
-	const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
-	const remoteCommand = buildRemoteCommand(command, target, options);
 
-	logger.debug(
-		{
-			target,
-			command,
-			remoteCommand,
-			asRoot: options?.asRoot,
-			sudoPassword: options?.sudoPassword ? "[REDACTED]" : undefined,
-			rootTarget,
-			defaultTarget,
-		},
-		"executeViaPool debug"
-	);
+	logger.debug({ target, command }, "executeViaPool debug");
 
 	let ssh: NodeSSH;
 	try {
 		ssh = await sshPool.getConnection(target, keyPath);
 	} catch (connError) {
 		const connErrMessage = getErrorMessage(connError);
-		const isRootTargetAuthError =
-			options?.asRoot &&
-			options?.preferRootTarget !== false &&
-			Boolean(rootTarget) &&
-			Boolean(defaultTarget) &&
-			/auth|permission denied/i.test(connErrMessage);
-
-		if (isRootTargetAuthError) {
-			return executeCommand(command, timeout, {
-				asRoot: true,
-				preferRootTarget: false,
-			});
-		}
 
 		sshPool.closeConnection(target);
 		try {
@@ -261,7 +199,7 @@ async function executeViaPool(
 			);
 		});
 		try {
-			return await Promise.race([conn.execCommand(remoteCommand), timeoutPromise]);
+			return await Promise.race([conn.execCommand(command), timeoutPromise]);
 		} finally {
 			if (timeoutId) clearTimeout(timeoutId);
 		}
@@ -302,25 +240,11 @@ async function executeViaPool(
 		}
 	}
 
-	const exitCode = execResult.code ?? 1;
-	let stderr = execResult.stderr.trim();
-
-	if (exitCode !== 0 && options?.asRoot) {
-		logger.debug({ stderr, remoteCommand, target }, "executeViaPool error debug");
-		if (/sorry, try again|incorrect password attempt/i.test(stderr)) {
-			stderr = `Incorrect sudo password. Please check your password and try again.`;
-		} else if (
-			/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty/i.test(stderr)
-		) {
-			stderr = `${stderr}\nHint: configure passwordless sudo for Dokku commands or set DOCKLIGHT_DOKKU_SSH_TARGET to a root SSH user.`;
-		}
-	}
-
 	const result: CommandResult = {
 		command,
-		exitCode,
+		exitCode: execResult.code ?? 1,
 		stdout: execResult.stdout.trim(),
-		stderr,
+		stderr: execResult.stderr.trim(),
 	};
 	saveCommand(result);
 	return result;
@@ -357,27 +281,13 @@ export async function executeCommand(
 		return result;
 	}
 
-	const defaultTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
-	const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
-	if (options?.asRoot && defaultTarget && !rootTarget && getSshUser(defaultTarget) === "dokku") {
-		const result: CommandResult = {
-			command,
-			exitCode: 1,
-			stdout: "",
-			stderr:
-				"Root-required command cannot run through dokku SSH wrapper. Set DOCKLIGHT_DOKKU_SSH_ROOT_TARGET=root@<server-ip> for plugin management commands.",
-		};
-		saveCommand(result);
-		return result;
-	}
-
-	const sshTarget = getSshTarget(options);
+	const sshTarget = getSshTarget();
 	if (sshTarget && command.startsWith("dokku ")) {
-		return executeViaPool(command, sshTarget, timeout, options);
+		return executeViaPool(command, sshTarget, timeout);
 	}
 
 	try {
-		const runtimeCommand = buildRuntimeCommand(command, options);
+		const runtimeCommand = buildRuntimeCommand(command);
 		const { stdout, stderr } = await execAsync(runtimeCommand, { timeout });
 		const result = {
 			command,
@@ -389,7 +299,7 @@ export async function executeCommand(
 		return result;
 	} catch (error: unknown) {
 		const err = error as { code?: number; stdout?: string; stderr?: string; message?: string };
-		let stderr = err.stderr || err.message || "";
+		const stderr = err.stderr || err.message || "";
 
 		if (
 			err.code === 255 &&
@@ -406,27 +316,6 @@ export async function executeCommand(
 			saveCommand(result);
 			return result;
 		}
-		const isRootTargetAuthError =
-			options?.asRoot &&
-			options?.preferRootTarget !== false &&
-			Boolean(rootTarget) &&
-			Boolean(defaultTarget) &&
-			/permission denied/i.test(stderr);
-		if (isRootTargetAuthError) {
-			return executeCommand(command, timeout, {
-				asRoot: true,
-				preferRootTarget: false,
-			});
-		}
-		if (options?.asRoot) {
-			if (/sorry, try again|incorrect password attempt/i.test(stderr)) {
-				stderr = `Incorrect sudo password. Please check your password and try again.`;
-			} else if (
-				/sudo: .*password|a terminal is required|sudo: sorry, you must have a tty/i.test(stderr)
-			) {
-				stderr = `${stderr}\nHint: configure passwordless sudo for Dokku commands or set DOCKLIGHT_DOKKU_SSH_TARGET to a root SSH user.`;
-			}
-		}
 		const result = {
 			command,
 			exitCode: err.code || 1,
@@ -436,12 +325,4 @@ export async function executeCommand(
 		saveCommand(result);
 		return result;
 	}
-}
-
-export async function executeCommandAsRoot(
-	command: string,
-	timeout: number = 30000,
-	sudoPassword?: string
-): Promise<CommandResult> {
-	return executeCommand(command, timeout, { asRoot: true, sudoPassword });
 }

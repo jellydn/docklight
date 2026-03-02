@@ -5,9 +5,11 @@ import { hashPassword } from "./lib/auth.js";
 const username = process.argv[2];
 
 if (!username) {
-	console.error("Usage: node createUser.js <username>");
+	console.error("Usage: node createUser.js <username> [password]");
 	process.exit(1);
 }
+
+const passwordFromArg = process.argv[3] || process.env.DOCKLIGHT_DEFAULT_PASSWORD;
 
 function prompt(question: string, hidden = false): Promise<string> {
 	const rl = readline.createInterface({
@@ -49,16 +51,21 @@ function prompt(question: string, hidden = false): Promise<string> {
 }
 
 async function main() {
-	const password = await prompt("Password: ", true);
+	let password = passwordFromArg;
+	if (!password) {
+		password = await prompt("Password: ", true);
+	}
 	if (!password || password.length === 0) {
 		console.error("Password cannot be empty.");
 		process.exit(1);
 	}
 
-	const confirm = await prompt("Confirm password: ", true);
-	if (password !== confirm) {
-		console.error("Passwords do not match.");
-		process.exit(1);
+	if (!passwordFromArg) {
+		const confirm = await prompt("Confirm password: ", true);
+		if (password !== confirm) {
+			console.error("Passwords do not match.");
+			process.exit(1);
+		}
 	}
 
 	const passwordHash = await hashPassword(password);

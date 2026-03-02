@@ -43,10 +43,6 @@ vi.mock("./lib/domains.js", () => ({
 
 vi.mock("./lib/plugins.js", () => ({
 	getPlugins: vi.fn(),
-	installPlugin: vi.fn(),
-	uninstallPlugin: vi.fn(),
-	enablePlugin: vi.fn(),
-	disablePlugin: vi.fn(),
 }));
 
 vi.mock("./lib/logger.js", () => ({
@@ -83,13 +79,7 @@ import {
 } from "./lib/databases.js";
 import { getRecentCommands } from "./lib/db.js";
 import { getDomains, addDomain, removeDomain } from "./lib/domains.js";
-import {
-	disablePlugin,
-	enablePlugin,
-	getPlugins,
-	installPlugin,
-	uninstallPlugin,
-} from "./lib/plugins.js";
+import { getPlugins } from "./lib/plugins.js";
 import { getServerHealth } from "./lib/server.js";
 import { enableSSL, getSSL, renewSSL } from "./lib/ssl.js";
 
@@ -308,62 +298,11 @@ function createTestApp(): Express {
 		})
 	);
 
-	app.post(
-		"/api/plugins/install",
-		withAuth(async (req, res) => {
-			const { repository, name, sudoPassword } = req.body ?? {};
-			const result =
-				typeof sudoPassword === "string" && sudoPassword.trim().length > 0
-					? await installPlugin(repository, name, sudoPassword)
-					: await installPlugin(repository, name);
-			res.json(result);
-		})
-	);
-
 	app.get(
 		"/api/plugins",
 		withAuth(async (_req, res) => {
 			const plugins = await getPlugins();
 			res.json(plugins);
-		})
-	);
-
-	app.post(
-		"/api/plugins/:name/enable",
-		withAuth(async (req, res) => {
-			const { name } = req.params;
-			const { sudoPassword } = req.body ?? {};
-			const result =
-				typeof sudoPassword === "string" && sudoPassword.trim().length > 0
-					? await enablePlugin(name, sudoPassword)
-					: await enablePlugin(name);
-			res.json(result);
-		})
-	);
-
-	app.post(
-		"/api/plugins/:name/disable",
-		withAuth(async (req, res) => {
-			const { name } = req.params;
-			const { sudoPassword } = req.body ?? {};
-			const result =
-				typeof sudoPassword === "string" && sudoPassword.trim().length > 0
-					? await disablePlugin(name, sudoPassword)
-					: await disablePlugin(name);
-			res.json(result);
-		})
-	);
-
-	app.delete(
-		"/api/plugins/:name",
-		withAuth(async (req, res) => {
-			const { name } = req.params;
-			const { sudoPassword } = req.body ?? {};
-			const result =
-				typeof sudoPassword === "string" && sudoPassword.trim().length > 0
-					? await uninstallPlugin(name, sudoPassword)
-					: await uninstallPlugin(name);
-			res.json(result);
 		})
 	);
 
@@ -736,36 +675,6 @@ describe("API Routes", () => {
 			expect(createDatabase).toHaveBeenCalledWith("postgres", "newdb");
 		});
 
-		it("POST /api/plugins/install - should install plugin", async () => {
-			const mockResult = { command: "dokku plugin:install x", exitCode: 0, stdout: "", stderr: "" };
-			vi.mocked(installPlugin).mockResolvedValue(mockResult as never);
-
-			const response = await request(app)
-				.post("/api/plugins/install")
-				.send({ repository: "dokku/dokku-postgres", name: "dokku-postgres" });
-
-			expect(response.status).toBe(200);
-			expect(installPlugin).toHaveBeenCalledWith("dokku/dokku-postgres", "dokku-postgres");
-		});
-
-		it("POST /api/plugins/install - should pass sudo password when provided", async () => {
-			const mockResult = { command: "dokku plugin:install x", exitCode: 0, stdout: "", stderr: "" };
-			vi.mocked(installPlugin).mockResolvedValue(mockResult as never);
-
-			const response = await request(app).post("/api/plugins/install").send({
-				repository: "dokku/dokku-postgres",
-				name: "dokku-postgres",
-				sudoPassword: "secret",
-			});
-
-			expect(response.status).toBe(200);
-			expect(installPlugin).toHaveBeenCalledWith(
-				"dokku/dokku-postgres",
-				"dokku-postgres",
-				"secret"
-			);
-		});
-
 		it("GET /api/plugins - should list plugins", async () => {
 			const mockPlugins = [{ name: "dokku-postgres", enabled: true }];
 			vi.mocked(getPlugins).mockResolvedValue(mockPlugins as never);
@@ -774,36 +683,6 @@ describe("API Routes", () => {
 
 			expect(response.status).toBe(200);
 			expect(response.body).toEqual(mockPlugins);
-		});
-
-		it("POST /api/plugins/:name/enable - should enable plugin", async () => {
-			const mockResult = { command: "dokku plugin:enable dokku-postgres", exitCode: 0 };
-			vi.mocked(enablePlugin).mockResolvedValue(mockResult as never);
-
-			const response = await request(app).post("/api/plugins/dokku-postgres/enable");
-
-			expect(response.status).toBe(200);
-			expect(enablePlugin).toHaveBeenCalledWith("dokku-postgres");
-		});
-
-		it("POST /api/plugins/:name/disable - should disable plugin", async () => {
-			const mockResult = { command: "dokku plugin:disable dokku-postgres", exitCode: 0 };
-			vi.mocked(disablePlugin).mockResolvedValue(mockResult as never);
-
-			const response = await request(app).post("/api/plugins/dokku-postgres/disable");
-
-			expect(response.status).toBe(200);
-			expect(disablePlugin).toHaveBeenCalledWith("dokku-postgres");
-		});
-
-		it("DELETE /api/plugins/:name - should uninstall plugin", async () => {
-			const mockResult = { command: "dokku plugin:uninstall dokku-postgres", exitCode: 0 };
-			vi.mocked(uninstallPlugin).mockResolvedValue(mockResult as never);
-
-			const response = await request(app).delete("/api/plugins/dokku-postgres");
-
-			expect(response.status).toBe(200);
-			expect(uninstallPlugin).toHaveBeenCalledWith("dokku-postgres");
 		});
 	});
 

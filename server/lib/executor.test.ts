@@ -163,7 +163,6 @@ describe("executeCommand with SSH pool", () => {
 			...OLD_ENV,
 			DOCKLIGHT_DOKKU_SSH_TARGET: "dokku@server",
 		};
-		delete process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET;
 		delete process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH;
 		mockSshInstance.connect.mockResolvedValue(undefined);
 		mockSshInstance.isConnected.mockReturnValue(true);
@@ -195,78 +194,6 @@ describe("executeCommand with SSH pool", () => {
 		expect(result.stderr).toBe("App not found");
 	});
 
-	it("appends sudo hint when root command fails with password error", async () => {
-		process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET = "root@server";
-		mockSshInstance.execCommand.mockResolvedValue(
-			makeExecResult("", "sudo: a password is required", 1)
-		);
-
-		const result = await executeCommand("dokku plugin:install repo", 30000, { asRoot: true });
-
-		expect(result.stderr).toContain("Hint:");
-	});
-
-	it("returns friendly error message when sudo password is incorrect", async () => {
-		process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET = "root@server";
-		mockSshInstance.execCommand.mockResolvedValue(makeExecResult("", "sudo: sorry, try again", 1));
-
-		const result = await executeCommand("dokku plugin:install repo", 30000, { asRoot: true });
-
-		expect(result.exitCode).toBe(1);
-		expect(result.stderr).toBe(
-			"Incorrect sudo password. Please check your password and try again."
-		);
-	});
-
-	it("returns friendly error message for incorrect password attempt", async () => {
-		process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET = "root@server";
-		mockSshInstance.execCommand.mockResolvedValue(
-			makeExecResult("", "sudo: 1 incorrect password attempt", 1)
-		);
-
-		const result = await executeCommand("dokku plugin:install repo", 30000, { asRoot: true });
-
-		expect(result.exitCode).toBe(1);
-		expect(result.stderr).toBe(
-			"Incorrect sudo password. Please check your password and try again."
-		);
-	});
-
-	it("does NOT add sudo when target user is root", async () => {
-		process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET = "root@server";
-		mockSshInstance.execCommand.mockResolvedValue(makeExecResult("plugin installed", "", 0));
-
-		const result = await executeCommand("dokku plugin:install repo", 30000, { asRoot: true });
-
-		expect(result.exitCode).toBe(0);
-		// Verify the command was sent WITHOUT sudo wrapper
-		expect(mockSshInstance.execCommand).toHaveBeenCalledWith("dokku plugin:install repo");
-		expect(mockSshInstance.execCommand).not.toHaveBeenCalledWith(expect.stringContaining("sudo"));
-	});
-
-	it("adds sudo when target user is not root", async () => {
-		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = "dokku@server";
-		process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET = "admin@server";
-		mockSshInstance.execCommand.mockResolvedValue(makeExecResult("plugin installed", "", 0));
-
-		const result = await executeCommand("dokku plugin:install repo", 30000, { asRoot: true });
-
-		expect(result.exitCode).toBe(0);
-		// Verify the command was sent WITH sudo wrapper
-		expect(mockSshInstance.execCommand).toHaveBeenCalledWith(expect.stringContaining("sudo"));
-	});
-
-	it("does NOT add sudo when root target has different username casing", async () => {
-		process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET = "ROOT@server";
-		mockSshInstance.execCommand.mockResolvedValue(makeExecResult("plugin installed", "", 0));
-
-		const result = await executeCommand("dokku plugin:install repo", 30000, { asRoot: true });
-
-		expect(result.exitCode).toBe(0);
-		// Verify the command was sent WITHOUT sudo wrapper (case insensitive)
-		expect(mockSshInstance.execCommand).toHaveBeenCalledWith("dokku plugin:install repo");
-	});
-
 	it("retries once on connection failure and returns error if retry also fails", async () => {
 		mockSshInstance.connect.mockRejectedValue(new Error("Connection refused"));
 
@@ -278,21 +205,6 @@ describe("executeCommand with SSH pool", () => {
 		expect(result.stderr).toContain("retry:");
 		expect(result.stderr).toContain("Connection refused");
 		expect(mockSshInstance.connect).toHaveBeenCalledTimes(2);
-	});
-
-	it("falls back to default target when root target has auth failure", async () => {
-		process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET = "root@server";
-		let connectCallCount = 0;
-		mockSshInstance.connect.mockImplementation(() => {
-			connectCallCount++;
-			if (connectCallCount === 1) return Promise.reject(new Error("Authentication failed"));
-			return Promise.resolve();
-		});
-		mockSshInstance.execCommand.mockResolvedValue(makeExecResult("ok", "", 0));
-
-		const result = await executeCommand("dokku plugin:list", 30000, { asRoot: true });
-
-		expect(result.exitCode).toBe(0);
 	});
 
 	it("returns error on command timeout", async () => {
