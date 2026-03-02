@@ -2,7 +2,9 @@ import type express from "express";
 import { addDomain, getDomains, removeDomain } from "../lib/domains.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
+import { insertAuditLog } from "../lib/db.js";
 import { getParam } from "./util.js";
+import { getIpAddress } from "./util.js";
 
 export function registerAppDomainRoutes(app: express.Application): void {
 	app.get("/api/apps/:name/domains", authMiddleware, async (req, res) => {
@@ -24,6 +26,18 @@ export function registerAppDomainRoutes(app: express.Application): void {
 		const name = getParam(req.params, "name");
 		const { domain } = req.body;
 		const result = await addDomain(name, domain);
+
+		if (result.exitCode === 0) {
+			// Audit log domain add
+			insertAuditLog(
+				req.user?.userId ?? null,
+				"domain:add",
+				name,
+				JSON.stringify({ app: name, domain }),
+				getIpAddress(req)
+			);
+		}
+
 		clearPrefix("apps:");
 		res.json(result);
 	});
@@ -36,6 +50,18 @@ export function registerAppDomainRoutes(app: express.Application): void {
 			const name = getParam(req.params, "name");
 			const domain = getParam(req.params, "domain");
 			const result = await removeDomain(name, domain);
+
+			if (result.exitCode === 0) {
+				// Audit log domain remove
+				insertAuditLog(
+					req.user?.userId ?? null,
+					"domain:remove",
+					name,
+					JSON.stringify({ app: name, domain }),
+					getIpAddress(req)
+				);
+			}
+
 			clearPrefix("apps:");
 			res.json(result);
 		}
