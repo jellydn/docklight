@@ -8,9 +8,11 @@ import {
 	type UserRole,
 	demoteAdminWithGuard,
 	deleteUserWithAdminGuard,
+	insertAuditLog,
 } from "../lib/db.js";
 import { authMiddleware, requireAdmin, hashPassword } from "../lib/auth.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
+import { getIpAddress } from "./util.js";
 
 export function registerUserRoutes(app: express.Application): void {
 	app.get("/api/users", authMiddleware, requireAdmin, (_req, res) => {
@@ -48,6 +50,16 @@ export function registerUserRoutes(app: express.Application): void {
 		try {
 			const passwordHash = await hashPassword(password);
 			const user = createUser(username, passwordHash, role);
+
+			// Audit log user creation
+			insertAuditLog(
+				req.user?.userId ?? null,
+				"user:create",
+				username,
+				JSON.stringify({ username, role }),
+				getIpAddress(req)
+			);
+
 			clearPrefix("users:");
 			res.status(201).json(user);
 		} catch (err: unknown) {
@@ -106,6 +118,16 @@ export function registerUserRoutes(app: express.Application): void {
 		}
 
 		updateUser(id, updates);
+
+		// Audit log user update
+		insertAuditLog(
+			req.user?.userId ?? null,
+			"user:update",
+			existing.username,
+			JSON.stringify({ username: existing.username, role, passwordChanged: password !== undefined }),
+			getIpAddress(req)
+		);
+
 		clearPrefix("users:");
 		res.json(getUserById(id));
 	});
@@ -130,12 +152,32 @@ export function registerUserRoutes(app: express.Application): void {
 				res.status(400).json({ error: result.error });
 				return;
 			}
+
+			// Audit log admin user deletion
+			insertAuditLog(
+				req.user?.userId ?? null,
+				"user:delete",
+				existing.username,
+				JSON.stringify({ username: existing.username, role: existing.role }),
+				getIpAddress(req)
+			);
+
 			clearPrefix("users:");
 			res.json({ success: true });
 			return;
 		}
 
 		deleteUser(id);
+
+		// Audit log user deletion
+		insertAuditLog(
+			req.user?.userId ?? null,
+			"user:delete",
+			existing.username,
+			JSON.stringify({ username: existing.username, role: existing.role }),
+			getIpAddress(req)
+		);
+
 		clearPrefix("users:");
 		res.json({ success: true });
 	});
