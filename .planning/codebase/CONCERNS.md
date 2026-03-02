@@ -1,6 +1,7 @@
 # Codebase Concerns
 
 **Analysis Date:** 2026-03-02
+**Last Updated:** 2026-03-02
 
 ## Tech Debt
 
@@ -34,32 +35,26 @@
 - Current mitigation: Command allowlist, SSH key auth, input validation
 - Recommendations:
   - Add argument sanitization for all user inputs
-  - Implement rate limiting per user for command execution
+  - ✅ **Per-user rate limiting implemented** (rate-limiter.ts, executor.ts:259-271)
   - Add audit logging for all destructive operations
 
-**WebSocket Authentication:**
-- Risk: WebSocket connections require valid JWT but connection limit is global
+**WebSocket Authentication:** ✅ **RESOLVED**
+- ~~Risk: WebSocket connections require valid JWT but connection limit is global~~
 - Files: `server/lib/websocket.ts`
-- Current mitigation: JWT verification, 50 connection max, 30-min idle timeout
-- Recommendations:
-  - Consider per-user connection limits
-  - Add WebSocket-specific rate limiting
+- Current mitigation: JWT verification, 50 connection max, 30-min idle timeout, **per-user connection limits (WS_MAX_CONNECTIONS_PER_USER)**
+- ✅ Per-user connection limits implemented (lines 14, 160-172, 197-207)
 
-**JWT Secret:**
-- Risk: Default JWT_SECRET must be changed in production
-- Files: `.env.example`
-- Current mitigation: Documented as required, scrypt hashing
-- Recommendations:
-  - Add validation on startup to reject default secrets
-  - Implement key rotation mechanism
+**JWT Secret:** ✅ **RESOLVED**
+- ~~Risk: Default JWT_SECRET must be changed in production~~
+- Files: `server/lib/auth.ts`
+- Current mitigation: **Validation on startup to reject default secrets in production** (lines 32-39)
+- ✅ Startup validation implemented
 
-**Cookie Security:**
-- Risk: HttpOnly cookies used but SameSite setting not explicitly configured
-- Files: `server/lib/auth.ts`, `server/routes/auth.ts`
-- Current mitigation: HttpOnly flag set
-- Recommendations:
-  - Explicitly set SameSite=Strict or SameSite=Lax
-  - Consider Secure flag for HTTPS-only deployments
+**Cookie Security:** ✅ **RESOLVED**
+- ~~Risk: HttpOnly cookies used but SameSite setting not explicitly configured~~
+- Files: `server/lib/auth.ts`
+- Current mitigation: HttpOnly flag set, **SameSite=Strict**, Secure flag in production (lines 101-102)
+- ✅ SameSite=Strict and Secure flag implemented
 
 ## Performance Bottlenecks
 
@@ -75,11 +70,17 @@
 - Cause: SSH protocol limitation
 - Improvement path: Current implementation uses connection pooling with TTL, which is appropriate for typical Dokku administration workloads
 
-**No Response Caching:**
-- Problem: All API requests execute fresh Dokku commands
+**No Response Caching:** ✅ **IMPROVED**
+- ~~Problem: All API requests execute fresh Dokku commands~~
 - Files: `server/routes/*.ts`
 - Cause: Real-time data preference
-- Improvement path: Add configurable caching for read-heavy endpoints (app list, plugin list)
+- Current state: **In-memory cache** (`server/lib/cache.ts`) now used in:
+  - `apps.ts` - app list and details
+  - `plugins.ts` - plugin list
+  - `app-domains.ts` - app domains
+  - `app-ports.ts` - app ports
+  - `app-network.ts` - app network config
+- Remaining: Other app-specific routes could benefit from caching
 
 ## Fragile Areas
 
@@ -110,8 +111,8 @@
 
 **Command Execution Rate:**
 - Current capacity: Limited by SSH connection throughput and Dokku server responsiveness
-- Limit: No explicit rate limiting on command execution (only auth endpoints)
-- Scaling path: Add per-user command rate limiting
+- ~~Limit: No explicit rate limiting on command execution (only auth endpoints)~~ ✅ **RESOLVED**
+- Current mitigation: **Per-user command rate limiting via `CommandRateLimiter` class** (10 commands/minute per user, configurable)
 
 **SQLite Database:**
 - Current capacity: Suitable for single-server deployments (< 1000 users)
