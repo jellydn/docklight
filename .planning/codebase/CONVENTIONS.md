@@ -1,146 +1,126 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-03-01
+**Analysis Date:** 2026-03-02
 
 ## Naming Patterns
 
 **Files:**
-- kebab-case (e.g., `command-executor.ts`, `rate-limiter.ts`, `web-socket.ts`)
-- Test files: `*.test.ts` co-located with source (e.g., `apps.test.ts` alongside `apps.ts`)
+- kebab-case for all files: `command-executor.ts`, `user-auth.tsx`
+- `*.test.ts` for server unit tests
+- `*.test.tsx` for client component tests
 
 **Functions:**
-- camelCase (e.g., `getApps`, `isValidAppName`, `executeCommand`, `buildRuntimeCommand`)
-- Private/internal functions also use camelCase (e.g., `parseStatus`, `fetchAppDetails`)
+- camelCase: `getData`, `isActive`, `fetchApps`
 
 **Variables:**
-- camelCase (e.g., `mockExecuteCommand`, `exitCode`, `stderr`)
-- Constants: SCREAMING_SNAKE_CASE (e.g., `UNKNOWN_ERROR`, `IDLE_TIMEOUT_MS`)
-- Regular expression patterns stored in constants (e.g., `INVALID_NAME_ERROR`)
+- camelCase for local variables: `const sshUser = ...`
+- SCREAMING_SNAKE_CASE for constants: `MAX_RETRIES`, `CACHE_TTL`
 
 **Types:**
-- `interface` for object shapes (e.g., `App`, `AppDetail`, `CommandResult`)
-- `type` for unions and primitives (e.g., `UserRole`)
-- PascalCase for type names (e.g., `JWTPayload`, `ExecuteCommandOptions`)
+- PascalCase for interfaces/types: `CommandResult`, `ExecuteCommandOptions`
+- `interface` for object shapes
+- `type` for unions and primitives
 
 ## Code Style
 
 **Formatting:**
-- Tool: Biome
-- Key settings:
-  - Indent style: tabs
-  - Indent width: 2
-  - Line width: 100
-  - Quote style: double
-  - Trailing commas: es5
-  - Semicolons: always
+- Tool: Biome 2.4.4
+- Config: `biome.json` (same for server and client)
+- Indent: Tabs (displayed as 2 spaces)
+- Line width: 100 characters
+- Quotes: Double quotes for strings
+- Semicolons: Always
+- Trailing commas: ES5 style
 
 **Linting:**
-- Tool: Biome (recommended rules enabled)
-- Key overrides:
-  - `noExplicitAny`: off (both server/client)
-  - `useImportType`: on
-  - `noNonNullAssertion`: off (client only)
-  - `noUnusedVariables`: warn (client only)
-  - `useExhaustiveDependencies`: off (client only)
+- Tool: Biome 2.4.4 (built-in linter)
+- Recommended rules enabled
+- `useImportType`: Enforces type-only imports with `import type`
+- `noExplicitAny`: Disabled (any allowed with type assertions)
+- `noTemplateCurlyInString`: Disabled (allows template strings)
 
 ## Import Organization
 
 **Order:**
-1. External dependencies (e.g., `import { describe, it, expect } from "vitest"`)
-2. Type-only imports from external (e.g., `import type { Request, Response } from "express"`)
-3. Internal module imports (e.g., `import { executeCommand } from "./executor.js"`)
-4. Type-only imports from internal (e.g., `import type { CommandResult } from "./executor.js"`)
+1. Vitest globals (`describe`, `it`, `expect`, `vi`, `beforeEach`, `afterEach`)
+2. External dependencies (express, pino, react, etc.)
+3. Internal dependencies (lib imports)
+4. Type-only imports (`import type`)
 
 **Path Aliases:**
-- Server: `@/` points to `server/` (configured in `vitest.config.ts`)
-- Client: `@/` points to `client/src/`
+- Client: `@/` points to `client/src/*`
+- Server: No path alias configured, use relative imports
 
-**Import Extensions:**
-- Always use `.js` extension for relative imports (TypeScript requirement)
-- Example: `import { apps } from "./apps.js"`
+```typescript
+import { describe, it, expect, beforeEach } from "vitest";
+import express from "express";
+import type { Request, Response } from "express";
+import { getData } from "./lib/db.js";
+import { cn } from "@/lib/utils"; // Client only
+```
 
 ## Error Handling
 
 **Patterns:**
-- Async functions return error objects instead of throwing:
-  ```typescript
-  type ErrorResult = { error: string; command: string; exitCode: number; stderr: string };
-  ```
-- Use `try-catch` with type assertions for unknown errors
-- Extract error messages via helper functions: `const err = error as { message?: string }`
-- Return exit codes and stderr for CLI command results
-- Never expose shell execution directly to clients (use allowlist)
+- Try-catch for async operations
+- Return `{ exitCode, stderr, stdout, command }` for shell commands
+- Never throw errors for expected failures (e.g., command execution errors)
+- Type assertions for caught errors: `const err = error as { message?: string }`
+
+```typescript
+try {
+  const result = await execAsync(cmd, { timeout });
+  return { command: cmd, exitCode: 0, stdout: result.stdout.trim(), stderr: "" };
+} catch (error: unknown) {
+  const err = error as { code?: number; stderr?: string; message?: string };
+  return { command: cmd, exitCode: err.code || 1, stdout: "", stderr: err.stderr || err.message || "" };
+}
+```
 
 ## Logging
 
 **Framework:** Pino (structured logging)
 
 **Patterns:**
-- Import logger from `server/lib/logger.ts`
-- Use methods: `logger.info()`, `logger.error()`, `logger.warn()`
-- Log errors with context object: `logger.error({ err }, "Error message")`
+- Location: `server/lib/logger.ts`
+- Log errors with context: `logger.error({ err }, "Error message")`
 - HTTP requests logged automatically via pino-http middleware
-- Warnings for missing env vars in production
+- Log level controlled by `LOG_LEVEL` env var (default: "info")
+- Client logging via Pino (same pattern as server)
 
 ## Comments
 
 **When to Comment:**
-- JSDoc for exported functions with `@description` tag
-- Comments explaining complex regex patterns
-- Comments for backward compatibility notes (e.g., "Legacy single-password login")
-- Inline comments for non-obvious logic
+- Code is self-documenting; comments used sparingly
+- Comments explain "why", not "what"
+- JSDoc used for exported functions with complex signatures
 
 **JSDoc/TSDoc:**
-- Used for exported functions, especially with special behaviors
-- `@description` tag commonly used
-- Example:
-  ```typescript
-  /** @description Parses "user@host" or "user@host:port". Note: IPv6 not supported. */
-  function parseTarget(target: string): { host: string; username: string; port: number } | null
-  ```
+- Minimal usage; TypeScript types provide documentation
+- Used for complex public APIs
 
 ## Function Design
 
-**Size:**
-- Prefer smaller, focused functions
-- Extract parsing logic into separate functions (e.g., `parseStatus`, `parseDomains`)
-- Helper functions for common operations (e.g., `withRuntimeHint`, `createValidationError`)
+**Size:** No strict limit; prefer focused functions under 50 lines
 
 **Parameters:**
 - Explicit types for all parameters
-- Use options objects for multiple parameters (e.g., `ExecuteCommandOptions`)
-- Destructure options in function signature when appropriate
+- Options object for multiple parameters: `{ options?: ExecuteCommandOptions }`
 
 **Return Values:**
-- Explicit return types on exported functions
-- Union types for error/success results
-- Prefer `Result`-style error objects over throwing
+- Explicit return types on all exported functions
+- Union types for error handling: `T | CommandResult`
 
 ## Module Design
 
 **Exports:**
-- Named exports for functions and types (default exports avoided)
-- Group related exports (e.g., `requireAdmin`, `requireOperator` middleware)
-- Type exports with `export type` or `export interface`
+- Named exports: `export function getData()`
+- Re-exports via barrel files: `export * from "./module.js"`
 
 **Barrel Files:**
-- Not commonly used; prefer direct imports
-- Test files import directly from source files
-
-## Security Conventions
-
-**Command Execution:**
-- All commands must pass through allowlist (`server/lib/allowlist.ts`)
-- Never allow user input to directly execute shell commands
-- Validate app names with regex: `/^[a-z0-9-]+$/`
-- Return error objects for invalid input (exitCode 400)
-
-**Authentication:**
-- JWT-based session tokens
-- HttpOnly, SameSite=strict cookies
-- Secure flag in production only
-- Multi-user and legacy single-password support
+- Used in `server/routes/index.ts` for route aggregation
+- Used for grouping related utilities
 
 ---
 
-*Convention analysis: 2026-03-01*
+*Convention analysis: 2026-03-02*

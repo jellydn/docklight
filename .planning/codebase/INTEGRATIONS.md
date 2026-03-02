@@ -1,141 +1,95 @@
 # External Integrations
 
-**Analysis Date:** 2026-03-01
+**Analysis Date:** 2026-03-02
 
 ## APIs & External Services
 
 **Dokku CLI:**
+- Remote command execution via SSH
+- SDK/Client: node-ssh 13.2.1
+- Auth: `DOCKLIGHT_DOKKU_SSH_TARGET` (e.g., dokku@server-ip)
+- Connection pooling with TTL cleanup
+- Allowlist validation for security
 
-- Remote command execution via SSH - Core functionality for managing Dokku apps
-- Client: Custom node-ssh wrapper in `/server/lib/executor.ts`
-- Auth: SSH key-based authentication
-- Target: Configured via `DOCKLIGHT_DOKKU_SSH_TARGET` env var (format: `user@host`)
-
-**GitHub Actions:**
-
-- CI/CD pipeline automation
-- Workflows: `/Users/huynhdung/src/tries/2026-03-01-jellydn-docklight-pr47/.github/workflows/`
-  - `ci.yml` - Typecheck, lint, and test on push/PR
-  - `deploy-production.yml` - Deploy to production on main branch push
-  - `deploy-staging.yml` - Deploy staging on PR open/synchronize/reopen
-- Auth: `DOKKU_SSH_KEY` and `DOKKU_HOST` secrets
+**Dokku (Root):**
+- Plugin management requires root SSH access
+- SDK/Client: node-ssh 13.2.1
+- Auth: `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` (optional)
 
 ## Data Storage
 
 **Databases:**
-
-- SQLite (better-sqlite3 12.6.2) - Embedded database for local storage
-- Connection: Local file at `/server/data/docklight.db`
-- Client: Direct SQL with prepared statements (no ORM)
-- Schema: Auto-created on startup in `/server/lib/db.ts`
-  - `command_history` - Command execution audit log
-  - `users` - User accounts with RBAC roles (admin/operator/viewer)
-  - `audit_log` - User action auditing
+- SQLite 3 (via better-sqlite3 12.6.2)
+- Connection: File-based at `data/docklight.db` (default)
+- Configurable via `DOCKLIGHT_DB_PATH`
+- Client: better-sqlite3 (synchronous, prepared statements)
 
 **File Storage:**
-
 - Local filesystem only
-- Database stored in `/server/data/` directory
-- SSH keys read from filesystem path
+- SSH key storage at `DOCKLIGHT_DOKKU_SSH_KEY_PATH`
+- Database persists in container filesystem
 
 **Caching:**
-
-- In-memory Map-based cache with TTL support
-- Implementation: `/server/lib/cache.ts`
-- Configurable via `CACHE_TTL` environment variable (default: 30000ms)
-- Used for caching Dokku command responses
+- In-memory cache with TTL (server/lib/cache.ts)
+- 30-second default TTL
+- No external cache service
 
 ## Authentication & Identity
 
 **Auth Provider:**
-
-- Custom JWT-based authentication
-- Implementation: `/server/lib/auth.ts`
-- JWT secret: `JWT_SECRET` or `DOCKLIGHT_SECRET` env var (required in production)
-- Role-Based Access Control (RBAC): admin, operator, viewer roles
-
-**Session Management:**
-
-- JWT tokens stored in HTTP-only cookies
-- Cookie name: `docklight_token`
-- Secure cookies enabled in production
+- Custom JWT-based implementation
+- Hashing: scrypt (Node.js crypto)
+- Token storage: HttpOnly cookies
+- Session duration: 24 hours
+- Role-based access control: user, admin, operator
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-
-- Structured logging only (no external error tracking service)
-- All errors logged via Pino logger
+- None (log-based only)
 
 **Logs:**
-
-- Pino structured logging (`/server/lib/logger.ts`)
+- Pino structured logging
+- Log level via `LOG_LEVEL` env var (default: info)
 - HTTP request logging via pino-http middleware
-- Log level: Configurable via `LOG_LEVEL` env var (default: "info")
-- Pretty-print enabled in non-production
+- Command execution audit trail in database
 
 ## CI/CD & Deployment
 
 **Hosting:**
-
-- Self-hosted on Dokku server
-- Production: `https://docklight.itman.fyi`
-- Staging: `https://docklight-staging.itman.fyi`
-- Deployment method: Git push to Dokku remote
+- Docker containerization
+- Can be deployed to Dokku itself
 
 **CI Pipeline:**
-
-- GitHub Actions (see APIs & External Services above)
-- Three jobs: typecheck, lint, test
-- Runs on Ubuntu latest with Bun runtime
+- GitHub Actions workflow (`.github/workflows/ci.yml`)
+- Runs typecheck, lint, and tests on push
 
 ## Environment Configuration
 
 **Required env vars:**
-
-- `JWT_SECRET` or `DOCKLIGHT_SECRET` - JWT signing secret (required in production)
-- `DOCKLIGHT_DOKKU_SSH_TARGET` - SSH target for Dokku commands (format: `dokku@host`)
-- `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` - Optional root user SSH target
+- `JWT_SECRET` - JWT token signing secret
+- `DOCKLIGHT_DOKKU_SSH_TARGET` - SSH connection string (user@host)
 - `DOCKLIGHT_DOKKU_SSH_KEY_PATH` - Path to SSH private key
-- `DOCKLIGHT_DOKKU_SSH_OPTS` - Optional SSH connection options
-- `CACHE_TTL` - Cache TTL in milliseconds (optional, default: 30000)
-- `LOG_LEVEL` - Pino log level (optional, default: "info")
-- `NODE_ENV` - Environment mode (development/production/test)
-- `PORT` - Server port (optional, default: 3001)
+
+**Optional env vars:**
+- `DOCKLIGHT_DOKKU_SSH_ROOT_TARGET` - Root SSH for plugin operations
+- `DOCKLIGHT_DOKKU_SSH_OPTS` - Additional SSH options
+- `DOCKLIGHT_DB_PATH` - Custom SQLite database path
+- `LOG_LEVEL` - Logging verbosity (debug, info, warn, error)
+- `NODE_ENV` - Environment mode
 
 **Secrets location:**
-
-- GitHub Secrets for CI/CD (`DOKKU_SSH_KEY`, `DOKKU_HOST`)
-- Environment variables for runtime configuration
-- SSH keys stored on server filesystem
+- Environment variables (not committed)
+- Server `.env.example` provides template
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-
-- None (no inbound webhook endpoints)
+- None (no webhook endpoints)
 
 **Outgoing:**
-
-- GitHub PR comments via actions/github-script@v8 (staging deployments only)
-- Comments deployment URL on pull requests
-
-## Security Features
-
-**Command Execution:**
-
-- Allowlist-based command validation (`/server/lib/allowlist.ts`)
-- SSH connection pooling with 5-minute idle timeout
-- Prepared SQL statements to prevent injection
-- Rate limiting on API endpoints
-- Command audit logging to SQLite
-
-**Network:**
-
-- Vite dev proxy: `/api` -> `http://localhost:3001`
-- WebSocket support via ws 8.19.0
-- CORS handling for API endpoints
+- None (no outgoing webhooks)
 
 ---
 
-_Integration audit: 2026-03-01_
+*Integration audit: 2026-03-02*

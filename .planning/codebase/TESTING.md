@@ -1,253 +1,217 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-03-01
+**Analysis Date:** 2026-03-02
 
 ## Test Framework
 
 **Runner:**
-
-- Vitest (latest)
-- Config: `server/vitest.config.ts`
-- Environment: node
+- Vitest 4.0.0
+- Config: `server/vitest.config.ts`, `client/vitest.config.ts`
 
 **Assertion Library:**
-
-- Vitest built-in assertions (expect)
+- Built-in `expect` (Vitest)
 
 **Run Commands:**
-
 ```bash
-bun test                # Run all tests
-bun run test:watch      # Watch mode
-bun run test:coverage   # Run with coverage
-vitest run lib/apps.test.ts        # Single test file
-vitest run -t "should fetch app"  # Single test by name
+just test              # Run all tests
+bun test              # Run all tests
+bun test:watch        # Watch mode
+bun test:coverage     # Run with coverage
+vitest run -t "name"  # Run specific test
 ```
 
 ## Test File Organization
 
 **Location:**
-
-- Co-located with source files in `server/lib/`
-- Test file named `*.test.ts` alongside source `*.ts`
+- Server: Co-located in `server/lib/*.test.ts`
+- Client: Co-located in `client/src/pages/*.test.tsx` and `client/src/components/*.test.tsx`
 
 **Naming:**
-
-- Source: `apps.ts` → Test: `apps.test.ts`
-- Source: `executor.ts` → Test: `executor.test.ts`
+- Same name as source file with `.test.ts` or `.test.tsx` suffix
+- Example: `cache.ts` → `cache.test.ts`
 
 **Structure:**
-
 ```
 server/lib/
-  apps.ts
-  apps.test.ts
-  auth.ts
-  auth.test.ts
-  executor.ts
-  executor.test.ts
+├── cache.ts
+├── cache.test.ts
+├── executor.ts
+├── executor.test.ts
+└── ...
+
+client/src/pages/
+├── Apps.tsx
+├── Apps.test.tsx
+└── ...
 ```
 
 ## Test Structure
 
 **Suite Organization:**
-
 ```typescript
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { functionUnderTest } from "./module.js";
-import { dependency } from "./dependency.js";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-vi.mock("./dependency.js", () => ({
-  dependency: vi.fn(),
-}));
-
-describe("functionUnderTest", () => {
+describe("module name", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Setup
   });
 
-  it("should do something specific", () => {
-    // Arrange
-    mockDependency.mockReturnValue("test");
+  afterEach(() => {
+    // Teardown
+  });
 
-    // Act
-    const result = functionUnderTest();
+  describe("specific feature", () => {
+    it("should do something when condition", () => {
+      // Arrange
+      const input = "value";
 
-    // Assert
-    expect(result).toBe("expected");
+      // Act
+      const result = functionUnderTest(input);
+
+      // Assert
+      expect(result).toBe("expected");
+    });
   });
 });
 ```
 
 **Patterns:**
-
-- Setup: `beforeEach` clears all mocks
-- Teardown: `afterEach` used for environment cleanup when needed
-- Assertion: Vitest `expect()` with matchers like `toBe()`, `toEqual()`, `toHaveBeenCalled()`
+- Setup: `beforeEach()` for test isolation
+- Teardown: `afterEach()` for cleanup
+- Assertion: `expect().toBe()`, `expect().toEqual()`, etc.
+- Fake timers: `vi.useFakeTimers()`, `vi.advanceTimersByTime()`
 
 ## Mocking
 
-**Framework:** Vitest (vi)
+**Framework:** Vitest `vi` module
 
 **Patterns:**
-
 ```typescript
-// Mock module before imports
-vi.mock("./executor.js", () => ({
-  executeCommand: vi.fn(),
+// Module-level mocking
+vi.mock("../lib/api", () => ({
+  apiFetch: vi.fn(),
 }));
 
-// Cast to typed mock
-const mockExecuteCommand = executeCommand as ReturnType<typeof vi.fn>;
+// Mock return values
+vi.mocked(apiFetch).mockResolvedValue({ data: "value" });
 
-// Mock implementation
-mockExecuteCommand.mockResolvedValue({
-  command: "dokku apps:list",
-  exitCode: 0,
-  stdout: "my-app",
-  stderr: "",
+// Clear mocks between tests
+beforeEach(() => {
+  vi.clearAllMocks();
 });
 
-// Multiple calls
-mockExecuteCommand
-  .mockResolvedValueOnce({
-    /* first call */
-  })
-  .mockResolvedValueOnce({
-    /* second call */
-  });
+// Type-safe assertions
+const mockFn = vi.mocked(apiFetch);
+expect(mockFn).toHaveBeenCalledWith(expectedArgs);
 ```
 
 **What to Mock:**
-
-- External dependencies (executors, databases, loggers)
-- I/O operations (file system, network)
-- Modules that would have side effects
+- External API calls (`apiFetch`)
+- File system operations
+- Child process execution
+- Database queries in unit tests
+- Logger calls
 
 **What NOT to Mock:**
-
-- Pure functions and utilities
+- Pure functions
 - Business logic under test
 - Simple data transformations
 
 ## Fixtures and Factories
 
 **Test Data:**
-
 ```typescript
-// Helper functions for creating test data
-function makeExecResult(stdout: string, stderr: string, code: number) {
-  return { stdout, stderr, code, signal: null };
-}
+// Constants within describe blocks
+const mockApps = [{ name: "app1", status: "running" }];
+const mockUser = { username: "admin", role: "admin" };
 
-// Inline test data
-const validNames = ["my-app", "app123", "test-app-v1"];
+// Helper functions for data creation
+function createMockApp(overrides = {}) {
+  return { name: "test-app", status: "running", ...overrides };
+}
 ```
 
 **Location:**
-
-- Test data defined within test files
-- Helper functions at top of test file
-- No separate fixtures directory
+- Inline within test files (no separate fixtures directory)
+- `server/test-data/` contains sample response JSON files for complex fixtures
 
 ## Coverage
 
-**Requirements:** None enforced
+**Requirements:** No enforced threshold, but good coverage maintained
 
 **View Coverage:**
-
 ```bash
 bun run test:coverage
 ```
 
-**Coverage Config:**
-
-- Provider: v8
-- Reporters: text, json, html
-- Include: `lib/**/*.ts`, `*.ts`
-- Exclude: `node_modules/`, `dist/`, `**/*.test.ts`
+**Current Coverage:**
+- Server: ~13 test files covering core lib modules
+- Client: ~9 test files covering pages and components
 
 ## Test Types
 
 **Unit Tests:**
-
-- Test individual functions in isolation
-- Mock all external dependencies
-- Focus on lib/ modules (apps, auth, executor, etc.)
+- Scope: Individual functions and modules
+- Approach: Mock external dependencies
+- Location: `server/lib/*.test.ts`
 
 **Integration Tests:**
-
-- Test module interactions
-- Some real dependencies allowed
-- Example: `executor.test.ts` tests SSH pool integration
+- Scope: API endpoints and request flows
+- Approach: Supertest for HTTP testing
+- Location: `server/index.test.ts`
 
 **E2E Tests:**
-
-- Not used
+- Framework: Not used (manual testing recommended)
 
 ## Common Patterns
 
 **Async Testing:**
-
 ```typescript
 it("should handle async operations", async () => {
-  mockExecuteCommand.mockResolvedValue({
-    /* ... */
-  });
-  const result = await getApps();
-  expect(result).toEqual([]);
+  // Use async/await
+  const result = await asyncFunction();
+  expect(result).toBe("expected");
+
+  // Mock promises
+  vi.mocked(apiFetch).mockResolvedValue({ data: "value" });
+});
+
+it("should handle errors", async () => {
+  vi.mocked(apiFetch).mockRejectedValue(new Error("API Error"));
+  await expect(asyncFunction()).rejects.toThrow("API Error");
 });
 ```
 
 **Error Testing:**
-
 ```typescript
-it("should return error on failure", async () => {
-  mockExecuteCommand.mockResolvedValue({
-    exitCode: 1,
-    stderr: "App not found",
-  });
-  const result = await getAppDetail("nonexistent");
-  expect(result).toEqual({
-    error: "Failed to get app details",
-    exitCode: 1,
-    stderr: "App not found",
-  });
+it("should handle invalid input", () => {
+  expect(() => parseInput("")).toThrow();
+});
+
+it("should return error result", () => {
+  const result = executeCommand("invalid");
+  expect(result.exitCode).toBeGreaterThan(0);
+  expect(result.stderr).toContain("error");
 });
 ```
 
-**Environment Mocking:**
-
+**React Component Testing:**
 ```typescript
-const OLD_ENV = process.env;
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
-beforeEach(() => {
-  process.env = { ...OLD_ENV };
-});
+it("should handle user interaction", async () => {
+  const user = userEvent.setup();
+  render(<Component />);
 
-afterEach(() => {
-  process.env = OLD_ENV;
-});
-```
+  const button = screen.getByRole("button");
+  await user.click(button);
 
-**Testing Express Middleware:**
-
-```typescript
-it("should reject unauthorized requests", () => {
-  const req = { cookies: {} } as unknown as Request;
-  const res = {
-    status: vi.fn().mockReturnThis(),
-    json: vi.fn(),
-  } as unknown as Response;
-  const next = vi.fn();
-
-  authMiddleware(req, res, next);
-
-  expect(res.status).toHaveBeenCalledWith(401);
-  expect(next).not.toHaveBeenCalled();
+  expect(screen.getByText("Success")).toBeInTheDocument();
 });
 ```
 
 ---
 
-_Testing analysis: 2026-03-01_
+*Testing analysis: 2026-03-02*
