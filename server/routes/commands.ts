@@ -1,11 +1,21 @@
 import type express from "express";
 import { getAuditLogs, getRecentCommands } from "../lib/db.js";
 import { authMiddleware } from "../lib/auth.js";
+import { get, set } from "../lib/cache.js";
 
 export function registerCommandRoutes(app: express.Application): void {
 	app.get("/api/commands", authMiddleware, (req, res) => {
 		const limit = Number.parseInt(req.query.limit as string) || 20;
+		const cacheKey = `commands:recent:${limit}`;
+		const cached = get(cacheKey);
+
+		if (cached) {
+			res.json(cached);
+			return;
+		}
+
 		const commands = getRecentCommands(limit);
+		set(cacheKey, commands, 5000);
 		res.json(commands);
 	});
 

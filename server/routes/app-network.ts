@@ -1,12 +1,20 @@
 import type express from "express";
 import { clearNetworkProperty, getNetworkReport, setNetworkProperty } from "../lib/network.js";
-import { clearPrefix } from "../lib/cache.js";
+import { clearPrefix, get, set } from "../lib/cache.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { getParam, handleCommandResult } from "./util.js";
 
 export function registerAppNetworkRoutes(app: express.Application): void {
 	app.get("/api/apps/:name/network", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
+		const cacheKey = `apps:${name}:network`;
+		const cached = get(cacheKey);
+
+		if (cached) {
+			res.json(cached);
+			return;
+		}
+
 		const networkReport = await getNetworkReport(name);
 		if ("error" in networkReport) {
 			const statusCode =
@@ -17,6 +25,7 @@ export function registerAppNetworkRoutes(app: express.Application): void {
 			return;
 		}
 
+		set(cacheKey, networkReport);
 		res.json(networkReport);
 	});
 

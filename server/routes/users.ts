@@ -10,10 +10,20 @@ import {
 	deleteUserWithAdminGuard,
 } from "../lib/db.js";
 import { authMiddleware, requireAdmin, hashPassword } from "../lib/auth.js";
+import { clearPrefix, get, set } from "../lib/cache.js";
 
 export function registerUserRoutes(app: express.Application): void {
 	app.get("/api/users", authMiddleware, requireAdmin, (_req, res) => {
+		const cacheKey = "users:list";
+		const cached = get(cacheKey);
+
+		if (cached) {
+			res.json(cached);
+			return;
+		}
+
 		const users = getAllUsers();
+		set(cacheKey, users);
 		res.json(users);
 	});
 
@@ -38,6 +48,7 @@ export function registerUserRoutes(app: express.Application): void {
 		try {
 			const passwordHash = await hashPassword(password);
 			const user = createUser(username, passwordHash, role);
+			clearPrefix("users:");
 			res.status(201).json(user);
 		} catch (err: unknown) {
 			const error = err as { code?: number; message?: string };
@@ -95,6 +106,7 @@ export function registerUserRoutes(app: express.Application): void {
 		}
 
 		updateUser(id, updates);
+		clearPrefix("users:");
 		res.json(getUserById(id));
 	});
 
@@ -118,11 +130,13 @@ export function registerUserRoutes(app: express.Application): void {
 				res.status(400).json({ error: result.error });
 				return;
 			}
+			clearPrefix("users:");
 			res.json({ success: true });
 			return;
 		}
 
 		deleteUser(id);
+		clearPrefix("users:");
 		res.json({ success: true });
 	});
 }
