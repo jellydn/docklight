@@ -1,4 +1,4 @@
-interface FilterField {
+export interface FilterField {
 	name: string;
 	label: string;
 	type: "text" | "date" | "select";
@@ -12,7 +12,8 @@ interface AuditFiltersProps<T extends Record<string, string>> {
 	onFilterChange: <K extends keyof T>(key: K, value: T[K]) => void;
 	onReset: () => void;
 	total: number;
-	logLabel?: string;
+	singularLabel?: string;
+	pluralLabel?: string;
 }
 
 export function AuditFilters<T extends Record<string, string>>({
@@ -21,7 +22,8 @@ export function AuditFilters<T extends Record<string, string>>({
 	onFilterChange,
 	onReset,
 	total,
-	logLabel = "logs",
+	singularLabel = "log",
+	pluralLabel = "logs",
 }: AuditFiltersProps<T>) {
 	return (
 		<div className="bg-white rounded-lg shadow p-6 mb-6">
@@ -35,7 +37,7 @@ export function AuditFilters<T extends Record<string, string>>({
 						{field.type === "select" ? (
 							<select
 								id={field.name}
-								value={(filters as Record<string, string>)[field.name] || ""}
+								value={filters[field.name as keyof T] || ""}
 								onChange={(e) =>
 									onFilterChange(field.name as keyof T, e.target.value as T[keyof T])
 								}
@@ -52,7 +54,7 @@ export function AuditFilters<T extends Record<string, string>>({
 								id={field.name}
 								type={field.type}
 								placeholder={field.placeholder}
-								value={(filters as Record<string, string>)[field.name] || ""}
+								value={filters[field.name as keyof T] || ""}
 								onChange={(e) =>
 									onFilterChange(field.name as keyof T, e.target.value as T[keyof T])
 								}
@@ -71,7 +73,7 @@ export function AuditFilters<T extends Record<string, string>>({
 					Reset Filters
 				</button>
 				<span className="text-sm text-gray-600">
-					{total} {total === 1 ? logLabel.slice(0, -1) : logLabel} found
+					{total} {total === 1 ? singularLabel : pluralLabel} found
 				</span>
 			</div>
 		</div>
