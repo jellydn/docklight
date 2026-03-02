@@ -1,11 +1,17 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useState } from "react";
 import { z } from "zod";
-import { apiFetch } from "../lib/api.js";
 import {
 	CommandHistorySchema,
 	UserAuditLogResultSchema,
 	type UserAuditLog,
+	type CommandHistory,
 } from "../lib/schemas.js";
+import { useAuditLogWithFilters } from "../hooks/use-audit-log.js";
+import { AuditFilters } from "../components/audit-filters.tsx";
+import { AuditPagination } from "../components/audit-pagination.tsx";
+
+type ExitCodeFilter = "all" | "success" | "error";
+type AuditTab = "commands" | "users";
 
 const AuditLogResultSchema = z.object({
 	logs: z.array(CommandHistorySchema),
@@ -14,146 +20,86 @@ const AuditLogResultSchema = z.object({
 	offset: z.number(),
 });
 
-type AuditLogResult = z.infer<typeof AuditLogResultSchema>;
+type CommandFilters = {
+	startDate: string;
+	endDate: string;
+	command: string;
+	exitCode: ExitCodeFilter;
+};
 
-type ExitCodeFilter = "all" | "success" | "error";
+type UserFilters = {
+	startDate: string;
+	endDate: string;
+	userId: string;
+	action: string;
+};
 
-const ITEMS_PER_PAGE = 50;
+const defaultCommandFilters: CommandFilters = {
+	startDate: "",
+	endDate: "",
+	command: "",
+	exitCode: "all",
+};
 
-type AuditTab = "commands" | "users";
+const defaultUserFilters: UserFilters = {
+	startDate: "",
+	endDate: "",
+	userId: "",
+	action: "",
+};
 
 export function Audit() {
 	const [activeTab, setActiveTab] = useState<AuditTab>("commands");
 
 	// Command history state
-	const [commandLogs, setCommandLogs] = useState<AuditLogResult["logs"]>([]);
-	const [commandTotal, setCommandTotal] = useState(0);
-	const [commandLoading, setCommandLoading] = useState(true);
-	const [commandError, setCommandError] = useState<string | null>(null);
+	const {
+		logs: commandLogs,
+		total: commandTotal,
+		loading: commandLoading,
+		error: commandError,
+		offset: commandOffset,
+		setOffset: setCommandOffset,
+		filters: commandFilters,
+		setFilter: setCommandFilter,
+		resetFilters: resetCommandFilters,
+	} = useAuditLogWithFilters<CommandHistory, CommandFilters>({
+		fetchUrl: "/audit/logs",
+		schema: AuditLogResultSchema,
+		fetchDeps: [],
+	});
 
 	// User audit log state
-	const [userLogs, setUserLogs] = useState<UserAuditLog[]>([]);
-	const [userTotal, setUserTotal] = useState(0);
-	const [userLoading, setUserLoading] = useState(true);
-	const [userError, setUserError] = useState<string | null>(null);
+	const {
+		logs: userLogs,
+		total: userTotal,
+		loading: userLoading,
+		error: userError,
+		offset: userOffset,
+		setOffset: setUserOffset,
+		filters: userFilters,
+		setFilter: setUserFilter,
+		resetFilters: resetUserFilters,
+	} = useAuditLogWithFilters<UserAuditLog, UserFilters>({
+		fetchUrl: "/audit/user-logs",
+		schema: UserAuditLogResultSchema,
+		fetchDeps: [],
+	});
 
-	// Command filter state
-	const [startDate, setStartDate] = useState("");
-	const [endDate, setEndDate] = useState("");
-	const [commandFilter, setCommandFilter] = useState("");
-	const [exitCodeFilter, setExitCodeFilter] = useState<ExitCodeFilter>("all");
-
-	// User audit log filter state
-	const [userStartDate, setUserStartDate] = useState("");
-	const [userEndDate, setUserEndDate] = useState("");
-	const [userIdFilter, setUserIdFilter] = useState("");
-	const [actionFilter, setActionFilter] = useState("");
-
-	// Pagination state
-	const [commandOffset, setCommandOffset] = useState(0);
-	const [userOffset, setUserOffset] = useState(0);
+	// Initialize filters with defaults on first render
+	if (Object.keys(commandFilters).length === 0) {
+		resetCommandFilters(defaultCommandFilters);
+	}
+	if (Object.keys(userFilters).length === 0) {
+		resetUserFilters(defaultUserFilters);
+	}
 
 	// Expanded rows for details
 	const [expandedCommandRows, setExpandedCommandRows] = useState<Set<number>>(new Set());
 	const [expandedUserRows, setExpandedUserRows] = useState<Set<number>>(new Set());
 
-	// Fetch command logs when command tab is active or filters change
-	useEffect(() => {
-		if (activeTab === "commands") {
-			fetchCommandLogs();
-		}
-	}, [commandOffset, startDate, endDate, commandFilter, exitCodeFilter]);
-
-	// Fetch user logs when user tab is active or filters change
-	useEffect(() => {
-		if (activeTab === "users") {
-			fetchUserLogs();
-		}
-	}, [userOffset, userStartDate, userEndDate, userIdFilter, actionFilter]);
-
-	const fetchCommandLogs = async () => {
-		setCommandLoading(true);
-		setCommandError(null);
-
-		try {
-			const params = new URLSearchParams({
-				limit: ITEMS_PER_PAGE.toString(),
-				offset: commandOffset.toString(),
-			});
-
-			if (startDate) params.append("startDate", startDate);
-			if (endDate) params.append("endDate", endDate);
-			if (commandFilter) params.append("command", commandFilter);
-			params.append("exitCode", exitCodeFilter);
-
-			const result = await apiFetch(`/audit/logs?${params.toString()}`, AuditLogResultSchema);
-			setCommandLogs(result.logs);
-			setCommandTotal(result.total);
-		} catch (err) {
-			setCommandError(err instanceof Error ? err.message : "Failed to fetch audit logs");
-		} finally {
-			setCommandLoading(false);
-		}
-	};
-
-	const fetchUserLogs = async () => {
-		setUserLoading(true);
-		setUserError(null);
-
-		try {
-			const params = new URLSearchParams({
-				limit: ITEMS_PER_PAGE.toString(),
-				offset: userOffset.toString(),
-			});
-
-			if (userStartDate) params.append("startDate", userStartDate);
-			if (userEndDate) params.append("endDate", userEndDate);
-			if (userIdFilter) params.append("userId", userIdFilter);
-			if (actionFilter) params.append("action", actionFilter);
-
-			const result = await apiFetch(
-				`/audit/user-logs?${params.toString()}`,
-				UserAuditLogResultSchema
-			);
-			setUserLogs(result.logs);
-			setUserTotal(result.total);
-		} catch (err) {
-			setUserError(err instanceof Error ? err.message : "Failed to fetch user audit logs");
-		} finally {
-			setUserLoading(false);
-		}
-	};
-
-	const handleResetCommandFilters = () => {
-		setStartDate("");
-		setEndDate("");
-		setCommandFilter("");
-		setExitCodeFilter("all");
-		setCommandOffset(0);
-	};
-
-	const handleResetUserFilters = () => {
-		setUserStartDate("");
-		setUserEndDate("");
-		setUserIdFilter("");
-		setActionFilter("");
-		setUserOffset(0);
-	};
-
-	const toggleCommandRowExpansion = (id: number) => {
-		setExpandedCommandRows((prev) => {
-			const newSet = new Set(prev);
-			if (newSet.has(id)) {
-				newSet.delete(id);
-			} else {
-				newSet.add(id);
-			}
-			return newSet;
-		});
-	};
-
-	const toggleUserRowExpansion = (id: number) => {
-		setExpandedUserRows((prev) => {
+	const toggleRowExpansion = (id: number, isUserTab: boolean) => {
+		const setter = isUserTab ? setExpandedUserRows : setExpandedCommandRows;
+		setter((prev) => {
 			const newSet = new Set(prev);
 			if (newSet.has(id)) {
 				newSet.delete(id);
@@ -194,12 +140,6 @@ export function Audit() {
 		return <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>{action}</span>;
 	};
 
-	const commandTotalPages = Math.ceil(commandTotal / ITEMS_PER_PAGE);
-	const commandCurrentPage = Math.floor(commandOffset / ITEMS_PER_PAGE) + 1;
-
-	const userTotalPages = Math.ceil(userTotal / ITEMS_PER_PAGE);
-	const userCurrentPage = Math.floor(userOffset / ITEMS_PER_PAGE) + 1;
-
 	return (
 		<div>
 			<h1 className="text-2xl font-bold mb-6">Audit Logs</h1>
@@ -214,6 +154,7 @@ export function Audit() {
 								? "border-blue-500 text-blue-600"
 								: "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
 						} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+						type="button"
 					>
 						Command History
 					</button>
@@ -224,6 +165,7 @@ export function Audit() {
 								? "border-blue-500 text-blue-600"
 								: "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
 						} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+						type="button"
 					>
 						User Actions
 					</button>
@@ -233,91 +175,37 @@ export function Audit() {
 			{activeTab === "commands" ? (
 				<>
 					{/* Command Filters */}
-					<div className="bg-white rounded-lg shadow p-6 mb-6">
-						<h2 className="text-lg font-semibold mb-4">Filters</h2>
-						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-							<div>
-								<label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
-									Start Date
-								</label>
-								<input
-									id="startDate"
-									type="datetime-local"
-									value={startDate}
-									onChange={(e) => {
-										setStartDate(e.target.value);
-										setCommandOffset(0);
-									}}
-									className="w-full border rounded px-3 py-2"
-								/>
-							</div>
-							<div>
-								<label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
-									End Date
-								</label>
-								<input
-									id="endDate"
-									type="datetime-local"
-									value={endDate}
-									onChange={(e) => {
-										setEndDate(e.target.value);
-										setCommandOffset(0);
-									}}
-									className="w-full border rounded px-3 py-2"
-								/>
-							</div>
-							<div>
-								<label htmlFor="command" className="block text-sm font-medium text-gray-700 mb-1">
-									Command Search
-								</label>
-								<input
-									id="command"
-									type="text"
-									placeholder="Search commands..."
-									value={commandFilter}
-									onChange={(e) => {
-										setCommandFilter(e.target.value);
-										setCommandOffset(0);
-									}}
-									className="w-full border rounded px-3 py-2"
-								/>
-							</div>
-							<div>
-								<label htmlFor="exitCode" className="block text-sm font-medium text-gray-700 mb-1">
-									Exit Code
-								</label>
-								<select
-									id="exitCode"
-									value={exitCodeFilter}
-									onChange={(e) => {
-										setExitCodeFilter(e.target.value as ExitCodeFilter);
-										setCommandOffset(0);
-									}}
-									className="w-full border rounded px-3 py-2"
-								>
-									<option value="all">All</option>
-									<option value="success">Success Only</option>
-									<option value="error">Errors Only</option>
-								</select>
-							</div>
-						</div>
-						<div className="flex items-center gap-2">
-							<button
-								onClick={handleResetCommandFilters}
-								className="px-4 py-2 border rounded hover:bg-gray-100"
-							>
-								Reset Filters
-							</button>
-							<span className="text-sm text-gray-600">
-								{commandTotal} {commandTotal === 1 ? "log" : "logs"} found
-							</span>
-						</div>
-					</div>
+					<AuditFilters
+						fields={[
+							{ name: "startDate", label: "Start Date", type: "date" },
+							{ name: "endDate", label: "End Date", type: "date" },
+							{
+								name: "command",
+								label: "Command Search",
+								type: "text",
+								placeholder: "Search commands...",
+							},
+							{
+								name: "exitCode",
+								label: "Exit Code",
+								type: "select",
+								options: [
+									{ value: "all", label: "All" },
+									{ value: "success", label: "Success Only" },
+									{ value: "error", label: "Errors Only" },
+								],
+							},
+						]}
+						filters={commandFilters}
+						onFilterChange={setCommandFilter}
+						onReset={() => resetCommandFilters(defaultCommandFilters)}
+						total={commandTotal}
+					/>
 
 					{/* Command Logs Table */}
 					{commandLoading ? (
 						<div className="flex justify-center items-center py-12">
-							<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+							<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
 						</div>
 					) : commandError ? (
 						<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -364,8 +252,9 @@ export function Audit() {
 													</td>
 													<td className="px-4 py-3 whitespace-nowrap text-sm">
 														<button
-															onClick={() => toggleCommandRowExpansion(log.id)}
+															onClick={() => toggleRowExpansion(log.id, false)}
 															className="text-blue-600 hover:text-blue-800"
+															type="button"
 														>
 															{expandedCommandRows.has(log.id) ? "Hide Details" : "View Details"}
 														</button>
@@ -405,156 +294,39 @@ export function Audit() {
 								</table>
 							</div>
 
-							{/* Command Pagination */}
-							{commandTotalPages > 1 && (
-								<div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200">
-									<div className="flex-1 flex justify-between sm:hidden">
-										<button
-											onClick={() => setCommandOffset(Math.max(0, commandOffset - ITEMS_PER_PAGE))}
-											disabled={commandOffset === 0}
-											className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-										>
-											Previous
-										</button>
-										<button
-											onClick={() => setCommandOffset(commandOffset + ITEMS_PER_PAGE)}
-											disabled={commandOffset + ITEMS_PER_PAGE >= commandTotal}
-											className="ml-3 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-										>
-											Next
-										</button>
-									</div>
-									<div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-										<div>
-											<p className="text-sm text-gray-700">
-												Showing <span className="font-medium">{commandOffset + 1}</span> to{" "}
-												<span className="font-medium">
-													{Math.min(commandOffset + ITEMS_PER_PAGE, commandTotal)}
-												</span>{" "}
-												of <span className="font-medium">{commandTotal}</span> results
-											</p>
-										</div>
-										<div>
-											<nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-												<button
-													onClick={() =>
-														setCommandOffset(Math.max(0, commandOffset - ITEMS_PER_PAGE))
-													}
-													disabled={commandOffset === 0}
-													className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-												>
-													Previous
-												</button>
-												<span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-													Page {commandCurrentPage} of {commandTotalPages}
-												</span>
-												<button
-													onClick={() => setCommandOffset(commandOffset + ITEMS_PER_PAGE)}
-													disabled={commandOffset + ITEMS_PER_PAGE >= commandTotal}
-													className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-												>
-													Next
-												</button>
-											</nav>
-										</div>
-									</div>
-								</div>
-							)}
+							<AuditPagination
+								total={commandTotal}
+								offset={commandOffset}
+								setOffset={setCommandOffset}
+							/>
 						</div>
 					)}
 				</>
 			) : (
 				<>
 					{/* User Audit Log Filters */}
-					<div className="bg-white rounded-lg shadow p-6 mb-6">
-						<h2 className="text-lg font-semibold mb-4">Filters</h2>
-						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-							<div>
-								<label
-									htmlFor="userStartDate"
-									className="block text-sm font-medium text-gray-700 mb-1"
-								>
-									Start Date
-								</label>
-								<input
-									id="userStartDate"
-									type="datetime-local"
-									value={userStartDate}
-									onChange={(e) => {
-										setUserStartDate(e.target.value);
-										setUserOffset(0);
-									}}
-									className="w-full border rounded px-3 py-2"
-								/>
-							</div>
-							<div>
-								<label
-									htmlFor="userEndDate"
-									className="block text-sm font-medium text-gray-700 mb-1"
-								>
-									End Date
-								</label>
-								<input
-									id="userEndDate"
-									type="datetime-local"
-									value={userEndDate}
-									onChange={(e) => {
-										setUserEndDate(e.target.value);
-										setUserOffset(0);
-									}}
-									className="w-full border rounded px-3 py-2"
-								/>
-							</div>
-							<div>
-								<label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-1">
-									User ID
-								</label>
-								<input
-									id="userId"
-									type="text"
-									placeholder="Filter by user ID..."
-									value={userIdFilter}
-									onChange={(e) => {
-										setUserIdFilter(e.target.value);
-										setUserOffset(0);
-									}}
-									className="w-full border rounded px-3 py-2"
-								/>
-							</div>
-							<div>
-								<label htmlFor="action" className="block text-sm font-medium text-gray-700 mb-1">
-									Action
-								</label>
-								<input
-									id="action"
-									type="text"
-									placeholder="Filter by action..."
-									value={actionFilter}
-									onChange={(e) => {
-										setActionFilter(e.target.value);
-										setUserOffset(0);
-									}}
-									className="w-full border rounded px-3 py-2"
-								/>
-							</div>
-						</div>
-						<div className="flex items-center gap-2">
-							<button
-								onClick={handleResetUserFilters}
-								className="px-4 py-2 border rounded hover:bg-gray-100"
-							>
-								Reset Filters
-							</button>
-							<span className="text-sm text-gray-600">
-								{userTotal} {userTotal === 1 ? "log" : "logs"} found
-							</span>
-						</div>
-					</div>
+					<AuditFilters
+						fields={[
+							{ name: "startDate", label: "Start Date", type: "date" },
+							{ name: "endDate", label: "End Date", type: "date" },
+							{
+								name: "userId",
+								label: "User ID",
+								type: "text",
+								placeholder: "Filter by user ID...",
+							},
+							{ name: "action", label: "Action", type: "text", placeholder: "Filter by action..." },
+						]}
+						filters={userFilters}
+						onFilterChange={setUserFilter}
+						onReset={() => resetUserFilters(defaultUserFilters)}
+						total={userTotal}
+					/>
 
 					{/* User Audit Logs Table */}
 					{userLoading ? (
 						<div className="flex justify-center items-center py-12">
-							<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+							<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
 						</div>
 					) : userError ? (
 						<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -611,8 +383,9 @@ export function Audit() {
 													</td>
 													<td className="px-4 py-3 whitespace-nowrap text-sm">
 														<button
-															onClick={() => toggleUserRowExpansion(log.id)}
+															onClick={() => toggleRowExpansion(log.id, true)}
 															className="text-blue-600 hover:text-blue-800"
+															type="button"
 														>
 															{expandedUserRows.has(log.id) ? "Hide Details" : "View Details"}
 														</button>
@@ -644,59 +417,7 @@ export function Audit() {
 								</table>
 							</div>
 
-							{/* User Pagination */}
-							{userTotalPages > 1 && (
-								<div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200">
-									<div className="flex-1 flex justify-between sm:hidden">
-										<button
-											onClick={() => setUserOffset(Math.max(0, userOffset - ITEMS_PER_PAGE))}
-											disabled={userOffset === 0}
-											className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-										>
-											Previous
-										</button>
-										<button
-											onClick={() => setUserOffset(userOffset + ITEMS_PER_PAGE)}
-											disabled={userOffset + ITEMS_PER_PAGE >= userTotal}
-											className="ml-3 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-										>
-											Next
-										</button>
-									</div>
-									<div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-										<div>
-											<p className="text-sm text-gray-700">
-												Showing <span className="font-medium">{userOffset + 1}</span> to{" "}
-												<span className="font-medium">
-													{Math.min(userOffset + ITEMS_PER_PAGE, userTotal)}
-												</span>{" "}
-												of <span className="font-medium">{userTotal}</span> results
-											</p>
-										</div>
-										<div>
-											<nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-												<button
-													onClick={() => setUserOffset(Math.max(0, userOffset - ITEMS_PER_PAGE))}
-													disabled={userOffset === 0}
-													className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-												>
-													Previous
-												</button>
-												<span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-													Page {userCurrentPage} of {userTotalPages}
-												</span>
-												<button
-													onClick={() => setUserOffset(userOffset + ITEMS_PER_PAGE)}
-													disabled={userOffset + ITEMS_PER_PAGE >= userTotal}
-													className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-												>
-													Next
-												</button>
-											</nav>
-										</div>
-									</div>
-								</div>
-							)}
+							<AuditPagination total={userTotal} offset={userOffset} setOffset={setUserOffset} />
 						</div>
 					)}
 				</>
