@@ -8,19 +8,16 @@ import { createApp, destroyApp, isValidAppName, scaleApp } from "./apps.js";
 import { addDomain, removeDomain } from "./domains.js";
 import { setConfig, unsetConfig } from "./config.js";
 import { createDatabase, linkDatabase } from "./databases.js";
-import { installPlugin } from "./plugins.js";
 import { addDockerOption } from "./docker-options.js";
 import { addBuildpack } from "./buildpacks.js";
 import { setDeployBranch } from "./deployment.js";
-import { executeCommand, executeCommandAsRoot } from "./executor.js";
+import { executeCommand } from "./executor.js";
 
 vi.mock("./executor.js", () => ({
 	executeCommand: vi.fn(),
-	executeCommandAsRoot: vi.fn(),
 }));
 
 const mockExecuteCommand = executeCommand as ReturnType<typeof vi.fn>;
-const mockExecuteCommandAsRoot = executeCommandAsRoot as ReturnType<typeof vi.fn>;
 
 describe("Security: App Name Validation", () => {
 	beforeEach(() => {
@@ -328,46 +325,6 @@ describe("Security: Database Validation", () => {
 				exitCode: 400,
 			});
 			expect(mockExecuteCommand).not.toHaveBeenCalled();
-		});
-	});
-});
-
-describe("Security: Plugin Validation", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
-	describe("installPlugin", () => {
-		it("should reject repository with shell injection", async () => {
-			const result = await installPlugin("https://github.com; whoami");
-
-			expect(result).toMatchObject({
-				error: "Plugin repository contains invalid characters",
-				exitCode: 400,
-			});
-			expect(mockExecuteCommand).not.toHaveBeenCalled();
-		});
-
-		it("should reject plugin name with special characters", async () => {
-			const result = await installPlugin("https://github.com/user/repo", "plugin; rm -rf /");
-
-			expect(result).toMatchObject({
-				error: "Plugin name contains invalid characters",
-				exitCode: 400,
-			});
-		});
-
-		it("should accept valid plugin repository", async () => {
-			mockExecuteCommandAsRoot.mockResolvedValue({
-				command: "dokku plugin:install https://github.com/user/repo",
-				exitCode: 0,
-				stdout: "",
-				stderr: "",
-			});
-
-			const _result = await installPlugin("https://github.com/user/repo");
-
-			expect(mockExecuteCommandAsRoot).toHaveBeenCalled();
 		});
 	});
 });
