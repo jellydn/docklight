@@ -555,7 +555,9 @@ describe("Security: Scale App", () => {
 
 			const _result = await scaleApp("my-app", "web", 3);
 
-			expect(mockExecuteCommand).toHaveBeenCalledWith("dokku ps:scale my-app web=3");
+			expect(mockExecuteCommand).toHaveBeenCalledWith("dokku ps:scale my-app web=3", 30000, {
+				userId: undefined,
+			});
 		});
 	});
 });

@@ -448,7 +448,9 @@ describe("restartApp", () => {
 		const result = await restartApp(appName);
 
 		expect(result).toEqual(expectedResult);
-		expect(mockExecuteCommand).toHaveBeenCalledWith(`dokku ps:restart ${appName}`);
+		expect(mockExecuteCommand).toHaveBeenCalledWith(`dokku ps:restart ${appName}`, 30000, {
+			userId: undefined,
+		});
 	});
 
 	it("should return validation error for invalid app name", async () => {
@@ -484,7 +486,9 @@ describe("rebuildApp", () => {
 		const result = await rebuildApp(appName);
 
 		expect(result).toEqual(expectedResult);
-		expect(mockExecuteCommand).toHaveBeenCalledWith(`dokku ps:rebuild ${appName}`);
+		expect(mockExecuteCommand).toHaveBeenCalledWith(`dokku ps:rebuild ${appName}`, 30000, {
+			userId: undefined,
+		});
 	});
 
 	it("should return validation error for invalid app name", async () => {
@@ -523,7 +527,9 @@ describe("scaleApp", () => {
 
 		expect(result).toEqual(expectedResult);
 		expect(mockExecuteCommand).toHaveBeenCalledWith(
-			`dokku ps:scale ${appName} ${processType}=${count}`
+			`dokku ps:scale ${appName} ${processType}=${count}`,
+			30000,
+			{ userId: undefined }
 		);
 	});
 

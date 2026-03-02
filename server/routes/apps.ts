@@ -1,4 +1,5 @@
 import type express from "express";
+import type { JWTPayload } from "../lib/auth.js";
 import {
 	getAppDetail,
 	getApps,
@@ -15,8 +16,13 @@ import { logger } from "../lib/logger.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { getParam } from "./util.js";
 
+function getUserId(req: express.Request): string | undefined {
+	const user = req.user as JWTPayload | undefined;
+	return user?.userId ? String(user.userId) : undefined;
+}
+
 export function registerAppRoutes(app: express.Application): void {
-	app.get("/api/apps", authMiddleware, async (_req, res) => {
+	app.get("/api/apps", authMiddleware, async (req, res) => {
 		const cacheKey = "apps:list";
 		const cached = get(cacheKey);
 
@@ -25,7 +31,8 @@ export function registerAppRoutes(app: express.Application): void {
 			return;
 		}
 
-		const apps = await getApps();
+		const userId = getUserId(req);
+		const apps = await getApps(userId);
 		if (!Array.isArray(apps)) {
 			logger.error({ apps }, "Failed to fetch apps");
 			res.status(apps.exitCode >= 400 ? apps.exitCode : 500).json(apps);
@@ -43,7 +50,8 @@ export function registerAppRoutes(app: express.Application): void {
 			return;
 		}
 
-		const result = await createApp(name);
+		const userId = getUserId(req);
+		const result = await createApp(name, userId);
 
 		if (result.exitCode !== 0) {
 			const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
@@ -57,13 +65,15 @@ export function registerAppRoutes(app: express.Application): void {
 
 	app.get("/api/apps/:name", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
-		const app = await getAppDetail(name);
+		const userId = getUserId(req);
+		const app = await getAppDetail(name, userId);
 		res.json(app);
 	});
 
 	app.post("/api/apps/:name/restart", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
-		const result = await restartApp(name);
+		const userId = getUserId(req);
+		const result = await restartApp(name, userId);
 
 		if (result.exitCode !== 0) {
 			const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
@@ -77,7 +87,8 @@ export function registerAppRoutes(app: express.Application): void {
 
 	app.post("/api/apps/:name/rebuild", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
-		const result = await rebuildApp(name);
+		const userId = getUserId(req);
+		const result = await rebuildApp(name, userId);
 
 		if (result.exitCode !== 0) {
 			const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
@@ -91,7 +102,8 @@ export function registerAppRoutes(app: express.Application): void {
 
 	app.post("/api/apps/:name/stop", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
-		const result = await stopApp(name);
+		const userId = getUserId(req);
+		const result = await stopApp(name, userId);
 
 		if (result.exitCode !== 0) {
 			const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
@@ -105,7 +117,8 @@ export function registerAppRoutes(app: express.Application): void {
 
 	app.post("/api/apps/:name/start", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
-		const result = await startApp(name);
+		const userId = getUserId(req);
+		const result = await startApp(name, userId);
 
 		if (result.exitCode !== 0) {
 			const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
@@ -120,7 +133,8 @@ export function registerAppRoutes(app: express.Application): void {
 	app.post("/api/apps/:name/scale", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { processType, count } = req.body;
-		const result = await scaleApp(name, processType, count);
+		const userId = getUserId(req);
+		const result = await scaleApp(name, processType, count, userId);
 
 		if (result.exitCode !== 0) {
 			const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
@@ -139,7 +153,8 @@ export function registerAppRoutes(app: express.Application): void {
 			res.status(400).json({ error: "App name confirmation is required" });
 			return;
 		}
-		const result = await destroyApp(name, confirmName);
+		const userId = getUserId(req);
+		const result = await destroyApp(name, confirmName, userId);
 
 		if (result.exitCode !== 0) {
 			const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;

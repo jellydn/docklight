@@ -38,9 +38,9 @@ function createValidationError(commandName: string): typeof INVALID_NAME_ERROR {
 	return { ...INVALID_NAME_ERROR, command: `${commandName}-validation` };
 }
 
-export async function getApps(): Promise<
-	App[] | { error: string; command: string; exitCode: number; stderr: string }
-> {
+export async function getApps(
+	userId?: string
+): Promise<App[] | { error: string; command: string; exitCode: number; stderr: string }> {
 	const fallbackCommand = DokkuCommands.appsList();
 
 	try {
@@ -48,9 +48,9 @@ export async function getApps(): Promise<
 		let listResult: CommandResult | undefined;
 
 		for (const command of listCommands) {
-			const result = await executeCommand(command);
+			const result = await executeCommand(command, 30000, { userId });
 			if (result.exitCode === 0) {
-				return await fetchAppDetails(result.stdout);
+				return await fetchAppDetails(result.stdout, userId);
 			}
 			listResult = result;
 		}
@@ -75,7 +75,7 @@ export async function getApps(): Promise<
 	}
 }
 
-async function fetchAppDetails(stdout: string): Promise<App[]> {
+async function fetchAppDetails(stdout: string, userId?: string): Promise<App[]> {
 	const appNames = stdout
 		.split("\n")
 		.map((line) => stripAnsi(line).trim())
@@ -88,8 +88,8 @@ async function fetchAppDetails(stdout: string): Promise<App[]> {
 	return Promise.all(
 		appNames.map(async (appName) => {
 			const [psReportResult, domainsReportResult] = await Promise.all([
-				executeCommand(DokkuCommands.psReport(appName)),
-				executeCommand(DokkuCommands.domainsReport(appName)),
+				executeCommand(DokkuCommands.psReport(appName), 30000, { userId }),
+				executeCommand(DokkuCommands.domainsReport(appName), 30000, { userId }),
 			]);
 
 			return {
@@ -192,7 +192,8 @@ export function isValidAppName(name: string): boolean {
 }
 
 export async function getAppDetail(
-	name: string
+	name: string,
+	userId?: string
 ): Promise<AppDetail | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
 		return createValidationError("get-app-detail");
@@ -201,8 +202,10 @@ export async function getAppDetail(
 	const psReportCommand = DokkuCommands.psReport(name);
 
 	try {
-		const psReportResult = await executeCommand(psReportCommand);
-		const domainsReportResult = await executeCommand(DokkuCommands.domainsReport(name));
+		const psReportResult = await executeCommand(psReportCommand, 30000, { userId });
+		const domainsReportResult = await executeCommand(DokkuCommands.domainsReport(name), 30000, {
+			userId,
+		});
 
 		if (psReportResult.exitCode !== 0) {
 			return {
@@ -269,19 +272,21 @@ function parseProcesses(stdout: string): Record<string, number> {
 }
 
 export async function createApp(
-	name: string
+	name: string,
+	userId?: string
 ): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
 		return createValidationError("create-app");
 	}
 
-	const result = await executeCommand(DokkuCommands.appsCreate(name));
+	const result = await executeCommand(DokkuCommands.appsCreate(name), 30000, { userId });
 	return result;
 }
 
 export async function destroyApp(
 	name: string,
-	confirmName: string
+	confirmName: string,
+	userId?: string
 ): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
 		return createValidationError("destroy-app");
@@ -296,54 +301,59 @@ export async function destroyApp(
 		};
 	}
 
-	const result = await executeCommand(DokkuCommands.appsDestroy(name));
+	const result = await executeCommand(DokkuCommands.appsDestroy(name), 30000, { userId });
 	return result;
 }
 
 export async function restartApp(
-	name: string
+	name: string,
+	userId?: string
 ): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
 		return createValidationError("restart-app");
 	}
 
-	return executeCommand(DokkuCommands.psRestart(name));
+	return executeCommand(DokkuCommands.psRestart(name), 30000, { userId });
 }
 
 export async function stopApp(
-	name: string
+	name: string,
+	userId?: string
 ): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
 		return createValidationError("stop-app");
 	}
 
-	return executeCommand(DokkuCommands.psStop(name));
+	return executeCommand(DokkuCommands.psStop(name), 30000, { userId });
 }
 
 export async function startApp(
-	name: string
+	name: string,
+	userId?: string
 ): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
 		return createValidationError("start-app");
 	}
 
-	return executeCommand(DokkuCommands.psStart(name));
+	return executeCommand(DokkuCommands.psStart(name), 30000, { userId });
 }
 
 export async function rebuildApp(
-	name: string
+	name: string,
+	userId?: string
 ): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
 	if (!isValidAppName(name)) {
 		return createValidationError("rebuild-app");
 	}
 
-	return executeCommand(DokkuCommands.psRebuild(name));
+	return executeCommand(DokkuCommands.psRebuild(name), 30000, { userId });
 }
 
 export async function scaleApp(
 	name: string,
 	processType: string,
-	count: number
+	count: number,
+	userId?: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
 	if (!isValidAppName(name)) {
 		return {
@@ -369,5 +379,5 @@ export async function scaleApp(
 		};
 	}
 
-	return executeCommand(DokkuCommands.psScale(name, processType, count));
+	return executeCommand(DokkuCommands.psScale(name, processType, count), 30000, { userId });
 }

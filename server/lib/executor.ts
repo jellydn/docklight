@@ -3,6 +3,8 @@ import { promisify } from "util";
 import { NodeSSH } from "node-ssh";
 import { isCommandAllowed } from "./allowlist.js";
 import { saveCommand } from "./db.js";
+import { logger } from "./logger.js";
+import { commandRateLimiter } from "./rate-limiter.js";
 
 const execAsync = promisify(exec);
 
@@ -17,6 +19,7 @@ interface ExecuteCommandOptions {
 	asRoot?: boolean;
 	sudoPassword?: string;
 	preferRootTarget?: boolean;
+	userId?: string;
 }
 
 function shellQuote(value: string): string {
@@ -199,6 +202,19 @@ async function executeViaPool(
 	const rootTarget = process.env.DOCKLIGHT_DOKKU_SSH_ROOT_TARGET?.trim();
 	const remoteCommand = buildRemoteCommand(command, target, options);
 
+	logger.debug(
+		{
+			target,
+			command,
+			remoteCommand,
+			asRoot: options?.asRoot,
+			sudoPassword: options?.sudoPassword ? "[REDACTED]" : undefined,
+			rootTarget,
+			defaultTarget,
+		},
+		"executeViaPool debug"
+	);
+
 	let ssh: NodeSSH;
 	try {
 		ssh = await sshPool.getConnection(target, keyPath);
@@ -290,6 +306,7 @@ async function executeViaPool(
 	let stderr = execResult.stderr.trim();
 
 	if (exitCode !== 0 && options?.asRoot) {
+		logger.debug({ stderr, remoteCommand, target }, "executeViaPool error debug");
 		if (/sorry, try again|incorrect password attempt/i.test(stderr)) {
 			stderr = `Incorrect sudo password. Please check your password and try again.`;
 		} else if (
@@ -314,6 +331,21 @@ export async function executeCommand(
 	timeout: number = 30000,
 	options?: ExecuteCommandOptions
 ): Promise<CommandResult> {
+	// Check rate limit if userId is provided
+	if (options?.userId) {
+		const rateLimitResult = commandRateLimiter.checkLimit(options.userId);
+		if (!rateLimitResult.allowed) {
+			const result: CommandResult = {
+				command,
+				exitCode: 429,
+				stdout: "",
+				stderr: `Rate limit exceeded. Please try again after ${rateLimitResult.resetAt?.toISOString()}.`,
+			};
+			saveCommand(result);
+			return result;
+		}
+	}
+
 	if (!isCommandAllowed(command)) {
 		const result: CommandResult = {
 			command,
