@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import type { z } from "zod";
 import { apiFetch } from "../lib/api.js";
-
-const ITEMS_PER_PAGE = 50;
+import { ITEMS_PER_PAGE } from "../lib/constants.js";
 
 interface UseAuditLogParams<T> {
 	fetchUrl: string;
@@ -66,6 +65,21 @@ export function useAuditLog<T>({
 	};
 }
 
+/**
+ * Hook for managing audit logs with filter support
+ * @example
+ * const { logs, filters, setFilter, resetFilters } = useAuditLogWithFilters({
+ *   fetchUrl: "/audit/logs",
+ *   schema: AuditLogResultSchema,
+ *   fetchDeps: [],
+ * });
+ * // Initialize filters on component mount
+ * useEffect(() => {
+ *   if (Object.keys(filters).length === 0) {
+ *     resetFilters(defaultFilters);
+ *   }
+ * }, [filters, resetFilters]);
+ */
 export function useAuditLogWithFilters<T, F extends Record<string, string>>({
 	fetchUrl,
 	schema,

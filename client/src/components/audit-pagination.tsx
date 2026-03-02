@@ -1,4 +1,4 @@
-const ITEMS_PER_PAGE = 50;
+import { ITEMS_PER_PAGE } from "../lib/constants.js";
 
 interface AuditPaginationProps {
 	total: number;

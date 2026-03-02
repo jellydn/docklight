@@ -128,6 +128,7 @@ export function Audit() {
 	};
 
 	const getActionBadge = (action: string) => {
+		const verb = action.split(":").pop() ?? action;
 		const colorMap: Record<string, string> = {
 			create: "bg-blue-100 text-blue-800",
 			update: "bg-yellow-100 text-yellow-800",
@@ -136,7 +137,7 @@ export function Audit() {
 			logout: "bg-gray-100 text-gray-800",
 			deploy: "bg-purple-100 text-purple-800",
 		};
-		const color = colorMap[action] || "bg-gray-100 text-gray-800";
+		const color = colorMap[verb] || "bg-gray-100 text-gray-800";
 		return <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>{action}</span>;
 	};
 
