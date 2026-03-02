@@ -40,7 +40,8 @@ export function useAuditLog<T>({
 				offset: offset.toString(),
 			});
 
-			const result = await apiFetch(`${fetchUrl}?${params.toString()}`, schema);
+			const separator = fetchUrl.includes("?") ? "&" : "?";
+			const result = await apiFetch(`${fetchUrl}${separator}${params.toString()}`, schema);
 			setLogs(result.logs);
 			setTotal(result.total);
 		} catch (err) {
