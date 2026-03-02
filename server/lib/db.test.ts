@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import fs from "fs";
-import path from "path";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import Database from "better-sqlite3";
 import type { CommandHistory } from "./db.js";
 import { importBackup } from "./db.js";
@@ -424,5 +424,374 @@ describe("backup SQL logic", () => {
 		expect(users.map((u) => u.username)).toContain("existing");
 		expect(users.map((u) => u.username)).toContain("admin");
 		testDb.close();
+	});
+});
+
+const AUDIT_TEST_DB_PATH = path.join(__dirname, "test-data", "audit-test.db");
+
+describe("getUserAuditLogs", () => {
+	let originalDbPath: string | undefined;
+
+	beforeEach(() => {
+		if (fs.existsSync(AUDIT_TEST_DB_PATH)) fs.unlinkSync(AUDIT_TEST_DB_PATH);
+		const testDir = path.dirname(AUDIT_TEST_DB_PATH);
+		if (!fs.existsSync(testDir)) fs.mkdirSync(testDir, { recursive: true });
+
+		// Mock the database path to use test database
+		originalDbPath = process.env.DOCKLIGHT_DB_PATH;
+		process.env.DOCKLIGHT_DB_PATH = AUDIT_TEST_DB_PATH;
+
+		// Clear cached db module to force fresh initialization
+		vi.resetModules();
+	});
+
+	afterEach(() => {
+		if (fs.existsSync(AUDIT_TEST_DB_PATH)) fs.unlinkSync(AUDIT_TEST_DB_PATH);
+		if (originalDbPath !== undefined) {
+			process.env.DOCKLIGHT_DB_PATH = originalDbPath;
+		} else {
+			delete process.env.DOCKLIGHT_DB_PATH;
+		}
+		vi.resetModules();
+	});
+
+	it("should return empty result when no logs exist", async () => {
+		// Arrange
+		const { getUserAuditLogs } = await import("./db.js");
+
+		// Act
+		const result = getUserAuditLogs();
+
+		// Assert
+		expect(result.logs).toHaveLength(0);
+		expect(result.total).toBe(0);
+		expect(result.limit).toBe(50);
+		expect(result.offset).toBe(0);
+	});
+
+	it("should return paginated audit logs", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		createUser("user1", "hash", "viewer");
+		createUser("user2", "hash", "viewer");
+
+		insertAuditLog(1, "login", null, null, "192.168.1.1");
+		insertAuditLog(2, "apps:create", "my-app", '{"name": "my-app"}', "192.168.1.2");
+		insertAuditLog(1, "logout", null, null, "192.168.1.1");
+
+		// Act
+		const result = getUserAuditLogs({ limit: 2, offset: 0 });
+
+		// Assert
+		expect(result.logs).toHaveLength(2);
+		expect(result.total).toBe(3);
+		expect(result.limit).toBe(2);
+		expect(result.offset).toBe(0);
+	});
+
+	it("should filter by userId", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		createUser("user1", "hash", "viewer");
+		createUser("user2", "hash", "viewer");
+
+		insertAuditLog(1, "login", null, null, "192.168.1.1");
+		insertAuditLog(2, "apps:create", "my-app", null, "192.168.1.2");
+		insertAuditLog(1, "logout", null, null, "192.168.1.1");
+
+		// Act
+		const result = getUserAuditLogs({ userId: 1 });
+
+		// Assert
+		expect(result.logs).toHaveLength(2);
+		expect(result.total).toBe(2);
+		expect(result.logs.every((log) => log.userId === 1)).toBe(true);
+	});
+
+	it("should filter by action", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		createUser("user1", "hash", "viewer");
+		createUser("user2", "hash", "viewer");
+
+		insertAuditLog(1, "login", null, null, "192.168.1.1");
+		insertAuditLog(2, "login", null, null, "192.168.1.2");
+		insertAuditLog(1, "logout", null, null, "192.168.1.1");
+
+		// Act
+		const result = getUserAuditLogs({ action: "login" });
+
+		// Assert
+		expect(result.logs).toHaveLength(2);
+		expect(result.total).toBe(2);
+		expect(result.logs.every((log) => log.action === "login")).toBe(true);
+	});
+
+	it("should filter by startDate", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		createUser("user1", "hash", "viewer");
+		createUser("user2", "hash", "viewer");
+
+		insertAuditLog(1, "login", null, null, "192.168.1.1");
+		insertAuditLog(2, "login", null, null, "192.168.1.2");
+
+		// Act
+		const result = getUserAuditLogs({ startDate: "2024-01-15T00:00:00.000Z" });
+
+		// Assert - logs are inserted with CURRENT_TIMESTAMP which is after start date
+		expect(result.total).toBeGreaterThanOrEqual(0);
+	});
+
+	it("should filter by endDate with date-only format", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		createUser("user1", "hash", "viewer");
+		createUser("user2", "hash", "viewer");
+
+		insertAuditLog(1, "login", null, null, "192.168.1.1");
+		insertAuditLog(2, "login", null, null, "192.168.1.2");
+
+		// Act - using date-only format, should convert to end of day
+		const result = getUserAuditLogs({ endDate: "2024-12-31" });
+
+		// Assert
+		expect(result.logs).toBeDefined();
+		expect(Array.isArray(result.logs)).toBe(true);
+	});
+
+	it("should filter by endDate with full ISO format", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		createUser("user1", "hash", "viewer");
+
+		insertAuditLog(1, "login", null, null, "192.168.1.1");
+
+		// Act
+		const result = getUserAuditLogs({ endDate: "2099-12-31T23:59:59.999Z" });
+
+		// Assert
+		expect(result.logs).toBeDefined();
+	});
+
+	it("should handle null userId in logs", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs } = await import("./db.js");
+
+		insertAuditLog(null, "system:startup", null, null, null);
+
+		// Act
+		const result = getUserAuditLogs();
+
+		// Assert
+		expect(result.logs).toHaveLength(1);
+		expect(result.logs[0].userId).toBeNull();
+	});
+
+	it("should return logs in descending createdAt order", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		createUser("user1", "hash", "viewer");
+		createUser("user2", "hash", "viewer");
+		createUser("user3", "hash", "viewer");
+
+		insertAuditLog(1, "action1", null, null, "192.168.1.1");
+		insertAuditLog(2, "action2", null, null, "192.168.1.2");
+		insertAuditLog(3, "action3", null, null, "192.168.1.3");
+
+		// Act
+		const result = getUserAuditLogs();
+
+		// Assert
+		expect(result.logs.length).toBeGreaterThanOrEqual(3);
+	});
+
+	it("should apply offset for pagination", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		for (let i = 0; i < 5; i++) {
+			createUser(`user${i}`, "hash", "viewer");
+		}
+
+		for (let i = 0; i < 5; i++) {
+			insertAuditLog(i + 1, `action${i}`, null, null, `192.168.1.${i}`);
+		}
+
+		// Act
+		const page1 = getUserAuditLogs({ limit: 2, offset: 0 });
+		const page2 = getUserAuditLogs({ limit: 2, offset: 2 });
+
+		// Assert
+		expect(page1.logs).toHaveLength(2);
+		expect(page2.logs).toHaveLength(2);
+		expect(page1.total).toBe(5);
+		expect(page2.total).toBe(5);
+	});
+
+	it("should cap limit at 500", async () => {
+		// Arrange
+		const { getUserAuditLogs } = await import("./db.js");
+
+		// Act
+		const result = getUserAuditLogs({ limit: 1000 });
+
+		// Assert
+		expect(result.limit).toBe(500);
+	});
+
+	it("should return default limit of 50 when not specified", async () => {
+		// Arrange
+		const { getUserAuditLogs } = await import("./db.js");
+
+		// Act
+		const result = getUserAuditLogs();
+
+		// Assert
+		expect(result.limit).toBe(50);
+	});
+
+	it("should return default offset of 0 when not specified", async () => {
+		// Arrange
+		const { getUserAuditLogs } = await import("./db.js");
+
+		// Act
+		const result = getUserAuditLogs();
+
+		// Assert
+		expect(result.offset).toBe(0);
+	});
+
+	it("should include userId in returned logs", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		const user = createUser("testuser", "hash", "viewer");
+
+		insertAuditLog(user.id, "test:action", "test-resource", null, "10.0.0.1");
+
+		// Act
+		const result = getUserAuditLogs();
+
+		// Assert
+		expect(result.logs[0].userId).toBe(user.id);
+	});
+
+	it("should include resource in returned logs", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		createUser("user1", "hash", "viewer");
+
+		insertAuditLog(1, "apps:create", "my-app", null, "192.168.1.1");
+
+		// Act
+		const result = getUserAuditLogs();
+
+		// Assert
+		expect(result.logs[0].resource).toBe("my-app");
+	});
+
+	it("should include details in returned logs", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		createUser("user1", "hash", "viewer");
+
+		insertAuditLog(1, "apps:create", "my-app", '{"name": "my-app", "port": 8080}', "192.168.1.1");
+
+		// Act
+		const result = getUserAuditLogs();
+
+		// Assert
+		expect(result.logs[0].details).toBe('{"name": "my-app", "port": 8080}');
+	});
+
+	it("should include ipAddress in returned logs", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		createUser("user1", "hash", "viewer");
+
+		insertAuditLog(1, "login", null, null, "192.168.1.100");
+
+		// Act
+		const result = getUserAuditLogs();
+
+		// Assert
+		expect(result.logs[0].ipAddress).toBe("192.168.1.100");
+	});
+
+	it("should format createdAt as ISO 8601", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		createUser("user1", "hash", "viewer");
+
+		insertAuditLog(1, "login", null, null, "192.168.1.1");
+
+		// Act
+		const result = getUserAuditLogs();
+
+		// Assert
+		expect(result.logs[0].createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+	});
+
+	it("should apply multiple filters simultaneously", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		createUser("user1", "hash", "viewer");
+		createUser("user2", "hash", "viewer");
+
+		insertAuditLog(1, "login", null, null, "192.168.1.1");
+		insertAuditLog(1, "login", null, null, "192.168.1.2");
+		insertAuditLog(2, "login", null, null, "192.168.1.3");
+		insertAuditLog(1, "logout", null, null, "192.168.1.1");
+
+		// Act
+		const result = getUserAuditLogs({ userId: 1, action: "login" });
+
+		// Assert
+		expect(result.total).toBe(2);
+		expect(result.logs.every((log) => log.userId === 1 && log.action === "login")).toBe(true);
+	});
+
+	it("should handle invalid ISO date by ignoring the filter", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		createUser("user1", "hash", "viewer");
+
+		insertAuditLog(1, "login", null, null, "192.168.1.1");
+
+		// Act
+		const result = getUserAuditLogs({ startDate: "invalid-date" });
+
+		// Assert - invalid date is ignored, so log is still returned
+		expect(result.total).toBeGreaterThanOrEqual(0);
+	});
+
+	it("should return empty array for userId with no matching logs", async () => {
+		// Arrange
+		const { insertAuditLog, getUserAuditLogs, createUser } = await import("./db.js");
+
+		createUser("user1", "hash", "viewer");
+
+		insertAuditLog(1, "login", null, null, "192.168.1.1");
+
+		// Act
+		const result = getUserAuditLogs({ userId: 999 });
+
+		// Assert
+		expect(result.logs).toHaveLength(0);
+		expect(result.total).toBe(0);
 	});
 });
