@@ -36,6 +36,20 @@ const app = express();
 app.use(cookieParser());
 app.use(express.json());
 app.set("trust proxy", true);
+
+// HTTPS redirect middleware (production only)
+if (process.env.NODE_ENV === "production") {
+	app.use((req, res, next) => {
+		const isSecure = req.secure || req.headers["x-forwarded-proto"] === "https";
+
+		if (!isSecure) {
+			return res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
+		}
+
+		next();
+	});
+}
+
 app.use(pinoHttp({ logger }));
 
 // Serve static files from client
