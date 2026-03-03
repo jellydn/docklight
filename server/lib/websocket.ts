@@ -12,6 +12,9 @@ import { isCommandAllowed } from "./allowlist.js";
 
 const MAX_CONNECTIONS = Number(process.env.WS_MAX_CONNECTIONS ?? 50);
 const MAX_CONNECTIONS_PER_USER = Number(process.env.WS_MAX_CONNECTIONS_PER_USER ?? 5);
+const MAX_CONNECTIONS_PER_IP = Number(process.env.WS_MAX_CONNECTIONS_PER_IP ?? 10);
+const MAX_IP_BURST_RATE = Number(process.env.WS_MAX_IP_BURST_RATE ?? 30);
+const IP_BURST_WINDOW_MS = Number(process.env.WS_IP_BURST_WINDOW_MS ?? 60 * 1000); // 1 minute
 const IDLE_TIMEOUT_MS = Number(process.env.WS_IDLE_TIMEOUT_MS ?? 30 * 60 * 1000); // 30 minutes
 const CLEANUP_INTERVAL_MS = Number(process.env.WS_CLEANUP_INTERVAL_MS ?? 60 * 1000); // 1 minute
 
@@ -19,11 +22,13 @@ interface ExtendedWebSocket extends WS {
 	isAlive?: boolean;
 	lastActivityAt?: number;
 	userId?: number | string;
+	clientIP?: string;
 }
 
 interface ExtendedIncomingMessage extends http.IncomingMessage {
 	appName?: string;
 	userId?: number | string;
+	clientIP?: string;
 }
 
 function markActivity(ws: ExtendedWebSocket): void {
@@ -41,6 +46,66 @@ function getUserConnectionCount(
 	return connectionsPerUser.get(userId)?.size ?? 0;
 }
 
+function getIPConnectionCount(
+	ip: string,
+	connectionsPerIP: Map<string, Set<ExtendedWebSocket>>
+): number {
+	return connectionsPerIP.get(ip)?.size ?? 0;
+}
+
+function getClientIP(req: http.IncomingMessage): string {
+	const forwardedFor = req.headers["x-forwarded-for"];
+	if (forwardedFor) {
+		const ips = (forwardedFor as string).split(",").map((s) => s.trim());
+		return ips[0];
+	}
+	const remoteAddress = req.socket?.remoteAddress;
+	if (remoteAddress) {
+		if (remoteAddress.startsWith("::ffff:")) {
+			return remoteAddress.substring(7);
+		}
+		return remoteAddress;
+	}
+	return "unknown";
+}
+
+interface IPBurstTracker {
+	timestamps: number[];
+}
+
+function checkIPBurstLimit(
+	ip: string,
+	burstTrackers: Map<string, IPBurstTracker>,
+	now: number
+): boolean {
+	if (!burstTrackers.has(ip)) {
+		burstTrackers.set(ip, { timestamps: [] });
+	}
+
+	const tracker = burstTrackers.get(ip);
+	if (!tracker) return true;
+
+	const windowStart = now - IP_BURST_WINDOW_MS;
+	tracker.timestamps = tracker.timestamps.filter((ts) => ts > windowStart);
+
+	if (tracker.timestamps.length >= MAX_IP_BURST_RATE) {
+		return false;
+	}
+
+	tracker.timestamps.push(now);
+	return true;
+}
+
+function cleanupOldBurstEntries(burstTrackers: Map<string, IPBurstTracker>, now: number): void {
+	const windowStart = now - IP_BURST_WINDOW_MS;
+	for (const [ip, tracker] of burstTrackers.entries()) {
+		tracker.timestamps = tracker.timestamps.filter((ts) => ts > windowStart);
+		if (tracker.timestamps.length === 0) {
+			burstTrackers.delete(ip);
+		}
+	}
+}
+
 function removeFromPerUserTracking(
 	userId: number | string,
 	ws: ExtendedWebSocket,
@@ -51,6 +116,20 @@ function removeFromPerUserTracking(
 		userConnections.delete(ws);
 		if (userConnections.size === 0) {
 			connectionsPerUser.delete(userId);
+		}
+	}
+}
+
+function removeFromPerIPTracking(
+	ip: string,
+	ws: ExtendedWebSocket,
+	connectionsPerIP: Map<string, Set<ExtendedWebSocket>>
+): void {
+	const ipConnections = connectionsPerIP.get(ip);
+	if (ipConnections) {
+		ipConnections.delete(ws);
+		if (ipConnections.size === 0) {
+			connectionsPerIP.delete(ip);
 		}
 	}
 }
@@ -72,6 +151,12 @@ export function setupLogStreaming(server: http.Server) {
 
 	// Track connections per user for per-user limits
 	const connectionsPerUser = new Map<number | string, Set<ExtendedWebSocket>>();
+
+	// Track connections per IP for per-IP limits
+	const connectionsPerIP = new Map<string, Set<ExtendedWebSocket>>();
+
+	// Track IP burst connections for rate limiting
+	const ipBurstTrackers = new Map<string, IPBurstTracker>();
 
 	const cleanupInterval = setInterval(() => {
 		const now = Date.now();
@@ -98,6 +183,8 @@ export function setupLogStreaming(server: http.Server) {
 			ws.isAlive = false;
 			ws.ping();
 		});
+
+		cleanupOldBurstEntries(ipBurstTrackers, now);
 
 		if (terminated > 0 || initialActive > 0) {
 			logger.info(
@@ -126,6 +213,9 @@ export function setupLogStreaming(server: http.Server) {
 		}
 
 		req.appName = appName;
+
+		const clientIP = getClientIP(req);
+		req.clientIP = clientIP;
 
 		const cookies: Record<string, string> = {};
 		const cookieHeader = req.headers.cookie;
@@ -171,6 +261,36 @@ export function setupLogStreaming(server: http.Server) {
 			return;
 		}
 
+		// Check per-IP connection limit
+		if (getIPConnectionCount(clientIP, connectionsPerIP) >= MAX_CONNECTIONS_PER_IP) {
+			logger.warn(
+				{
+					clientIP,
+					current: getIPConnectionCount(clientIP, connectionsPerIP),
+					max: MAX_CONNECTIONS_PER_IP,
+				},
+				"WebSocket per-IP connection limit reached"
+			);
+			socket.write("HTTP/1.1 429 Too Many Requests\r\n\r\n");
+			socket.destroy();
+			return;
+		}
+
+		// Check IP burst rate limit
+		if (!checkIPBurstLimit(clientIP, ipBurstTrackers, Date.now())) {
+			logger.warn(
+				{
+					clientIP,
+					maxRate: MAX_IP_BURST_RATE,
+					windowMs: IP_BURST_WINDOW_MS,
+				},
+				"WebSocket IP burst rate limit exceeded"
+			);
+			socket.write("HTTP/1.1 429 Too Many Requests\r\n\r\n");
+			socket.destroy();
+			return;
+		}
+
 		if (wss.clients.size >= MAX_CONNECTIONS) {
 			logger.warn(
 				{ current: wss.clients.size, max: MAX_CONNECTIONS },
@@ -194,6 +314,9 @@ export function setupLogStreaming(server: http.Server) {
 		}
 
 		const userId = req.userId;
+		const clientIP = req.clientIP ?? "unknown";
+		ws.clientIP = clientIP;
+
 		if (userId) {
 			ws.userId = userId;
 			// Track connection per user
@@ -204,6 +327,15 @@ export function setupLogStreaming(server: http.Server) {
 			if (userConnections) {
 				userConnections.add(ws);
 			}
+		}
+
+		// Track connection per IP
+		if (!connectionsPerIP.has(clientIP)) {
+			connectionsPerIP.set(clientIP, new Set());
+		}
+		const ipConnections = connectionsPerIP.get(clientIP);
+		if (ipConnections) {
+			ipConnections.add(ws);
 		}
 
 		ws.isAlive = true;
@@ -263,6 +395,7 @@ export function setupLogStreaming(server: http.Server) {
 			if (userId) {
 				removeFromPerUserTracking(userId, ws, connectionsPerUser);
 			}
+			removeFromPerIPTracking(clientIP, ws, connectionsPerIP);
 		});
 
 		ws.on("error", (error: Error) => {
@@ -273,6 +406,7 @@ export function setupLogStreaming(server: http.Server) {
 			if (userId) {
 				removeFromPerUserTracking(userId, ws, connectionsPerUser);
 			}
+			removeFromPerIPTracking(clientIP, ws, connectionsPerIP);
 		});
 	});
 }

@@ -216,6 +216,20 @@ describe("setupLogStreaming", () => {
 			expect(mockWss.on).toHaveBeenCalledWith("connection", expect.any(Function));
 		});
 	});
+
+	describe("IP-based connection limits", () => {
+		it("should allow connections when IP limits are not exceeded", () => {
+			const socket = makeSocket();
+			upgradeHandler(
+				makeReq("/api/apps/my-app/logs/stream", "session=valid-token"),
+				socket,
+				Buffer.alloc(0)
+			);
+
+			expect(mockWss.handleUpgrade).toHaveBeenCalled();
+			expect(socket.destroy).not.toHaveBeenCalled();
+		});
+	});
 });
 
 describe("cleanup interval", () => {
