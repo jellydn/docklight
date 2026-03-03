@@ -22,8 +22,18 @@ export function runAuditRotation(): { deletedLogs: number; deletedCommands: numb
 
 export function startAuditRotation(): void {
 	if (rotationTimer) return;
-	runAuditRotation();
-	rotationTimer = setInterval(runAuditRotation, MS_PER_DAY);
+	try {
+		runAuditRotation();
+	} catch (err) {
+		logger.error({ err }, "Audit log rotation failed during immediate run");
+	}
+	rotationTimer = setInterval(() => {
+		try {
+			runAuditRotation();
+		} catch (err) {
+			logger.error({ err }, "Audit log rotation failed during scheduled run");
+		}
+	}, MS_PER_DAY);
 }
 
 export function stopAuditRotation(): void {

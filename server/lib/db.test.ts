@@ -799,164 +799,164 @@ describe("getUserAuditLogs", () => {
 const ROTATION_TEST_DB_PATH = path.join(__dirname, "test-data", "rotation-test.db");
 
 describe("deleteOldAuditLogs and deleteOldCommandHistory", () => {
-let originalDbPath: string | undefined;
+	let originalDbPath: string | undefined;
 
-beforeEach(() => {
-if (fs.existsSync(ROTATION_TEST_DB_PATH)) fs.unlinkSync(ROTATION_TEST_DB_PATH);
-const testDir = path.dirname(ROTATION_TEST_DB_PATH);
-if (!fs.existsSync(testDir)) fs.mkdirSync(testDir, { recursive: true });
+	beforeEach(() => {
+		if (fs.existsSync(ROTATION_TEST_DB_PATH)) fs.unlinkSync(ROTATION_TEST_DB_PATH);
+		const testDir = path.dirname(ROTATION_TEST_DB_PATH);
+		if (!fs.existsSync(testDir)) fs.mkdirSync(testDir, { recursive: true });
 
-originalDbPath = process.env.DOCKLIGHT_DB_PATH;
-process.env.DOCKLIGHT_DB_PATH = ROTATION_TEST_DB_PATH;
-vi.resetModules();
-});
+		originalDbPath = process.env.DOCKLIGHT_DB_PATH;
+		process.env.DOCKLIGHT_DB_PATH = ROTATION_TEST_DB_PATH;
+		vi.resetModules();
+	});
 
-afterEach(() => {
-if (fs.existsSync(ROTATION_TEST_DB_PATH)) fs.unlinkSync(ROTATION_TEST_DB_PATH);
-if (originalDbPath !== undefined) {
-process.env.DOCKLIGHT_DB_PATH = originalDbPath;
-} else {
-delete process.env.DOCKLIGHT_DB_PATH;
-}
-vi.resetModules();
-});
+	afterEach(() => {
+		if (fs.existsSync(ROTATION_TEST_DB_PATH)) fs.unlinkSync(ROTATION_TEST_DB_PATH);
+		if (originalDbPath !== undefined) {
+			process.env.DOCKLIGHT_DB_PATH = originalDbPath;
+		} else {
+			delete process.env.DOCKLIGHT_DB_PATH;
+		}
+		vi.resetModules();
+	});
 
-it("should delete old audit logs older than specified days", async () => {
-const { insertAuditLog, deleteOldAuditLogs, getUserAuditLogs } = await import("./db.js");
+	it("should delete old audit logs older than specified days", async () => {
+		const { insertAuditLog, deleteOldAuditLogs, getUserAuditLogs } = await import("./db.js");
 
-insertAuditLog(null, "login", null, null, null);
+		insertAuditLog(null, "login", null, null, null);
 
-const before = getUserAuditLogs();
-expect(before.total).toBe(1);
+		const before = getUserAuditLogs();
+		expect(before.total).toBe(1);
 
-const deleted = deleteOldAuditLogs(0);
-expect(deleted).toBe(1);
+		const deleted = deleteOldAuditLogs(0);
+		expect(deleted).toBe(1);
 
-const after = getUserAuditLogs();
-expect(after.total).toBe(0);
-});
+		const after = getUserAuditLogs();
+		expect(after.total).toBe(0);
+	});
 
-it("should not delete audit logs newer than specified days", async () => {
-const { insertAuditLog, deleteOldAuditLogs, getUserAuditLogs } = await import("./db.js");
+	it("should not delete audit logs newer than specified days", async () => {
+		const { insertAuditLog, deleteOldAuditLogs, getUserAuditLogs } = await import("./db.js");
 
-insertAuditLog(null, "login", null, null, null);
+		insertAuditLog(null, "login", null, null, null);
 
-const deleted = deleteOldAuditLogs(365);
-expect(deleted).toBe(0);
+		const deleted = deleteOldAuditLogs(365);
+		expect(deleted).toBe(0);
 
-const result = getUserAuditLogs();
-expect(result.total).toBe(1);
-});
+		const result = getUserAuditLogs();
+		expect(result.total).toBe(1);
+	});
 
-it("should delete old command history older than specified days", async () => {
-const { saveCommand, deleteOldCommandHistory, getRecentCommands } = await import("./db.js");
+	it("should delete old command history older than specified days", async () => {
+		const { saveCommand, deleteOldCommandHistory, getRecentCommands } = await import("./db.js");
 
-saveCommand({ command: "dokku apps:list", exitCode: 0, stdout: "", stderr: "" });
+		saveCommand({ command: "dokku apps:list", exitCode: 0, stdout: "", stderr: "" });
 
-const before = getRecentCommands(10);
-expect(before).toHaveLength(1);
+		const before = getRecentCommands(10);
+		expect(before).toHaveLength(1);
 
-const deleted = deleteOldCommandHistory(0);
-expect(deleted).toBe(1);
+		const deleted = deleteOldCommandHistory(0);
+		expect(deleted).toBe(1);
 
-const after = getRecentCommands(10);
-expect(after).toHaveLength(0);
-});
+		const after = getRecentCommands(10);
+		expect(after).toHaveLength(0);
+	});
 
-it("should not delete command history newer than specified days", async () => {
-const { saveCommand, deleteOldCommandHistory, getRecentCommands } = await import("./db.js");
+	it("should not delete command history newer than specified days", async () => {
+		const { saveCommand, deleteOldCommandHistory, getRecentCommands } = await import("./db.js");
 
-saveCommand({ command: "dokku apps:list", exitCode: 0, stdout: "", stderr: "" });
+		saveCommand({ command: "dokku apps:list", exitCode: 0, stdout: "", stderr: "" });
 
-const deleted = deleteOldCommandHistory(365);
-expect(deleted).toBe(0);
+		const deleted = deleteOldCommandHistory(365);
+		expect(deleted).toBe(0);
 
-const result = getRecentCommands(10);
-expect(result).toHaveLength(1);
-});
+		const result = getRecentCommands(10);
+		expect(result).toHaveLength(1);
+	});
 });
 
 const EXPORT_TEST_DB_PATH = path.join(__dirname, "test-data", "export-test.db");
 
 describe("getCommandHistoryForExport and getUserAuditLogsForExport", () => {
-let originalDbPath: string | undefined;
+	let originalDbPath: string | undefined;
 
-beforeEach(() => {
-if (fs.existsSync(EXPORT_TEST_DB_PATH)) fs.unlinkSync(EXPORT_TEST_DB_PATH);
-const testDir = path.dirname(EXPORT_TEST_DB_PATH);
-if (!fs.existsSync(testDir)) fs.mkdirSync(testDir, { recursive: true });
+	beforeEach(() => {
+		if (fs.existsSync(EXPORT_TEST_DB_PATH)) fs.unlinkSync(EXPORT_TEST_DB_PATH);
+		const testDir = path.dirname(EXPORT_TEST_DB_PATH);
+		if (!fs.existsSync(testDir)) fs.mkdirSync(testDir, { recursive: true });
 
-originalDbPath = process.env.DOCKLIGHT_DB_PATH;
-process.env.DOCKLIGHT_DB_PATH = EXPORT_TEST_DB_PATH;
-vi.resetModules();
-});
+		originalDbPath = process.env.DOCKLIGHT_DB_PATH;
+		process.env.DOCKLIGHT_DB_PATH = EXPORT_TEST_DB_PATH;
+		vi.resetModules();
+	});
 
-afterEach(() => {
-if (fs.existsSync(EXPORT_TEST_DB_PATH)) fs.unlinkSync(EXPORT_TEST_DB_PATH);
-if (originalDbPath !== undefined) {
-process.env.DOCKLIGHT_DB_PATH = originalDbPath;
-} else {
-delete process.env.DOCKLIGHT_DB_PATH;
-}
-vi.resetModules();
-});
+	afterEach(() => {
+		if (fs.existsSync(EXPORT_TEST_DB_PATH)) fs.unlinkSync(EXPORT_TEST_DB_PATH);
+		if (originalDbPath !== undefined) {
+			process.env.DOCKLIGHT_DB_PATH = originalDbPath;
+		} else {
+			delete process.env.DOCKLIGHT_DB_PATH;
+		}
+		vi.resetModules();
+	});
 
-it("should return all command history without pagination limit", async () => {
-const { saveCommand, getCommandHistoryForExport } = await import("./db.js");
+	it("should return all command history without pagination limit", async () => {
+		const { saveCommand, getCommandHistoryForExport } = await import("./db.js");
 
-for (let i = 0; i < 5; i++) {
-saveCommand({ command: `dokku apps:list ${i}`, exitCode: 0, stdout: "", stderr: "" });
-}
+		for (let i = 0; i < 5; i++) {
+			saveCommand({ command: `dokku apps:list ${i}`, exitCode: 0, stdout: "", stderr: "" });
+		}
 
-const logs = getCommandHistoryForExport();
-expect(logs).toHaveLength(5);
-});
+		const logs = getCommandHistoryForExport();
+		expect(logs).toHaveLength(5);
+	});
 
-it("should filter command history by exitCode for export", async () => {
-const { saveCommand, getCommandHistoryForExport } = await import("./db.js");
+	it("should filter command history by exitCode for export", async () => {
+		const { saveCommand, getCommandHistoryForExport } = await import("./db.js");
 
-saveCommand({ command: "cmd1", exitCode: 0, stdout: "", stderr: "" });
-saveCommand({ command: "cmd2", exitCode: 1, stdout: "", stderr: "" });
+		saveCommand({ command: "cmd1", exitCode: 0, stdout: "", stderr: "" });
+		saveCommand({ command: "cmd2", exitCode: 1, stdout: "", stderr: "" });
 
-const successLogs = getCommandHistoryForExport({ exitCode: "success" });
-expect(successLogs).toHaveLength(1);
-expect(successLogs[0].exitCode).toBe(0);
+		const successLogs = getCommandHistoryForExport({ exitCode: "success" });
+		expect(successLogs).toHaveLength(1);
+		expect(successLogs[0].exitCode).toBe(0);
 
-const errorLogs = getCommandHistoryForExport({ exitCode: "error" });
-expect(errorLogs).toHaveLength(1);
-expect(errorLogs[0].exitCode).toBe(1);
-});
+		const errorLogs = getCommandHistoryForExport({ exitCode: "error" });
+		expect(errorLogs).toHaveLength(1);
+		expect(errorLogs[0].exitCode).toBe(1);
+	});
 
-it("should filter command history by command pattern for export", async () => {
-const { saveCommand, getCommandHistoryForExport } = await import("./db.js");
+	it("should filter command history by command pattern for export", async () => {
+		const { saveCommand, getCommandHistoryForExport } = await import("./db.js");
 
-saveCommand({ command: "dokku apps:list", exitCode: 0, stdout: "", stderr: "" });
-saveCommand({ command: "dokku ps:restart my-app", exitCode: 0, stdout: "", stderr: "" });
+		saveCommand({ command: "dokku apps:list", exitCode: 0, stdout: "", stderr: "" });
+		saveCommand({ command: "dokku ps:restart my-app", exitCode: 0, stdout: "", stderr: "" });
 
-const logs = getCommandHistoryForExport({ command: "apps" });
-expect(logs).toHaveLength(1);
-expect(logs[0].command).toBe("dokku apps:list");
-});
+		const logs = getCommandHistoryForExport({ command: "apps" });
+		expect(logs).toHaveLength(1);
+		expect(logs[0].command).toBe("dokku apps:list");
+	});
 
-it("should return all user audit logs without pagination limit", async () => {
-const { insertAuditLog, getUserAuditLogsForExport } = await import("./db.js");
+	it("should return all user audit logs without pagination limit", async () => {
+		const { insertAuditLog, getUserAuditLogsForExport } = await import("./db.js");
 
-for (let i = 0; i < 5; i++) {
-insertAuditLog(null, "login", null, null, null);
-}
+		for (let i = 0; i < 5; i++) {
+			insertAuditLog(null, "login", null, null, null);
+		}
 
-const logs = getUserAuditLogsForExport();
-expect(logs).toHaveLength(5);
-});
+		const logs = getUserAuditLogsForExport();
+		expect(logs).toHaveLength(5);
+	});
 
-it("should filter user audit logs by action for export", async () => {
-const { insertAuditLog, getUserAuditLogsForExport } = await import("./db.js");
+	it("should filter user audit logs by action for export", async () => {
+		const { insertAuditLog, getUserAuditLogsForExport } = await import("./db.js");
 
-insertAuditLog(null, "login", null, null, null);
-insertAuditLog(null, "logout", null, null, null);
+		insertAuditLog(null, "login", null, null, null);
+		insertAuditLog(null, "logout", null, null, null);
 
-const logs = getUserAuditLogsForExport({ action: "login" });
-expect(logs).toHaveLength(1);
-expect(logs[0].action).toBe("login");
-});
+		const logs = getUserAuditLogsForExport({ action: "login" });
+		expect(logs).toHaveLength(1);
+		expect(logs[0].action).toBe("login");
+	});
 });

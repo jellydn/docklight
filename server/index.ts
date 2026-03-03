@@ -3,7 +3,7 @@ import express from "express";
 import http from "http";
 import path from "path";
 import pinoHttp from "pino-http";
-import { startAuditRotation } from "./lib/audit-rotation.js";
+import { startAuditRotation, stopAuditRotation } from "./lib/audit-rotation.js";
 import { authMiddleware } from "./lib/auth.js";
 import { logger } from "./lib/logger.js";
 import { setupLogStreaming } from "./lib/websocket.js";
@@ -94,3 +94,24 @@ server.listen(PORT, () => {
 	logger.info(`Docklight server running on port ${PORT}`);
 	startAuditRotation();
 });
+
+// Graceful shutdown handler
+function shutdown(signal: string): void {
+	logger.info({ signal }, "Received shutdown signal, stopping server gracefully...");
+
+	stopAuditRotation();
+
+	server.close(() => {
+		logger.info("HTTP server closed");
+		process.exit(0);
+	});
+
+	// Force shutdown after 10 seconds
+	setTimeout(() => {
+		logger.warn("Forcing shutdown after timeout");
+		process.exit(1);
+	}, 10_000);
+}
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
