@@ -2,7 +2,14 @@ import type { RequestHandler } from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { logger } from "./logger.js";
 
-const WINDOW_MS = 15 * 60 * 1000;
+function parsePositiveInt(value: string | undefined, defaultValue: number): number {
+	if (value === undefined) return defaultValue;
+	const parsed = Number(value);
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
+}
+
+const DEFAULT_WINDOW_MS = 15 * 60 * 1000;
+const WINDOW_MS = parsePositiveInt(process.env.DOCKLIGHT_RATE_LIMIT_WINDOW_MS, DEFAULT_WINDOW_MS);
 const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
 
 /**
@@ -24,7 +31,11 @@ const AUTH_CHECK_MAX_REQUESTS = getRateLimit(
 );
 
 // Command execution rate limiting (separate from auth rate limit)
-const COMMAND_WINDOW_MS = 60 * 1000; // 1 minute
+const DEFAULT_COMMAND_WINDOW_MS = 60 * 1000; // 1 minute
+const COMMAND_WINDOW_MS = parsePositiveInt(
+	process.env.DOCKLIGHT_COMMAND_WINDOW_MS,
+	DEFAULT_COMMAND_WINDOW_MS
+);
 const COMMAND_MAX_REQUESTS = getRateLimit(
 	process.env.DOCKLIGHT_COMMAND_MAX_REQUESTS,
 	1000,
@@ -48,6 +59,14 @@ export class CommandRateLimiter {
 	constructor(windowMs: number = COMMAND_WINDOW_MS, maxRequests: number = COMMAND_MAX_REQUESTS) {
 		this.windowMs = windowMs;
 		this.maxRequests = maxRequests;
+	}
+
+	get windowMsValue(): number {
+		return this.windowMs;
+	}
+
+	get maxRequestsValue(): number {
+		return this.maxRequests;
 	}
 
 	checkLimit(userId: string): { allowed: boolean; resetAt?: Date } {

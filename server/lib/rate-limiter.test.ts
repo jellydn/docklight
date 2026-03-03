@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import request from "supertest";
 import express, { type RequestHandler } from "express";
 import rateLimit, { ipKeyGenerator, MemoryStore } from "express-rate-limit";
@@ -178,6 +178,71 @@ describe("authRateLimiter", () => {
 			expect(response.headers["ratelimit-limit"]).toBeDefined();
 			expect(response.headers["ratelimit-remaining"]).toBeDefined();
 			expect(response.headers["ratelimit-reset"]).toBeDefined();
+		});
+	});
+});
+
+describe("CommandRateLimiter", () => {
+	it("should allow requests within the limit", async () => {
+		const { CommandRateLimiter } = await import("./rate-limiter.js");
+		const limiter = new CommandRateLimiter(60_000, 3);
+		limiter.clearAll();
+		expect(limiter.checkLimit("user-allow").allowed).toBe(true);
+		expect(limiter.checkLimit("user-allow").allowed).toBe(true);
+		expect(limiter.checkLimit("user-allow").allowed).toBe(true);
+	});
+
+	it("should block requests after exceeding the limit", async () => {
+		const { CommandRateLimiter } = await import("./rate-limiter.js");
+		const limiter = new CommandRateLimiter(60_000, 2);
+		limiter.clearAll();
+		expect(limiter.checkLimit("user-block").allowed).toBe(true);
+		expect(limiter.checkLimit("user-block").allowed).toBe(true);
+		const result = limiter.checkLimit("user-block");
+		expect(result.allowed).toBe(false);
+		expect(result.resetAt).toBeInstanceOf(Date);
+	});
+
+	it("should track users independently", async () => {
+		const { CommandRateLimiter } = await import("./rate-limiter.js");
+		const limiter = new CommandRateLimiter(60_000, 1);
+		limiter.clearAll();
+		expect(limiter.checkLimit("userA-independent").allowed).toBe(true);
+		expect(limiter.checkLimit("userA-independent").allowed).toBe(false);
+		expect(limiter.checkLimit("userB-independent").allowed).toBe(true);
+	});
+
+	it("should reset a specific user", async () => {
+		const { CommandRateLimiter } = await import("./rate-limiter.js");
+		const limiter = new CommandRateLimiter(60_000, 1);
+		limiter.clearAll();
+		limiter.checkLimit("user-reset");
+		expect(limiter.checkLimit("user-reset").allowed).toBe(false);
+		limiter.reset("user-reset");
+		expect(limiter.checkLimit("user-reset").allowed).toBe(true);
+	});
+
+	describe("DOCKLIGHT_COMMAND_WINDOW_MS environment variable", () => {
+		beforeEach(() => {
+			vi.resetModules();
+		});
+
+		afterEach(() => {
+			delete process.env.DOCKLIGHT_COMMAND_WINDOW_MS;
+			vi.resetModules();
+		});
+
+		it("uses the default command window when env var is not set", async () => {
+			const { CommandRateLimiter } = await import("./rate-limiter.js");
+			const limiter = new CommandRateLimiter();
+			expect(limiter.windowMsValue).toBe(60_000);
+		});
+
+		it("uses DOCKLIGHT_COMMAND_WINDOW_MS when set", async () => {
+			process.env.DOCKLIGHT_COMMAND_WINDOW_MS = "30000";
+			const { CommandRateLimiter } = await import("./rate-limiter.js");
+			const limiter = new CommandRateLimiter();
+			expect(limiter.windowMsValue).toBe(30_000);
 		});
 	});
 });
