@@ -19,7 +19,7 @@ function csvEscape(value: string | number | null | undefined): string {
 	if (/^[=+\-@]/.test(str)) {
 		str = `'${str}`;
 	}
-	if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+	if (/[,"\n\r]/.test(str)) {
 		return `"${str.replace(/"/g, '""')}"`;
 	}
 	return str;

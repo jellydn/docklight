@@ -30,6 +30,7 @@ import {
 
 const PORT = process.env.PORT || 3001;
 const CLIENT_DIST = path.resolve(__dirname, "..", "..", "client", "dist");
+const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 10_000;
 
 const app = express();
 
@@ -101,16 +102,16 @@ function shutdown(signal: string): void {
 
 	stopAuditRotation();
 
+	const forceShutdownTimeout = setTimeout(() => {
+		logger.warn("Forcing shutdown after timeout");
+		process.exit(1);
+	}, GRACEFUL_SHUTDOWN_TIMEOUT_MS);
+
 	server.close(() => {
+		clearTimeout(forceShutdownTimeout);
 		logger.info("HTTP server closed");
 		process.exit(0);
 	});
-
-	// Force shutdown after 10 seconds
-	setTimeout(() => {
-		logger.warn("Forcing shutdown after timeout");
-		process.exit(1);
-	}, 10_000);
 }
 
 process.on("SIGINT", () => shutdown("SIGINT"));
