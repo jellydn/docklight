@@ -18,8 +18,12 @@ export function registerHealthRoutes(app: express.Application): void {
 			checks.database = "error";
 		}
 
-		const dokkuResult = await executeCommand("dokku version", HEALTH_CHECK_TIMEOUT_MS);
-		if (dokkuResult.exitCode !== 0) {
+		try {
+			const dokkuResult = await executeCommand("dokku version", HEALTH_CHECK_TIMEOUT_MS, { skipHistory: true });
+			if (dokkuResult.exitCode !== 0) {
+				checks.dokku = "error";
+			}
+		} catch {
 			checks.dokku = "error";
 		}
 
