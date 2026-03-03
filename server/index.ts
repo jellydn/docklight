@@ -6,6 +6,7 @@ import pinoHttp from "pino-http";
 import { startAuditRotation, stopAuditRotation } from "./lib/audit-rotation.js";
 import { authMiddleware } from "./lib/auth.js";
 import { logger } from "./lib/logger.js";
+import { sshPool } from "./lib/executor.js";
 import { setupLogStreaming } from "./lib/websocket.js";
 import {
 	registerAdminRoutes,
@@ -106,11 +107,13 @@ function shutdown(signal: string): void {
 	logger.info({ signal }, "Received shutdown signal, stopping server gracefully...");
 
 	stopAuditRotation();
+	sshPool.closeAll();
 
 	const forceShutdownTimeout = setTimeout(() => {
 		logger.warn("Forcing shutdown after timeout");
 		process.exit(1);
 	}, GRACEFUL_SHUTDOWN_TIMEOUT_MS);
+	forceShutdownTimeout.unref();
 
 	server.close((err?: Error) => {
 		clearTimeout(forceShutdownTimeout);

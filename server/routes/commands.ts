@@ -16,13 +16,10 @@ import { logger } from "../lib/logger.js";
 function csvEscape(value: string | number | null | undefined): string {
 	if (value === null || value === undefined) return "";
 	let str = String(value);
-	// Neutralize CSV/Excel formula injection by prefixing dangerous characters with a single quote
-	// Also handle leading whitespace before dangerous characters
-	const whitespaceMatch = str.match(/^([\t\r\n ]*)/);
-	const leadingWhitespace = whitespaceMatch ? whitespaceMatch[1] : "";
-	const contentStart = str.slice(leadingWhitespace.length);
-	if (/^[=+\-@]/.test(contentStart)) {
-		str = `${leadingWhitespace}'${contentStart}`;
+	// Check for formula injection with optional leading whitespace, then neutralize it
+	const match = str.match(/^([\t\r\n ]*)([=+\-@])/);
+	if (match) {
+		str = `${match[1]}'${str.slice(match[1].length)}`;
 	}
 	if (/[,"\n\r]/.test(str)) {
 		return `"${str.replace(/"/g, '""')}"`;

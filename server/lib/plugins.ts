@@ -1,33 +1,12 @@
 import { executeCommand } from "./executor.js";
 import { DokkuCommands } from "./dokku.js";
 import { stripAnsi } from "./ansi.js";
-import { logger } from "./logger.js";
+import { retryWithBackoff } from "./retry.js";
 
 export interface PluginInfo {
 	name: string;
 	enabled: boolean;
 	version?: string;
-}
-
-async function retryWithBackoff<T>(
-	fn: () => Promise<T>,
-	maxRetries: number = 3,
-	baseDelay: number = 100
-): Promise<T> {
-	let lastError: unknown;
-	for (let attempt = 0; attempt <= maxRetries; attempt++) {
-		try {
-			return await fn();
-		} catch (error) {
-			lastError = error;
-			if (attempt < maxRetries) {
-				const delay = baseDelay * 2 ** attempt;
-				logger.warn({ attempt, delay, error }, "Plugin list failed, retrying...");
-				await new Promise((resolve) => setTimeout(resolve, delay));
-			}
-		}
-	}
-	throw lastError;
 }
 
 interface PluginInputError {
@@ -73,10 +52,8 @@ function parsePluginLine(line: string): PluginInfo | null {
 }
 
 export async function getPlugins(): Promise<PluginInfo[] | PluginInputError> {
-	const result = await retryWithBackoff(
-		async () => executeCommand(DokkuCommands.pluginList()),
-		3,
-		100
+	const result = await retryWithBackoff(() =>
+		executeCommand(DokkuCommands.pluginList())
 	);
 	if (result.exitCode !== 0) {
 		return {
