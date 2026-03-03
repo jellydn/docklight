@@ -25,13 +25,33 @@ just build        # Build both projects
 ### Single Test Commands
 
 ```bash
-# Server
-vitest run lib/apps.test.ts                    # Single test file
-vitest run -t "should fetch app"               # Single test by name
+# Server (from server directory)
+cd server && bun run test                          # All server tests
+vitest run lib/apps.test.ts                        # Single test file
+vitest run -t "should fetch app"                   # Single test by name
 
-# Client
-vitest run src/hooks/use-app.test.ts           # Single test file
-vitest run -t "should display apps"            # Single test by name
+# Client (from client directory)
+cd client && bun run test                          # All client tests
+vitest run src/hooks/use-app.test.ts               # Single test file
+vitest run -t "should display apps"                # Single test by name
+vitest                                              # Watch mode
+
+# E2E Tests (client)
+cd client && bun run test:e2e                       # Run E2E tests
+cd client && bun run test:e2e:ui                   # Run E2E with UI
+```
+
+### Format Commands
+
+```bash
+# Format all code
+just format
+just server-format
+just client-format
+
+# Or using bun directly
+cd server && bun run format
+cd client && bun run format
 ```
 
 ## Post-Change Requirements
@@ -49,6 +69,7 @@ vitest run -t "should display apps"            # Single test by name
 - Explicit types for function parameters and return types
 - Use `import type` for type-only imports
 - Use `interface` for object shapes, `type` for unions/primitives
+- **DO NOT ADD comments unless asked** - write self-documenting code
 
 ### Naming Conventions
 
@@ -79,6 +100,12 @@ import { cn } from "@/lib/utils"; // Client only
 - Use `class-variance-authority` (cva) for component variants
 - Use `clsx` + `tailwind-merge` via `cn()` helper
 - Prefer Radix UI primitives for accessible components
+
+### Formatting
+
+- Use Biome for formatting: `bun run format` or `just format`
+- Format files individually: `biome format --write path/to/file.ts`
+- Run format check without writing: `biome format --check .`
 
 ### Error Handling
 
@@ -153,3 +180,9 @@ Server:
 - `DOCKLIGHT_DOKKU_SSH_KEY_PATH` - Path to SSH private key
 - `LOG_LEVEL` - Logging level (default: "info")
 - `DOCKLIGHT_DB_PATH` - SQLite database path (default: `data/docklight.db`)
+
+### Tailwind CSS
+
+- Use Tailwind 4 with `@tailwindcss/postcss`
+- Use `tw-animate-css` for animations
+- Client components use the `cn()` helper for class merging
