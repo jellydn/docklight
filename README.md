@@ -134,19 +134,19 @@ just build
 
 ## 🔧 Environment Variables
 
-| Variable                              | Required                       | Description                                                    |
-| ------------------------------------- | ------------------------------ | -------------------------------------------------------------- |
-| `JWT_SECRET`                          | Yes (in production)            | JWT signing secret                                             |
-| `DOCKLIGHT_DOKKU_SSH_TARGET`          | No (recommended in production) | SSH target for Dokku commands, for example `dokku@<server-ip>` |
-| `DOCKLIGHT_DOKKU_SSH_KEY_PATH`        | No                             | Private key path inside container                              |
-| `DOCKLIGHT_DOKKU_SSH_OPTS`            | No                             | Extra SSH options                                              |
-| `PORT`                                | No                             | Server port (default `3001`)                                   |
-| `DOCKLIGHT_RATE_LIMIT_WINDOW_MS`      | No                             | Rate limit window in ms (default `900000` = 15 min)            |
-| `DOCKLIGHT_AUTH_MAX_REQUESTS`         | No                             | Max auth login requests per window (default `5`)               |
-| `DOCKLIGHT_AUTH_CHECK_MAX_REQUESTS`   | No                             | Max auth check requests per window (default `300`)             |
-| `DOCKLIGHT_COMMAND_WINDOW_MS`         | No                             | Command rate limit window in ms (default `60000` = 1 min)      |
-| `DOCKLIGHT_COMMAND_MAX_REQUESTS`      | No                             | Max command executions per window per user (default `30`)      |
-| `DOCKLIGHT_ADMIN_MAX_REQUESTS`        | No                             | Max admin API requests per window (default `30`)               |
+| Variable                            | Required                       | Description                                                            |
+| ----------------------------------- | ------------------------------ | ---------------------------------------------------------------------- |
+| `JWT_SECRET`                        | Yes (in production)            | JWT signing secret                                                     |
+| `DOCKLIGHT_DOKKU_SSH_TARGET`        | No (recommended in production) | SSH target for Dokku commands, for example `dokku@<server-ip>`         |
+| `DOCKLIGHT_DOKKU_SSH_KEY_PATH`      | No                             | Private key path inside container                                      |
+| `DOCKLIGHT_DOKKU_SSH_OPTS`          | No                             | Extra SSH options                                                      |
+| `PORT`                              | No                             | Server port (default `3001`)                                           |
+| `DOCKLIGHT_RATE_LIMIT_WINDOW_MS`    | No                             | Rate limit window in ms (default `900000` = 15 min)                    |
+| `DOCKLIGHT_AUTH_MAX_REQUESTS`       | No                             | Max auth login requests per window (default `5`, dev: `1000`)          |
+| `DOCKLIGHT_AUTH_CHECK_MAX_REQUESTS` | No                             | Max auth check requests per window (default `300`, dev: `10000`)       |
+| `DOCKLIGHT_COMMAND_WINDOW_MS`       | No                             | Command rate limit window in ms (default `60000` = 1 min)              |
+| `DOCKLIGHT_COMMAND_MAX_REQUESTS`    | No                             | Max command executions per window per user (default `30`, dev: `1000`) |
+| `DOCKLIGHT_ADMIN_MAX_REQUESTS`      | No                             | Max admin API requests per window (default `30`, dev: `1000`)          |
 
 ## 🔒 Security Notes
 
