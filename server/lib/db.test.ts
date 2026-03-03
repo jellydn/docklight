@@ -960,3 +960,89 @@ describe("getCommandHistoryForExport and getUserAuditLogsForExport", () => {
 		expect(logs[0].action).toBe("login");
 	});
 });
+
+const TRUNCATION_TEST_DB_PATH = path.join(__dirname, "test-data", "truncation-test.db");
+
+describe("command output truncation", () => {
+	let originalDbPath: string | undefined;
+
+	beforeEach(() => {
+		if (fs.existsSync(TRUNCATION_TEST_DB_PATH)) fs.unlinkSync(TRUNCATION_TEST_DB_PATH);
+		const testDir = path.dirname(TRUNCATION_TEST_DB_PATH);
+		if (!fs.existsSync(testDir)) fs.mkdirSync(testDir, { recursive: true });
+
+		originalDbPath = process.env.DOCKLIGHT_DB_PATH;
+		process.env.DOCKLIGHT_DB_PATH = TRUNCATION_TEST_DB_PATH;
+		vi.resetModules();
+	});
+
+	afterEach(() => {
+		if (fs.existsSync(TRUNCATION_TEST_DB_PATH)) fs.unlinkSync(TRUNCATION_TEST_DB_PATH);
+		if (originalDbPath !== undefined) {
+			process.env.DOCKLIGHT_DB_PATH = originalDbPath;
+		} else {
+			delete process.env.DOCKLIGHT_DB_PATH;
+		}
+		vi.resetModules();
+	});
+
+	it("should not truncate output smaller than MAX_OUTPUT_SIZE", async () => {
+		const { saveCommand, getRecentCommands } = await import("./db.js");
+
+		const shortOutput = "short output";
+		saveCommand({ command: "dokku apps:list", exitCode: 0, stdout: shortOutput, stderr: "" });
+
+		const commands = getRecentCommands(1);
+		expect(commands).toHaveLength(1);
+		expect(commands[0].stdout).toBe(shortOutput);
+	});
+
+	it("should truncate stdout larger than MAX_OUTPUT_SIZE", async () => {
+		const { saveCommand, getRecentCommands } = await import("./db.js");
+
+		const longOutput = "a".repeat(5000);
+		saveCommand({ command: "dokku apps:list", exitCode: 0, stdout: longOutput, stderr: "" });
+
+		const commands = getRecentCommands(1);
+		expect(commands).toHaveLength(1);
+		expect(commands[0].stdout.length).toBeLessThanOrEqual(4096);
+		expect(commands[0].stdout).toContain("... [output truncated]");
+	});
+
+	it("should truncate stderr larger than MAX_OUTPUT_SIZE", async () => {
+		const { saveCommand, getRecentCommands } = await import("./db.js");
+
+		const longError = "e".repeat(5000);
+		saveCommand({ command: "dokku apps:list", exitCode: 1, stdout: "", stderr: longError });
+
+		const commands = getRecentCommands(1);
+		expect(commands).toHaveLength(1);
+		expect(commands[0].stderr.length).toBeLessThanOrEqual(4096);
+		expect(commands[0].stderr).toContain("... [output truncated]");
+	});
+
+	it("should truncate both stdout and stderr when both exceed limit", async () => {
+		const { saveCommand, getRecentCommands } = await import("./db.js");
+
+		const longOutput = "a".repeat(5000);
+		const longError = "e".repeat(5000);
+		saveCommand({ command: "dokku apps:list", exitCode: 1, stdout: longOutput, stderr: longError });
+
+		const commands = getRecentCommands(1);
+		expect(commands).toHaveLength(1);
+		expect(commands[0].stdout.length).toBeLessThanOrEqual(4096);
+		expect(commands[0].stderr.length).toBeLessThanOrEqual(4096);
+		expect(commands[0].stdout).toContain("... [output truncated]");
+		expect(commands[0].stderr).toContain("... [output truncated]");
+	});
+
+	it("should include truncation indicator in output", async () => {
+		const { saveCommand, getRecentCommands } = await import("./db.js");
+
+		const longOutput = "x".repeat(5000);
+		saveCommand({ command: "dokku apps:list", exitCode: 0, stdout: longOutput, stderr: "" });
+
+		const commands = getRecentCommands(1);
+		expect(commands[0].stdout).toMatch(/\.\.\. \[output truncated\]$/);
+	});
+});

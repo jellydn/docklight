@@ -216,6 +216,116 @@ describe("setupLogStreaming", () => {
 			expect(mockWss.on).toHaveBeenCalledWith("connection", expect.any(Function));
 		});
 	});
+
+	describe("IP-based connection limits", () => {
+		it("should allow connections when IP limits are not exceeded", () => {
+			const socket = makeSocket();
+			upgradeHandler(
+				makeReq("/api/apps/my-app/logs/stream", "session=valid-token"),
+				socket,
+				Buffer.alloc(0)
+			);
+
+			expect(mockWss.handleUpgrade).toHaveBeenCalled();
+			expect(socket.destroy).not.toHaveBeenCalled();
+		});
+
+		it("should verify IP is extracted from socket for rate limiting", () => {
+			const socket = makeSocket();
+			const req = makeReq(
+				"/api/apps/my-app/logs/stream",
+				"session=valid-token"
+			) as http.IncomingMessage & {
+				socket: net.Socket & { remoteAddress?: string };
+				headers: Record<string, string | string[]>;
+			};
+
+			req.socket = { remoteAddress: "203.0.113.1" } as net.Socket & { remoteAddress?: string };
+			req.headers = req.headers ?? {};
+			req.headers["x-forwarded-for"] = "10.0.0.1";
+
+			upgradeHandler(req, socket, Buffer.alloc(0));
+
+			expect(mockWss.handleUpgrade).toHaveBeenCalled();
+			expect(socket.destroy).not.toHaveBeenCalled();
+		});
+
+		it("should verify burst rate limiting uses correct IP", () => {
+			const socket = makeSocket();
+			const req = makeReq(
+				"/api/apps/my-app/logs/stream",
+				"session=valid-token"
+			) as http.IncomingMessage & {
+				socket: net.Socket & { remoteAddress?: string };
+				headers: Record<string, string | string[]>;
+			};
+
+			req.socket = { remoteAddress: "203.0.113.2" } as net.Socket & { remoteAddress?: string };
+			req.headers = req.headers ?? {};
+
+			upgradeHandler(req, socket, Buffer.alloc(0));
+
+			expect(mockWss.handleUpgrade).toHaveBeenCalled();
+			expect(socket.destroy).not.toHaveBeenCalled();
+		});
+
+		it("should trust X-Forwarded-For when connection is from loopback", () => {
+			const socket = makeSocket();
+			const req = makeReq(
+				"/api/apps/my-app/logs/stream",
+				"session=valid-token"
+			) as http.IncomingMessage & {
+				socket: net.Socket & { remoteAddress?: string };
+				headers: Record<string, string | string[]>;
+			};
+
+			req.socket = { remoteAddress: "127.0.0.1" } as net.Socket & { remoteAddress?: string };
+			req.headers = req.headers ?? {};
+			req.headers["x-forwarded-for"] = "192.168.1.100";
+
+			upgradeHandler(req, socket, Buffer.alloc(0));
+
+			expect(mockWss.handleUpgrade).toHaveBeenCalled();
+		});
+
+		it("should ignore X-Forwarded-For when connection is not from trusted proxy", () => {
+			const socket = makeSocket();
+			const req = makeReq(
+				"/api/apps/my-app/logs/stream",
+				"session=valid-token"
+			) as http.IncomingMessage & {
+				socket: net.Socket & { remoteAddress?: string };
+				headers: Record<string, string | string[]>;
+			};
+
+			req.socket = { remoteAddress: "203.0.113.50" } as net.Socket & { remoteAddress?: string };
+			req.headers = req.headers ?? {};
+			req.headers["x-forwarded-for"] = "10.0.0.1";
+
+			upgradeHandler(req, socket, Buffer.alloc(0));
+
+			expect(mockWss.handleUpgrade).toHaveBeenCalled();
+		});
+
+		it("should handle X-Forwarded-For as array", () => {
+			const socket = makeSocket();
+			const req = makeReq(
+				"/api/apps/my-app/logs/stream",
+				"session=valid-token"
+			) as http.IncomingMessage & {
+				socket: net.Socket & { remoteAddress?: string };
+				headers: Record<string, string | string[]>;
+			};
+
+			req.socket = { remoteAddress: "127.0.0.1" } as net.Socket & { remoteAddress?: string };
+			req.headers = req.headers ?? {};
+			req.headers["x-forwarded-for"] = ["192.168.1.100, 10.0.0.1"];
+
+			upgradeHandler(req, socket, Buffer.alloc(0));
+
+			expect(mockWss.handleUpgrade).toHaveBeenCalled();
+		});
+	});
 });
 
 describe("cleanup interval", () => {

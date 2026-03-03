@@ -8,7 +8,24 @@ import { logger } from "./logger.js";
 
 const scryptAsync = promisify(scrypt);
 
-const JWT_SECRET = process.env.JWT_SECRET || "docklight-default-secret-change-in-production";
+const DEFAULT_JWT_SECRET = "docklight-dev-secret-change-in-production";
+const NODE_ENV = process.env.NODE_ENV ?? "development";
+const ALLOW_INSECURE_DEV_SECRET = NODE_ENV === "development" || NODE_ENV === "test";
+
+if (!process.env.JWT_SECRET && !ALLOW_INSECURE_DEV_SECRET) {
+	const error =
+		"JWT_SECRET environment variable must be set in production. " +
+		"Add it to your .env file or environment. " +
+		"Generate one with: openssl rand -base64 32";
+	logger.error(error);
+	throw new Error(error);
+}
+
+if (!process.env.JWT_SECRET && ALLOW_INSECURE_DEV_SECRET) {
+	logger.warn("JWT_SECRET not set. Using default secret for development only.");
+}
+
+const JWT_SECRET = process.env.JWT_SECRET ?? DEFAULT_JWT_SECRET;
 
 export interface JWTPayload {
 	authenticated: boolean;
@@ -27,15 +44,6 @@ declare global {
 			user?: JWTPayload;
 		}
 	}
-}
-
-// Validate JWT secret in production
-if (!process.env.JWT_SECRET) {
-	if (process.env.NODE_ENV === "production") {
-		logger.error("JWT_SECRET not configured. Set JWT_SECRET environment variable in production.");
-		throw new Error("JWT_SECRET environment variable must be set in production. Aborting startup.");
-	}
-	logger.warn("JWT_SECRET not set. Using default secret is insecure!");
 }
 
 export async function hashPassword(password: string): Promise<string> {

@@ -1,108 +1,148 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-03-02
+**Analysis Date:** 2026-03-04
 
 ## Naming Patterns
 
 **Files:**
-- kebab-case for most files: `command-executor.ts`, `app-layout.tsx`
-- PascalCase for page components: `Apps.tsx`, `Dashboard.tsx`
-- Test files: Same name with `.test.ts` suffix
+- kebab-case for all files: `app-deployment.ts`, `create-user.ts`, `audit-filters.tsx`
+- Test files share the same name with `.test.ts` or `.test.tsx` suffix
 
 **Functions:**
-- camelCase: `getApps`, `executeCommand`, `validateUser`
-- Boolean functions: Prefix with `is/has/can`: `isValid`, `hasPermission`
+- camelCase for function names: `getApps`, `executeCommand`, `isValidAppName`
+- Async functions start with a verb: `fetchAppDetails`, `parseStatus`
 
 **Variables:**
-- camelCase: `jwtSecret`, `sshTarget`, `commandResult`
-- Constants: SCREAMING_SNAKE_CASE at module level: `MAX_RETRIES`, `DEFAULT_TTL`
+- camelCase for local variables: `appName`, `userId`, `exitCode`
+- SCREAMING_SNAKE_CASE for constants: `INVALID_NAME_ERROR`, `MAX_RETRIES`
 
 **Types:**
-- Interfaces: PascalCase for object shapes: `CommandResult`, `User`, `App`
-- Type aliases: PascalCase for unions/primitives: `CommandResultLike`, `JwtPayload`
+- PascalCase for interfaces and type aliases: `CommandResult`, `App`, `AppDetail`
+- Use `interface` for object shapes, `type` for unions/primitives
 
 ## Code Style
 
 **Formatting:**
-- Tool: Biome 2.4.4
+- Tool: Biome (identical config in server and client)
 - Key settings:
-  - Indent: tabs (displayed as 2 spaces)
-  - Quotes: double quotes
-  - Trailing commas: es5
+  - Indent: Tabs (displayed as 2 spaces)
   - Line width: 100 characters
-  - Semicolons: always
+  - Quotes: Double quotes
+  - Semicolons: Always
+  - Trailing commas: Multi-line only
 
 **Linting:**
-- Tool: Biome 2.4.4
-- Key rules: TypeScript strict mode, import sorting, no unused variables
+- Tool: Biome
+- Key rules:
+  - Remove unused variables (warn)
+  - No explicit `any` types
+  - Use `import type` for type-only imports
 
 ## Import Organization
 
 **Order:**
 1. External dependencies (npm packages)
-2. Internal modules (relative imports)
-3. Type-only imports (use `import type`)
+2. Internal imports (relative paths)
+3. Type-only imports (grouped separately if many)
 
 **Path Aliases:**
-- Client: `@/*` → `client/src/*` (configured in `client/tsconfig.json`)
-- Server: No path alias configured, use relative imports
+- Client: `@/` → `client/src/`
+- Server: Uses relative `./` paths
+
+```typescript
+// Example import order
+import express from "express";
+import type { Request, Response } from "express";
+import { executeCommand } from "./lib/executor.js";
+import type { CommandResult } from "./lib/executor.js";
+```
 
 ## Error Handling
 
 **Patterns:**
-- Command execution: Return `CommandResult` object with exitCode/stdout/stderr
-- Never throw for expected failures (command execution errors)
-- Use try-catch for async operations
-- Type assertions for caught errors
-- Log errors with context using Pino logger
+- Never throw errors for expected failures
+- Return typed error objects: `{ error: string; exitCode: number; command: string }`
+- Use type assertions for caught errors: `error as { message?: string }`
+- Include helpful error messages with context
+
+```typescript
+// Expected failure pattern
+if (!isValidAppName(name)) {
+  return {
+    error: "Invalid app name",
+    command: "",
+    exitCode: 400,
+    stderr: "App name must contain only lowercase letters, numbers, and hyphens",
+  };
+}
+
+// Unexpected error pattern
+try {
+  return await executeCommand(cmd);
+} catch (error: unknown) {
+  const err = error as { message?: string };
+  return {
+    error: err.message || "Unknown error",
+    command: cmd,
+    exitCode: 1,
+  };
+}
+```
 
 ## Logging
 
 **Framework:** Pino (structured logging)
 
 **Patterns:**
-- Server: Import logger from `server/lib/logger.ts`
+- Server: Use `logger` from `server/lib/logger.ts`
+- Client: Use `logger` from `client/src/lib/logger.ts`
 - Log errors with context: `logger.error({ err }, "Error message")`
-- HTTP requests logged automatically via pino-http middleware
-- Log level: Controlled by `LOG_LEVEL` env var (default: "info")
+- Use appropriate log levels: `error`, `warn`, `info`, `debug`
 
 ## Comments
 
 **When to Comment:**
-- Non-obvious business logic
-- Complex algorithms or workarounds
-- TODO/FIXME markers for future work (rare in this codebase)
+- Minimal comments - code should be self-documenting
+- Comments only for "why" something is done, not "what"
+- JSDoc/TSDoc rarely used (code is self-explanatory)
 
 **JSDoc/TSDoc:**
-- Minimal usage in this codebase
-- Types are mostly self-documenting with TypeScript
-- Exported functions have clear parameter/return types
+- Not commonly used
+- Code relies on TypeScript types for documentation
 
 ## Function Design
 
-**Size:** Prefer smaller, focused functions. Large files exist (apps.ts ~1000 lines) but are domain-specific service modules.
+**Size:** Prefer smaller, focused functions (< 50 lines)
 
 **Parameters:**
 - Explicit types for all parameters
-- Use options objects for >3 parameters
-- Destructure in function signature for clarity
+- Use options objects for many parameters
+- Destructure options in function signature
 
 **Return Values:**
-- Explicit return types always required
-- Use `CommandResult` type for command execution
-- Use `CommandResultLike` for HTTP responses
+- Always specify return type
+- Return union types for error handling: `Result | { error: string }`
+- Use `Promise<T>` for async functions
+
+```typescript
+// Example function signature
+export async function getApps(
+  userId?: string
+): Promise<App[] | { error: string; command: string; exitCode: number; stderr: string }> {
+  // implementation
+}
+```
 
 ## Module Design
 
 **Exports:**
-- Named exports for functions and utilities
-- Default exports for React components (some inconsistency)
-- Prefer named exports for better tree-shaking
+- Named exports preferred: `export function getApps() {}`
+- Default exports used for React components: `export default function App() {}`
 
 **Barrel Files:**
-- `client/src/components/index.ts` - Re-exports UI components
-- `server/lib/` modules export specific functions
+- `server/routes/index.ts`: Aggregates all route exports
+- `client/src/pages/AppDetail/index.tsx`: Exports AppDetail component
 
 ---
 
-*Convention analysis: 2026-03-02*
+*Convention analysis: 2026-03-04*
