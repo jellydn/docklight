@@ -3,12 +3,12 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { logger } from "./logger.js";
 
 const WINDOW_MS = 15 * 60 * 1000;
-const AUTH_MAX_REQUESTS = 5;
-const AUTH_CHECK_MAX_REQUESTS = 300;
+const AUTH_MAX_REQUESTS = 1000; // Relaxed for development
+const AUTH_CHECK_MAX_REQUESTS = 10_000; // Relaxed for development
 
 // Command execution rate limiting (separate from auth rate limit)
 const COMMAND_WINDOW_MS = 60 * 1000; // 1 minute
-const COMMAND_MAX_REQUESTS = 30;
+const COMMAND_MAX_REQUESTS = 1000; // Relaxed for development
 
 interface UserCommandHistory {
 	timestamps: number[];
@@ -134,7 +134,7 @@ export const authCheckRateLimiter: RequestHandler = rateLimit({
 	keyGenerator: generateRateLimitKey,
 });
 
-const ADMIN_MAX_REQUESTS = 30;
+const ADMIN_MAX_REQUESTS = 1000; // Relaxed for development
 
 export const adminRateLimiter: RequestHandler = rateLimit({
 	windowMs: WINDOW_MS,
