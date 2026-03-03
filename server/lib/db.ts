@@ -2,6 +2,9 @@ import fs from "fs";
 import path from "path";
 import type { CommandResult } from "./executor.js";
 
+const MAX_OUTPUT_SIZE = 4096;
+const TRUNCATION_INDICATOR = "\n... [output truncated]";
+
 type Statement = {
 	run: (...args: unknown[]) => void;
 	all: (...args: unknown[]) => unknown[];
@@ -32,6 +35,9 @@ function getDb(): Database {
 
 	const Database = require("better-sqlite3");
 	const newDb = new Database(DB_PATH);
+
+	newDb.pragma("journal_mode = WAL");
+	newDb.pragma("synchronous = NORMAL");
 
 	newDb.exec(`
 	  CREATE TABLE IF NOT EXISTS command_history (
@@ -110,12 +116,23 @@ export interface CommandHistory {
 	createdAt: string;
 }
 
+function truncateOutput(output: string): string {
+	if (output.length <= MAX_OUTPUT_SIZE) {
+		return output;
+	}
+	const indicatorLength = TRUNCATION_INDICATOR.length;
+	const truncateAt = MAX_OUTPUT_SIZE - indicatorLength;
+	return output.slice(0, truncateAt) + TRUNCATION_INDICATOR;
+}
+
 export function saveCommand(result: CommandResult): void {
 	const stmt = getDb().prepare(`
     INSERT INTO command_history (command, exitCode, stdout, stderr)
     VALUES (?, ?, ?, ?)
   `);
-	stmt.run(result.command, result.exitCode, result.stdout, result.stderr);
+	const truncatedStdout = truncateOutput(result.stdout);
+	const truncatedStderr = truncateOutput(result.stderr);
+	stmt.run(result.command, result.exitCode, truncatedStdout, truncatedStderr);
 }
 
 export function getRecentCommands(limit: number = 20): CommandHistory[] {
