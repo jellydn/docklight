@@ -25,6 +25,13 @@ export interface CommandResult {
 
 interface ExecuteCommandOptions {
 	userId?: string;
+	skipHistory?: boolean;
+}
+
+function maybeSaveCommand(result: CommandResult, skipHistory?: boolean): void {
+	if (!skipHistory) {
+		saveCommand(result);
+	}
 }
 
 function shellQuote(value: string): string {
@@ -210,7 +217,8 @@ export function buildRuntimeCommand(command: string): string {
 async function executeViaPool(
 	command: string,
 	target: string,
-	timeout: number
+	timeout: number,
+	options?: ExecuteCommandOptions
 ): Promise<CommandResult> {
 	const keyPath = process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim() || undefined;
 
@@ -233,7 +241,7 @@ async function executeViaPool(
 				stdout: "",
 				stderr: `SSH connection failed (initial: ${connErrMessage}, retry: ${retryErrMessage})`,
 			};
-			saveCommand(result);
+			maybeSaveCommand(result, options?.skipHistory);
 			return result;
 		}
 	}
@@ -275,7 +283,7 @@ async function executeViaPool(
 					stdout: "",
 					stderr: `SSH channel failed, retry also failed: ${retryErrMessage}`,
 				};
-				saveCommand(result);
+				maybeSaveCommand(result, options?.skipHistory);
 				return result;
 			}
 		} else {
@@ -285,7 +293,7 @@ async function executeViaPool(
 				stdout: "",
 				stderr: execErrMessage || "SSH command execution failed",
 			};
-			saveCommand(result);
+			maybeSaveCommand(result, options?.skipHistory);
 			return result;
 		}
 	}
@@ -296,7 +304,7 @@ async function executeViaPool(
 		stdout: execResult.stdout.trim(),
 		stderr: execResult.stderr.trim(),
 	};
-	saveCommand(result);
+	maybeSaveCommand(result, options?.skipHistory);
 	return result;
 }
 
@@ -315,7 +323,7 @@ export async function executeCommand(
 				stdout: "",
 				stderr: `Rate limit exceeded. Please try again after ${rateLimitResult.resetAt?.toISOString()}.`,
 			};
-			saveCommand(result);
+			maybeSaveCommand(result, options?.skipHistory);
 			return result;
 		}
 	}
@@ -327,13 +335,13 @@ export async function executeCommand(
 			stdout: "",
 			stderr: `Command not allowed: ${command.split(" ")[0]}`,
 		};
-		saveCommand(result);
+		maybeSaveCommand(result, options?.skipHistory);
 		return result;
 	}
 
 	const sshTarget = getSshTarget();
 	if (sshTarget && command.startsWith("dokku ")) {
-		return executeViaPool(command, sshTarget, timeout);
+		return executeViaPool(command, sshTarget, timeout, options);
 	}
 
 	try {
@@ -345,7 +353,7 @@ export async function executeCommand(
 			stdout: stdout.trim(),
 			stderr: stderr.trim(),
 		};
-		saveCommand(result);
+		maybeSaveCommand(result, options?.skipHistory);
 		return result;
 	} catch (error: unknown) {
 		const err = error as { code?: number; stdout?: string; stderr?: string; message?: string };
@@ -363,7 +371,7 @@ export async function executeCommand(
 				stdout: err.stdout.trim(),
 				stderr: stderr.trim(),
 			};
-			saveCommand(result);
+			maybeSaveCommand(result, options?.skipHistory);
 			return result;
 		}
 		const result = {
@@ -372,7 +380,7 @@ export async function executeCommand(
 			stdout: err.stdout || "",
 			stderr,
 		};
-		saveCommand(result);
+		maybeSaveCommand(result, options?.skipHistory);
 		return result;
 	}
 }

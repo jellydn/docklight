@@ -324,6 +324,10 @@ export function deleteUser(id: number): void {
 	getDb().prepare("DELETE FROM users WHERE id = ?").run(id);
 }
 
+export function pingDb(): void {
+	getDb().prepare("SELECT 1").get();
+}
+
 export function getUserCount(): number {
 	const result = getDb().prepare("SELECT COUNT(*) as count FROM users").get() as {
 		count: number;
