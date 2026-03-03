@@ -1,4 +1,5 @@
-import type { Page, Route } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { mockJsonEndpoint, fulfillJson } from "./route-utils.js";
 
 export const MOCK_USER = { id: 1, username: "admin", role: "admin" };
 
@@ -30,71 +31,36 @@ export const MOCK_PLUGINS = [
 	{ name: "redis", enabled: true, version: "2.0.0" },
 ];
 
-/**
- * Mock the /api/auth/me endpoint as authenticated
- */
 export async function mockAuthMe(page: Page): Promise<void> {
-	await page.route("**/api/auth/me", (route: Route) => {
-		route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify({ authenticated: true, user: MOCK_USER }),
-		});
-	});
+	await mockJsonEndpoint(
+		page,
+		"**/api/auth/me",
+		{ authenticated: true, user: MOCK_USER },
+	);
 }
 
-/**
- * Mock the /api/auth/me endpoint as unauthenticated
- */
 export async function mockAuthMeUnauthorized(page: Page): Promise<void> {
-	await page.route("**/api/auth/me", (route: Route) => {
-		route.fulfill({
-			status: 401,
-			contentType: "application/json",
-			body: JSON.stringify({ error: "Unauthorized" }),
-		});
-	});
+	await mockJsonEndpoint(page, "**/api/auth/me", { error: "Unauthorized" }, 401);
 }
 
-/**
- * Mock the /api/apps endpoint
- */
 export async function mockApps(page: Page, apps = MOCK_APPS): Promise<void> {
-	await page.route("**/api/apps", (route: Route) => {
+	await page.route("**/api/apps", (route) => {
 		if (route.request().method() === "GET") {
-			route.fulfill({
-				status: 200,
-				contentType: "application/json",
-				body: JSON.stringify(apps),
-			});
+			fulfillJson(route, apps);
 		} else {
 			route.continue();
 		}
 	});
 }
 
-/**
- * Mock the /api/server/health endpoint
- */
 export async function mockServerHealth(page: Page): Promise<void> {
-	await page.route("**/api/server/health", (route: Route) => {
-		route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify({ cpu: 45.5, memory: 62.3, disk: 78.9 }),
-		});
+	await mockJsonEndpoint(page, "**/api/server/health", {
+		cpu: 45.5,
+		memory: 62.3,
+		disk: 78.9,
 	});
 }
 
-/**
- * Mock the /api/commands endpoint
- */
 export async function mockCommands(page: Page): Promise<void> {
-	await page.route("**/api/commands*", (route: Route) => {
-		route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify([]),
-		});
-	});
+	await mockJsonEndpoint(page, "**/api/commands*", []);
 }

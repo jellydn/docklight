@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { mockAuthMe, MOCK_PLUGINS } from "./helpers.js";
+import { mockJsonEndpoint } from "./route-utils.js";
 
 test.describe("Plugins", () => {
 	test.beforeEach(async ({ page }) => {
@@ -7,13 +8,7 @@ test.describe("Plugins", () => {
 	});
 
 	test("should display list of installed plugins", async ({ page }) => {
-		await page.route("**/api/plugins", (route) => {
-			route.fulfill({
-				status: 200,
-				contentType: "application/json",
-				body: JSON.stringify(MOCK_PLUGINS),
-			});
-		});
+		await mockJsonEndpoint(page, "**/api/plugins", MOCK_PLUGINS);
 
 		await page.goto("/plugins");
 
@@ -23,13 +18,7 @@ test.describe("Plugins", () => {
 	});
 
 	test("should show empty state with install instructions when no plugins", async ({ page }) => {
-		await page.route("**/api/plugins", (route) => {
-			route.fulfill({
-				status: 200,
-				contentType: "application/json",
-				body: JSON.stringify([]),
-			});
-		});
+		await mockJsonEndpoint(page, "**/api/plugins", []);
 
 		await page.goto("/plugins");
 
@@ -38,13 +27,7 @@ test.describe("Plugins", () => {
 	});
 
 	test("should display plugin status", async ({ page }) => {
-		await page.route("**/api/plugins", (route) => {
-			route.fulfill({
-				status: 200,
-				contentType: "application/json",
-				body: JSON.stringify(MOCK_PLUGINS),
-			});
-		});
+		await mockJsonEndpoint(page, "**/api/plugins", MOCK_PLUGINS);
 
 		await page.goto("/plugins");
 
@@ -52,13 +35,7 @@ test.describe("Plugins", () => {
 	});
 
 	test("should display plugin version", async ({ page }) => {
-		await page.route("**/api/plugins", (route) => {
-			route.fulfill({
-				status: 200,
-				contentType: "application/json",
-				body: JSON.stringify(MOCK_PLUGINS),
-			});
-		});
+		await mockJsonEndpoint(page, "**/api/plugins", MOCK_PLUGINS);
 
 		await page.goto("/plugins");
 
