@@ -11,6 +11,10 @@ vi.mock("./logger.js", () => ({
 	},
 }));
 
+beforeEach(() => {
+	vi.clearAllMocks();
+});
+
 /**
  * Creates a fresh rate limiter instance for testing.
  * Each instance has its own MemoryStore to avoid state leakage between tests.
@@ -224,6 +228,7 @@ describe("CommandRateLimiter", () => {
 
 	describe("DOCKLIGHT_COMMAND_WINDOW_MS environment variable", () => {
 		beforeEach(() => {
+			delete process.env.DOCKLIGHT_COMMAND_WINDOW_MS;
 			vi.resetModules();
 		});
 
@@ -243,6 +248,37 @@ describe("CommandRateLimiter", () => {
 			const { CommandRateLimiter } = await import("./rate-limiter.js");
 			const limiter = new CommandRateLimiter();
 			expect(limiter.windowMsValue).toBe(30_000);
+		});
+	});
+
+	describe("getRateLimit validation", () => {
+		beforeEach(() => {
+			vi.resetModules();
+			process.env.NODE_ENV = "development";
+		});
+
+		afterEach(() => {
+			delete process.env.DOCKLIGHT_COMMAND_MAX_REQUESTS;
+			delete process.env.NODE_ENV;
+			vi.resetModules();
+		});
+
+		it("falls back to default for invalid string values", async () => {
+			process.env.DOCKLIGHT_COMMAND_MAX_REQUESTS = "invalid";
+			const { commandRateLimiter } = await import("./rate-limiter.js");
+			expect(commandRateLimiter.maxRequestsValue).toBe(1000);
+		});
+
+		it("falls back to default for negative numbers", async () => {
+			process.env.DOCKLIGHT_COMMAND_MAX_REQUESTS = "-5";
+			const { commandRateLimiter } = await import("./rate-limiter.js");
+			expect(commandRateLimiter.maxRequestsValue).toBe(1000);
+		});
+
+		it("falls back to default for zero", async () => {
+			process.env.DOCKLIGHT_COMMAND_MAX_REQUESTS = "0";
+			const { commandRateLimiter } = await import("./rate-limiter.js");
+			expect(commandRateLimiter.maxRequestsValue).toBe(1000);
 		});
 	});
 });
