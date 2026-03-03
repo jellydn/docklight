@@ -25,3 +25,4 @@ client/package-lock.json
 # Playwright E2E test artifacts
 client/playwright-report/
 client/test-results/
+server/lib/test-data

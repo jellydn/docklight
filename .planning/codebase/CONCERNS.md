@@ -1,198 +1,153 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-03-02
-**Last Updated:** 2026-03-02
+**Analysis Date:** 2026-03-04
 
 ## Tech Debt
 
-**Command Allowlist Limitations:**
+**Dokku Output Parsing:**
+- Issue: String parsing relies on specific Dokku CLI output format that may change
+- Files: `server/lib/apps.ts`, `server/lib/ssl.ts`, `server/lib/network.ts`, `server/lib/deployment.ts`
+- Impact: Breaking changes when Dokku versions update
+- Fix approach: Implement more robust parsing with fallbacks, use structured output (Dokku 0.30+)
 
-- Issue: The allowlist (`server/lib/allowlist.ts`) only validates base commands, not full command strings or arguments
-- Files: `server/lib/allowlist.ts`, `server/lib/executor.ts`
-- Impact: Commands like `dokku apps:destroy myapp` pass validation, which may be dangerous for certain user roles
-- Fix approach: Implement role-based command permissions and argument validation
+**Duplicated Validation Patterns:**
+- Issue: Similar validation and error handling patterns repeated across modules
+- Files: `server/lib/*.ts` (multiple modules)
+- Impact: Code duplication, harder to maintain
+- Fix approach: Extract common patterns into utility functions
 
-**No E2E Testing:**
-
-- Issue: No end-to-end test coverage for critical user flows
-- Files: N/A
-- Impact: Integration bugs may not be caught before deployment
-- Fix approach: Add Playwright or similar E2E framework for critical paths (login, app deployment, config changes)
-
-**Client-side Test Coverage:**
-
-- Issue: Client tests use happy-dom which may not match browser behavior exactly
-- Files: `client/src/**/*.test.tsx`
-- Impact: Browser-specific bugs (layout, scrolling, focus) may slip through
-- Fix approach: Consider Playwright for visual regression testing
+**In-Memory Cache Without Persistence:**
+- Issue: Cache is lost on process restart, no eviction policy
+- Files: `server/lib/cache.ts`
+- Impact: Temporary performance hit after restarts
+- Fix approach: Consider Redis or implement LRU eviction
 
 ## Known Bugs
 
-**None identified** - No TODO/FIXME/HACK comments found in codebase
+**No confirmed bugs** - Test coverage is comprehensive
 
 ## Security Considerations
 
-**Shell Command Execution:**
+**JWT Default Secret:**
+- Risk: Default secret could allow token forgery if JWT_SECRET not set
+- Files: `server/lib/auth.ts`
+- Current mitigation: Runtime check warns if default is used
+- Recommendations: Make JWT_SECRET strictly required, no default value
 
-- Risk: The executor runs shell commands on the Dokku server via SSH
-- Files: `server/lib/executor.ts`, `server/lib/allowlist.ts`
-- Current mitigation: Command allowlist, SSH key auth, input validation
-- Recommendations:
-  - Add argument sanitization for all user inputs
-  - ✅ **Per-user rate limiting implemented** (rate-limiter.ts, executor.ts:259-271)
-  - ✅ **Audit logging implemented** for all server routes (auth, apps, databases, users, admin, app-config, app-domains, commands)
+**Command Allowlist Completeness:**
+- Risk: Allowlist may not cover all necessary Dokku operations; `grep`, `awk`, `curl` allow remote code execution
+- Files: `server/lib/allowlist.ts`
+- Current mitigation: Basic command allowlist enforcement
+- Recommendations: Expand allowlist with explicit Dokku commands, add parameter validation
 
-**WebSocket Authentication:** ✅ **RESOLVED**
+**Command Output Size:**
+- Risk: Unlimited command output stored in database, could include sensitive data
+- Files: `server/lib/executor.ts`, `server/lib/db.ts`
+- Current mitigation: None
+- Recommendations: Implement max output size (4KB), sanitize sensitive data
 
-- ~~Risk: WebSocket connections require valid JWT but connection limit is global~~
+**WebSocket Connection Limits:**
+- Risk: No per-IP WebSocket connection limits, potential DoS
 - Files: `server/lib/websocket.ts`
-- Current mitigation: JWT verification, 50 connection max, 30-min idle timeout, **per-user connection limits (WS_MAX_CONNECTIONS_PER_USER)**
-- ✅ Per-user connection limits implemented (lines 14, 160-172, 197-207)
-
-**JWT Secret:** ✅ **RESOLVED**
-
-- ~~Risk: Default JWT_SECRET must be changed in production~~
-- Files: `server/lib/auth.ts`
-- Current mitigation: **Validation on startup to reject default secrets in production** (lines 32-39)
-- ✅ Startup validation implemented
-
-**Cookie Security:** ✅ **RESOLVED**
-
-- ~~Risk: HttpOnly cookies used but SameSite setting not explicitly configured~~
-- Files: `server/lib/auth.ts`
-- Current mitigation: HttpOnly flag set, **SameSite=Strict**, Secure flag in production (lines 101-102)
-- ✅ SameSite=Strict and Secure flag implemented
+- Current mitigation: Per-user and global limits only
+- Recommendations: Add per-IP connection limits and burst protection
 
 ## Performance Bottlenecks
 
-**Synchronous Database Operations:**
+**Sequential App Listing:**
+- Problem: `getApps()` executes multiple Dokku commands sequentially with string parsing
+- Files: `server/lib/apps.ts`
+- Cause: Each app requires separate `ps:report` and `domains:report` calls
+- Improvement path: Parallel execution, result caching, batch operations
 
-- Problem: better-sqlite3 is synchronous, blocking the event loop on DB operations
+**Database Connection:**
+- Problem: Single SQLite connection, no WAL mode
 - Files: `server/lib/db.ts`
-- Cause: better-sqlite3 design choice for simplicity
-- Improvement path: Consider connection pooling or moving DB operations to worker threads for high-traffic deployments
+- Cause: Default SQLite configuration
+- Improvement path: Enable WAL mode, monitor for SQLITE_BUSY errors
 
-**SSH Connection Pooling:**
-
-- Problem: Single SSH connection can become bottleneck for concurrent requests
-- Files: `server/lib/executor.ts` (SSHPool class)
-- Cause: SSH protocol limitation
-- Improvement path: Current implementation uses connection pooling with TTL, which is appropriate for typical Dokku administration workloads
-
-**No Response Caching:** ✅ **IMPROVED**
-
-- ~~Problem: All API requests execute fresh Dokku commands~~
+**No Query Result Caching:**
+- Problem: Repeated API calls execute Dokku commands every time
 - Files: `server/routes/*.ts`
-- Cause: Real-time data preference
-- Current state: **In-memory cache** (`server/lib/cache.ts`) now used in:
-  - `apps.ts` - app list and details
-  - `plugins.ts` - plugin list
-  - `app-domains.ts` - app domains
-  - `app-ports.ts` - app ports
-  - `app-network.ts` - app network config
-- Remaining: Other app-specific routes could benefit from caching
+- Cause: No caching layer
+- Improvement path: Implement intelligent caching with TTL
 
 ## Fragile Areas
 
-**Command Execution (executor.ts):**
+**Dokku CLI Integration:**
+- Files: `server/lib/dokku.ts`, `server/lib/apps.ts`, `server/lib/ssl.ts`
+- Why fragile: Parsing CLI output assumes specific format
+- Safe modification: Add test coverage for various Dokku versions
+- Test coverage: Good, but version-specific testing needed
 
-- Files: `server/lib/executor.ts` (418 lines)
-- Why fragile: SSH connections can fail, commands may hang, error handling is critical
-- Safe modification: Always test with actual Dokku server, mock SSH in unit tests
-- Test coverage: Good - `server/lib/executor.test.ts` has comprehensive tests
-
-**App Management Logic (apps.ts):**
-
-- Files: `server/lib/apps.ts` (991 lines)
-- Why fragile: Large file with many Dokku command variations
-- Safe modification: Test each app operation (create, destroy, config) individually
-- Test coverage: Good - `server/lib/apps.test.ts`
-
-**WebSocket Stream Handling:**
-
-- Files: `server/lib/websocket.ts`
-- Why fragile: Process cleanup, connection state management, error handling
-- Safe modification: Test with multiple concurrent connections and disconnect scenarios
-- Test coverage: Good - `server/lib/websocket.test.ts`
+**Error Handling:**
+- Files: Multiple modules using generic `catch (error: unknown)`
+- Why fragile: Generic error messages, poor debugging context
+- Safe modification: Implement structured error types
+- Test coverage: Moderate, needs more error scenario tests
 
 ## Scaling Limits
 
 **WebSocket Connections:**
+- Current capacity: 50 global, 5 per user
+- Limit: Memory and file descriptor limits
+- Scaling path: Adjust `WS_MAX_CONNECTIONS` env var
 
-- Current capacity: 50 concurrent connections (hard limit via WS_MAX_CONNECTIONS)
-- Limit: Beyond 50 connections, new log streams are rejected
-- Scaling path: Increase limit via env var, or implement log stream aggregation
+**SSH Connection Pool:**
+- Current capacity: One connection per unique target
+- Limit: Remote server connection limits
+- Scaling path: Pool size is per-target, scales horizontally
 
-**Command Execution Rate:**
-
-- Current capacity: Limited by SSH connection throughput and Dokku server responsiveness
-- ~~Limit: No explicit rate limiting on command execution (only auth endpoints)~~ ✅ **RESOLVED**
-- Current mitigation: **Per-user command rate limiting via `CommandRateLimiter` class** (10 commands/minute per user, configurable)
-
-**SQLite Database:**
-
-- Current capacity: Suitable for single-server deployments (< 1000 users)
-- Limit: Not designed for multi-server horizontal scaling
-- Scaling path: Migrate to PostgreSQL for distributed deployments
+**SQLite Concurrency:**
+- Current capacity: Single writer, multiple readers
+- Limit: Write performance under high concurrency
+- Scaling path: Enable WAL mode for better concurrency
 
 ## Dependencies at Risk
 
 **node-ssh:**
-
-- Risk: SSH library maintenance
-- Impact: Command execution would break
-- Migration plan: Consider native ssh2 or switch to HTTP-based Dokku API if available
+- Risk: Package may have infrequent updates
+- Impact: SSH connection failures
+- Migration plan: Monitor for updates, consider native SSH client
 
 **better-sqlite3:**
-
-- Risk: Native module compatibility on Node upgrades
-- Impact: Database operations would fail
-- Migration plan: Consider sql.js (WASM) or PostgreSQL for production
+- Risk: Native module, requires rebuild on Node version changes
+- Impact: Database operations fail
+- Migration plan: Pre-built binaries available, monitor Node version support
 
 ## Missing Critical Features
 
-**No User Permission System:**
-
-- Problem: Role-based access (user/admin/operator) exists but granular permissions not enforced
-- Files: `server/lib/auth.ts`
-- Blocks: Cannot restrict certain users from destructive operations (app deletion, etc.)
-
-**No Activity Feed:** ✅ **RESOLVED**
-
-- ~~Problem: Command history exists in DB but no UI for viewing audit trail~~
-- Files: `server/lib/db.ts`, `client/src/pages/Audit.tsx`
-- ~~Blocks: Cannot see who did what in the system~~
-- ✅ Audit log UI implemented with filtering, pagination, and user action tracking
-
-**No Backup/Restore:**
-
-- Problem: No mechanism to backup Dokku apps or Docklight configuration
-- Files: N/A
-- Blocks: Risk of data loss without manual backup procedures
+**None identified** - Core functionality is complete
 
 ## Test Coverage Gaps
 
-**Integration Tests:**
-
-- What's not tested: Full request/response flows with real authentication
-- Files: `server/index.test.ts` (minimal integration tests)
-- Risk: Middleware bugs, auth flow issues
+**Dokku Version Testing:**
+- What's not tested: Different Dokku CLI output formats
+- Files: `server/lib/*.test.ts`
+- Risk: Breaking changes with Dokku updates
 - Priority: Medium
 
-**Client Routing:**
-
-- What's not tested: Navigation flows, protected route redirects
-- Files: `client/src/App.tsx`
-- Risk: Broken navigation, unauthorized access
+**Error Scenario Tests:**
+- What's not tested: All error paths and edge cases
+- Files: Various test files
+- Risk: Unexpected failures in production
 - Priority: Low
 
-**Error Boundary:**
-
-- What's not tested: React error boundary behavior
-- Files: `client/src/main.tsx`
-- Risk: Poor error UX when crashes occur
+**WebSocket Error Handling:**
+- What's not tested: Connection failures, reconnection scenarios
+- Files: `server/lib/websocket.test.ts`
+- Risk: Poor user experience on connection issues
 - Priority: Low
+
+## Good Practices
+
+- Comprehensive security tests in `server/lib/security.test.ts`
+- Graceful shutdown with proper cleanup
+- Input validation on all user inputs
+- Multiple layers of rate limiting
+- Health endpoint with connectivity checks
+- 201 test files with good coverage
 
 ---
 
-_Concerns audit: 2026-03-02_
+*Concerns audit: 2026-03-04*

@@ -1,158 +1,180 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-03-02
+**Analysis Date:** 2026-03-04
 
 ## Test Framework
 
 **Runner:**
-- Vitest 4.0.0
+- Vitest 4.0.x (server and client)
 - Config: `server/vitest.config.ts`, `client/vitest.config.ts`
 
 **Assertion Library:**
-- Vitest built-in assertions (Chai-compatible)
+- Vitest built-in assertions
+- @testing-library/jest-dom for DOM assertions
 
 **Run Commands:**
 ```bash
-bun test              # Run all tests (justfile)
-just test             # Alternative via just
-bun run test:watch    # Watch mode
-bun run test:coverage # Run with coverage
+just test              # Run all tests
+cd server && bun run test    # Server tests only
+cd client && bun run test    # Client tests only
+bun run test:e2e       # E2E tests only
+vitest                 # Watch mode
+vitest run             # Run without watch
 ```
 
 ## Test File Organization
 
 **Location:**
-- Co-located with source files (same directory)
-- Pattern: `*.test.ts` for server, `*.test.tsx` for client
+- Co-located with source files (not in separate `__tests__` directory)
 
 **Naming:**
-- Same name as source file with `.test.ts` suffix
-- Example: `executor.test.ts` tests `executor.ts`
+- Same name as source file with `.test.ts` or `.test.tsx` suffix
+- Example: `apps.ts` → `apps.test.ts`
 
 **Structure:**
 ```
-server/
-├── lib/
-│   ├── executor.ts
-│   ├── executor.test.ts
-│   ├── apps.ts
-│   └── apps.test.ts
-client/src/
-├── pages/
-│   ├── Apps.tsx
-│   └── Apps.test.tsx
+server/lib/
+├── apps.ts
+├── apps.test.ts
+├── databases.ts
+└── databases.test.ts
+
+client/src/pages/
+├── Apps.tsx
+├── Apps.test.tsx
+├── Dashboard.tsx
+└── Dashboard.test.tsx
 ```
 
 ## Test Structure
 
 **Suite Organization:**
 ```typescript
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { getApps } from "./apps.js";
 
-describe("Function/module name", () => {
+vi.mock("./executor.js", () => ({ executeCommand: vi.fn() }));
+
+describe("getApps", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("should do something when condition is met", () => {
-    // Arrange
-    const input = { ... };
+  it("should return list of apps", async () => {
+    vi.mocked(executeCommand).mockResolvedValue({
+      command: "dokku apps:list",
+      exitCode: 0,
+      stdout: "myapp\nanother-app",
+      stderr: "",
+    });
 
-    // Act
-    const result = functionUnderTest(input);
-
-    // Assert
-    expect(result).toEqual(expected);
+    const result = await getApps();
+    expect(result).toEqual([
+      expect.objectContaining({ name: "myapp" }),
+    ]);
   });
 });
 ```
 
 **Patterns:**
-- Setup: `beforeEach()` to reset mocks between tests
-- Teardown: Vitest auto-cleanup, explicit cleanup in `afterEach()` if needed
-- Assertion: `expect().to*()` matchers
+- Setup: `beforeEach()` to reset mocks
+- Act-Assert pattern: Call function, then assert result
+- Mock external dependencies with `vi.mock()`
+- Use `vi.mocked()` for type-safe mock access
 
 ## Mocking
 
-**Framework:** Vitest built-in mocking (`vi.mock()`, `vi.fn()`, `vi.mocked()`)
+**Framework:** Vitest `vi.mock()`
 
 **Patterns:**
 ```typescript
-// Module-level mocking
-vi.mock("./lib/executor.js", () => ({
-  executeCommand: vi.fn(),
-}));
+// Mock at module level
+vi.mock("./executor.js", () => ({ executeCommand: vi.fn() }));
 
-// Using mocks in tests
-vi.mocked(executeCommand).mockResolvedValue({
-  exitCode: 0,
-  stdout: "output",
-  stderr: "",
-  command: "test",
-});
+// Type-safe mock access
+vi.mocked(executeCommand).mockResolvedValue({ ... });
 
-// Type-safe mocking
-import { getApps } from "./lib/apps.js";
-vi.mocked(getApps).mockResolvedValue(mockApps as never);
+// Mock implementation
+vi.mocked(executeCommand).mockImplementation(async (cmd) => { ... });
+
+// Reset mocks
+vi.clearAllMocks();
 ```
 
 **What to Mock:**
-- External dependencies (file system, network, child processes)
+- External API calls (executeCommand, SSH)
 - Database operations
-- SSH connections
-- Command execution
+- File system operations
+- Date/time for deterministic tests
 
 **What NOT to Mock:**
-- Business logic functions under test
-- Simple data transformations
+- Business logic functions
+- Data transformations
 - Pure functions
 
 ## Fixtures and Factories
 
 **Test Data:**
 ```typescript
-const mockApps = [
-  { name: "test-app-1", ... },
-  { name: "test-app-2", ... },
-] as const;
+// In test files, define inline
+const mockApp = {
+  name: "myapp",
+  status: "running" as const,
+  domains: ["myapp.example.com"],
+};
+
+// Use test-data directory for large fixtures
+// server/lib/test-data/ contains sample Dokku outputs
 ```
 
 **Location:**
-- Defined inline in test files
-- No centralized fixtures directory
+- Inline for simple fixtures
+- `server/lib/test-data/` for large/sample outputs
 
 ## Coverage
 
-**Requirements:** No enforced target, but good coverage maintained
+**Requirements:** No enforced target, but aim for high coverage
 
 **View Coverage:**
 ```bash
-bun run test:coverage
-# Output in coverage/ directory
+vitest run --coverage
 ```
+
+**Tool:** @vitest/coverage-v8
 
 ## Test Types
 
 **Unit Tests:**
-- Scope: Individual functions, class methods
+- Scope: Individual functions and modules
 - Approach: Mock all external dependencies
-- Location: `server/lib/*.test.ts`, `client/src/**/*.test.tsx`
+- Focus: Business logic and data transformations
 
 **Integration Tests:**
-- Scope: HTTP endpoints with supertest
-- Approach: Test Express app with real middleware
-- Location: `server/index.test.ts`
+- Scope: API endpoints and route handlers
+- Approach: Use supertest for HTTP, mock only SSH/DB
+- Focus: Request/response handling, authentication
+- Example: `server/index.test.ts` (full server tests)
 
 **E2E Tests:**
-- Not used (no Playwright/Cypress)
+- Framework: Playwright 1.58.x
+- Scope: Critical user flows across the full stack
+- Approach: Real browser, real server, mock Dokku CLI
+- Config: `client/playwright.config.ts`
+- Location: `client/e2e/*.spec.ts`
+
+```bash
+# Run E2E tests
+cd client && bun run test:e2e
+cd client && bun run test:e2e:ui  # With UI
+```
 
 ## Common Patterns
 
 **Async Testing:**
 ```typescript
 it("should handle async operations", async () => {
-  const result = await asyncFunction();
-  expect(result).toBeDefined();
+  const result = await getApps();
+  expect(result).toHaveLength(2);
 });
 ```
 
@@ -161,14 +183,31 @@ it("should handle async operations", async () => {
 it("should return error on failure", async () => {
   vi.mocked(executeCommand).mockResolvedValue({
     exitCode: 1,
-    stderr: "Error message",
+    stderr: "Command failed",
   });
 
-  const response = await request(app).get("/api/apps");
-  expect(response.status).toBe(500);
+  const result = await getApps();
+  expect(result).toHaveProperty("error");
+});
+```
+
+**React Component Testing:**
+```typescript
+import { render, screen } from "@testing-library/react";
+import { Apps } from "./Apps";
+
+vi.mock("../lib/api.js", () => ({ getApps: vi.fn() }));
+
+it("should display apps", async () => {
+  vi.mocked(getApps).mockResolvedValue([
+    { name: "myapp", status: "running", domains: [] },
+  ]);
+
+  render(<Apps />);
+  await expect(screen.findByText("myapp")).resolves.toBeInTheDocument();
 });
 ```
 
 ---
 
-*Testing analysis: 2026-03-02*
+*Testing analysis: 2026-03-04*
