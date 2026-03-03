@@ -6,7 +6,7 @@ export default defineConfig({
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 0,
 	workers: process.env.CI ? 1 : undefined,
-	reporter: process.env.CI ? "github" : "html",
+	reporter: process.env.CI ? [["github"], ["html"]] : "html",
 	use: {
 		baseURL: "http://localhost:4173",
 		trace: "on-first-retry",
@@ -18,7 +18,7 @@ export default defineConfig({
 		},
 	],
 	webServer: {
-		command: "npx vite preview --port 4173",
+		command: "npx vite build && npx vite preview --port 4173",
 		url: "http://localhost:4173",
 		reuseExistingServer: !process.env.CI,
 	},
