@@ -22,3 +22,6 @@ node_modules/
 server/package-lock.json
 client/package-lock.json
 **/node_modules/
+# Playwright E2E test artifacts
+client/playwright-report/
+client/test-results/
