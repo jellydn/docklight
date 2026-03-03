@@ -51,8 +51,7 @@ export function extractForwardedIP(
 	if (!value) return undefined;
 
 	const commaIndex = value.indexOf(",");
-	const firstIp =
-		commaIndex === -1 ? value.trim() : value.slice(0, commaIndex).trim();
+	const firstIp = commaIndex === -1 ? value.trim() : value.slice(0, commaIndex).trim();
 
 	return firstIp || undefined;
 }

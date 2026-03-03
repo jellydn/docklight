@@ -231,8 +231,6 @@ describe("setupLogStreaming", () => {
 		});
 
 		it("should verify IP is extracted from socket for rate limiting", () => {
-			// Test verifies that IP-based rate limiting uses socket address
-			// (not X-Forwarded-For) when connection is from untrusted proxy
 			const socket = makeSocket();
 			const req = makeReq(
 				"/api/apps/my-app/logs/stream",
@@ -242,22 +240,17 @@ describe("setupLogStreaming", () => {
 				headers: Record<string, string | string[]>;
 			};
 
-			// Simulate request from non-trusted proxy IP
 			req.socket = { remoteAddress: "203.0.113.1" } as net.Socket & { remoteAddress?: string };
 			req.headers = req.headers ?? {};
-			// Client tries to spoof with X-Forwarded-For, but it should be ignored
 			req.headers["x-forwarded-for"] = "10.0.0.1";
 
 			upgradeHandler(req, socket, Buffer.alloc(0));
 
-			// First connection from this IP should be allowed
 			expect(mockWss.handleUpgrade).toHaveBeenCalled();
 			expect(socket.destroy).not.toHaveBeenCalled();
 		});
 
 		it("should verify burst rate limiting uses correct IP", () => {
-			// Test verifies that burst rate limiting extracts IP correctly
-			// when connection is from untrusted proxy
 			const socket = makeSocket();
 			const req = makeReq(
 				"/api/apps/my-app/logs/stream",
@@ -267,13 +260,11 @@ describe("setupLogStreaming", () => {
 				headers: Record<string, string | string[]>;
 			};
 
-			// Connection from external IP should use socket address for burst limiting
 			req.socket = { remoteAddress: "203.0.113.2" } as net.Socket & { remoteAddress?: string };
 			req.headers = req.headers ?? {};
 
 			upgradeHandler(req, socket, Buffer.alloc(0));
 
-			// First connection should be allowed
 			expect(mockWss.handleUpgrade).toHaveBeenCalled();
 			expect(socket.destroy).not.toHaveBeenCalled();
 		});
@@ -288,7 +279,6 @@ describe("setupLogStreaming", () => {
 				headers: Record<string, string | string[]>;
 			};
 
-			// Connection from loopback should trust X-Forwarded-For
 			req.socket = { remoteAddress: "127.0.0.1" } as net.Socket & { remoteAddress?: string };
 			req.headers = req.headers ?? {};
 			req.headers["x-forwarded-for"] = "192.168.1.100";
@@ -308,16 +298,12 @@ describe("setupLogStreaming", () => {
 				headers: Record<string, string | string[]>;
 			};
 
-			// Connection from external IP should NOT trust X-Forwarded-For
-			const realClientIP = "203.0.113.50";
-			req.socket = { remoteAddress: realClientIP } as net.Socket & { remoteAddress?: string };
+			req.socket = { remoteAddress: "203.0.113.50" } as net.Socket & { remoteAddress?: string };
 			req.headers = req.headers ?? {};
-			// Client tries to spoof as internal IP
 			req.headers["x-forwarded-for"] = "10.0.0.1";
 
 			upgradeHandler(req, socket, Buffer.alloc(0));
 
-			// Should still allow connection (using real client IP for rate limiting)
 			expect(mockWss.handleUpgrade).toHaveBeenCalled();
 		});
 
@@ -331,7 +317,6 @@ describe("setupLogStreaming", () => {
 				headers: Record<string, string | string[]>;
 			};
 
-			// Connection from loopback with array header
 			req.socket = { remoteAddress: "127.0.0.1" } as net.Socket & { remoteAddress?: string };
 			req.headers = req.headers ?? {};
 			req.headers["x-forwarded-for"] = ["192.168.1.100, 10.0.0.1"];
