@@ -231,6 +231,9 @@ test.describe("App lifecycle", () => {
 		// by the overlay. dispatchEvent bypasses position checks and fires on the element.
 		await deleteConfirmButton.dispatchEvent("click");
 
+		// Verify deletion was successful before checking navigation
+		await expect(page.getByText(/my-app.*deleted/i)).toBeVisible();
+
 		// Should navigate away after deletion
 		await expect(page).toHaveURL(/\/apps$/);
 	});
