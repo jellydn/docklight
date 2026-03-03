@@ -25,16 +25,17 @@ just build        # Build both projects
 ### Single Test Commands
 
 ```bash
-# Server (from server directory)
+# Server (from project root)
 cd server && bun run test                          # All server tests
-vitest run lib/apps.test.ts                        # Single test file
-vitest run -t "should fetch app"                   # Single test by name
+cd server && bun run test:watch                    # Watch mode
+vitest run server/lib/apps.test.ts                 # Single test file
+vitest run -t "should fetch app" --dir server      # Single test by name
 
-# Client (from client directory)
+# Client (from project root)
 cd client && bun run test                          # All client tests
-vitest run src/hooks/use-app.test.ts               # Single test file
-vitest run -t "should display apps"                # Single test by name
-vitest                                              # Watch mode
+cd client && bun run test:watch                     # Watch mode
+vitest run client/src/hooks/use-app.test.ts        # Single test file
+vitest run -t "should display apps" --dir client   # Single test by name
 
 # E2E Tests (client)
 cd client && bun run test:e2e                       # Run E2E tests
@@ -54,13 +55,41 @@ cd server && bun run format
 cd client && bun run format
 ```
 
+### Coverage Commands
+
+```bash
+# Server coverage
+cd server && bun run test:coverage
+
+# Client coverage
+cd client && bun run test:coverage
+```
+
+### Development Workflow
+
+```bash
+# Start both server and client in development
+just server-dev   # Terminal 1: Server on port 3001
+just client-dev   # Terminal 2: Client on port 5173
+
+# Or run both with bun concurrently (from project root)
+bun --bun run server/dev & bun --bun run client/dev
+```
+
 ## Post-Change Requirements
 
 **ALWAYS run after making changes:**
 
-- `bun run typecheck` - Type check TypeScript
-- `bun run lint` - Lint code with biome
-- `bun test` - Run tests
+- `bun run typecheck` - Type check TypeScript (root-level, checks both)
+- `bun run lint` - Lint code with biome (root-level, checks both)
+- `bun test` - Run tests (root-level, runs server + client tests)
+
+Individual project commands:
+
+```bash
+just server-typecheck  just server-lint
+just client-typecheck  just client-lint
+```
 
 ## Code Style Guidelines
 
@@ -173,13 +202,20 @@ describe("API Routes", () => {
 
 ### Environment Variables
 
-Server:
+Server (.env or environment):
 
 - `JWT_SECRET` - Required for JWT signing
 - `DOCKLIGHT_DOKKU_SSH_TARGET` - SSH target (e.g., "dokku@server-ip")
 - `DOCKLIGHT_DOKKU_SSH_KEY_PATH` - Path to SSH private key
 - `LOG_LEVEL` - Logging level (default: "info")
 - `DOCKLIGHT_DB_PATH` - SQLite database path (default: `data/docklight.db`)
+
+### Database
+
+- SQLite with better-sqlite3 (server-side)
+- Tables created with `IF NOT EXISTS`
+- Prepared statements for all queries
+- Database path configured via `DOCKLIGHT_DB_PATH`
 
 ### Tailwind CSS
 
