@@ -12,11 +12,7 @@ function getRateLimit(envVar: string | undefined, devValue: number, prodValue: n
 	return Number(envVar ?? (IS_DEVELOPMENT ? devValue : prodValue));
 }
 
-const AUTH_MAX_REQUESTS = getRateLimit(
-	process.env.DOCKLIGHT_AUTH_MAX_REQUESTS,
-	1000,
-	5
-);
+const AUTH_MAX_REQUESTS = getRateLimit(process.env.DOCKLIGHT_AUTH_MAX_REQUESTS, 1000, 5);
 const AUTH_CHECK_MAX_REQUESTS = getRateLimit(
 	process.env.DOCKLIGHT_AUTH_CHECK_MAX_REQUESTS,
 	10_000,
@@ -25,11 +21,7 @@ const AUTH_CHECK_MAX_REQUESTS = getRateLimit(
 
 // Command execution rate limiting (separate from auth rate limit)
 const COMMAND_WINDOW_MS = 60 * 1000; // 1 minute
-const COMMAND_MAX_REQUESTS = getRateLimit(
-	process.env.DOCKLIGHT_COMMAND_MAX_REQUESTS,
-	1000,
-	30
-);
+const COMMAND_MAX_REQUESTS = getRateLimit(process.env.DOCKLIGHT_COMMAND_MAX_REQUESTS, 1000, 30);
 
 interface UserCommandHistory {
 	timestamps: number[];
@@ -155,11 +147,7 @@ export const authCheckRateLimiter: RequestHandler = rateLimit({
 	keyGenerator: generateRateLimitKey,
 });
 
-const ADMIN_MAX_REQUESTS = getRateLimit(
-	process.env.DOCKLIGHT_ADMIN_MAX_REQUESTS,
-	1000,
-	30
-);
+const ADMIN_MAX_REQUESTS = getRateLimit(process.env.DOCKLIGHT_ADMIN_MAX_REQUESTS, 1000, 30);
 
 export const adminRateLimiter: RequestHandler = rateLimit({
 	windowMs: WINDOW_MS,

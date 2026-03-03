@@ -52,9 +52,7 @@ function parsePluginLine(line: string): PluginInfo | null {
 }
 
 export async function getPlugins(): Promise<PluginInfo[] | PluginInputError> {
-	const result = await retryWithBackoff(() =>
-		executeCommand(DokkuCommands.pluginList())
-	);
+	const result = await retryWithBackoff(() => executeCommand(DokkuCommands.pluginList()));
 	if (result.exitCode !== 0) {
 		return {
 			error:
