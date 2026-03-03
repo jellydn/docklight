@@ -3,7 +3,8 @@ import { executeCommand } from "../lib/executor.js";
 import { pingDb } from "../lib/db.js";
 
 const parsedTimeout = Number.parseInt(process.env.DOCKLIGHT_HEALTH_CHECK_TIMEOUT_MS ?? "", 10);
-const HEALTH_CHECK_TIMEOUT_MS = Number.isFinite(parsedTimeout) && parsedTimeout > 0 ? parsedTimeout : 5000;
+const HEALTH_CHECK_TIMEOUT_MS =
+	Number.isFinite(parsedTimeout) && parsedTimeout > 0 ? parsedTimeout : 5000;
 
 export function registerHealthRoutes(app: express.Application): void {
 	app.get("/api/health", async (_req, res) => {
@@ -19,7 +20,9 @@ export function registerHealthRoutes(app: express.Application): void {
 		}
 
 		try {
-			const dokkuResult = await executeCommand("dokku version", HEALTH_CHECK_TIMEOUT_MS, { skipHistory: true });
+			const dokkuResult = await executeCommand("dokku version", HEALTH_CHECK_TIMEOUT_MS, {
+				skipHistory: true,
+			});
 			if (dokkuResult.exitCode !== 0) {
 				checks.dokku = "error";
 			}
