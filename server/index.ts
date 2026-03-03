@@ -97,7 +97,12 @@ server.listen(PORT, () => {
 });
 
 // Graceful shutdown handler
+let isShuttingDown = false;
+
 function shutdown(signal: string): void {
+	if (isShuttingDown) return;
+	isShuttingDown = true;
+
 	logger.info({ signal }, "Received shutdown signal, stopping server gracefully...");
 
 	stopAuditRotation();
@@ -107,8 +112,13 @@ function shutdown(signal: string): void {
 		process.exit(1);
 	}, GRACEFUL_SHUTDOWN_TIMEOUT_MS);
 
-	server.close(() => {
+	server.close((err?: Error) => {
 		clearTimeout(forceShutdownTimeout);
+		if (err) {
+			logger.error({ err }, "Error while closing HTTP server");
+			process.exit(1);
+			return;
+		}
 		logger.info("HTTP server closed");
 		process.exit(0);
 	});

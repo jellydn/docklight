@@ -11,13 +11,18 @@ import {
 	getUserAuditLogsForExport,
 } from "../lib/db.js";
 import { adminRateLimiter } from "../lib/rate-limiter.js";
+import { logger } from "../lib/logger.js";
 
 function csvEscape(value: string | number | null | undefined): string {
 	if (value === null || value === undefined) return "";
 	let str = String(value);
 	// Neutralize CSV/Excel formula injection by prefixing dangerous characters with a single quote
-	if (/^[=+\-@]/.test(str)) {
-		str = `'${str}`;
+	// Also handle leading whitespace before dangerous characters
+	const whitespaceMatch = str.match(/^([\t\r\n ]*)/);
+	const leadingWhitespace = whitespaceMatch ? whitespaceMatch[1] : "";
+	const contentStart = str.slice(leadingWhitespace.length);
+	if (/^[=+\-@]/.test(contentStart)) {
+		str = `${leadingWhitespace}'${contentStart}`;
 	}
 	if (/[,"\n\r]/.test(str)) {
 		return `"${str.replace(/"/g, '""')}"`;
@@ -116,79 +121,91 @@ export function registerCommandRoutes(app: express.Application): void {
 	});
 
 	app.get("/api/audit/export", adminRateLimiter, authMiddleware, requireAdmin, (req, res) => {
-		const type = (req.query.type as string) || "commands";
-		const format = (req.query.format as string) || "json";
-		const startDate = req.query.startDate as string | undefined;
-		const endDate = req.query.endDate as string | undefined;
+		try {
+			const type = (req.query.type as string) || "commands";
+			const format = (req.query.format as string) || "json";
+			const startDate = req.query.startDate as string | undefined;
+			const endDate = req.query.endDate as string | undefined;
 
-		if (type !== "commands" && type !== "users") {
-			res.status(400).json({ error: "Invalid type. Must be 'commands' or 'users'" });
-			return;
-		}
-
-		if (format !== "json" && format !== "csv") {
-			res.status(400).json({ error: "Invalid format. Must be 'json' or 'csv'" });
-			return;
-		}
-
-		const date = new Date().toISOString().slice(0, 10);
-		const filename = `docklight-audit-${type}-${date}.${format}`;
-
-		if (type === "commands") {
-			const command = req.query.command as string | undefined;
-			const exitCode = (req.query.exitCode as string) || "all";
-
-			if (exitCode !== "all" && exitCode !== "success" && exitCode !== "error") {
-				res.status(400).json({ error: "Invalid exitCode filter" });
+			if (type !== "commands" && type !== "users") {
+				res.status(400).json({ error: "Invalid type. Must be 'commands' or 'users'" });
 				return;
 			}
 
-			const logs = getCommandHistoryForExport({
-				startDate,
-				endDate,
-				command,
-				exitCode: exitCode as "all" | "success" | "error",
-			});
-
-			if (format === "csv") {
-				res.setHeader("Content-Type", "text/csv");
-				res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-				res.send(commandHistoryToCSV(logs));
-			} else {
-				res.setHeader("Content-Type", "application/json");
-				res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-				res.json(logs);
-			}
-		} else {
-			const userId = req.query.userId as string | undefined;
-			const action = req.query.action as string | undefined;
-
-			if (userId !== undefined && !/^\d+$/.test(userId)) {
-				res.status(400).json({ error: "Invalid userId filter" });
+			if (format !== "json" && format !== "csv") {
+				res.status(400).json({ error: "Invalid format. Must be 'json' or 'csv'" });
 				return;
 			}
 
-			const logs = getUserAuditLogsForExport({
-				startDate,
-				endDate,
-				userId: userId !== undefined ? Number.parseInt(userId, 10) : undefined,
-				action,
-			});
+			const date = new Date().toISOString().slice(0, 10);
+			const filename = `docklight-audit-${type}-${date}.${format}`;
 
-			if (format === "csv") {
-				res.setHeader("Content-Type", "text/csv");
-				res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-				res.send(userAuditLogsToCSV(logs));
+			if (type === "commands") {
+				const command = req.query.command as string | undefined;
+				const exitCode = (req.query.exitCode as string) || "all";
+
+				if (exitCode !== "all" && exitCode !== "success" && exitCode !== "error") {
+					res.status(400).json({ error: "Invalid exitCode filter" });
+					return;
+				}
+
+				const logs = getCommandHistoryForExport({
+					startDate,
+					endDate,
+					command,
+					exitCode: exitCode as "all" | "success" | "error",
+				});
+
+				if (format === "csv") {
+					res.setHeader("Content-Type", "text/csv");
+					res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+					res.send(commandHistoryToCSV(logs));
+				} else {
+					res.setHeader("Content-Type", "application/json");
+					res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+					res.json(logs);
+				}
 			} else {
-				res.setHeader("Content-Type", "application/json");
-				res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-				res.json(logs);
+				const userId = req.query.userId as string | undefined;
+				const action = req.query.action as string | undefined;
+
+				if (userId !== undefined && !/^\d+$/.test(userId)) {
+					res.status(400).json({ error: "Invalid userId filter" });
+					return;
+				}
+
+				const logs = getUserAuditLogsForExport({
+					startDate,
+					endDate,
+					userId: userId !== undefined ? Number.parseInt(userId, 10) : undefined,
+					action,
+				});
+
+				if (format === "csv") {
+					res.setHeader("Content-Type", "text/csv");
+					res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+					res.send(userAuditLogsToCSV(logs));
+				} else {
+					res.setHeader("Content-Type", "application/json");
+					res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+					res.json(logs);
+				}
 			}
+		} catch (error) {
+			const err = error as Error;
+			logger.error({ err, route: "/api/audit/export" }, "Failed to export audit logs");
+			res.status(500).json({ error: "Failed to export audit logs" });
 		}
 	});
 
 	app.post("/api/audit/rotate", adminRateLimiter, authMiddleware, requireAdmin, (_req, res) => {
-		const result = runAuditRotation();
-		res.json({ success: true, ...result });
+		try {
+			const result = runAuditRotation();
+			res.json({ success: true, ...result });
+		} catch (error) {
+			const err = error as Error;
+			logger.error({ err, route: "/api/audit/rotate" }, "Failed to rotate audit logs");
+			res.status(500).json({ error: "Failed to rotate audit logs" });
+		}
 	});
 }
