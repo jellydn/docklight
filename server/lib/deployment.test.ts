@@ -168,9 +168,7 @@ describe("setDeployBranch", () => {
 		const result = await setDeployBranch("my-app", "main");
 
 		expect(result).toMatchObject({ exitCode: 0 });
-		expect(mockExecuteCommand).toHaveBeenCalledWith(
-			"dokku git:set 'my-app' deploy-branch 'main'"
-		);
+		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku git:set 'my-app' deploy-branch 'main'");
 	});
 });
 

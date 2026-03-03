@@ -47,8 +47,7 @@ describe("getBuildpacks", () => {
 		mockExecuteCommand.mockResolvedValueOnce({
 			command: "dokku buildpacks:report my-app",
 			exitCode: 0,
-			stdout:
-				"       1 \u001b[32mhttps://github.com/heroku/heroku-buildpack-nodejs\u001b[0m",
+			stdout: "       1 \u001b[32mhttps://github.com/heroku/heroku-buildpack-nodejs\u001b[0m",
 			stderr: "",
 		});
 
@@ -122,8 +121,7 @@ describe("addBuildpack", () => {
 
 	it("should execute add buildpack command without index", async () => {
 		mockExecuteCommand.mockResolvedValueOnce({
-			command:
-				"dokku buildpacks:add 'my-app' 'https://github.com/heroku/heroku-buildpack-nodejs'",
+			command: "dokku buildpacks:add 'my-app' 'https://github.com/heroku/heroku-buildpack-nodejs'",
 			exitCode: 0,
 			stdout: "",
 			stderr: "",
@@ -163,8 +161,7 @@ describe("addBuildpack", () => {
 
 	it("should not include index when index is 0", async () => {
 		mockExecuteCommand.mockResolvedValueOnce({
-			command:
-				"dokku buildpacks:add 'my-app' 'https://github.com/heroku/heroku-buildpack-nodejs'",
+			command: "dokku buildpacks:add 'my-app' 'https://github.com/heroku/heroku-buildpack-nodejs'",
 			exitCode: 0,
 			stdout: "",
 			stderr: "",
