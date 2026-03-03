@@ -59,6 +59,12 @@ client-format:
 client-preview:
     cd client && bun run preview
 
+client-e2e:
+    cd client && bun run test:e2e
+
+client-e2e-ui:
+    cd client && bun run test:e2e:ui
+
 # Dev Browser commands
 browser-install:
     cd .agents/skills/dev-browser && bun install
