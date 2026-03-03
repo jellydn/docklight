@@ -9,6 +9,7 @@ import { buildRuntimeCommand } from "./executor.js";
 import { logger } from "./logger.js";
 import { DokkuCommands } from "./dokku.js";
 import { isCommandAllowed } from "./allowlist.js";
+import { getClientIP } from "./ip-utils.js";
 
 const MAX_CONNECTIONS = Number(process.env.WS_MAX_CONNECTIONS ?? 50);
 const MAX_CONNECTIONS_PER_USER = Number(process.env.WS_MAX_CONNECTIONS_PER_USER ?? 5);
@@ -51,22 +52,6 @@ function getIPConnectionCount(
 	connectionsPerIP: Map<string, Set<ExtendedWebSocket>>
 ): number {
 	return connectionsPerIP.get(ip)?.size ?? 0;
-}
-
-function getClientIP(req: http.IncomingMessage): string {
-	const forwardedFor = req.headers["x-forwarded-for"];
-	if (forwardedFor) {
-		const ips = (forwardedFor as string).split(",").map((s) => s.trim());
-		return ips[0];
-	}
-	const remoteAddress = req.socket?.remoteAddress;
-	if (remoteAddress) {
-		if (remoteAddress.startsWith("::ffff:")) {
-			return remoteAddress.substring(7);
-		}
-		return remoteAddress;
-	}
-	return "unknown";
 }
 
 interface IPBurstTracker {
@@ -214,7 +199,7 @@ export function setupLogStreaming(server: http.Server) {
 
 		req.appName = appName;
 
-		const clientIP = getClientIP(req);
+		const clientIP = getClientIP(req) ?? "unknown";
 		req.clientIP = clientIP;
 
 		const cookies: Record<string, string> = {};
