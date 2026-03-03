@@ -9,7 +9,10 @@ function parsePositiveInt(value: string | undefined, defaultValue: number): numb
 }
 
 const DEFAULT_WINDOW_MS = 15 * 60 * 1000;
-const WINDOW_MS = parsePositiveInt(process.env.DOCKLIGHT_RATE_LIMIT_WINDOW_MS, DEFAULT_WINDOW_MS);
+export const WINDOW_MS = parsePositiveInt(
+	process.env.DOCKLIGHT_RATE_LIMIT_WINDOW_MS,
+	DEFAULT_WINDOW_MS
+);
 const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
 
 /**

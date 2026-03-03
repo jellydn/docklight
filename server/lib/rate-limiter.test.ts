@@ -227,13 +227,20 @@ describe("CommandRateLimiter", () => {
 	});
 
 	describe("DOCKLIGHT_COMMAND_WINDOW_MS environment variable", () => {
+		let originalWindowMs: string | undefined;
+
 		beforeEach(() => {
+			originalWindowMs = process.env.DOCKLIGHT_COMMAND_WINDOW_MS;
 			delete process.env.DOCKLIGHT_COMMAND_WINDOW_MS;
 			vi.resetModules();
 		});
 
 		afterEach(() => {
-			delete process.env.DOCKLIGHT_COMMAND_WINDOW_MS;
+			if (originalWindowMs === undefined) {
+				delete process.env.DOCKLIGHT_COMMAND_WINDOW_MS;
+			} else {
+				process.env.DOCKLIGHT_COMMAND_WINDOW_MS = originalWindowMs;
+			}
 			vi.resetModules();
 		});
 
