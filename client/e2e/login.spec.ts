@@ -80,4 +80,36 @@ test.describe("Login flow", () => {
 
 		await expect(page.getByText(/Too many login attempts/)).toBeVisible();
 	});
+
+	test("should logout and redirect to login page", async ({ page }) => {
+		const authMock = createStatefulMock(true, (loggedIn, request) => {
+			if (request.url().includes("/logout")) {
+				return { data: { success: true }, status: 200, nextState: false };
+			}
+			return {
+				data: loggedIn
+					? { authenticated: true, user: { id: 1, username: "admin", role: "admin" } }
+					: { error: "Unauthorized" },
+				status: loggedIn ? 200 : 401,
+			};
+		});
+
+		await page.route("**/api/auth/me", authMock.handler);
+		await page.route("**/api/auth/logout", authMock.handler);
+		await mockJsonEndpoint(page, "**/api/server/health", {
+			cpu: 10,
+			memory: 20,
+			disk: 30,
+		});
+		await mockJsonEndpoint(page, "**/api/apps", []);
+
+		await page.goto("/dashboard");
+
+		await expect(page.getByText("Dashboard")).toBeVisible();
+
+		await page.getByRole("button", { name: /logout/i }).click();
+
+		await expect(page).toHaveURL(/\/login/);
+		await expect(page.getByText("Docklight Login")).toBeVisible();
+	});
 });
