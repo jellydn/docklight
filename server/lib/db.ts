@@ -469,6 +469,94 @@ export function importBackup(backup: BackupData): { success: boolean; error?: st
 	}
 }
 
+export function deleteOldAuditLogs(olderThanDays: number): number {
+	const stmt = getDb().prepare(
+		"DELETE FROM audit_log WHERE datetime(createdAt) <= datetime('now', ?)"
+	);
+	const result = stmt.run(`-${olderThanDays} days`) as unknown as { changes: number };
+	return result.changes;
+}
+
+export function deleteOldCommandHistory(olderThanDays: number): number {
+	const stmt = getDb().prepare(
+		"DELETE FROM command_history WHERE datetime(createdAt) <= datetime('now', ?)"
+	);
+	const result = stmt.run(`-${olderThanDays} days`) as unknown as { changes: number };
+	return result.changes;
+}
+
+export function getCommandHistoryForExport(filters: AuditLogFilters = {}): CommandHistory[] {
+	const conditions: string[] = [];
+	const params: (string | number)[] = [];
+
+	if (filters.startDate && isValidISODate(filters.startDate)) {
+		conditions.push("datetime(createdAt) >= datetime(?)");
+		params.push(filters.startDate);
+	}
+
+	if (filters.endDate && isValidISODate(filters.endDate)) {
+		const endDate = normalizeEndDateFilter(filters.endDate);
+		conditions.push("datetime(createdAt) <= datetime(?)");
+		params.push(endDate);
+	}
+
+	if (filters.command) {
+		conditions.push("command LIKE ?");
+		params.push(`%${filters.command}%`);
+	}
+
+	if (filters.exitCode === "success") {
+		conditions.push("exitCode = 0");
+	} else if (filters.exitCode === "error") {
+		conditions.push("exitCode != 0");
+	}
+
+	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+	const stmt = getDb().prepare(
+		`SELECT id, command, exitCode, stdout, stderr, createdAt
+		 FROM command_history
+		 ${whereClause}
+		 ORDER BY createdAt DESC`
+	);
+	return stmt.all(...params) as CommandHistory[];
+}
+
+export function getUserAuditLogsForExport(filters: UserAuditLogFilters = {}): AuditLog[] {
+	const conditions: string[] = [];
+	const params: (string | number)[] = [];
+
+	if (filters.userId !== undefined) {
+		conditions.push("user_id = ?");
+		params.push(filters.userId);
+	}
+
+	if (filters.action) {
+		conditions.push("action = ?");
+		params.push(filters.action);
+	}
+
+	if (filters.startDate && isValidISODate(filters.startDate)) {
+		conditions.push("datetime(createdAt) >= datetime(?)");
+		params.push(filters.startDate);
+	}
+
+	if (filters.endDate && isValidISODate(filters.endDate)) {
+		const endDate = normalizeEndDateFilter(filters.endDate);
+		conditions.push("datetime(createdAt) <= datetime(?)");
+		params.push(endDate);
+	}
+
+	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+	const stmt = getDb().prepare(
+		`SELECT id, user_id as userId, action, resource, details, ip_address as ipAddress,
+		        strftime('%Y-%m-%dT%H:%M:%SZ', createdAt) as createdAt
+		 FROM audit_log
+		 ${whereClause}
+		 ORDER BY createdAt DESC`
+	);
+	return stmt.all(...params) as AuditLog[];
+}
+
 export function getUserAuditLogs(filters: UserAuditLogFilters = {}): UserAuditLogResult {
 	const limit = Math.min(filters.limit ?? 50, 500);
 	const offset = filters.offset ?? 0;

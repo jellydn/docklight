@@ -3,28 +3,29 @@ import express from "express";
 import http from "http";
 import path from "path";
 import pinoHttp from "pino-http";
+import { startAuditRotation } from "./lib/audit-rotation.js";
 import { authMiddleware } from "./lib/auth.js";
 import { logger } from "./lib/logger.js";
 import { setupLogStreaming } from "./lib/websocket.js";
 import {
-	registerHealthRoutes,
-	registerAuthRoutes,
-	registerUserRoutes,
-	registerCommandRoutes,
-	registerAppRoutes,
+	registerAdminRoutes,
+	registerAppBuildpackRoutes,
 	registerAppConfigRoutes,
+	registerAppDeploymentRoutes,
+	registerAppDockerOptionsRoutes,
 	registerAppDomainRoutes,
+	registerAppNetworkRoutes,
 	registerAppPortRoutes,
 	registerAppProxyRoutes,
-	registerAppBuildpackRoutes,
-	registerAppDockerOptionsRoutes,
-	registerAppNetworkRoutes,
-	registerAppDeploymentRoutes,
+	registerAppRoutes,
 	registerAppSSLRoutes,
+	registerAuthRoutes,
+	registerCommandRoutes,
 	registerDatabaseRoutes,
+	registerHealthRoutes,
 	registerPluginRoutes,
 	registerServerRoutes,
-	registerAdminRoutes,
+	registerUserRoutes,
 } from "./routes/index.js";
 
 const PORT = process.env.PORT || 3001;
@@ -91,4 +92,5 @@ setupLogStreaming(server);
 
 server.listen(PORT, () => {
 	logger.info(`Docklight server running on port ${PORT}`);
+	startAuditRotation();
 });
