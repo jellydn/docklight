@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import request from "supertest";
 import express, { type RequestHandler } from "express";
 import rateLimit, { ipKeyGenerator, MemoryStore } from "express-rate-limit";
@@ -10,6 +10,10 @@ vi.mock("./logger.js", () => ({
 		warn: vi.fn(),
 	},
 }));
+
+beforeEach(() => {
+	vi.clearAllMocks();
+});
 
 /**
  * Creates a fresh rate limiter instance for testing.
@@ -178,6 +182,110 @@ describe("authRateLimiter", () => {
 			expect(response.headers["ratelimit-limit"]).toBeDefined();
 			expect(response.headers["ratelimit-remaining"]).toBeDefined();
 			expect(response.headers["ratelimit-reset"]).toBeDefined();
+		});
+	});
+});
+
+describe("CommandRateLimiter", () => {
+	it("should allow requests within the limit", async () => {
+		const { CommandRateLimiter } = await import("./rate-limiter.js");
+		const limiter = new CommandRateLimiter(60_000, 3);
+		limiter.clearAll();
+		expect(limiter.checkLimit("user-allow").allowed).toBe(true);
+		expect(limiter.checkLimit("user-allow").allowed).toBe(true);
+		expect(limiter.checkLimit("user-allow").allowed).toBe(true);
+	});
+
+	it("should block requests after exceeding the limit", async () => {
+		const { CommandRateLimiter } = await import("./rate-limiter.js");
+		const limiter = new CommandRateLimiter(60_000, 2);
+		limiter.clearAll();
+		expect(limiter.checkLimit("user-block").allowed).toBe(true);
+		expect(limiter.checkLimit("user-block").allowed).toBe(true);
+		const result = limiter.checkLimit("user-block");
+		expect(result.allowed).toBe(false);
+		expect(result.resetAt).toBeInstanceOf(Date);
+	});
+
+	it("should track users independently", async () => {
+		const { CommandRateLimiter } = await import("./rate-limiter.js");
+		const limiter = new CommandRateLimiter(60_000, 1);
+		limiter.clearAll();
+		expect(limiter.checkLimit("userA-independent").allowed).toBe(true);
+		expect(limiter.checkLimit("userA-independent").allowed).toBe(false);
+		expect(limiter.checkLimit("userB-independent").allowed).toBe(true);
+	});
+
+	it("should reset a specific user", async () => {
+		const { CommandRateLimiter } = await import("./rate-limiter.js");
+		const limiter = new CommandRateLimiter(60_000, 1);
+		limiter.clearAll();
+		limiter.checkLimit("user-reset");
+		expect(limiter.checkLimit("user-reset").allowed).toBe(false);
+		limiter.reset("user-reset");
+		expect(limiter.checkLimit("user-reset").allowed).toBe(true);
+	});
+
+	describe("DOCKLIGHT_COMMAND_WINDOW_MS environment variable", () => {
+		let originalWindowMs: string | undefined;
+
+		beforeEach(() => {
+			originalWindowMs = process.env.DOCKLIGHT_COMMAND_WINDOW_MS;
+			delete process.env.DOCKLIGHT_COMMAND_WINDOW_MS;
+			vi.resetModules();
+		});
+
+		afterEach(() => {
+			if (originalWindowMs === undefined) {
+				delete process.env.DOCKLIGHT_COMMAND_WINDOW_MS;
+			} else {
+				process.env.DOCKLIGHT_COMMAND_WINDOW_MS = originalWindowMs;
+			}
+			vi.resetModules();
+		});
+
+		it("uses the default command window when env var is not set", async () => {
+			const { CommandRateLimiter } = await import("./rate-limiter.js");
+			const limiter = new CommandRateLimiter();
+			expect(limiter.windowMsValue).toBe(60_000);
+		});
+
+		it("uses DOCKLIGHT_COMMAND_WINDOW_MS when set", async () => {
+			process.env.DOCKLIGHT_COMMAND_WINDOW_MS = "30000";
+			const { CommandRateLimiter } = await import("./rate-limiter.js");
+			const limiter = new CommandRateLimiter();
+			expect(limiter.windowMsValue).toBe(30_000);
+		});
+	});
+
+	describe("getRateLimit validation", () => {
+		beforeEach(() => {
+			vi.resetModules();
+			process.env.NODE_ENV = "development";
+		});
+
+		afterEach(() => {
+			delete process.env.DOCKLIGHT_COMMAND_MAX_REQUESTS;
+			delete process.env.NODE_ENV;
+			vi.resetModules();
+		});
+
+		it("falls back to default for invalid string values", async () => {
+			process.env.DOCKLIGHT_COMMAND_MAX_REQUESTS = "invalid";
+			const { commandRateLimiter } = await import("./rate-limiter.js");
+			expect(commandRateLimiter.maxRequestsValue).toBe(1000);
+		});
+
+		it("falls back to default for negative numbers", async () => {
+			process.env.DOCKLIGHT_COMMAND_MAX_REQUESTS = "-5";
+			const { commandRateLimiter } = await import("./rate-limiter.js");
+			expect(commandRateLimiter.maxRequestsValue).toBe(1000);
+		});
+
+		it("falls back to default for zero", async () => {
+			process.env.DOCKLIGHT_COMMAND_MAX_REQUESTS = "0";
+			const { commandRateLimiter } = await import("./rate-limiter.js");
+			expect(commandRateLimiter.maxRequestsValue).toBe(1000);
 		});
 	});
 });
