@@ -1,14 +1,15 @@
-import { Fragment, useState, useEffect } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { z } from "zod";
-import {
-	CommandHistorySchema,
-	UserAuditLogResultSchema,
-	type UserAuditLog,
-	type CommandHistory,
-} from "../lib/schemas.js";
-import { useAuditLogWithFilters } from "../hooks/use-audit-log.js";
 import { AuditFilters } from "../components/audit-filters.js";
 import { AuditPagination } from "../components/audit-pagination.js";
+import { useAuth } from "../contexts/auth-context.js";
+import { useAuditLogWithFilters } from "../hooks/use-audit-log.js";
+import {
+	type CommandHistory,
+	CommandHistorySchema,
+	type UserAuditLog,
+	UserAuditLogResultSchema,
+} from "../lib/schemas.js";
 
 type ExitCodeFilter = "all" | "success" | "error";
 type AuditTab = "commands" | "users";
@@ -64,6 +65,8 @@ function AuditErrorState({ error }: { error: string }) {
 
 export function Audit() {
 	const [activeTab, setActiveTab] = useState<AuditTab>("commands");
+	const { role } = useAuth();
+	const isAdmin = role === "admin";
 
 	// Command history state
 	const {
@@ -156,6 +159,25 @@ export function Audit() {
 		return <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>{action}</span>;
 	};
 
+	const handleExport = (type: "commands" | "users", format: "json" | "csv") => {
+		const params = new URLSearchParams({ type, format });
+		if (type === "commands") {
+			if (commandFilters.startDate) params.set("startDate", commandFilters.startDate);
+			if (commandFilters.endDate) params.set("endDate", commandFilters.endDate);
+			if (commandFilters.command) params.set("command", commandFilters.command);
+			if (commandFilters.exitCode && commandFilters.exitCode !== "all")
+				params.set("exitCode", commandFilters.exitCode);
+		} else {
+			if (userFilters.startDate) params.set("startDate", userFilters.startDate);
+			if (userFilters.endDate) params.set("endDate", userFilters.endDate);
+			if (userFilters.userId) params.set("userId", userFilters.userId);
+			if (userFilters.action) params.set("action", userFilters.action);
+		}
+		const link = document.createElement("a");
+		link.href = `/api/audit/export?${params.toString()}`;
+		link.click();
+	};
+
 	return (
 		<div>
 			<h1 className="text-2xl font-bold mb-6">Audit Logs</h1>
@@ -219,6 +241,25 @@ export function Audit() {
 						singularLabel="command"
 						pluralLabel="commands"
 					/>
+
+					{isAdmin && (
+						<div className="flex gap-2 mb-4">
+							<button
+								onClick={() => handleExport("commands", "json")}
+								className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+								type="button"
+							>
+								Export JSON
+							</button>
+							<button
+								onClick={() => handleExport("commands", "csv")}
+								className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+								type="button"
+							>
+								Export CSV
+							</button>
+						</div>
+					)}
 
 					{/* Command Logs Table */}
 					{commandLoading ? (
@@ -338,6 +379,25 @@ export function Audit() {
 						singularLabel="log"
 						pluralLabel="logs"
 					/>
+
+					{isAdmin && (
+						<div className="flex gap-2 mb-4">
+							<button
+								onClick={() => handleExport("users", "json")}
+								className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+								type="button"
+							>
+								Export JSON
+							</button>
+							<button
+								onClick={() => handleExport("users", "csv")}
+								className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+								type="button"
+							>
+								Export CSV
+							</button>
+						</div>
+					)}
 
 					{/* User Audit Logs Table */}
 					{userLoading ? (

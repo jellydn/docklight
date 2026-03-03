@@ -210,8 +210,6 @@ describe("clearNetworkProperty", () => {
 		const result = await clearNetworkProperty("my-app", "initial-network");
 
 		expect(result).toMatchObject({ exitCode: 0 });
-		expect(mockExecuteCommand).toHaveBeenCalledWith(
-			"dokku network:set 'my-app' 'initial-network'"
-		);
+		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku network:set 'my-app' 'initial-network'");
 	});
 });

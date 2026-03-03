@@ -3,32 +3,35 @@ import express from "express";
 import http from "http";
 import path from "path";
 import pinoHttp from "pino-http";
+import { startAuditRotation, stopAuditRotation } from "./lib/audit-rotation.js";
 import { authMiddleware } from "./lib/auth.js";
 import { logger } from "./lib/logger.js";
+import { sshPool } from "./lib/executor.js";
 import { setupLogStreaming } from "./lib/websocket.js";
 import {
-	registerHealthRoutes,
-	registerAuthRoutes,
-	registerUserRoutes,
-	registerCommandRoutes,
-	registerAppRoutes,
+	registerAdminRoutes,
+	registerAppBuildpackRoutes,
 	registerAppConfigRoutes,
+	registerAppDeploymentRoutes,
+	registerAppDockerOptionsRoutes,
 	registerAppDomainRoutes,
+	registerAppNetworkRoutes,
 	registerAppPortRoutes,
 	registerAppProxyRoutes,
-	registerAppBuildpackRoutes,
-	registerAppDockerOptionsRoutes,
-	registerAppNetworkRoutes,
-	registerAppDeploymentRoutes,
+	registerAppRoutes,
 	registerAppSSLRoutes,
+	registerAuthRoutes,
+	registerCommandRoutes,
 	registerDatabaseRoutes,
+	registerHealthRoutes,
 	registerPluginRoutes,
 	registerServerRoutes,
-	registerAdminRoutes,
+	registerUserRoutes,
 } from "./routes/index.js";
 
 const PORT = process.env.PORT || 3001;
 const CLIENT_DIST = path.resolve(__dirname, "..", "..", "client", "dist");
+const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 10_000;
 
 const app = express();
 
@@ -91,4 +94,38 @@ setupLogStreaming(server);
 
 server.listen(PORT, () => {
 	logger.info(`Docklight server running on port ${PORT}`);
+	startAuditRotation();
 });
+
+// Graceful shutdown handler
+let isShuttingDown = false;
+
+function shutdown(signal: string): void {
+	if (isShuttingDown) return;
+	isShuttingDown = true;
+
+	logger.info({ signal }, "Received shutdown signal, stopping server gracefully...");
+
+	stopAuditRotation();
+	sshPool.closeAll();
+
+	const forceShutdownTimeout = setTimeout(() => {
+		logger.warn("Forcing shutdown after timeout");
+		process.exit(1);
+	}, GRACEFUL_SHUTDOWN_TIMEOUT_MS);
+	forceShutdownTimeout.unref();
+
+	server.close((err?: Error) => {
+		clearTimeout(forceShutdownTimeout);
+		if (err) {
+			logger.error({ err }, "Error while closing HTTP server");
+			process.exit(1);
+			return;
+		}
+		logger.info("HTTP server closed");
+		process.exit(0);
+	});
+}
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));

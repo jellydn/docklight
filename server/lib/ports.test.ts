@@ -294,7 +294,6 @@ describe("clearPorts", () => {
 		expect(result).toMatchObject({ exitCode: 0 });
 		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku ports:clear my-app");
 	});
-
 });
 
 describe("getProxyReport", () => {

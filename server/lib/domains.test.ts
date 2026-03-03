@@ -59,10 +59,7 @@ describe("getDomains", () => {
 		mockExecuteCommand.mockResolvedValueOnce({
 			command: "dokku domains:report my-app",
 			exitCode: 0,
-			stdout: [
-				"=====> my-app domains information",
-				"       Domains app vhosts:    -",
-			].join("\n"),
+			stdout: ["=====> my-app domains information", "       Domains app vhosts:    -"].join("\n"),
 			stderr: "",
 		});
 
@@ -147,9 +144,7 @@ describe("addDomain", () => {
 		const result = await addDomain("my-app", "example.com");
 
 		expect(result).toMatchObject({ exitCode: 0 });
-		expect(mockExecuteCommand).toHaveBeenCalledWith(
-			"dokku domains:add 'my-app' 'example.com'"
-		);
+		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku domains:add 'my-app' 'example.com'");
 	});
 
 	it("should trim whitespace from domain before executing", async () => {
@@ -162,9 +157,7 @@ describe("addDomain", () => {
 
 		await addDomain("my-app", "  example.com  ");
 
-		expect(mockExecuteCommand).toHaveBeenCalledWith(
-			"dokku domains:add 'my-app' 'example.com'"
-		);
+		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku domains:add 'my-app' 'example.com'");
 	});
 });
 
@@ -206,8 +199,6 @@ describe("removeDomain", () => {
 		const result = await removeDomain("my-app", "example.com");
 
 		expect(result).toMatchObject({ exitCode: 0 });
-		expect(mockExecuteCommand).toHaveBeenCalledWith(
-			"dokku domains:remove 'my-app' 'example.com'"
-		);
+		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku domains:remove 'my-app' 'example.com'");
 	});
 });

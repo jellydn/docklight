@@ -1,6 +1,7 @@
 import { executeCommand } from "./executor.js";
 import { DokkuCommands } from "./dokku.js";
 import { stripAnsi } from "./ansi.js";
+import { retryWithBackoff } from "./retry.js";
 
 export interface PluginInfo {
 	name: string;
@@ -51,7 +52,9 @@ function parsePluginLine(line: string): PluginInfo | null {
 }
 
 export async function getPlugins(): Promise<PluginInfo[] | PluginInputError> {
-	const result = await executeCommand(DokkuCommands.pluginList());
+	const result = await retryWithBackoff(() =>
+		executeCommand(DokkuCommands.pluginList())
+	);
 	if (result.exitCode !== 0) {
 		return {
 			error:
