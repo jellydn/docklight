@@ -1,9 +1,26 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { Databases } from "./Databases.js";
 import type { Database, App } from "../lib/schemas.js";
+
+const createTestQueryClient = () =>
+	new QueryClient({
+		defaultOptions: {
+			queries: {
+				retry: false,
+			},
+		},
+	});
+
+const renderWithQueryClient = (ui: React.ReactElement) => {
+	const testQueryClient = createTestQueryClient();
+	return render(
+		<QueryClientProvider client={testQueryClient}>{ui}</QueryClientProvider>,
+	);
+};
 
 vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
@@ -72,7 +89,7 @@ describe("Databases", () => {
 	it("should render loading state", () => {
 		apiFetchMock.mockImplementation(() => new Promise(() => {}));
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Databases />
 			</MemoryRouter>
@@ -89,7 +106,7 @@ describe("Databases", () => {
 			return Promise.reject(new Error("Unknown endpoint"));
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Databases />
 			</MemoryRouter>
@@ -107,7 +124,7 @@ describe("Databases", () => {
 			return Promise.reject(new Error("Unknown endpoint"));
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Databases />
 			</MemoryRouter>
@@ -121,7 +138,7 @@ describe("Databases", () => {
 	it("should render error state", async () => {
 		apiFetchMock.mockRejectedValue(new Error("Failed to load data"));
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Databases />
 			</MemoryRouter>
@@ -139,7 +156,7 @@ describe("Databases", () => {
 			return Promise.reject(new Error("Unknown endpoint"));
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Databases />
 			</MemoryRouter>
@@ -160,7 +177,7 @@ describe("Databases", () => {
 			return Promise.reject(new Error("Unknown endpoint"));
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Databases />
 			</MemoryRouter>
@@ -180,7 +197,7 @@ describe("Databases", () => {
 			return Promise.reject(new Error("Unknown endpoint"));
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Databases />
 			</MemoryRouter>
@@ -201,7 +218,7 @@ describe("Databases", () => {
 			return Promise.reject(new Error("Unknown endpoint"));
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Databases />
 			</MemoryRouter>
@@ -222,7 +239,7 @@ describe("Databases", () => {
 			return Promise.reject(new Error("Unknown endpoint"));
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Databases />
 			</MemoryRouter>
@@ -241,7 +258,7 @@ describe("Databases", () => {
 			return Promise.reject(new Error("Unknown endpoint"));
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Databases />
 			</MemoryRouter>
@@ -260,7 +277,7 @@ describe("Databases", () => {
 			return Promise.reject(new Error("Unknown endpoint"));
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Databases />
 			</MemoryRouter>
@@ -281,7 +298,7 @@ describe("Databases", () => {
 			return Promise.reject(new Error("Unknown endpoint"));
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Databases />
 			</MemoryRouter>
@@ -308,7 +325,7 @@ describe("Databases", () => {
 			return Promise.reject(new Error("Unknown endpoint"));
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Databases />
 			</MemoryRouter>
@@ -338,7 +355,7 @@ describe("Databases", () => {
 			return Promise.resolve([]);
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Databases />
 			</MemoryRouter>
@@ -371,7 +388,7 @@ describe("Databases", () => {
 				return Promise.reject(new Error("Unknown endpoint"));
 			});
 
-			render(
+			renderWithQueryClient(
 				<MemoryRouter>
 					<Databases />
 				</MemoryRouter>
@@ -420,7 +437,7 @@ describe("Databases", () => {
 				return Promise.reject(new Error("Unknown endpoint"));
 			});
 
-			render(
+			renderWithQueryClient(
 				<MemoryRouter>
 					<Databases />
 				</MemoryRouter>
@@ -475,7 +492,7 @@ describe("Databases", () => {
 				return Promise.reject(new Error("Unknown endpoint"));
 			});
 
-			render(
+			renderWithQueryClient(
 				<MemoryRouter>
 					<Databases />
 				</MemoryRouter>
@@ -531,7 +548,7 @@ describe("Databases", () => {
 				return Promise.reject(new Error("Unknown endpoint"));
 			});
 
-			render(
+			renderWithQueryClient(
 				<MemoryRouter>
 					<Databases />
 				</MemoryRouter>
