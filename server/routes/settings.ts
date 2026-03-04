@@ -1,15 +1,16 @@
 import type express from "express";
 import { authMiddleware, requireAdmin } from "../lib/auth.js";
+import { adminRateLimiter } from "../lib/rate-limiter.js";
 import { getSettings, updateSettings, validateSettings } from "../lib/server-config.js";
 import { safeAuditLog } from "./util.js";
 
 export function registerSettingsRoutes(app: express.Application): void {
-	app.get("/api/settings", authMiddleware, requireAdmin, (_req, res) => {
+	app.get("/api/settings", adminRateLimiter, authMiddleware, requireAdmin, (_req, res) => {
 		const settings = getSettings();
 		res.json(settings);
 	});
 
-	app.put("/api/settings", authMiddleware, requireAdmin, (req, res) => {
+	app.put("/api/settings", adminRateLimiter, authMiddleware, requireAdmin, (req, res) => {
 		const body = req.body as Record<string, unknown>;
 
 		if (!body || typeof body !== "object" || Array.isArray(body)) {

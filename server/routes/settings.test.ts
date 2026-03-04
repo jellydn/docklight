@@ -13,10 +13,13 @@ vi.mock("../lib/auth.js", () => ({
 	requireAdmin: vi.fn((_req: Request, _res: Response, next: NextFunction) => next()),
 }));
 
+vi.mock("../lib/rate-limiter.js", () => ({
+	adminRateLimiter: vi.fn((_req: Request, _res: Response, next: NextFunction) => next()),
+}));
+
 vi.mock("../lib/db.js", () => ({
 	insertAuditLog: vi.fn(),
 }));
-
 import { getSettings, updateSettings, validateSettings } from "../lib/server-config.js";
 import { registerSettingsRoutes } from "./settings.js";
 
