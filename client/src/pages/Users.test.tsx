@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -30,6 +31,28 @@ const mockUsers: User[] = [
 	},
 ];
 
+const createTestQueryClient = () =>
+	new QueryClient({
+		defaultOptions: {
+			queries: {
+				retry: false,
+				gcTime: 0,
+			},
+		},
+	});
+
+const renderWithProviders = (component: React.ReactNode) => {
+	const queryClient = createTestQueryClient();
+	return {
+		queryClient,
+		...render(
+			<QueryClientProvider client={queryClient}>
+				<MemoryRouter>{component}</MemoryRouter>
+			</QueryClientProvider>
+		),
+	};
+};
+
 describe("Users", () => {
 	let apiFetchMock: ReturnType<typeof vi.fn>;
 
@@ -43,11 +66,7 @@ describe("Users", () => {
 	it("should render loading state", () => {
 		apiFetchMock.mockImplementation(() => new Promise(() => {}));
 
-		render(
-			<MemoryRouter>
-				<Users />
-			</MemoryRouter>
-		);
+		renderWithProviders(<Users />);
 
 		expect(screen.getByText("Loading…")).toBeInTheDocument();
 	});
@@ -55,11 +74,7 @@ describe("Users", () => {
 	it("should render users list", async () => {
 		apiFetchMock.mockResolvedValue(mockUsers);
 
-		render(
-			<MemoryRouter>
-				<Users />
-			</MemoryRouter>
-		);
+		renderWithProviders(<Users />);
 
 		await waitFor(() => {
 			expect(screen.getByText("alice")).toBeInTheDocument();
@@ -71,11 +86,7 @@ describe("Users", () => {
 	it("should display role badges", async () => {
 		apiFetchMock.mockResolvedValue(mockUsers);
 
-		render(
-			<MemoryRouter>
-				<Users />
-			</MemoryRouter>
-		);
+		renderWithProviders(<Users />);
 
 		await waitFor(() => {
 			expect(screen.getByText("admin")).toBeInTheDocument();
@@ -87,11 +98,7 @@ describe("Users", () => {
 	it("should render empty state when no users", async () => {
 		apiFetchMock.mockResolvedValue([]);
 
-		render(
-			<MemoryRouter>
-				<Users />
-			</MemoryRouter>
-		);
+		renderWithProviders(<Users />);
 
 		await waitFor(() => {
 			expect(screen.getByText("No users yet")).toBeInTheDocument();
@@ -101,11 +108,7 @@ describe("Users", () => {
 	it("should render error state", async () => {
 		apiFetchMock.mockRejectedValue(new Error("Failed to load users"));
 
-		render(
-			<MemoryRouter>
-				<Users />
-			</MemoryRouter>
-		);
+		renderWithProviders(<Users />);
 
 		await waitFor(() => {
 			expect(screen.getByText("Failed to load users")).toBeInTheDocument();
@@ -115,11 +118,7 @@ describe("Users", () => {
 	it("should display add user form", async () => {
 		apiFetchMock.mockResolvedValue([]);
 
-		render(
-			<MemoryRouter>
-				<Users />
-			</MemoryRouter>
-		);
+		renderWithProviders(<Users />);
 
 		await waitFor(() => {
 			expect(screen.getByRole("heading", { name: "Add User" })).toBeInTheDocument();
@@ -133,11 +132,7 @@ describe("Users", () => {
 		const user = userEvent.setup();
 		apiFetchMock.mockResolvedValue(mockUsers);
 
-		render(
-			<MemoryRouter>
-				<Users />
-			</MemoryRouter>
-		);
+		renderWithProviders(<Users />);
 
 		await waitFor(() => {
 			expect(screen.getByText("alice")).toBeInTheDocument();
@@ -156,11 +151,7 @@ describe("Users", () => {
 		const user = userEvent.setup();
 		apiFetchMock.mockResolvedValue(mockUsers);
 
-		render(
-			<MemoryRouter>
-				<Users />
-			</MemoryRouter>
-		);
+		renderWithProviders(<Users />);
 
 		await waitFor(() => {
 			expect(screen.getByText("alice")).toBeInTheDocument();
@@ -183,11 +174,7 @@ describe("Users", () => {
 	it("should have overflow-x-auto wrapper for the table", async () => {
 		apiFetchMock.mockResolvedValue(mockUsers);
 
-		render(
-			<MemoryRouter>
-				<Users />
-			</MemoryRouter>
-		);
+		renderWithProviders(<Users />);
 
 		await waitFor(() => {
 			expect(screen.getByText("alice")).toBeInTheDocument();
@@ -200,11 +187,7 @@ describe("Users", () => {
 	it("should use min-w-full on the table for responsive layout", async () => {
 		apiFetchMock.mockResolvedValue(mockUsers);
 
-		render(
-			<MemoryRouter>
-				<Users />
-			</MemoryRouter>
-		);
+		renderWithProviders(<Users />);
 
 		await waitFor(() => {
 			expect(screen.getByText("alice")).toBeInTheDocument();

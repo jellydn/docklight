@@ -1,7 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { apiFetch } from "../lib/api.js";
+import { queryKeys } from "../lib/query-keys.js";
+import { AuthMeSchema } from "../lib/schemas.js";
 
 export function Login() {
 	const [username, setUsername] = useState("");
@@ -9,15 +12,17 @@ export function Login() {
 	const [error, setError] = useState("");
 	const navigate = useNavigate();
 
+	const { data: authData, isLoading } = useQuery({
+		queryKey: queryKeys.auth.me,
+		queryFn: () => apiFetch("/auth/me", AuthMeSchema),
+		retry: false,
+	});
+
 	useEffect(() => {
-		const checkAuth = async () => {
-			try {
-				await apiFetch("/auth/me");
-				navigate("/dashboard");
-			} catch {}
-		};
-		checkAuth();
-	}, [navigate]);
+		if (authData?.user) {
+			navigate("/dashboard");
+		}
+	}, [authData, navigate]);
 
 	const handleSubmit = async (e: FormEvent) => {
 		e.preventDefault();
@@ -38,6 +43,14 @@ export function Login() {
 			}
 		}
 	};
+
+	if (isLoading) {
+		return (
+			<div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+				<div className="text-gray-500">Loading…</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">

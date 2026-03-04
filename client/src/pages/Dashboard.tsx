@@ -1,53 +1,49 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateAppDialog } from "@/components/CreateAppDialog.js";
 import { apiFetch } from "../lib/api.js";
 import { useAuth } from "@/contexts/auth-context.js";
-import {
-	ServerHealthSchema,
-	type ServerHealth,
-	AppSchema,
-	type App,
-	CommandHistorySchema,
-	type CommandHistory,
-} from "../lib/schemas.js";
+import { queryKeys } from "../lib/query-keys.js";
+import { ServerHealthSchema, AppSchema, CommandHistorySchema } from "../lib/schemas.js";
 
 export function Dashboard() {
 	const { canModify } = useAuth();
-	const [health, setHealth] = useState<ServerHealth | null>(null);
-	const [apps, setApps] = useState<App[]>([]);
-	const [commands, setCommands] = useState<CommandHistory[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+	const queryClient = useQueryClient();
 	const [createAppOpen, setCreateAppOpen] = useState(false);
 
-	const fetchData = async () => {
-		try {
-			const [healthData, appsData, commandsData] = await Promise.all([
-				apiFetch("/server/health", ServerHealthSchema),
-				apiFetch("/apps", z.array(AppSchema)),
-				apiFetch("/commands?limit=20", z.array(CommandHistorySchema)),
-			]);
+	const { data: health, isLoading: healthLoading } = useQuery({
+		queryKey: queryKeys.health,
+		queryFn: () => apiFetch("/server/health", ServerHealthSchema),
+		refetchInterval: 30000,
+	});
 
-			setHealth(healthData);
-			setApps(Array.isArray(appsData) ? appsData : []);
-			setCommands(commandsData);
-			setLoading(false);
-			setError(null);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to load data");
-			setLoading(false);
-		}
+	const { data: apps, isLoading: appsLoading } = useQuery({
+		queryKey: queryKeys.apps.all,
+		queryFn: () => apiFetch("/apps", z.array(AppSchema)),
+		refetchInterval: 30000,
+	});
+
+	const { data: commands, isLoading: commandsLoading } = useQuery({
+		queryKey: queryKeys.commands,
+		queryFn: () => apiFetch("/commands?limit=20", z.array(CommandHistorySchema)),
+		refetchInterval: 30000,
+	});
+
+	const isLoading = healthLoading || appsLoading || commandsLoading;
+
+	const handleRefresh = () => {
+		void queryClient.invalidateQueries({ queryKey: queryKeys.health });
+		void queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
+		void queryClient.invalidateQueries({ queryKey: queryKeys.commands });
 	};
 
-	useEffect(() => {
-		fetchData();
-		const interval = setInterval(fetchData, 30000);
-		return () => clearInterval(interval);
-	}, []);
+	const handleAppCreated = () => {
+		void queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
+	};
 
 	const getHealthColor = (value: number) => {
 		if (value < 60) return "bg-green-500";
@@ -64,24 +60,18 @@ export function Dashboard() {
 		<div>
 			<div className="mb-6 flex items-center justify-between">
 				<h1 className="text-2xl font-bold">Dashboard</h1>
-				<Button onClick={() => void fetchData()} size="sm" variant="outline">
+				<Button onClick={handleRefresh} size="sm" variant="outline">
 					Refresh
 				</Button>
 			</div>
 
-			{loading && (
+			{isLoading && (
 				<div className="flex justify-center items-center py-12">
 					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
 				</div>
 			)}
 
-			{error && (
-				<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-					{error}
-				</div>
-			)}
-
-			{!loading && !error && (
+			{!isLoading && (
 				<>
 					{/* Server Health */}
 					<Card className="mb-6">
@@ -142,7 +132,7 @@ export function Dashboard() {
 								</Button>
 							)}
 						</div>
-						{apps.length === 0 ? (
+						{(apps?.length ?? 0) === 0 ? (
 							<p className="text-gray-500">No apps found</p>
 						) : (
 							<div className="overflow-x-auto">
@@ -156,7 +146,7 @@ export function Dashboard() {
 										</tr>
 									</thead>
 									<tbody>
-										{apps.map((app) => (
+										{(apps ?? []).map((app) => (
 											<tr key={app.name} className="border-b">
 												<td className="py-2 px-4">
 													<Link to={`/apps/${app.name}`} className="text-blue-600 hover:underline">
@@ -187,11 +177,11 @@ export function Dashboard() {
 					{/* Recent Activity */}
 					<div className="bg-white rounded-lg shadow p-6">
 						<h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
-						{commands.length === 0 ? (
+						{(commands?.length ?? 0) === 0 ? (
 							<p className="text-gray-500">No recent activity</p>
 						) : (
 							<div className="space-y-2">
-								{commands.map((cmd) => (
+								{(commands ?? []).map((cmd) => (
 									<div key={cmd.id} className="text-sm">
 										<div className="font-mono bg-gray-100 p-2 rounded">{cmd.command}</div>
 										<div className="text-gray-500 text-xs mt-1">
@@ -208,9 +198,7 @@ export function Dashboard() {
 				<CreateAppDialog
 					open={createAppOpen}
 					onOpenChange={setCreateAppOpen}
-					onCreated={() => {
-						void fetchData();
-					}}
+					onCreated={handleAppCreated}
 				/>
 			)}
 		</div>

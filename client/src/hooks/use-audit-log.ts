@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { z } from "zod";
 import { apiFetch } from "../lib/api.js";
 import { ITEMS_PER_PAGE } from "../lib/constants.js";
@@ -26,17 +27,11 @@ export function useAuditLog<T>({
 	fetchDeps,
 	filterParams,
 }: UseAuditLogParams<T>): UseAuditLogResult<T> {
-	const [logs, setLogs] = useState<T[]>([]);
-	const [total, setTotal] = useState(0);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
 	const [offset, setOffset] = useState(0);
 
-	const fetchLogs = async () => {
-		setLoading(true);
-		setError(null);
-
-		try {
+	const { data, isLoading, error, refetch } = useQuery({
+		queryKey: [...fetchDeps, offset, filterParams],
+		queryFn: async () => {
 			const params = new URLSearchParams({
 				limit: ITEMS_PER_PAGE.toString(),
 				offset: offset.toString(),
@@ -51,29 +46,18 @@ export function useAuditLog<T>({
 			}
 
 			const separator = fetchUrl.includes("?") ? "&" : "?";
-			const result = await apiFetch(`${fetchUrl}${separator}${params.toString()}`, schema);
-			setLogs(result.logs);
-			setTotal(result.total);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to fetch audit logs");
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	useEffect(() => {
-		fetchLogs();
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [offset, filterParams, ...fetchDeps]);
+			return apiFetch(`${fetchUrl}${separator}${params.toString()}`, schema);
+		},
+	});
 
 	return {
-		logs,
-		total,
-		loading,
-		error,
+		logs: data?.logs ?? [],
+		total: data?.total ?? 0,
+		loading: isLoading,
+		error: error?.message ?? null,
 		offset,
 		setOffset,
-		refresh: fetchLogs,
+		refresh: () => void refetch(),
 	};
 }
 
