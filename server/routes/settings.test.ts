@@ -63,9 +63,7 @@ describe("Settings routes", () => {
 			vi.mocked(updateSettings).mockImplementation(() => {});
 			vi.mocked(getSettings).mockReturnValue(updated);
 
-			const response = await request(app)
-				.put("/api/settings")
-				.send({ logLevel: "debug" });
+			const response = await request(app).put("/api/settings").send({ logLevel: "debug" });
 
 			expect(response.status).toBe(200);
 			expect(response.body).toEqual(updated);
@@ -81,9 +79,7 @@ describe("Settings routes", () => {
 		});
 
 		it("should return 400 for non-string field value", async () => {
-			const response = await request(app)
-				.put("/api/settings")
-				.send({ logLevel: 42 });
+			const response = await request(app).put("/api/settings").send({ logLevel: 42 });
 
 			expect(response.status).toBe(400);
 			expect(response.body).toHaveProperty("error");
@@ -95,12 +91,18 @@ describe("Settings routes", () => {
 				{ field: "logLevel", message: "Must be one of: fatal, error, warn, info, debug, trace" },
 			]);
 
-			const response = await request(app)
-				.put("/api/settings")
-				.send({ logLevel: "invalid" });
+			const response = await request(app).put("/api/settings").send({ logLevel: "invalid" });
 
 			expect(response.status).toBe(400);
 			expect(response.body).toHaveProperty("error");
+			expect(updateSettings).not.toHaveBeenCalled();
+		});
+
+		it("should return 400 for empty updates", async () => {
+			const response = await request(app).put("/api/settings").send({ unknownField: "value" });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty("error", "No valid settings fields provided");
 			expect(updateSettings).not.toHaveBeenCalled();
 		});
 

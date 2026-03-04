@@ -32,6 +32,11 @@ export function registerSettingsRoutes(app: express.Application): void {
 			}
 		}
 
+		if (Object.keys(updates).length === 0) {
+			res.status(400).json({ error: "No valid settings fields provided" });
+			return;
+		}
+
 		const errors = validateSettings(updates);
 		if (errors.length > 0) {
 			res.status(400).json({ error: errors[0]?.message, field: errors[0]?.field });
