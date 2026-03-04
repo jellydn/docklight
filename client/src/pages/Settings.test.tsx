@@ -3,10 +3,10 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ServerSettings } from "../lib/schemas.js";
-import { Settings } from "./Settings.js";
+import type { ServerSettings } from "@/lib/schemas.js";
+import { Settings } from "@/pages/Settings.js";
 
-vi.mock("../lib/api.js", () => ({
+vi.mock("@/lib/api.js", () => ({
 	apiFetch: vi.fn(),
 }));
 
@@ -16,14 +16,16 @@ const mockSettings: ServerSettings = {
 	logLevel: "info",
 };
 
-const createTestQueryClient = () =>
+const createTestQueryClient = (): QueryClient =>
 	new QueryClient({
 		defaultOptions: {
 			queries: { retry: false, gcTime: 0 },
 		},
 	});
 
-const renderWithProviders = (component: React.ReactNode) => {
+const renderWithProviders = (
+	component: React.ReactNode
+): ReturnType<typeof render> & { queryClient: QueryClient } => {
 	const queryClient = createTestQueryClient();
 	return {
 		queryClient,
@@ -40,7 +42,7 @@ describe("Settings", () => {
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
-		const { apiFetch } = await import("../lib/api.js");
+		const { apiFetch } = await import("@/lib/api.js");
 		apiFetchMock = apiFetch as ReturnType<typeof vi.fn>;
 	});
 
