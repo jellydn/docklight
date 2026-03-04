@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { z } from "zod";
 import { apiFetch } from "../lib/api.js";
+import { queryClient } from "../lib/query-client.js";
+import { queryKeys } from "../lib/query-keys.js";
 import { UserSchema, type User, type UserRole } from "../lib/schemas.js";
 
 const UsersArraySchema = z.array(UserSchema);
@@ -21,9 +24,10 @@ const getRoleBadge = (role: UserRole) => {
 };
 
 export function Users() {
-	const [users, setUsers] = useState<User[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState("");
+	const { data: users, isLoading, error } = useQuery({
+		queryKey: queryKeys.users,
+		queryFn: () => apiFetch("/users", UsersArraySchema),
+	});
 
 	// Create form state
 	const [newUsername, setNewUsername] = useState("");
@@ -37,67 +41,70 @@ export function Users() {
 	const [editPassword, setEditPassword] = useState("");
 	const [editError, setEditError] = useState("");
 
-	const loadUsers = async () => {
-		try {
-			setLoading(true);
-			const data = await apiFetch("/users", UsersArraySchema);
-			setUsers(data);
-			setError("");
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to load users");
-		} finally {
-			setLoading(false);
-		}
-	};
+	const createUserMutation = useMutation({
+		mutationFn: async (userData: { username: string; password: string; role: UserRole }) => {
+			return apiFetch("/users", UserSchema, {
+				method: "POST",
+				body: JSON.stringify(userData),
+			});
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: queryKeys.users });
+			setNewUsername("");
+			setNewPassword("");
+			setNewRole("viewer");
+			setCreateError("");
+		},
+		onError: (err: Error) => {
+			setCreateError(err.message || "Failed to create user");
+		},
+	});
 
-	useEffect(() => {
-		loadUsers();
-	}, []);
+	const updateUserMutation = useMutation({
+		mutationFn: async ({ id, data }: { id: number; data: { role?: UserRole; password?: string } }) => {
+			return apiFetch(`/users/${id}`, UserSchema, {
+				method: "PUT",
+				body: JSON.stringify(data),
+			});
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: queryKeys.users });
+			setEditId(null);
+			setEditPassword("");
+			setEditError("");
+		},
+		onError: (err: Error) => {
+			setEditError(err.message || "Failed to update user");
+		},
+	});
+
+	const deleteUserMutation = useMutation({
+		mutationFn: async (id: number) => {
+			return apiFetch(`/users/${id}`, z.object({ success: z.literal(true) }), {
+				method: "DELETE",
+			});
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: queryKeys.users });
+		},
+	});
 
 	const handleCreate = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setCreateError("");
-		try {
-			await apiFetch("/users", UserSchema, {
-				method: "POST",
-				body: JSON.stringify({ username: newUsername, password: newPassword, role: newRole }),
-			});
-			setNewUsername("");
-			setNewPassword("");
-			setNewRole("viewer");
-			await loadUsers();
-		} catch (err) {
-			setCreateError(err instanceof Error ? err.message : "Failed to create user");
-		}
+		createUserMutation.mutate({ username: newUsername, password: newPassword, role: newRole });
 	};
 
 	const handleEditSave = async (id: number) => {
 		setEditError("");
-		try {
-			const body: { role?: UserRole; password?: string } = { role: editRole };
-			if (editPassword) body.password = editPassword;
-			await apiFetch(`/users/${id}`, UserSchema, {
-				method: "PUT",
-				body: JSON.stringify(body),
-			});
-			setEditId(null);
-			setEditPassword("");
-			await loadUsers();
-		} catch (err) {
-			setEditError(err instanceof Error ? err.message : "Failed to update user");
-		}
+		const body: { role?: UserRole; password?: string } = { role: editRole };
+		if (editPassword) body.password = editPassword;
+		updateUserMutation.mutate({ id, data: body });
 	};
 
 	const handleDelete = async (id: number, username: string) => {
 		if (!confirm(`Delete user "${username}"?`)) return;
-		try {
-			await apiFetch(`/users/${id}`, z.object({ success: z.literal(true) }), {
-				method: "DELETE",
-			});
-			await loadUsers();
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to delete user");
-		}
+		deleteUserMutation.mutate(id);
 	};
 
 	const startEdit = (user: User) => {
@@ -106,6 +113,9 @@ export function Users() {
 		setEditPassword("");
 		setEditError("");
 	};
+
+	const userList = users ?? [];
+	const errorMessage = error?.message || "";
 
 	return (
 		<div>
@@ -177,8 +187,8 @@ export function Users() {
 			{/* Users list */}
 			<div className="bg-white rounded-lg shadow overflow-hidden">
 				<h2 className="text-lg font-semibold p-6 pb-0">Users</h2>
-				{error && <p className="text-red-600 text-sm px-6 py-2">{error}</p>}
-				{loading ? (
+				{errorMessage && <p className="text-red-600 text-sm px-6 py-2">{errorMessage}</p>}
+				{isLoading ? (
 					<p className="p-6 text-gray-500">Loading…</p>
 				) : (
 					<div className="overflow-x-auto">
@@ -194,7 +204,7 @@ export function Users() {
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-gray-100">
-								{users.map((user) => (
+								{userList.map((user) => (
 									<tr key={user.id}>
 										<td className="px-6 py-3 font-medium">{user.username}</td>
 										<td className="px-6 py-3 whitespace-nowrap">
@@ -266,7 +276,7 @@ export function Users() {
 										</td>
 									</tr>
 								))}
-								{users.length === 0 && (
+								{userList.length === 0 && (
 									<tr>
 										<td colSpan={4} className="px-6 py-4 text-center text-gray-400">
 											No users yet

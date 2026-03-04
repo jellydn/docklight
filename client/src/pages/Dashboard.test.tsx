@@ -1,9 +1,26 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { App, CommandHistory, ServerHealth } from "../lib/schemas.js";
 import { Dashboard } from "./Dashboard";
+
+const createTestQueryClient = () =>
+	new QueryClient({
+		defaultOptions: {
+			queries: {
+				retry: false,
+			},
+		},
+	});
+
+const renderWithQueryClient = (ui: React.ReactElement) => {
+	const testQueryClient = createTestQueryClient();
+	return render(
+		<QueryClientProvider client={testQueryClient}>{ui}</QueryClientProvider>,
+	);
+};
 
 vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
@@ -83,7 +100,7 @@ describe("Dashboard", () => {
 	it("should render loading state", () => {
 		apiFetchMock.mockImplementation(() => new Promise(() => {}));
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Dashboard />
 			</MemoryRouter>
@@ -101,7 +118,7 @@ describe("Dashboard", () => {
 			return Promise.reject(new Error("Unknown endpoint"));
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Dashboard />
 			</MemoryRouter>
@@ -121,7 +138,7 @@ describe("Dashboard", () => {
 			return Promise.reject(new Error("Unknown endpoint"));
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Dashboard />
 			</MemoryRouter>
@@ -146,7 +163,7 @@ describe("Dashboard", () => {
 			return Promise.reject(new Error("Unknown endpoint"));
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Dashboard />
 			</MemoryRouter>
@@ -167,7 +184,7 @@ describe("Dashboard", () => {
 			return Promise.reject(new Error("Unknown endpoint"));
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Dashboard />
 			</MemoryRouter>

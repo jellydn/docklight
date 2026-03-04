@@ -1,9 +1,26 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { App } from "../lib/schemas.js";
 import { Apps } from "./Apps";
+
+const createTestQueryClient = () =>
+	new QueryClient({
+		defaultOptions: {
+			queries: {
+				retry: false,
+			},
+		},
+	});
+
+const renderWithQueryClient = (ui: React.ReactElement) => {
+	const testQueryClient = createTestQueryClient();
+	return render(
+		<QueryClientProvider client={testQueryClient}>{ui}</QueryClientProvider>,
+	);
+};
 
 vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
@@ -58,7 +75,7 @@ describe("Apps", () => {
 	it("should render loading state", () => {
 		apiFetchMock.mockImplementation(() => new Promise(() => {}));
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Apps />
 			</MemoryRouter>
@@ -71,7 +88,7 @@ describe("Apps", () => {
 	it("should render apps list", async () => {
 		apiFetchMock.mockResolvedValue(mockApps);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Apps />
 			</MemoryRouter>
@@ -90,7 +107,7 @@ describe("Apps", () => {
 	it("should render empty state when no apps", async () => {
 		apiFetchMock.mockResolvedValue([]);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Apps />
 			</MemoryRouter>
@@ -105,7 +122,7 @@ describe("Apps", () => {
 	it("should render error state", async () => {
 		apiFetchMock.mockRejectedValue(new Error("Failed to load"));
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Apps />
 			</MemoryRouter>
@@ -119,7 +136,7 @@ describe("Apps", () => {
 	it("should open create app dialog when button is clicked", async () => {
 		apiFetchMock.mockResolvedValue([]);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Apps />
 			</MemoryRouter>
@@ -143,7 +160,7 @@ describe("Apps", () => {
 
 		apiFetchMock.mockResolvedValue(mockApps);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Apps />
 			</MemoryRouter>
@@ -159,7 +176,7 @@ describe("Apps", () => {
 	it("should display app names as links", async () => {
 		apiFetchMock.mockResolvedValue(mockApps);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Apps />
 			</MemoryRouter>
@@ -175,7 +192,7 @@ describe("Apps", () => {
 	it("should show domains list for apps with domains", async () => {
 		apiFetchMock.mockResolvedValue(mockApps);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Apps />
 			</MemoryRouter>
@@ -189,7 +206,7 @@ describe("Apps", () => {
 	it("should show dash for apps without domains", async () => {
 		apiFetchMock.mockResolvedValue(mockApps);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Apps />
 			</MemoryRouter>
@@ -204,7 +221,7 @@ describe("Apps", () => {
 	it("should format last deploy time", async () => {
 		apiFetchMock.mockResolvedValue(mockApps);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Apps />
 			</MemoryRouter>

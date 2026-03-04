@@ -1,8 +1,25 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PluginInfo } from "../lib/schemas.js";
 import { Plugins } from "./Plugins";
+
+const createTestQueryClient = () =>
+	new QueryClient({
+		defaultOptions: {
+			queries: {
+				retry: false,
+			},
+		},
+	});
+
+const renderWithQueryClient = (ui: React.ReactElement) => {
+	const testQueryClient = createTestQueryClient();
+	return render(
+		<QueryClientProvider client={testQueryClient}>{ui}</QueryClientProvider>,
+	);
+};
 
 vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
@@ -44,7 +61,7 @@ describe("Plugins", () => {
 		const { apiFetch } = await import("../lib/api.js");
 		vi.mocked(apiFetch).mockResolvedValue(mockPlugins);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Plugins />
 			</MemoryRouter>
@@ -63,7 +80,7 @@ describe("Plugins", () => {
 		const { apiFetch } = await import("../lib/api.js");
 		vi.mocked(apiFetch).mockResolvedValue([]);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Plugins />
 			</MemoryRouter>
@@ -82,7 +99,7 @@ describe("Plugins", () => {
 		const { apiFetch } = await import("../lib/api.js");
 		vi.mocked(apiFetch).mockRejectedValue(new Error("Failed to connect"));
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Plugins />
 			</MemoryRouter>
@@ -97,7 +114,7 @@ describe("Plugins", () => {
 		const { apiFetch } = await import("../lib/api.js");
 		vi.mocked(apiFetch).mockResolvedValue(mockPlugins);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Plugins />
 			</MemoryRouter>
