@@ -26,7 +26,12 @@ function readSettingsFile(): Partial<ServerSettings> {
 			return {};
 		}
 		const raw = fs.readFileSync(SETTINGS_FILE, "utf-8");
-		return JSON.parse(raw) as Partial<ServerSettings>;
+		const parsed: unknown = JSON.parse(raw);
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+			logger.warn("Server settings file has invalid shape, using defaults");
+			return {};
+		}
+		return parsed as Partial<ServerSettings>;
 	} catch (err) {
 		logger.warn({ err }, "Failed to read server settings file, using defaults");
 		return {};
@@ -64,9 +69,7 @@ export interface SettingsValidationError {
 	message: string;
 }
 
-export function validateSettings(
-	input: Partial<ServerSettings>
-): SettingsValidationError[] {
+export function validateSettings(input: Partial<ServerSettings>): SettingsValidationError[] {
 	const errors: SettingsValidationError[] = [];
 
 	if (input.logLevel !== undefined) {
@@ -87,18 +90,26 @@ export function updateSettings(updates: Partial<ServerSettings>): void {
 
 	if (updates.dokkuSshTarget !== undefined) {
 		merged.dokkuSshTarget = updates.dokkuSshTarget;
-		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = updates.dokkuSshTarget;
 	}
 	if (updates.dokkuSshKeyPath !== undefined) {
 		merged.dokkuSshKeyPath = updates.dokkuSshKeyPath;
-		process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH = updates.dokkuSshKeyPath;
 	}
 	if (updates.logLevel !== undefined) {
 		merged.logLevel = updates.logLevel;
+	}
+
+	writeSettingsFile(merged);
+
+	if (updates.dokkuSshTarget !== undefined) {
+		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = updates.dokkuSshTarget;
+	}
+	if (updates.dokkuSshKeyPath !== undefined) {
+		process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH = updates.dokkuSshKeyPath;
+	}
+	if (updates.logLevel !== undefined) {
 		process.env.LOG_LEVEL = updates.logLevel;
 		logger.level = updates.logLevel;
 	}
 
-	writeSettingsFile(merged);
 	logger.info({ updates: Object.keys(updates) }, "Server settings updated");
 }
