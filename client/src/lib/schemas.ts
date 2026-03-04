@@ -221,3 +221,12 @@ export const UserAuditLogResultSchema = z.object({
 });
 
 export type UserAuditLogResult = z.infer<typeof UserAuditLogResultSchema>;
+
+// Server settings schema
+export const ServerSettingsSchema = z.object({
+	dokkuSshTarget: z.string(),
+	dokkuSshKeyPath: z.string(),
+	logLevel: z.string(),
+});
+
+export type ServerSettings = z.infer<typeof ServerSettingsSchema>;

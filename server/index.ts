@@ -10,6 +10,7 @@ import { sshPool } from "./lib/executor.js";
 import { setupLogStreaming } from "./lib/websocket.js";
 import {
 	registerAdminRoutes,
+	registerSettingsRoutes,
 	registerAppBuildpackRoutes,
 	registerAppConfigRoutes,
 	registerAppDeploymentRoutes,
@@ -82,6 +83,7 @@ registerDatabaseRoutes(app);
 registerPluginRoutes(app);
 registerServerRoutes(app);
 registerAdminRoutes(app);
+registerSettingsRoutes(app);
 
 // SPA fallback for client-side routing (must be after all API routes)
 app.get("/{*path}", (_req, res) => {
