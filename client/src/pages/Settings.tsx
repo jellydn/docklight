@@ -1,13 +1,13 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
-import { apiFetch } from "../lib/api.js";
-import { queryClient } from "../lib/query-client.js";
-import { queryKeys } from "../lib/query-keys.js";
-import { ServerSettingsSchema, type ServerSettings } from "../lib/schemas.js";
+import { type JSX, useCallback, useEffect, useRef, useState } from "react";
+import { apiFetch } from "@/lib/api.js";
+import { queryClient } from "@/lib/query-client.js";
+import { queryKeys } from "@/lib/query-keys.js";
+import { ServerSettingsSchema, type ServerSettings } from "@/lib/schemas.js";
 
 const LOG_LEVELS = ["fatal", "error", "warn", "info", "debug", "trace"];
 
-export function Settings() {
+export function Settings(): JSX.Element {
 	const {
 		data: settings,
 		isLoading,
@@ -24,12 +24,27 @@ export function Settings() {
 	});
 	const [saveError, setSaveError] = useState("");
 	const [saveSuccess, setSaveSuccess] = useState(false);
+	const isDirty = useRef(false);
+	const successTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
 	useEffect(() => {
-		if (settings) {
+		if (settings && !isDirty.current) {
 			setForm(settings);
 		}
 	}, [settings]);
+
+	useEffect(() => {
+		return () => {
+			if (successTimerRef.current) {
+				clearTimeout(successTimerRef.current);
+			}
+		};
+	}, []);
+
+	const handleFieldChange = useCallback((updater: (prev: ServerSettings) => ServerSettings) => {
+		isDirty.current = true;
+		setForm(updater);
+	}, []);
 
 	const updateMutation = useMutation({
 		mutationFn: (data: Partial<ServerSettings>) =>
@@ -39,9 +54,10 @@ export function Settings() {
 			}),
 		onSuccess: (updated) => {
 			queryClient.setQueryData(queryKeys.settings, updated);
+			isDirty.current = false;
 			setSaveError("");
 			setSaveSuccess(true);
-			setTimeout(() => setSaveSuccess(false), 3000);
+			successTimerRef.current = setTimeout(() => setSaveSuccess(false), 3000);
 		},
 		onError: (err: Error) => {
 			setSaveError(err.message || "Failed to save settings");
@@ -49,7 +65,7 @@ export function Settings() {
 		},
 	});
 
-	const handleSubmit = (e: React.FormEvent) => {
+	const handleSubmit = (e: React.FormEvent<HTMLFormElement>): void => {
 		e.preventDefault();
 		setSaveError("");
 		setSaveSuccess(false);
@@ -86,7 +102,9 @@ export function Settings() {
 									id="ssh-target"
 									type="text"
 									value={form.dokkuSshTarget}
-									onChange={(e) => setForm((f) => ({ ...f, dokkuSshTarget: e.target.value }))}
+									onChange={(e) =>
+										handleFieldChange((f) => ({ ...f, dokkuSshTarget: e.target.value }))
+									}
 									className="w-full px-3 py-2 border rounded-md text-sm font-mono"
 									placeholder="dokku@your-server-ip"
 									autoComplete="off"
@@ -103,7 +121,9 @@ export function Settings() {
 									id="ssh-key-path"
 									type="text"
 									value={form.dokkuSshKeyPath}
-									onChange={(e) => setForm((f) => ({ ...f, dokkuSshKeyPath: e.target.value }))}
+									onChange={(e) =>
+										handleFieldChange((f) => ({ ...f, dokkuSshKeyPath: e.target.value }))
+									}
 									className="w-full px-3 py-2 border rounded-md text-sm font-mono"
 									placeholder="/app/.ssh/id_ed25519"
 									autoComplete="off"
@@ -124,7 +144,12 @@ export function Settings() {
 							<select
 								id="log-level"
 								value={form.logLevel}
-								onChange={(e) => setForm((f) => ({ ...f, logLevel: e.target.value }))}
+								onChange={(e) =>
+									handleFieldChange((f) => ({
+										...f,
+										logLevel: e.target.value as ServerSettings["logLevel"],
+									}))
+								}
 								className="w-full sm:w-48 px-3 py-2 border rounded-md text-sm"
 							>
 								{LOG_LEVELS.map((level) => (
