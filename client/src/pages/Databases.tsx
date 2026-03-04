@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { z } from "zod";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "../components/ToastProvider.js";
 import { apiFetch } from "../lib/api.js";
 import { createErrorResult } from "../lib/command-utils.js";
 import { useAuth } from "@/contexts/auth-context.js";
+import { queryKeys } from "../lib/query-keys.js";
 import {
-	type App,
 	AppSchema,
 	CommandResultSchema,
 	type Database,
@@ -31,10 +32,24 @@ const PLUGIN_INSTALL_COMMANDS = [
 export function Databases() {
 	const { canModify } = useAuth();
 	const { addToast } = useToast();
-	const [databases, setDatabases] = useState<Database[]>([]);
-	const [apps, setApps] = useState<App[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+	const queryClient = useQueryClient();
+
+	const {
+		data: databases = [],
+		isLoading: databasesLoading,
+		error: databasesError,
+	} = useQuery({
+		queryKey: queryKeys.databases,
+		queryFn: () => apiFetch("/databases", z.array(DatabaseSchema)),
+	});
+
+	const { data: apps = [], isLoading: appsLoading, error: appsError } = useQuery({
+		queryKey: queryKeys.apps.all,
+		queryFn: () => apiFetch("/apps", z.array(AppSchema)),
+	});
+
+	const isLoading = databasesLoading || appsLoading;
+	const error = databasesError || appsError;
 
 	// Create database form state
 	const [newDbPlugin, setNewDbPlugin] = useState("");
@@ -61,27 +76,6 @@ export function Databases() {
 	// Connection info visibility
 	const [visibleConnections, setVisibleConnections] = useState<Set<string>>(new Set());
 
-	useEffect(() => {
-		fetchData();
-	}, []);
-
-	const fetchData = async () => {
-		setLoading(true);
-		setError(null);
-		try {
-			const [databasesData, appsData] = await Promise.all([
-				apiFetch("/databases", z.array(DatabaseSchema)),
-				apiFetch("/apps", z.array(AppSchema)),
-			]);
-			setDatabases(databasesData);
-			setApps(appsData);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to load data");
-		} finally {
-			setLoading(false);
-		}
-	};
-
 	const handleCreateDatabase = async () => {
 		if (!newDbPlugin || !newDbName || createDbSubmitting) return;
 
@@ -94,7 +88,7 @@ export function Databases() {
 			addToast(result.exitCode === 0 ? "success" : "error", "Database created", result);
 			setNewDbPlugin("");
 			setNewDbName("");
-			fetchData();
+			void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
 		} catch (err) {
 			addToast(
 				"error",
@@ -122,7 +116,7 @@ export function Databases() {
 			addToast(result.exitCode === 0 ? "success" : "error", "Database linked", result);
 			setLinkDbName("");
 			setLinkAppName("");
-			fetchData();
+			void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
 		} catch (err) {
 			addToast(
 				"error",
@@ -161,7 +155,7 @@ export function Databases() {
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Database unlinked", result);
 			closeUnlinkDialog();
-			fetchData();
+			void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
 		} catch (err) {
 			addToast(
 				"error",
@@ -207,7 +201,7 @@ export function Databases() {
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Database destroyed", result);
 			closeDestroyDialog();
-			fetchData();
+			void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
 		} catch (err) {
 			addToast(
 				"error",
@@ -247,7 +241,7 @@ export function Databases() {
 		return grouped;
 	};
 
-	if (loading) {
+	if (isLoading) {
 		return (
 			<div className="flex justify-center items-center py-12">
 				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -257,7 +251,9 @@ export function Databases() {
 
 	if (error) {
 		return (
-			<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">{error}</div>
+			<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+				{error instanceof Error ? error.message : "Failed to load data"}
+			</div>
 		);
 	}
 

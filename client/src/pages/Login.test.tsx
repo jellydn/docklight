@@ -2,11 +2,30 @@ import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vites
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Login } from "./Login";
 
 vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
 }));
+
+const createTestQueryClient = () =>
+	new QueryClient({
+		defaultOptions: {
+			queries: {
+				retry: false,
+			},
+		},
+	});
+
+const renderWithQueryClient = (ui: React.ReactElement) => {
+	const testQueryClient = createTestQueryClient();
+	return render(
+		<QueryClientProvider client={testQueryClient}>
+			<MemoryRouter>{ui}</MemoryRouter>
+		</QueryClientProvider>
+	);
+};
 
 describe("Login", () => {
 	let apiFetchMock: ReturnType<typeof vi.fn>;
@@ -23,11 +42,7 @@ describe("Login", () => {
 	});
 
 	it("should render the login form with username and password fields", async () => {
-		render(
-			<MemoryRouter>
-				<Login />
-			</MemoryRouter>
-		);
+		renderWithQueryClient(<Login />);
 
 		expect(await screen.findByText("Docklight Login")).toBeInTheDocument();
 		expect(screen.getByLabelText("Username")).toBeInTheDocument();
@@ -43,11 +58,7 @@ describe("Login", () => {
 		});
 
 		const user = userEvent.setup();
-		render(
-			<MemoryRouter>
-				<Login />
-			</MemoryRouter>
-		);
+		renderWithQueryClient(<Login />);
 
 		await screen.findByText("Docklight Login");
 		const usernameInput = screen.getByLabelText("Username");
@@ -71,11 +82,7 @@ describe("Login", () => {
 		});
 
 		const user = userEvent.setup();
-		render(
-			<MemoryRouter>
-				<Login />
-			</MemoryRouter>
-		);
+		renderWithQueryClient(<Login />);
 
 		await screen.findByText("Docklight Login");
 		const usernameInput = screen.getByLabelText("Username");
