@@ -1,9 +1,26 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { Audit } from "./Audit";
 import type { CommandHistory, UserAuditLog } from "../lib/schemas.js";
+
+const createTestQueryClient = () =>
+	new QueryClient({
+		defaultOptions: {
+			queries: {
+				retry: false,
+			},
+		},
+	});
+
+const renderWithQueryClient = (ui: React.ReactElement) => {
+	const testQueryClient = createTestQueryClient();
+	return render(
+		<QueryClientProvider client={testQueryClient}>{ui}</QueryClientProvider>,
+	);
+};
 
 vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
@@ -55,7 +72,7 @@ describe("Audit", () => {
 	it("should render loading state", () => {
 		apiFetchMock.mockImplementation(() => new Promise(() => {}));
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -68,7 +85,7 @@ describe("Audit", () => {
 	it("should render audit logs page", async () => {
 		apiFetchMock.mockResolvedValue(mockLogResult);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -87,7 +104,7 @@ describe("Audit", () => {
 			offset: 0,
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -101,7 +118,7 @@ describe("Audit", () => {
 	it("should render error state", async () => {
 		apiFetchMock.mockRejectedValue(new Error("Failed to fetch audit logs"));
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -115,7 +132,7 @@ describe("Audit", () => {
 	it("should display filters section", async () => {
 		apiFetchMock.mockResolvedValue(mockLogResult);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -133,7 +150,7 @@ describe("Audit", () => {
 	it("should display logs table with data", async () => {
 		apiFetchMock.mockResolvedValue(mockLogResult);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -149,7 +166,7 @@ describe("Audit", () => {
 	it("should display success badge for exit code 0", async () => {
 		apiFetchMock.mockResolvedValue(mockLogResult);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -164,7 +181,7 @@ describe("Audit", () => {
 	it("should display error badge for non-zero exit code", async () => {
 		apiFetchMock.mockResolvedValue(mockLogResult);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -178,7 +195,7 @@ describe("Audit", () => {
 	it("should show total logs count", async () => {
 		apiFetchMock.mockResolvedValue(mockLogResult);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -197,7 +214,7 @@ describe("Audit", () => {
 			offset: 0,
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -212,7 +229,7 @@ describe("Audit", () => {
 		const user = userEvent.setup();
 		apiFetchMock.mockResolvedValue(mockLogResult);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -236,7 +253,7 @@ describe("Audit", () => {
 		const user = userEvent.setup();
 		apiFetchMock.mockResolvedValue(mockLogResult);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -267,7 +284,7 @@ describe("Audit", () => {
 		const user = userEvent.setup();
 		apiFetchMock.mockResolvedValue(mockLogResult);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -288,7 +305,7 @@ describe("Audit", () => {
 	it("should have reset filters button", async () => {
 		apiFetchMock.mockResolvedValue(mockLogResult);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -302,7 +319,7 @@ describe("Audit", () => {
 	it("should display no output message when stdout is empty", async () => {
 		apiFetchMock.mockResolvedValue(mockLogResult);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -324,7 +341,7 @@ describe("Audit", () => {
 	it("should display no errors message when stderr is empty", async () => {
 		apiFetchMock.mockResolvedValue(mockLogResult);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -390,7 +407,7 @@ describe("Audit", () => {
 			return Promise.resolve(mockLogResult);
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -423,7 +440,7 @@ describe("Audit", () => {
 			return Promise.resolve(mockLogResult);
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -469,7 +486,7 @@ describe("Audit", () => {
 			return Promise.resolve(mockLogResult);
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -506,7 +523,7 @@ describe("Audit", () => {
 			offset: 0,
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -528,7 +545,7 @@ describe("Audit", () => {
 		const user = userEvent.setup();
 		apiFetchMock.mockResolvedValue(mockUserLogResult);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -551,7 +568,7 @@ describe("Audit", () => {
 		const user = userEvent.setup();
 		apiFetchMock.mockResolvedValue(mockUserLogResult);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -596,7 +613,7 @@ describe("Audit", () => {
 			offset: 0,
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -620,7 +637,7 @@ describe("Audit", () => {
 		const user = userEvent.setup();
 		apiFetchMock.mockResolvedValue(mockUserLogResult);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
@@ -648,7 +665,7 @@ describe("Audit", () => {
 			offset: 0,
 		});
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter>
 				<Audit />
 			</MemoryRouter>
