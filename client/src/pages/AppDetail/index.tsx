@@ -1,31 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "../../components/ToastProvider";
 import { apiFetch } from "../../lib/api.js";
 import { useAuth } from "../../contexts/auth-context.js";
 import { createErrorResult } from "../../lib/command-utils.js";
 import { logger } from "../../lib/logger.js";
+import { queryKeys } from "../../lib/query-keys.js";
 import {
-	type AppDetail as AppDetailData,
 	AppDetailSchema,
 	type Buildpack,
 	BuildpacksResponseSchema,
 	type CommandResult,
 	CommandResultSchema,
-	type ConfigVars,
 	ConfigVarsSchema,
 	type DeploymentSettings,
 	DeploymentSettingsSchema,
-	type DockerOptions,
 	DockerOptionsSchema,
-	type NetworkReport,
 	NetworkReportSchema,
 	type PortMapping,
 	PortsResponseSchema,
-	type ProxyReport,
 	ProxyReportSchema,
-	type SSLStatus,
 	SSLStatusSchema,
 } from "../../lib/schemas.js";
 import { AppDetailHeader } from "./AppDetailHeader.js";
@@ -54,9 +50,35 @@ export function AppDetail() {
 	const navigate = useNavigate();
 	const { addToast } = useToast();
 	const { canModify } = useAuth();
-	const [app, setApp] = useState<AppDetailData | null>(null);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+	const {
+		data: app,
+		isLoading: loading,
+		error: queryError,
+		refetch,
+	} = useQuery({
+		queryKey: queryKeys.apps.detail(name || ""),
+		queryFn: () => apiFetch(`/apps/${encodeURIComponent(name || "")}`, AppDetailSchema),
+		enabled: !!name,
+	});
+
+	const error = queryError?.message || null;
+
+	const [activeTab, setActiveTab] = useState<TabType>("overview");
+
+	// Config vars query
+	const {
+		data: configVars,
+		isLoading: configLoading,
+		error: configErrorData,
+		refetch: refetchConfigVars,
+	} = useQuery({
+		queryKey: queryKeys.apps.config(name || ""),
+		queryFn: () => apiFetch(`/apps/${encodeURIComponent(name || "")}/config`, ConfigVarsSchema),
+		enabled: activeTab === "config" && !!name && canModify,
+	});
+
+	const configError = configErrorData?.message || null;
+
 	const [showActionDialog, setShowActionDialog] = useState(false);
 	const [pendingAction, setPendingAction] = useState<string | null>(null);
 	const [actionSubmitting, setActionSubmitting] = useState(false);
@@ -64,7 +86,6 @@ export function AppDetail() {
 	const [pendingScaleChanges, setPendingScaleChanges] = useState<ScaleChange[]>([]);
 	const [scaleSubmitting, setScaleSubmitting] = useState(false);
 	const [scaleChanges, setScaleChanges] = useState<Record<string, number>>({});
-	const [activeTab, setActiveTab] = useState<TabType>("overview");
 	const [copySuccess, setCopySuccess] = useState<{ remote: boolean; push: boolean }>({
 		remote: false,
 		push: false,
@@ -73,9 +94,6 @@ export function AppDetail() {
 	const hostname = typeof window !== "undefined" ? window.location.hostname : "";
 
 	// Config vars state
-	const [configVars, setConfigVars] = useState<ConfigVars>({});
-	const [configLoading, setConfigLoading] = useState(false);
-	const [configError, setConfigError] = useState<string | null>(null);
 	const [visibleValues, setVisibleValues] = useState<Set<string>>(new Set());
 	const [newConfigKey, setNewConfigKey] = useState("");
 	const [newConfigValue, setNewConfigValue] = useState("");
@@ -95,10 +113,22 @@ export function AppDetail() {
 	const [stopping, setStopping] = useState(false);
 	const [starting, setStarting] = useState(false);
 
+	// Domains query
+	const {
+		data: domainsData,
+		isLoading: domainsLoading,
+		error: domainsErrorData,
+		refetch: refetchDomains,
+	} = useQuery({
+		queryKey: queryKeys.apps.domains(name || ""),
+		queryFn: () =>
+			apiFetch(`/apps/${encodeURIComponent(name || "")}/domains`, z.array(z.string())),
+		enabled: activeTab === "domains" && !!name,
+	});
+	const domains = domainsData ?? [];
+	const domainsError = domainsErrorData?.message || null;
+
 	// Domains state
-	const [domains, setDomains] = useState<string[]>([]);
-	const [domainsLoading, setDomainsLoading] = useState(false);
-	const [domainsError, setDomainsError] = useState<string | null>(null);
 	const [newDomain, setNewDomain] = useState("");
 	const [showDomainRemoveDialog, setShowDomainRemoveDialog] = useState(false);
 	const [pendingRemoveDomain, setPendingRemoveDomain] = useState<string | null>(null);
@@ -106,25 +136,59 @@ export function AppDetail() {
 	const [domainRemoveSubmitting, setDomainRemoveSubmitting] = useState(false);
 
 	// SSL state
-	const [sslStatus, setSslStatus] = useState<SSLStatus | null>(null);
-	const [sslLoading, setSslLoading] = useState(false);
-	const [sslError, setSslError] = useState<string | null>(null);
 	const [sslEmail, setSslEmail] = useState("");
 	const [sslSubmitting, setSslSubmitting] = useState(false);
+	const {
+		data: sslStatus,
+		isLoading: sslLoading,
+		error: sslErrorData,
+		refetch: refetchSsl,
+	} = useQuery({
+		queryKey: queryKeys.apps.ssl(name || ""),
+		queryFn: () => apiFetch(`/apps/${encodeURIComponent(name || "")}/ssl`, SSLStatusSchema),
+		enabled: activeTab === "ssl" && !!name,
+	});
+	const sslError = sslErrorData?.message || null;
 
-	// Deployment settings state
-	const [deploymentSettings, setDeploymentSettings] = useState<DeploymentSettings | null>(null);
-	const [deploymentLoading, setDeploymentLoading] = useState(false);
-	const [deploymentError, setDeploymentError] = useState<string | null>(null);
+	const settingsEnabled = activeTab === "settings" && !!name;
+
+	// Deployment settings query
+	const {
+		data: deploymentSettings,
+		isLoading: deploymentLoading,
+		error: deploymentErrorData,
+		refetch: refetchDeploymentSettings,
+	} = useQuery({
+		queryKey: queryKeys.apps.deployment(name || ""),
+		queryFn: () =>
+			apiFetch(
+				`/apps/${encodeURIComponent(name || "")}/deployment`,
+				DeploymentSettingsSchema
+			),
+		enabled: settingsEnabled,
+	});
+	const deploymentError = deploymentErrorData?.message || null;
+
+	// Initialize deployment form state when data loads
 	const [deployBranch, setDeployBranch] = useState("");
 	const [buildDir, setBuildDir] = useState("");
 	const [builder, setBuilder] = useState("");
 	const [deploymentSubmitting, setDeploymentSubmitting] = useState(false);
 
-	// Ports state
-	const [ports, setPorts] = useState<PortMapping[]>([]);
-	const [portsLoading, setPortsLoading] = useState(false);
-	const [portsError, setPortsError] = useState<string | null>(null);
+	// Ports query
+	const {
+		data: portsData,
+		isLoading: portsLoading,
+		error: portsErrorData,
+		refetch: refetchPorts,
+	} = useQuery({
+		queryKey: queryKeys.apps.ports(name || ""),
+		queryFn: () =>
+			apiFetch(`/apps/${encodeURIComponent(name || "")}/ports`, PortsResponseSchema),
+		enabled: settingsEnabled,
+	});
+	const ports = portsData?.ports ?? [];
+	const portsError = portsErrorData?.message || null;
 	const [newPortScheme, setNewPortScheme] = useState("http");
 	const [newHostPort, setNewHostPort] = useState("");
 	const [newContainerPort, setNewContainerPort] = useState("");
@@ -135,16 +199,35 @@ export function AppDetail() {
 	const [pendingRemovePort, setPendingRemovePort] = useState<PortMapping | null>(null);
 	const [portRemoveSubmitting, setPortRemoveSubmitting] = useState(false);
 
-	// Proxy state
-	const [proxyReport, setProxyReport] = useState<ProxyReport | null>(null);
-	const [proxyLoading, setProxyLoading] = useState(false);
-	const [proxyError, setProxyError] = useState<string | null>(null);
+	// Proxy query
+	const {
+		data: proxyReport,
+		isLoading: proxyLoading,
+		error: proxyErrorData,
+		refetch: refetchProxyReport,
+	} = useQuery({
+		queryKey: queryKeys.apps.proxy(name || ""),
+		queryFn: () =>
+			apiFetch(`/apps/${encodeURIComponent(name || "")}/proxy`, ProxyReportSchema),
+		enabled: settingsEnabled,
+	});
+	const proxyError = proxyErrorData?.message || null;
 	const [proxySubmitting, setProxySubmitting] = useState(false);
 
-	// Buildpacks state
-	const [buildpacks, setBuildpacks] = useState<Buildpack[]>([]);
-	const [buildpacksLoading, setBuildpacksLoading] = useState(false);
-	const [buildpacksError, setBuildpacksError] = useState<string | null>(null);
+	// Buildpacks query
+	const {
+		data: buildpacksData,
+		isLoading: buildpacksLoading,
+		error: buildpacksErrorData,
+		refetch: refetchBuildpacks,
+	} = useQuery({
+		queryKey: queryKeys.apps.buildpacks(name || ""),
+		queryFn: () =>
+			apiFetch(`/apps/${encodeURIComponent(name || "")}/buildpacks`, BuildpacksResponseSchema),
+		enabled: settingsEnabled,
+	});
+	const buildpacks = buildpacksData?.buildpacks ?? [];
+	const buildpacksError = buildpacksErrorData?.message || null;
 	const [newBuildpackUrl, setNewBuildpackUrl] = useState("");
 	const [newBuildpackIndex, setNewBuildpackIndex] = useState("");
 	const [buildpackAddSubmitting, setBuildpackAddSubmitting] = useState(false);
@@ -154,10 +237,19 @@ export function AppDetail() {
 	const [pendingRemoveBuildpack, setPendingRemoveBuildpack] = useState<Buildpack | null>(null);
 	const [buildpackRemoveSubmitting, setBuildpackRemoveSubmitting] = useState(false);
 
-	// Docker Options state
-	const [dockerOptions, setDockerOptions] = useState<DockerOptions | null>(null);
-	const [dockerOptionsLoading, setDockerOptionsLoading] = useState(false);
-	const [dockerOptionsError, setDockerOptionsError] = useState<string | null>(null);
+	// Docker Options query
+	const {
+		data: dockerOptions,
+		isLoading: dockerOptionsLoading,
+		error: dockerOptionsErrorData,
+		refetch: refetchDockerOptions,
+	} = useQuery({
+		queryKey: queryKeys.apps.dockerOptions(name || ""),
+		queryFn: () =>
+			apiFetch(`/apps/${encodeURIComponent(name || "")}/docker-options`, DockerOptionsSchema),
+		enabled: settingsEnabled,
+	});
+	const dockerOptionsError = dockerOptionsErrorData?.message || null;
 	const [newDockerOptionPhase, setNewDockerOptionPhase] = useState<"build" | "deploy" | "run">(
 		"deploy"
 	);
@@ -175,10 +267,19 @@ export function AppDetail() {
 	} | null>(null);
 	const [dockerOptionRemoveSubmitting, setDockerOptionRemoveSubmitting] = useState(false);
 
-	// Network state
-	const [networkReport, setNetworkReport] = useState<NetworkReport | null>(null);
-	const [networkLoading, setNetworkLoading] = useState(false);
-	const [networkError, setNetworkError] = useState<string | null>(null);
+	// Network query
+	const {
+		data: networkReport,
+		isLoading: networkLoading,
+		error: networkErrorData,
+		refetch: refetchNetwork,
+	} = useQuery({
+		queryKey: queryKeys.apps.network(name || ""),
+		queryFn: () =>
+			apiFetch(`/apps/${encodeURIComponent(name || "")}/network`, NetworkReportSchema),
+		enabled: settingsEnabled,
+	});
+	const networkError = networkErrorData?.message || null;
 	const [editingNetworkKey, setEditingNetworkKey] = useState<string | null>(null);
 	const [networkEditValue, setNetworkEditValue] = useState("");
 	const [networkSubmitting, setNetworkSubmitting] = useState(false);
@@ -194,12 +295,6 @@ export function AppDetail() {
 	const logsEndRef = useRef<HTMLPreElement>(null);
 
 	useEffect(() => {
-		if (name) {
-			fetchAppDetail();
-		}
-	}, [name]);
-
-	useEffect(() => {
 		if (activeTab === "logs" && name) {
 			connectWebSocket();
 		}
@@ -208,35 +303,6 @@ export function AppDetail() {
 			disconnectWebSocket();
 		};
 	}, [activeTab, name, lineCount]);
-
-	useEffect(() => {
-		if (activeTab === "config" && name && canModify) {
-			fetchConfigVars();
-		}
-	}, [activeTab, name, canModify]);
-
-	useEffect(() => {
-		if (activeTab === "domains" && name) {
-			fetchDomains();
-		}
-	}, [activeTab, name]);
-
-	useEffect(() => {
-		if (activeTab === "ssl" && name) {
-			fetchSSLStatus();
-		}
-	}, [activeTab, name]);
-
-	useEffect(() => {
-		if (activeTab === "settings" && name) {
-			fetchDeploymentSettings();
-			fetchPorts();
-			fetchProxyReport();
-			fetchBuildpacks();
-			fetchDockerOptions();
-			fetchNetwork();
-		}
-	}, [activeTab, name]);
 
 	useEffect(() => {
 		if (autoScroll && logsEndRef.current) {
@@ -290,19 +356,6 @@ export function AppDetail() {
 		}
 	};
 
-	const fetchAppDetail = async () => {
-		if (!name) return;
-		try {
-			const appData = await apiFetch(`/apps/${encodeURIComponent(name)}`, AppDetailSchema);
-			setApp(appData);
-			setLoading(false);
-			setError(null);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to load app details");
-			setLoading(false);
-		}
-	};
-
 	const handleAction = async (action: "restart" | "rebuild") => {
 		setPendingAction(action);
 		setShowActionDialog(true);
@@ -327,7 +380,7 @@ export function AppDetail() {
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", `${pendingAction} completed`, result);
 			resetActionDialog();
-			fetchAppDetail();
+			void refetch();
 		} catch (err) {
 			addToast(
 				"error",
@@ -406,24 +459,9 @@ export function AppDetail() {
 			setShowScaleDialog(false);
 			setPendingScaleChanges([]);
 			setScaleChanges({});
-			fetchAppDetail();
+			void refetch();
 		} finally {
 			setScaleSubmitting(false);
-		}
-	};
-
-	const fetchConfigVars = async () => {
-		if (!name) return;
-
-		setConfigLoading(true);
-		setConfigError(null);
-		try {
-			const config = await apiFetch(`/apps/${encodeURIComponent(name)}/config`, ConfigVarsSchema);
-			setConfigVars(config);
-		} catch (err) {
-			setConfigError(err instanceof Error ? err.message : "Failed to load config vars");
-		} finally {
-			setConfigLoading(false);
 		}
 	};
 
@@ -447,7 +485,7 @@ export function AppDetail() {
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Config var set", result);
 			resetConfigForm();
-			fetchConfigVars();
+			void refetchConfigVars();
 		} catch (err) {
 			addToast(
 				"error",
@@ -483,7 +521,7 @@ export function AppDetail() {
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Config var removed", result);
 			closeRemoveDialog();
-			fetchConfigVars();
+			void refetchConfigVars();
 		} catch (err) {
 			addToast(
 				"error",
@@ -580,7 +618,7 @@ export function AppDetail() {
 			});
 			addToast(result.exitCode === 0 ? "success" : "error", "App stopped", result);
 			setShowStopDialog(false);
-			fetchAppDetail();
+			void refetch();
 		} catch (err) {
 			addToast("error", "Failed to stop app", createErrorResult(`dokku ps:stop ${name}`, err));
 			setShowStopDialog(false);
@@ -607,30 +645,12 @@ export function AppDetail() {
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "App started", result);
 			setShowStartDialog(false);
-			fetchAppDetail();
+			void refetch();
 		} catch (err) {
 			addToast("error", "Failed to start app", createErrorResult(`dokku ps:start ${name}`, err));
 			setShowStartDialog(false);
 		} finally {
 			setStarting(false);
-		}
-	};
-
-	const fetchDomains = async () => {
-		if (!name) return;
-
-		setDomainsLoading(true);
-		setDomainsError(null);
-		try {
-			const domainsData = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/domains`,
-				z.array(z.string())
-			);
-			setDomains(domainsData);
-		} catch (err) {
-			setDomainsError(err instanceof Error ? err.message : "Failed to load domains");
-		} finally {
-			setDomainsLoading(false);
 		}
 	};
 
@@ -649,7 +669,7 @@ export function AppDetail() {
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Domain added", result);
 			setNewDomain("");
-			fetchDomains();
+			void refetchDomains();
 		} catch (err) {
 			addToast(
 				"error",
@@ -685,7 +705,7 @@ export function AppDetail() {
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Domain removed", result);
 			closeDomainRemoveDialog();
-			fetchDomains();
+			void refetchDomains();
 		} catch (err) {
 			addToast(
 				"error",
@@ -695,75 +715,6 @@ export function AppDetail() {
 			closeDomainRemoveDialog();
 		} finally {
 			setDomainRemoveSubmitting(false);
-		}
-	};
-
-	const fetchSSLStatus = async () => {
-		if (!name) return;
-
-		setSslLoading(true);
-		setSslError(null);
-		try {
-			const ssl = await apiFetch(`/apps/${encodeURIComponent(name)}/ssl`, SSLStatusSchema);
-			setSslStatus(ssl);
-		} catch (err) {
-			setSslError(err instanceof Error ? err.message : "Failed to load SSL status");
-		} finally {
-			setSslLoading(false);
-		}
-	};
-
-	const fetchDeploymentSettings = async () => {
-		if (!name) return;
-
-		setDeploymentLoading(true);
-		setDeploymentError(null);
-		try {
-			const settings = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/deployment`,
-				DeploymentSettingsSchema
-			);
-			setDeploymentSettings(settings);
-			setDeployBranch(settings.deployBranch || "");
-			setBuildDir(settings.buildDir || "");
-			setBuilder(settings.builder || "");
-		} catch (err) {
-			setDeploymentError(err instanceof Error ? err.message : "Failed to load deployment settings");
-		} finally {
-			setDeploymentLoading(false);
-		}
-	};
-
-	const fetchPorts = async () => {
-		if (!name) return;
-
-		setPortsLoading(true);
-		setPortsError(null);
-		try {
-			const response = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/ports`,
-				PortsResponseSchema
-			);
-			setPorts(response.ports);
-		} catch (err) {
-			setPortsError(err instanceof Error ? err.message : "Failed to load ports");
-		} finally {
-			setPortsLoading(false);
-		}
-	};
-
-	const fetchProxyReport = async () => {
-		if (!name) return;
-
-		setProxyLoading(true);
-		setProxyError(null);
-		try {
-			const proxy = await apiFetch(`/apps/${encodeURIComponent(name)}/proxy`, ProxyReportSchema);
-			setProxyReport(proxy);
-		} catch (err) {
-			setProxyError(err instanceof Error ? err.message : "Failed to load proxy status");
-		} finally {
-			setProxyLoading(false);
 		}
 	};
 
@@ -811,7 +762,7 @@ export function AppDetail() {
 			if (result.exitCode === 0) {
 				setNewHostPort("");
 				setNewContainerPort("");
-				fetchPorts();
+				void refetchPorts();
 			}
 		} catch (err) {
 			addToast("error", "Failed to add port", createErrorResult(`dokku ports:add ${name}`, err));
@@ -845,7 +796,7 @@ export function AppDetail() {
 			addToast(result.exitCode === 0 ? "success" : "error", "Port removed", result);
 			setShowRemovePortDialog(false);
 			setPendingRemovePort(null);
-			fetchPorts();
+			void refetchPorts();
 		} catch (err) {
 			addToast(
 				"error",
@@ -873,7 +824,7 @@ export function AppDetail() {
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "All ports cleared", result);
 			setShowClearPortsDialog(false);
-			fetchPorts();
+			void refetchPorts();
 		} catch (err) {
 			addToast(
 				"error",
@@ -899,7 +850,7 @@ export function AppDetail() {
 				}
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Proxy enabled", result);
-			fetchProxyReport();
+			void refetchProxyReport();
 		} catch (err) {
 			addToast(
 				"error",
@@ -924,7 +875,7 @@ export function AppDetail() {
 				}
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Proxy disabled", result);
-			fetchProxyReport();
+			void refetchProxyReport();
 		} catch (err) {
 			addToast(
 				"error",
@@ -933,24 +884,6 @@ export function AppDetail() {
 			);
 		} finally {
 			setProxySubmitting(false);
-		}
-	};
-
-	const fetchBuildpacks = async () => {
-		if (!name) return;
-
-		setBuildpacksLoading(true);
-		setBuildpacksError(null);
-		try {
-			const response = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/buildpacks`,
-				BuildpacksResponseSchema
-			);
-			setBuildpacks(response.buildpacks);
-		} catch (err) {
-			setBuildpacksError(err instanceof Error ? err.message : "Failed to load buildpacks");
-		} finally {
-			setBuildpacksLoading(false);
 		}
 	};
 
@@ -978,7 +911,7 @@ export function AppDetail() {
 			if (result.exitCode === 0) {
 				setNewBuildpackUrl("");
 				setNewBuildpackIndex("");
-				fetchBuildpacks();
+				void refetchBuildpacks();
 			}
 		} catch (err) {
 			addToast(
@@ -1012,7 +945,7 @@ export function AppDetail() {
 			addToast(result.exitCode === 0 ? "success" : "error", "Buildpack removed", result);
 			setShowRemoveBuildpackDialog(false);
 			setPendingRemoveBuildpack(null);
-			fetchBuildpacks();
+			void refetchBuildpacks();
 		} catch (err) {
 			addToast(
 				"error",
@@ -1040,7 +973,7 @@ export function AppDetail() {
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "All buildpacks cleared", result);
 			setShowClearBuildpacksDialog(false);
-			fetchBuildpacks();
+			void refetchBuildpacks();
 		} catch (err) {
 			addToast(
 				"error",
@@ -1082,29 +1015,11 @@ export function AppDetail() {
 				}
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "Deployment settings updated", result);
-			fetchDeploymentSettings();
+			void refetchDeploymentSettings();
 		} catch (err) {
 			addToast("error", "Failed to save deployment settings", createErrorResult("", err));
 		} finally {
 			setDeploymentSubmitting(false);
-		}
-	};
-
-	const fetchDockerOptions = async () => {
-		if (!name) return;
-
-		setDockerOptionsLoading(true);
-		setDockerOptionsError(null);
-		try {
-			const options = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/docker-options`,
-				DockerOptionsSchema
-			);
-			setDockerOptions(options);
-		} catch (err) {
-			setDockerOptionsError(err instanceof Error ? err.message : "Failed to load docker options");
-		} finally {
-			setDockerOptionsLoading(false);
 		}
 	};
 
@@ -1124,7 +1039,7 @@ export function AppDetail() {
 			addToast(result.exitCode === 0 ? "success" : "error", "Docker option added", result);
 			if (result.exitCode === 0) {
 				setNewDockerOption("");
-				fetchDockerOptions();
+				void refetchDockerOptions();
 			}
 		} catch (err) {
 			addToast(
@@ -1161,7 +1076,7 @@ export function AppDetail() {
 			addToast(result.exitCode === 0 ? "success" : "error", "Docker option removed", result);
 			setShowRemoveDockerOptionDialog(false);
 			setPendingRemoveDockerOption(null);
-			fetchDockerOptions();
+			void refetchDockerOptions();
 		} catch (err) {
 			addToast(
 				"error",
@@ -1200,7 +1115,7 @@ export function AppDetail() {
 			);
 			setShowClearDockerPhaseDialog(false);
 			setPendingClearDockerPhase(null);
-			fetchDockerOptions();
+			void refetchDockerOptions();
 		} catch (err) {
 			addToast(
 				"error",
@@ -1211,24 +1126,6 @@ export function AppDetail() {
 			setPendingClearDockerPhase(null);
 		} finally {
 			setClearDockerPhaseSubmitting(false);
-		}
-	};
-
-	const fetchNetwork = async () => {
-		if (!name) return;
-
-		setNetworkLoading(true);
-		setNetworkError(null);
-		try {
-			const report = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/network`,
-				NetworkReportSchema
-			);
-			setNetworkReport(report);
-		} catch (err) {
-			setNetworkError(err instanceof Error ? err.message : "Failed to load network settings");
-		} finally {
-			setNetworkLoading(false);
 		}
 	};
 
@@ -1263,7 +1160,7 @@ export function AppDetail() {
 			if (result.exitCode === 0) {
 				setEditingNetworkKey(null);
 				setNetworkEditValue("");
-				fetchNetwork();
+				void refetchNetwork();
 			}
 		} catch (err) {
 			addToast(
@@ -1295,7 +1192,7 @@ export function AppDetail() {
 				result
 			);
 			if (result.exitCode === 0) {
-				fetchNetwork();
+				void refetchNetwork();
 			}
 		} catch (err) {
 			addToast(
@@ -1349,7 +1246,7 @@ export function AppDetail() {
 				}
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "SSL enabled", result);
-			fetchSSLStatus();
+			void refetchSsl();
 		} catch (err) {
 			addToast(
 				"error",
@@ -1377,7 +1274,7 @@ export function AppDetail() {
 				}
 			);
 			addToast(result.exitCode === 0 ? "success" : "error", "SSL renewed", result);
-			fetchSSLStatus();
+			void refetchSsl();
 		} catch (err) {
 			addToast(
 				"error",
@@ -1717,7 +1614,7 @@ export function AppDetail() {
 
 			{activeTab === "config" && (
 				<AppConfig
-					configVars={configVars}
+					configVars={configVars ?? {}}
 					loading={configLoading}
 					error={configError}
 					newKey={newConfigKey}
@@ -1749,7 +1646,7 @@ export function AppDetail() {
 
 			{activeTab === "ssl" && (
 				<AppSSL
-					sslStatus={sslStatus}
+					sslStatus={sslStatus ?? null}
 					loading={sslLoading}
 					error={sslError}
 					email={sslEmail}
@@ -1764,7 +1661,7 @@ export function AppDetail() {
 			{activeTab === "settings" && (
 				<div className="space-y-6">
 					<AppDeployment
-						settings={deploymentSettings}
+						settings={deploymentSettings ?? null}
 						loading={deploymentLoading}
 						error={deploymentError}
 						deployBranch={deployBranch}
@@ -1780,7 +1677,7 @@ export function AppDetail() {
 
 					<AppPorts
 						ports={ports}
-						proxyReport={proxyReport}
+						proxyReport={proxyReport ?? null}
 						loading={portsLoading || proxyLoading}
 						error={portsError || proxyError}
 						newScheme={newPortScheme}
@@ -1816,7 +1713,7 @@ export function AppDetail() {
 					/>
 
 					<AppDockerOptions
-						dockerOptions={dockerOptions}
+						dockerOptions={dockerOptions ?? null}
 						loading={dockerOptionsLoading}
 						error={dockerOptionsError}
 						newPhase={newDockerOptionPhase}
@@ -1834,7 +1731,7 @@ export function AppDetail() {
 					/>
 
 					<AppNetwork
-						networkReport={networkReport}
+						networkReport={networkReport ?? null}
 						loading={networkLoading}
 						error={networkError}
 						submitting={networkSubmitting}

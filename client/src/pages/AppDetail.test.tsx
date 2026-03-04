@@ -1,9 +1,24 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppDetail as AppDetailData } from "../lib/schemas.js";
 import { AppDetail } from "./AppDetail";
+
+const createTestQueryClient = () =>
+	new QueryClient({
+		defaultOptions: {
+			queries: {
+				retry: false,
+			},
+		},
+	});
+
+const renderWithQueryClient = (ui: React.ReactElement) => {
+	const queryClient = createTestQueryClient();
+	return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+};
 
 vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
@@ -47,7 +62,7 @@ describe("AppDetail", () => {
 	it("should render loading state", () => {
 		apiFetchMock.mockImplementation(() => new Promise(() => {}));
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter initialEntries={["/apps/test-app"]}>
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
@@ -62,7 +77,7 @@ describe("AppDetail", () => {
 	it("should render app detail", async () => {
 		apiFetchMock.mockResolvedValue(mockAppDetail);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter initialEntries={["/apps/test-app"]}>
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
@@ -80,7 +95,7 @@ describe("AppDetail", () => {
 	it("should render error state", async () => {
 		apiFetchMock.mockRejectedValue(new Error("App not found"));
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter initialEntries={["/apps/test-app"]}>
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
@@ -96,7 +111,7 @@ describe("AppDetail", () => {
 	it("should display tabs for navigation", async () => {
 		apiFetchMock.mockResolvedValue(mockAppDetail);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter initialEntries={["/apps/test-app"]}>
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
@@ -117,7 +132,7 @@ describe("AppDetail", () => {
 	it("should show stop button for running apps", async () => {
 		apiFetchMock.mockResolvedValue(mockAppDetail);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter initialEntries={["/apps/test-app"]}>
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
@@ -135,7 +150,7 @@ describe("AppDetail", () => {
 		const stoppedApp = { ...mockAppDetail, status: "stopped" as const };
 		apiFetchMock.mockResolvedValue(stoppedApp);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter initialEntries={["/apps/test-app"]}>
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
@@ -153,7 +168,7 @@ describe("AppDetail", () => {
 		const user = userEvent.setup();
 		apiFetchMock.mockResolvedValue(mockAppDetail);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter initialEntries={["/apps/test-app"]}>
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
@@ -179,7 +194,7 @@ describe("AppDetail", () => {
 	it("should display processes with scale controls", async () => {
 		apiFetchMock.mockResolvedValue(mockAppDetail);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter initialEntries={["/apps/test-app"]}>
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
@@ -197,7 +212,7 @@ describe("AppDetail", () => {
 	it("should show danger zone with delete button", async () => {
 		apiFetchMock.mockResolvedValue(mockAppDetail);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter initialEntries={["/apps/test-app"]}>
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
@@ -215,7 +230,7 @@ describe("AppDetail", () => {
 		const user = userEvent.setup();
 		apiFetchMock.mockResolvedValue(mockAppDetail);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter initialEntries={["/apps/test-app"]}>
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
@@ -245,7 +260,7 @@ describe("AppDetail", () => {
 		const user = userEvent.setup();
 		apiFetchMock.mockResolvedValue(mockAppDetail);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter initialEntries={["/apps/test-app"]}>
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
@@ -268,7 +283,7 @@ describe("AppDetail", () => {
 	it("should display git remote information", async () => {
 		apiFetchMock.mockResolvedValue(mockAppDetail);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter initialEntries={["/apps/test-app"]}>
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
@@ -285,7 +300,7 @@ describe("AppDetail", () => {
 	it("should display domains", async () => {
 		apiFetchMock.mockResolvedValue(mockAppDetail);
 
-		render(
+		renderWithQueryClient(
 			<MemoryRouter initialEntries={["/apps/test-app"]}>
 				<Routes>
 					<Route path="/apps/:name" element={<AppDetail />} />
@@ -313,7 +328,7 @@ describe("AppDetail", () => {
 				return Promise.resolve(mockAppDetail);
 			});
 
-			render(
+			renderWithQueryClient(
 				<MemoryRouter initialEntries={["/apps/test-app"]}>
 					<Routes>
 						<Route path="/apps/:name" element={<AppDetail />} />
@@ -354,7 +369,7 @@ describe("AppDetail", () => {
 				return Promise.resolve(mockAppDetail);
 			});
 
-			render(
+			renderWithQueryClient(
 				<MemoryRouter initialEntries={["/apps/test-app"]}>
 					<Routes>
 						<Route path="/apps/:name" element={<AppDetail />} />
@@ -398,7 +413,7 @@ describe("AppDetail", () => {
 				return Promise.resolve(mockAppDetail);
 			});
 
-			render(
+			renderWithQueryClient(
 				<MemoryRouter initialEntries={["/apps/test-app"]}>
 					<Routes>
 						<Route path="/apps/:name" element={<AppDetail />} />
@@ -445,7 +460,7 @@ describe("AppDetail", () => {
 				return Promise.resolve(mockAppDetail);
 			});
 
-			render(
+			renderWithQueryClient(
 				<MemoryRouter initialEntries={["/apps/test-app"]}>
 					<Routes>
 						<Route path="/apps/:name" element={<AppDetail />} />
