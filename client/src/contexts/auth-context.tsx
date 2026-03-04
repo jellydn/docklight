@@ -1,7 +1,9 @@
-import { createContext, useContext, useEffect, useState, type ReactNode, type JSX } from "react";
+import { createContext, useContext, type ReactNode, type JSX } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api.js";
 import { AuthMeSchema } from "@/lib/schemas.js";
 import type { UserRole } from "@/lib/schemas.js";
+import { queryKeys } from "@/lib/query-keys.js";
 
 interface AuthContextValue {
 	role: UserRole | null;
@@ -18,30 +20,18 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
-	const [role, setRole] = useState<UserRole | null>(null);
-	const [username, setUsername] = useState<string | null>(null);
-	const [loading, setLoading] = useState(true);
+	const { data: authData, isLoading } = useQuery({
+		queryKey: queryKeys.auth.me,
+		queryFn: () => apiFetch("/auth/me", AuthMeSchema),
+		retry: false,
+	});
 
-	useEffect(() => {
-		const fetchMe = async (): Promise<void> => {
-			try {
-				const data = await apiFetch("/auth/me", AuthMeSchema);
-				setRole(data.user?.role ?? null);
-				setUsername(data.user?.username ?? null);
-			} catch {
-				setRole(null);
-				setUsername(null);
-			} finally {
-				setLoading(false);
-			}
-		};
-		fetchMe();
-	}, []);
-
+	const role = authData?.user?.role ?? null;
+	const username = authData?.user?.username ?? null;
 	const canModify = role === "admin" || role === "operator";
 
 	return (
-		<AuthContext.Provider value={{ role, username, loading, canModify }}>
+		<AuthContext.Provider value={{ role, username, loading: isLoading, canModify }}>
 			{children}
 		</AuthContext.Provider>
 	);
