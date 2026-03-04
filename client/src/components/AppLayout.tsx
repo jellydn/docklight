@@ -3,6 +3,8 @@ import { Link, Outlet, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { apiFetch } from "../lib/api.js";
 import { logger } from "../lib/logger.js";
+import { queryClient } from "../lib/query-client.js";
+import { queryKeys } from "../lib/query-keys.js";
 import { useAuth } from "@/contexts/auth-context.js";
 
 export function AppLayout() {
@@ -15,6 +17,8 @@ export function AppLayout() {
 			await apiFetch("/auth/logout", z.object({ success: z.literal(true) }), {
 				method: "POST",
 			});
+			await queryClient.invalidateQueries({ queryKey: queryKeys.auth.me });
+			queryClient.clear();
 			navigate("/login");
 		} catch (err) {
 			logger.error({ err }, "Logout failed");

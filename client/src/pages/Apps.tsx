@@ -13,7 +13,12 @@ export function Apps() {
 	const { canModify } = useAuth();
 	const [createAppOpen, setCreateAppOpen] = useState(false);
 
-	const { data: apps, isLoading, error, refetch } = useQuery({
+	const {
+		data: apps,
+		isLoading,
+		error,
+		refetch,
+	} = useQuery({
 		queryKey: queryKeys.apps.all,
 		queryFn: () => apiFetch("/apps", z.array(AppSchema)),
 	});

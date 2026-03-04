@@ -17,9 +17,7 @@ const createTestQueryClient = () =>
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
 	const testQueryClient = createTestQueryClient();
-	return render(
-		<QueryClientProvider client={testQueryClient}>{ui}</QueryClientProvider>,
-	);
+	return render(<QueryClientProvider client={testQueryClient}>{ui}</QueryClientProvider>);
 };
 
 vi.mock("../lib/api.js", () => ({
@@ -234,7 +232,6 @@ describe("Dashboard", () => {
 			expect(screen.getByText("No recent activity")).toBeInTheDocument();
 		});
 	});
-
 
 	it("should refresh data when refresh button is clicked", async () => {
 		const user = userEvent.setup();

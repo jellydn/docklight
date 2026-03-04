@@ -24,7 +24,11 @@ const getRoleBadge = (role: UserRole) => {
 };
 
 export function Users() {
-	const { data: users, isLoading, error } = useQuery({
+	const {
+		data: users,
+		isLoading,
+		error,
+	} = useQuery({
 		queryKey: queryKeys.users,
 		queryFn: () => apiFetch("/users", UsersArraySchema),
 	});
@@ -61,7 +65,13 @@ export function Users() {
 	});
 
 	const updateUserMutation = useMutation({
-		mutationFn: async ({ id, data }: { id: number; data: { role?: UserRole; password?: string } }) => {
+		mutationFn: async ({
+			id,
+			data,
+		}: {
+			id: number;
+			data: { role?: UserRole; password?: string };
+		}) => {
 			return apiFetch(`/users/${id}`, UserSchema, {
 				method: "PUT",
 				body: JSON.stringify(data),

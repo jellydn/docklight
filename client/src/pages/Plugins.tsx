@@ -5,7 +5,11 @@ import { PluginInfoSchema } from "../lib/schemas.js";
 import { queryKeys } from "../lib/query-keys.js";
 
 export function Plugins() {
-	const { data: plugins, isLoading, error } = useQuery({
+	const {
+		data: plugins,
+		isLoading,
+		error,
+	} = useQuery({
 		queryKey: queryKeys.plugins,
 		queryFn: () => apiFetch("/plugins", z.array(PluginInfoSchema)),
 	});
@@ -20,7 +24,9 @@ export function Plugins() {
 
 	if (error) {
 		return (
-			<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">{error.message}</div>
+			<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+				{error.message}
+			</div>
 		);
 	}
 
