@@ -8,11 +8,7 @@ import { CreateAppDialog } from "@/components/CreateAppDialog.js";
 import { apiFetch } from "../lib/api.js";
 import { useAuth } from "@/contexts/auth-context.js";
 import { queryKeys } from "../lib/query-keys.js";
-import {
-	ServerHealthSchema,
-	AppSchema,
-	CommandHistorySchema,
-} from "../lib/schemas.js";
+import { ServerHealthSchema, AppSchema, CommandHistorySchema } from "../lib/schemas.js";
 
 export function Dashboard() {
 	const { canModify } = useAuth();

@@ -17,9 +17,7 @@ const createTestQueryClient = () =>
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
 	const testQueryClient = createTestQueryClient();
-	return render(
-		<QueryClientProvider client={testQueryClient}>{ui}</QueryClientProvider>,
-	);
+	return render(<QueryClientProvider client={testQueryClient}>{ui}</QueryClientProvider>);
 };
 
 vi.mock("../lib/api.js", () => ({

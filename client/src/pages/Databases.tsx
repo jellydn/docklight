@@ -6,12 +6,7 @@ import { apiFetch } from "../lib/api.js";
 import { createErrorResult } from "../lib/command-utils.js";
 import { useAuth } from "@/contexts/auth-context.js";
 import { queryKeys } from "../lib/query-keys.js";
-import {
-	AppSchema,
-	CommandResultSchema,
-	type Database,
-	DatabaseSchema,
-} from "../lib/schemas.js";
+import { AppSchema, CommandResultSchema, type Database, DatabaseSchema } from "../lib/schemas.js";
 
 const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"];
 
@@ -43,7 +38,11 @@ export function Databases() {
 		queryFn: () => apiFetch("/databases", z.array(DatabaseSchema)),
 	});
 
-	const { data: apps = [], isLoading: appsLoading, error: appsError } = useQuery({
+	const {
+		data: apps = [],
+		isLoading: appsLoading,
+		error: appsError,
+	} = useQuery({
 		queryKey: queryKeys.apps.all,
 		queryFn: () => apiFetch("/apps", z.array(AppSchema)),
 	});
