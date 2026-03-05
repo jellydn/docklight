@@ -493,6 +493,160 @@ describe("getAppDetail", () => {
 		expect(app.status).toBe("running");
 		expect(app.processes).toEqual({ web: 1, worker: 1 });
 	});
+
+	it("should not call domains/git commands when ps:report fails", async () => {
+		mockExecuteCommand.mockResolvedValueOnce({
+			command: "dokku ps:report nonexistent-app",
+			exitCode: 1,
+			stdout: "",
+			stderr: "App not found",
+		});
+
+		await getAppDetail("nonexistent-app");
+
+		expect(mockExecuteCommand).toHaveBeenCalledTimes(1);
+	});
+
+	it("should build git remote url from ssh:// target with explicit port", async () => {
+		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = "ssh://deploy@myserver.example.com:2222";
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku ps:report my-app",
+				exitCode: 0,
+				stdout: "Myapp deployed state: running",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku domains:report my-app",
+				exitCode: 0,
+				stdout: "Myapp domains vhosts:",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report my-app",
+				exitCode: 0,
+				stdout: "       Git deploy branch:           main",
+				stderr: "",
+			});
+
+		const result = await getAppDetail("my-app");
+
+		expect((result as AppDetail).gitRemote).toBe(
+			"ssh://dokku@myserver.example.com:2222/my-app",
+		);
+	});
+
+	it("should build git remote url from ssh:// target with default port (22)", async () => {
+		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = "ssh://deploy@myserver.example.com:22";
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku ps:report my-app",
+				exitCode: 0,
+				stdout: "Myapp deployed state: running",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku domains:report my-app",
+				exitCode: 0,
+				stdout: "Myapp domains vhosts:",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report my-app",
+				exitCode: 0,
+				stdout: "",
+				stderr: "",
+			});
+
+		const result = await getAppDetail("my-app");
+
+		expect((result as AppDetail).gitRemote).toBe("dokku@myserver.example.com:my-app");
+	});
+
+	it("should build git remote url from scp-style target with non-default port", async () => {
+		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = "deploy@myserver.example.com:2222";
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku ps:report my-app",
+				exitCode: 0,
+				stdout: "Myapp deployed state: running",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku domains:report my-app",
+				exitCode: 0,
+				stdout: "Myapp domains vhosts:",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report my-app",
+				exitCode: 0,
+				stdout: "",
+				stderr: "",
+			});
+
+		const result = await getAppDetail("my-app");
+
+		expect((result as AppDetail).gitRemote).toBe(
+			"ssh://dokku@myserver.example.com:2222/my-app",
+		);
+	});
+
+	it("should build git remote url from IPv6 ssh:// target with port", async () => {
+		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = "ssh://deploy@[2001:db8::1]:2222";
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku ps:report my-app",
+				exitCode: 0,
+				stdout: "Myapp deployed state: running",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku domains:report my-app",
+				exitCode: 0,
+				stdout: "Myapp domains vhosts:",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report my-app",
+				exitCode: 0,
+				stdout: "",
+				stderr: "",
+			});
+
+		const result = await getAppDetail("my-app");
+
+		expect((result as AppDetail).gitRemote).toBe(
+			"ssh://dokku@[2001:db8::1]:2222/my-app",
+		);
+	});
+
+	it("should build git remote url from bracketed IPv6 scp-style target with port", async () => {
+		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = "deploy@[::1]:2222";
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku ps:report my-app",
+				exitCode: 0,
+				stdout: "Myapp deployed state: running",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku domains:report my-app",
+				exitCode: 0,
+				stdout: "Myapp domains vhosts:",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report my-app",
+				exitCode: 0,
+				stdout: "",
+				stderr: "",
+			});
+
+		const result = await getAppDetail("my-app");
+
+		expect((result as AppDetail).gitRemote).toBe("ssh://dokku@[::1]:2222/my-app");
+	});
 });
 
 describe("restartApp", () => {

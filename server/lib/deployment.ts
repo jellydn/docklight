@@ -1,7 +1,7 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
-import { DokkuCommands } from "./dokku.js";
+import { DokkuCommands, parseGitDeployBranch } from "./dokku.js";
 
 export interface DeploymentSettings {
 	deployBranch: string;
@@ -60,18 +60,10 @@ export async function getDeploymentSettings(
 		}
 
 		const settings: DeploymentSettings = {
-			deployBranch: "",
+			deployBranch: parseGitDeployBranch(gitResult.stdout),
 			buildDir: "",
 			builder: "",
 		};
-
-		const gitLines = gitResult.stdout.split("\n").map((line) => stripAnsi(line));
-		for (const line of gitLines) {
-			const deployBranchMatch = line.match(/^\s*Git deploy branch:\s*(.*)$/i);
-			if (deployBranchMatch) {
-				settings.deployBranch = deployBranchMatch[1]?.trim() ?? "";
-			}
-		}
 
 		if (builderResult.exitCode === 0) {
 			const builderLines = builderResult.stdout.split("\n").map((line) => stripAnsi(line));

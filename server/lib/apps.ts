@@ -1,6 +1,6 @@
 import { type CommandResult, executeCommand } from "./executor.js";
 import { stripAnsi } from "./ansi.js";
-import { DokkuCommands } from "./dokku.js";
+import { DokkuCommands, parseGitDeployBranch } from "./dokku.js";
 
 export interface App {
 	name: string;
@@ -203,11 +203,7 @@ export async function getAppDetail(
 	const psReportCommand = DokkuCommands.psReport(name);
 
 	try {
-		const [psReportResult, domainsReportResult, gitReportResult] = await Promise.all([
-			executeCommand(psReportCommand, 30000, { userId }),
-			executeCommand(DokkuCommands.domainsReport(name), 30000, { userId }),
-			executeCommand(DokkuCommands.gitReport(name), 30000, { userId }),
-		]);
+		const psReportResult = await executeCommand(psReportCommand, 30000, { userId });
 
 		if (psReportResult.exitCode !== 0) {
 			return {
@@ -218,11 +214,16 @@ export async function getAppDetail(
 			};
 		}
 
+		const [domainsReportResult, gitReportResult] = await Promise.all([
+			executeCommand(DokkuCommands.domainsReport(name), 30000, { userId }),
+			executeCommand(DokkuCommands.gitReport(name), 30000, { userId }),
+		]);
+
 		return {
 			name,
 			status: parseStatus(psReportResult.stdout),
 			gitRemote: buildGitRemoteUrl(name),
-			deployBranch: parseDeployBranch(gitReportResult.stdout),
+			deployBranch: parseGitDeployBranch(gitReportResult.stdout),
 			domains: parseDomains(domainsReportResult.stdout),
 			processes: parseProcesses(psReportResult.stdout),
 		};
@@ -240,21 +241,61 @@ export async function getAppDetail(
 function buildGitRemoteUrl(appName: string): string {
 	const sshTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
 	if (!sshTarget) return "";
-	const atIndex = sshTarget.indexOf("@");
-	const host = atIndex >= 0 ? sshTarget.slice(atIndex + 1) : sshTarget;
-	if (!host || host.length === 0) return "";
-	return `dokku@${host}:${appName}`;
-}
 
-function parseDeployBranch(stdout: string): string {
-	const lines = stdout.split("\n").map((line) => stripAnsi(line));
-	for (const line of lines) {
-		const match = line.match(/^\s*Git deploy branch:\s*(.+)$/i);
-		if (match) {
-			return match[1]?.trim() ?? "";
+	if (sshTarget.startsWith("ssh://")) {
+		try {
+			const url = new URL(sshTarget);
+			const hostname = url.hostname;
+			if (!hostname) return "";
+			const port = url.port;
+			const hasNonDefaultPort = !!port && port !== "22";
+			if (hasNonDefaultPort) {
+				return `ssh://dokku@${hostname}:${port}/${appName}`;
+			}
+			const host = hostname.startsWith("[") ? hostname.slice(1, -1) : hostname;
+			return `dokku@${host}:${appName}`;
+		} catch {
+			return "";
 		}
 	}
-	return "";
+
+	const atIndex = sshTarget.lastIndexOf("@");
+	const hostPort = atIndex >= 0 ? sshTarget.slice(atIndex + 1) : sshTarget;
+	if (!hostPort) return "";
+
+	let host: string;
+	let port = "";
+
+	if (hostPort.startsWith("[")) {
+		const closingIndex = hostPort.indexOf("]");
+		if (closingIndex === -1) return "";
+		host = hostPort.slice(0, closingIndex + 1);
+		if (hostPort.length > closingIndex + 1 && hostPort[closingIndex + 1] === ":") {
+			port = hostPort.slice(closingIndex + 2);
+		}
+	} else {
+		const lastColon = hostPort.lastIndexOf(":");
+		const firstColon = hostPort.indexOf(":");
+		if (lastColon !== -1 && firstColon === lastColon) {
+			const possiblePort = hostPort.slice(lastColon + 1);
+			if (/^\d+$/.test(possiblePort)) {
+				host = hostPort.slice(0, lastColon);
+				port = possiblePort;
+			} else {
+				host = hostPort;
+			}
+		} else {
+			host = hostPort;
+		}
+	}
+
+	if (!host) return "";
+
+	const hasNonDefaultPort = !!port && port !== "22";
+	if (hasNonDefaultPort) {
+		return `ssh://dokku@${host}:${port}/${appName}`;
+	}
+	return `dokku@${host}:${appName}`;
 }
 
 function parseProcesses(stdout: string): Record<string, number> {

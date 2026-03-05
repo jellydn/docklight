@@ -1,5 +1,6 @@
 import { executeCommand } from "./executor.js";
 import { shellQuote } from "./shell.js";
+import { stripAnsi } from "./ansi.js";
 
 /**
  * Type definition for Dokku command builder functions.
@@ -231,4 +232,19 @@ export async function getDokkuVersion(): Promise<string | null> {
 export function parseDokkuVersion(output: string): string | null {
 	const match = output.match(/(\d+\.\d+\.\d+)/);
 	return match ? match[1] : null;
+}
+
+/**
+ * Parses the deploy branch from the output of `dokku git:report`.
+ * Returns the configured deploy branch, or an empty string if not set.
+ */
+export function parseGitDeployBranch(stdout: string): string {
+	const lines = stdout.split("\n").map((line) => stripAnsi(line));
+	for (const line of lines) {
+		const match = line.match(/^\s*Git deploy branch:\s*(.+)$/i);
+		if (match) {
+			return match[1]?.trim() ?? "";
+		}
+	}
+	return "";
 }

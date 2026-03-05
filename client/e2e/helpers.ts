@@ -22,6 +22,7 @@ export const MOCK_APP_DETAIL = {
 	name: "my-app",
 	status: "running",
 	gitRemote: "dokku@my-app.example.com",
+	deployBranch: "main",
 	domains: ["my-app.example.com"],
 	processes: { web: 1 },
 };
