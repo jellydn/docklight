@@ -121,8 +121,7 @@ export function AppDetail() {
 		refetch: refetchDomains,
 	} = useQuery({
 		queryKey: queryKeys.apps.domains(name || ""),
-		queryFn: () =>
-			apiFetch(`/apps/${encodeURIComponent(name || "")}/domains`, z.array(z.string())),
+		queryFn: () => apiFetch(`/apps/${encodeURIComponent(name || "")}/domains`, z.array(z.string())),
 		enabled: activeTab === "domains" && !!name,
 	});
 	const domains = domainsData ?? [];
@@ -161,10 +160,7 @@ export function AppDetail() {
 	} = useQuery({
 		queryKey: queryKeys.apps.deployment(name || ""),
 		queryFn: () =>
-			apiFetch(
-				`/apps/${encodeURIComponent(name || "")}/deployment`,
-				DeploymentSettingsSchema
-			),
+			apiFetch(`/apps/${encodeURIComponent(name || "")}/deployment`, DeploymentSettingsSchema),
 		enabled: settingsEnabled,
 	});
 	const deploymentError = deploymentErrorData?.message || null;
@@ -183,8 +179,7 @@ export function AppDetail() {
 		refetch: refetchPorts,
 	} = useQuery({
 		queryKey: queryKeys.apps.ports(name || ""),
-		queryFn: () =>
-			apiFetch(`/apps/${encodeURIComponent(name || "")}/ports`, PortsResponseSchema),
+		queryFn: () => apiFetch(`/apps/${encodeURIComponent(name || "")}/ports`, PortsResponseSchema),
 		enabled: settingsEnabled,
 	});
 	const ports = portsData?.ports ?? [];
@@ -207,8 +202,7 @@ export function AppDetail() {
 		refetch: refetchProxyReport,
 	} = useQuery({
 		queryKey: queryKeys.apps.proxy(name || ""),
-		queryFn: () =>
-			apiFetch(`/apps/${encodeURIComponent(name || "")}/proxy`, ProxyReportSchema),
+		queryFn: () => apiFetch(`/apps/${encodeURIComponent(name || "")}/proxy`, ProxyReportSchema),
 		enabled: settingsEnabled,
 	});
 	const proxyError = proxyErrorData?.message || null;
@@ -275,8 +269,7 @@ export function AppDetail() {
 		refetch: refetchNetwork,
 	} = useQuery({
 		queryKey: queryKeys.apps.network(name || ""),
-		queryFn: () =>
-			apiFetch(`/apps/${encodeURIComponent(name || "")}/network`, NetworkReportSchema),
+		queryFn: () => apiFetch(`/apps/${encodeURIComponent(name || "")}/network`, NetworkReportSchema),
 		enabled: settingsEnabled,
 	});
 	const networkError = networkErrorData?.message || null;

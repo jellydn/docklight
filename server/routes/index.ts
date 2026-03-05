@@ -16,3 +16,4 @@ export { registerDatabaseRoutes } from "./databases.js";
 export { registerPluginRoutes } from "./plugins.js";
 export { registerServerRoutes } from "./server.js";
 export { registerAdminRoutes } from "./admin.js";
+export { registerSettingsRoutes } from "./settings.js";

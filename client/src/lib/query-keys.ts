@@ -24,4 +24,5 @@ export const queryKeys = {
 	auth: {
 		me: ["auth", "me"] as const,
 	},
+	settings: ["settings"] as const,
 };
