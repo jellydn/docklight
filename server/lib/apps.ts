@@ -155,11 +155,16 @@ function parseStatus(stdout: string): "running" | "stopped" {
 function parseDeployTime(stdout: string): string | undefined {
 	const lines = stdout.split("\n").map((line) => stripAnsi(line));
 	for (const line of lines) {
-		if (line.includes("deployed at")) {
-			const match = line.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
-			if (match) {
-				return match[1];
+		const match = line.match(/deployed at:\s+(.+)$/i);
+		if (match) {
+			const rawDate = match[1].trim();
+			const sqlDate = rawDate.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$/);
+			if (sqlDate) {
+				const date = new Date(`${sqlDate[1]}T${sqlDate[2]}Z`);
+				if (!Number.isNaN(date.getTime())) return date.toISOString();
 			}
+			const date = new Date(rawDate);
+			if (!Number.isNaN(date.getTime())) return date.toISOString();
 		}
 	}
 	return undefined;

@@ -97,11 +97,38 @@ describe("getApps", () => {
 		expect(firstApp.name).toBe("my-app");
 		expect(firstApp.status).toBe("running");
 		expect(firstApp.domains).toEqual(["my-app.example.com", "www.example.com"]);
-		expect(firstApp.lastDeployTime).toBe("2024-01-15 10:30:00");
+		expect(firstApp.lastDeployTime).toBe("2024-01-15T10:30:00.000Z");
 
 		expect(secondApp.name).toBe("another-app");
 		expect(secondApp.status).toBe("running");
 		expect(secondApp.domains).toEqual([]);
+	});
+
+	it("should parse deploy time in Dokku ctime format", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku --quiet apps:list",
+				exitCode: 0,
+				stdout: "my-app",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku ps:report my-app",
+				exitCode: 0,
+				stdout: "Myapp deployed state: running\nMyapp Ps deployed at: Fri Oct 27 12:34:56 UTC 2023",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku domains:report my-app",
+				exitCode: 0,
+				stdout: "Myapp domains vhosts:",
+				stderr: "",
+			});
+
+		const result = await getApps();
+		const [app] = result as App[];
+		expect(app.lastDeployTime).toBeDefined();
+		expect(app.lastDeployTime).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
 	});
 
 	it("should mark app as stopped when not deployed", async () => {

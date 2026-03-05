@@ -101,7 +101,9 @@ export function Apps() {
 												)}
 											</td>
 											<td className="py-3 px-4 text-sm text-gray-600">
-												{app.lastDeployTime || "-"}
+												{app.lastDeployTime
+													? new Date(app.lastDeployTime).toLocaleString()
+													: "-"}
 											</td>
 										</tr>
 									))}

@@ -165,7 +165,11 @@ export function Dashboard() {
 														<span className="text-gray-400">-</span>
 													)}
 												</td>
-												<td className="py-2 px-4">{app.lastDeployTime || "-"}</td>
+												<td className="py-2 px-4">
+													{app.lastDeployTime
+														? new Date(app.lastDeployTime).toLocaleString()
+														: "-"}
+												</td>
 											</tr>
 										))}
 									</tbody>
