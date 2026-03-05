@@ -26,6 +26,9 @@ export function AppOverview({
 	onApplyScale,
 	onDeleteApp,
 }: AppOverviewProps) {
+	const remoteUrl = app.gitRemote || `dokku@${hostname}:${app.name}`;
+	const deployBranch = app.deployBranch || "main";
+
 	const getStatusBadge = () => {
 		const color =
 			app.status === "running" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
@@ -43,16 +46,16 @@ export function AppOverview({
 				</div>
 				<div>
 					<strong className="text-gray-700">Git Remote:</strong>{" "}
-					<code className="bg-gray-100 px-2 py-1 rounded text-sm">{app.gitRemote || "-"}</code>
+					<code className="bg-gray-100 px-2 py-1 rounded text-sm">{remoteUrl}</code>
 				</div>
 				<div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-					<p className="text-sm font-medium mb-3 text-gray-900">Manual Deployment</p>
+					<p className="text-sm font-medium mb-3 text-gray-900">Git Deployment</p>
 					<div className="space-y-3 text-sm">
 						<div>
 							<p className="text-gray-600 mb-1">1. Add the Dokku remote:</p>
 							<div className="flex items-center gap-2">
 								<code className="flex-1 bg-white px-3 py-2 rounded border text-xs break-all font-mono">
-									git remote add dokku dokku@{hostname}:{app.name}
+									git remote add dokku {remoteUrl}
 								</code>
 								<button
 									type="button"
@@ -68,7 +71,7 @@ export function AppOverview({
 							<p className="text-gray-600 mb-1">2. Push your code:</p>
 							<div className="flex items-center gap-2">
 								<code className="flex-1 bg-white px-3 py-2 rounded border text-xs font-mono">
-									git push dokku main
+									git push dokku {deployBranch}
 								</code>
 								<button
 									type="button"

@@ -13,6 +13,7 @@ export interface AppDetail {
 	name: string;
 	status: "running" | "stopped";
 	gitRemote: string;
+	deployBranch: string;
 	domains: string[];
 	processes: Record<string, number>;
 }
@@ -202,10 +203,11 @@ export async function getAppDetail(
 	const psReportCommand = DokkuCommands.psReport(name);
 
 	try {
-		const psReportResult = await executeCommand(psReportCommand, 30000, { userId });
-		const domainsReportResult = await executeCommand(DokkuCommands.domainsReport(name), 30000, {
-			userId,
-		});
+		const [psReportResult, domainsReportResult, gitReportResult] = await Promise.all([
+			executeCommand(psReportCommand, 30000, { userId }),
+			executeCommand(DokkuCommands.domainsReport(name), 30000, { userId }),
+			executeCommand(DokkuCommands.gitReport(name), 30000, { userId }),
+		]);
 
 		if (psReportResult.exitCode !== 0) {
 			return {
@@ -219,7 +221,8 @@ export async function getAppDetail(
 		return {
 			name,
 			status: parseStatus(psReportResult.stdout),
-			gitRemote: parseGitRemote(psReportResult.stdout),
+			gitRemote: buildGitRemoteUrl(name),
+			deployBranch: parseDeployBranch(gitReportResult.stdout),
 			domains: parseDomains(domainsReportResult.stdout),
 			processes: parseProcesses(psReportResult.stdout),
 		};
@@ -234,11 +237,21 @@ export async function getAppDetail(
 	}
 }
 
-function parseGitRemote(stdout: string): string {
+function buildGitRemoteUrl(appName: string): string {
+	const sshTarget = process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
+	if (!sshTarget) return "";
+	const atIndex = sshTarget.indexOf("@");
+	const host = atIndex >= 0 ? sshTarget.slice(atIndex + 1) : sshTarget;
+	if (!host || host.length === 0) return "";
+	return `dokku@${host}:${appName}`;
+}
+
+function parseDeployBranch(stdout: string): string {
 	const lines = stdout.split("\n").map((line) => stripAnsi(line));
 	for (const line of lines) {
-		if (line.includes("app deployed:")) {
-			return line;
+		const match = line.match(/^\s*Git deploy branch:\s*(.+)$/i);
+		if (match) {
+			return match[1]?.trim() ?? "";
 		}
 	}
 	return "";

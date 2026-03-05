@@ -64,6 +64,7 @@ export const AppDetailSchema = z.object({
 	name: z.string(),
 	status: AppStatusSchema,
 	gitRemote: z.string(),
+	deployBranch: z.string(),
 	domains: z.array(z.string()),
 	processes: z.record(z.string(), z.number()),
 });

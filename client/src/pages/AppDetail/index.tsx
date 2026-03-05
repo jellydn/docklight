@@ -576,7 +576,8 @@ export function AppDetail() {
 
 	const handleCopyRemote = async () => {
 		if (!app) return;
-		const gitRemoteCommand = `git remote add dokku dokku@${hostname}:${app.name}`;
+		const remoteUrl = app.gitRemote || `dokku@${hostname}:${app.name}`;
+		const gitRemoteCommand = `git remote add dokku ${remoteUrl}`;
 		try {
 			await navigator.clipboard.writeText(gitRemoteCommand);
 			setCopySuccess({ ...copySuccess, remote: true });
@@ -587,7 +588,8 @@ export function AppDetail() {
 	};
 
 	const handleCopyPush = async () => {
-		const gitPushCommand = "git push dokku main";
+		const branch = app?.deployBranch || "main";
+		const gitPushCommand = `git push dokku ${branch}`;
 		try {
 			await navigator.clipboard.writeText(gitPushCommand);
 			setCopySuccess({ ...copySuccess, push: true });

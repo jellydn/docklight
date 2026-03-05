@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CommandResult } from "./executor.js";
 import {
 	getApps,
@@ -257,6 +257,10 @@ describe("getAppDetail", () => {
 		vi.clearAllMocks();
 	});
 
+	afterEach(() => {
+		delete process.env.DOCKLIGHT_DOKKU_SSH_TARGET;
+	});
+
 	it("should return detailed app information", async () => {
 		mockExecuteCommand
 			.mockResolvedValueOnce({
@@ -264,7 +268,6 @@ describe("getAppDetail", () => {
 				exitCode: 0,
 				stdout: [
 					"Myapp deployed state: running",
-					"Myapp app deployed: dokku@my-app.dokku.app:my-app/app.git",
 					"Myapp process type scale: web=2 worker=1",
 				].join("\n"),
 				stderr: "",
@@ -274,6 +277,12 @@ describe("getAppDetail", () => {
 				exitCode: 0,
 				stdout: "Myapp domains vhosts: my-app.example.com",
 				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report my-app",
+				exitCode: 0,
+				stdout: "       Git deploy branch:           main",
+				stderr: "",
 			});
 
 		const result = await getAppDetail("my-app");
@@ -281,10 +290,38 @@ describe("getAppDetail", () => {
 		expect(result).toEqual({
 			name: "my-app",
 			status: "running",
-			gitRemote: "Myapp app deployed: dokku@my-app.dokku.app:my-app/app.git",
+			gitRemote: "",
+			deployBranch: "main",
 			domains: ["my-app.example.com"],
 			processes: { web: 2, worker: 1 },
 		});
+	});
+
+	it("should build git remote url from SSH target env var", async () => {
+		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = "dokku@myserver.example.com";
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku ps:report my-app",
+				exitCode: 0,
+				stdout: "Myapp deployed state: running",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku domains:report my-app",
+				exitCode: 0,
+				stdout: "Myapp domains vhosts:",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report my-app",
+				exitCode: 0,
+				stdout: "       Git deploy branch:           main",
+				stderr: "",
+			});
+
+		const result = await getAppDetail("my-app");
+
+		expect((result as AppDetail).gitRemote).toBe("dokku@myserver.example.com:my-app");
 	});
 
 	it("should return validation error for invalid app name", async () => {
@@ -330,6 +367,12 @@ describe("getAppDetail", () => {
 				exitCode: 0,
 				stdout: "Myapp domains vhosts:",
 				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report stopped-app",
+				exitCode: 0,
+				stdout: "",
+				stderr: "",
 			});
 
 		const result = await getAppDetail("stopped-app");
@@ -350,6 +393,12 @@ describe("getAppDetail", () => {
 				command: "dokku domains:report stopped-app",
 				exitCode: 0,
 				stdout: "Stoppedapp domains vhosts:",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report stopped-app",
+				exitCode: 0,
+				stdout: "",
 				stderr: "",
 			});
 
@@ -372,6 +421,12 @@ describe("getAppDetail", () => {
 				exitCode: 0,
 				stdout: "Myapp domains vhosts:",
 				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report my-app",
+				exitCode: 0,
+				stdout: "",
+				stderr: "",
 			});
 
 		const result = await getAppDetail("my-app");
@@ -392,6 +447,12 @@ describe("getAppDetail", () => {
 				command: "dokku domains:report my-app",
 				exitCode: 0,
 				stdout: "Domains app vhosts: my-app.example.com",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report my-app",
+				exitCode: 0,
+				stdout: "",
 				stderr: "",
 			});
 
@@ -417,6 +478,12 @@ describe("getAppDetail", () => {
 				command: "dokku domains:report my-app",
 				exitCode: 0,
 				stdout: "Myapp domains vhosts:",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report my-app",
+				exitCode: 0,
+				stdout: "",
 				stderr: "",
 			});
 

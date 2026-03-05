@@ -46,6 +46,7 @@ const mockAppDetail: AppDetailData = {
 	name: "test-app",
 	status: "running",
 	gitRemote: "dokku@test-app.example.com",
+	deployBranch: "main",
 	domains: ["test-app.example.com"],
 	processes: { web: 1, worker: 2 },
 };
