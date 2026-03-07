@@ -71,7 +71,8 @@ export async function getDatabases(): Promise<
 
 				const dbLines = listResult.stdout
 					.split("\n")
-					.filter((line) => line.trim() && !line.trim().startsWith("=====>"));
+					.map((line) => line.trim())
+					.filter((line) => line && !line.startsWith("=====>"));
 
 				const dbs = await Promise.all(
 					dbLines.map(async (dbName) => {
@@ -85,10 +86,12 @@ export async function getDatabases(): Promise<
 								const trimmedLine = line.trim();
 								if (!trimmedLine) continue;
 								if (trimmedLine.includes("linked apps")) {
-									collecting = true;
 									const inlineMatch = trimmedLine.match(/linked apps:\s*(.+)/);
 									if (inlineMatch) {
 										linkedApps = inlineMatch[1].split(",").map((app) => app.trim()).filter(Boolean);
+										collecting = false;
+									} else {
+										collecting = true;
 									}
 									continue;
 								}

@@ -94,6 +94,73 @@ describe("databases", () => {
 		]);
 	});
 
+	it("getDatabases should parse linked apps from inline colon format", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku plugin:list",
+				exitCode: 0,
+				stdout: "dokku-postgres",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku postgres:list",
+				exitCode: 0,
+				stdout: "main-db",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku postgres:links main-db",
+				exitCode: 0,
+				stdout: "postgres service main-db linked apps: api, worker",
+				stderr: "",
+			});
+
+		const result = await getDatabases();
+
+		expect(result).toEqual([
+			{
+				name: "main-db",
+				plugin: "postgres",
+				linkedApps: ["api", "worker"],
+				connectionInfo: "postgresql://main-db@localhost",
+			},
+		]);
+	});
+
+	it("getDatabases should handle CRLF line endings in db list output", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku plugin:list",
+				exitCode: 0,
+				stdout: "dokku-postgres",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku postgres:list",
+				exitCode: 0,
+				stdout: "=====> PostgreSQL services\r\nmain-db\r\n",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku postgres:links main-db",
+				exitCode: 0,
+				stdout: "=====> main-db linked apps\r\napi\r\nworker\r\n",
+				stderr: "",
+			});
+
+		const result = await getDatabases();
+
+		expect(result).toEqual([
+			{
+				name: "main-db",
+				plugin: "postgres",
+				linkedApps: ["api", "worker"],
+				connectionInfo: "postgresql://main-db@localhost",
+			},
+		]);
+		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku postgres:links main-db");
+	});
+
 	it("createDatabase should return clear error when plugin is not installed", async () => {
 		mockExecuteCommand.mockResolvedValueOnce({
 			command: "dokku plugin:list",
