@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "../../components/ToastProvider";
+import { useStreamingAction } from "../../hooks/use-streaming-action.js";
 import { apiFetch } from "../../lib/api.js";
 import { useAuth } from "../../contexts/auth-context.js";
 import { createErrorResult } from "../../lib/command-utils.js";
@@ -51,6 +52,7 @@ export function AppDetail() {
 	const { name } = useParams<{ name: string }>();
 	const navigate = useNavigate();
 	const { addToast } = useToast();
+	const { execute: streamAction } = useStreamingAction();
 	const { canModify } = useAuth();
 	const {
 		data: app,
@@ -383,27 +385,18 @@ export function AppDetail() {
 		if (!pendingAction || !name || actionSubmitting) return;
 
 		setActionSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/${encodeURIComponent(pendingAction)}`,
-				CommandResultSchema,
-				{
-					method: "POST",
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", `${pendingAction} completed`, result);
-			resetActionDialog();
-			void refetch();
-		} catch (err) {
-			addToast(
-				"error",
-				`${pendingAction} failed`,
-				createErrorResult(`dokku ps:${pendingAction} ${name}`, err)
-			);
-			resetActionDialog();
-		} finally {
-			setActionSubmitting(false);
-		}
+
+		await streamAction(
+			`/apps/${encodeURIComponent(name)}/${encodeURIComponent(pendingAction)}`,
+			pendingAction,
+			{
+				onSuccess: () => void refetch(),
+				onError: () => void refetch(),
+			}
+		);
+
+		resetActionDialog();
+		setActionSubmitting(false);
 	};
 
 	const handleScaleChange = (processType: string, count: number, currentCount: number) => {
@@ -625,19 +618,14 @@ export function AppDetail() {
 		if (!name) return;
 
 		setStopping(true);
-		try {
-			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/stop`, CommandResultSchema, {
-				method: "POST",
-			});
-			addToast(result.exitCode === 0 ? "success" : "error", "App stopped", result);
-			setShowStopDialog(false);
-			void refetch();
-		} catch (err) {
-			addToast("error", "Failed to stop app", createErrorResult(`dokku ps:stop ${name}`, err));
-			setShowStopDialog(false);
-		} finally {
-			setStopping(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/stop`, "stop", {
+			onSuccess: () => void refetch(),
+			onError: () => void refetch(),
+		});
+
+		setShowStopDialog(false);
+		setStopping(false);
 	};
 
 	const handleStartApp = () => {
@@ -648,23 +636,14 @@ export function AppDetail() {
 		if (!name) return;
 
 		setStarting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/start`,
-				CommandResultSchema,
-				{
-					method: "POST",
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "App started", result);
-			setShowStartDialog(false);
-			void refetch();
-		} catch (err) {
-			addToast("error", "Failed to start app", createErrorResult(`dokku ps:start ${name}`, err));
-			setShowStartDialog(false);
-		} finally {
-			setStarting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/start`, "start", {
+			onSuccess: () => void refetch(),
+			onError: () => void refetch(),
+		});
+
+		setShowStartDialog(false);
+		setStarting(false);
 	};
 
 	const handleUnlockApp = () => {
@@ -675,27 +654,14 @@ export function AppDetail() {
 		if (!name) return;
 
 		setUnlocking(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/unlock`,
-				CommandResultSchema,
-				{
-					method: "POST",
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "App unlocked", result);
-			setShowUnlockDialog(false);
-			void refetch();
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to unlock app",
-				createErrorResult(`dokku apps:unlock ${name}`, err)
-			);
-			setShowUnlockDialog(false);
-		} finally {
-			setUnlocking(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/unlock`, "unlock", {
+			onSuccess: () => void refetch(),
+			onError: () => void refetch(),
+		});
+
+		setShowUnlockDialog(false);
+		setUnlocking(false);
 	};
 
 	const handleAddDomain = async () => {

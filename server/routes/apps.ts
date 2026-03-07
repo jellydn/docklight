@@ -3,6 +3,7 @@ import type { JWTPayload } from "../lib/auth.js";
 import {
 	getAppDetail,
 	getApps,
+	isValidAppName,
 	rebuildApp,
 	restartApp,
 	scaleApp,
@@ -15,11 +16,49 @@ import {
 import { clearPrefix, get, set } from "../lib/cache.js";
 import { logger } from "../lib/logger.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
+import { executeCommandStreaming } from "../lib/executor.js";
+import { DokkuCommands } from "../lib/dokku.js";
+import { isSSERequest, createSSEWriter } from "../lib/sse.js";
 import { getParam, safeAuditLog } from "./util.js";
 
 function getUserId(req: express.Request): string | undefined {
 	const user = req.user as JWTPayload | undefined;
 	return user?.userId ? String(user.userId) : undefined;
+}
+
+async function streamAction(
+	req: express.Request,
+	res: express.Response,
+	dokkuCommand: string,
+	userId: string | undefined,
+	auditAction: string,
+	appName: string
+): Promise<void> {
+	const sse = createSSEWriter(res);
+	try {
+		const result = await executeCommandStreaming(
+			dokkuCommand,
+			(event) => {
+				if (event.type === "progress") {
+					sse.sendProgress(event.message);
+				} else {
+					sse.sendOutput(event.message, event.error);
+				}
+			},
+			30000,
+			{ userId }
+		);
+
+		if (result.exitCode === 0) {
+			safeAuditLog(req, auditAction, appName, { app: appName });
+			clearPrefix("apps:");
+		}
+		sse.sendResult(result);
+	} catch (err) {
+		sse.sendError(err instanceof Error ? err.message : "Unknown error");
+	} finally {
+		sse.close();
+	}
 }
 
 export function registerAppRoutes(app: express.Application): void {
@@ -76,6 +115,16 @@ export function registerAppRoutes(app: express.Application): void {
 	app.post("/api/apps/:name/restart", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const userId = getUserId(req);
+
+		if (isSSERequest(req)) {
+			if (!isValidAppName(name)) {
+				res.status(400).json({ error: "Invalid app name" });
+				return;
+			}
+			await streamAction(req, res, DokkuCommands.psRestart(name), userId, "app:restart", name);
+			return;
+		}
+
 		const result = await restartApp(name, userId);
 
 		if (result.exitCode !== 0) {
@@ -93,6 +142,16 @@ export function registerAppRoutes(app: express.Application): void {
 	app.post("/api/apps/:name/rebuild", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const userId = getUserId(req);
+
+		if (isSSERequest(req)) {
+			if (!isValidAppName(name)) {
+				res.status(400).json({ error: "Invalid app name" });
+				return;
+			}
+			await streamAction(req, res, DokkuCommands.psRebuild(name), userId, "app:rebuild", name);
+			return;
+		}
+
 		const result = await rebuildApp(name, userId);
 
 		if (result.exitCode !== 0) {
@@ -110,6 +169,16 @@ export function registerAppRoutes(app: express.Application): void {
 	app.post("/api/apps/:name/stop", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const userId = getUserId(req);
+
+		if (isSSERequest(req)) {
+			if (!isValidAppName(name)) {
+				res.status(400).json({ error: "Invalid app name" });
+				return;
+			}
+			await streamAction(req, res, DokkuCommands.psStop(name), userId, "app:stop", name);
+			return;
+		}
+
 		const result = await stopApp(name, userId);
 
 		if (result.exitCode !== 0) {
@@ -127,6 +196,16 @@ export function registerAppRoutes(app: express.Application): void {
 	app.post("/api/apps/:name/start", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const userId = getUserId(req);
+
+		if (isSSERequest(req)) {
+			if (!isValidAppName(name)) {
+				res.status(400).json({ error: "Invalid app name" });
+				return;
+			}
+			await streamAction(req, res, DokkuCommands.psStart(name), userId, "app:start", name);
+			return;
+		}
+
 		const result = await startApp(name, userId);
 
 		if (result.exitCode !== 0) {
@@ -144,6 +223,16 @@ export function registerAppRoutes(app: express.Application): void {
 	app.post("/api/apps/:name/unlock", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const userId = getUserId(req);
+
+		if (isSSERequest(req)) {
+			if (!isValidAppName(name)) {
+				res.status(400).json({ error: "Invalid app name" });
+				return;
+			}
+			await streamAction(req, res, DokkuCommands.appsUnlock(name), userId, "app:unlock", name);
+			return;
+		}
+
 		const result = await unlockApp(name, userId);
 
 		if (result.exitCode !== 0) {
