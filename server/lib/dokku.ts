@@ -1,6 +1,11 @@
 import { executeCommand } from "./executor.js";
 import { shellQuote } from "./shell.js";
 
+export interface GitSyncResult {
+	execCommand: string;
+	displayCommand: string;
+}
+
 /**
  * Type definition for Dokku command builder functions.
  * Each command builder returns a complete shell command string.
@@ -14,6 +19,8 @@ export interface DokkuCommands {
 	appsListQuiet(): string;
 	appsCreate(name: string): string;
 	appsDestroy(name: string): string;
+	appsUnlock(name: string): string;
+	appsLock(name: string): string;
 
 	// Process management
 	psReport(app: string): string;
@@ -56,6 +63,7 @@ export interface DokkuCommands {
 	// Deployment - git
 	gitReport(app: string): string;
 	gitSetDeployBranch(app: string, branch: string): string;
+	gitSync(app: string, repo: string, branch?: string): GitSyncResult;
 
 	// Deployment - builder
 	builderReport(app: string): string;
@@ -108,6 +116,8 @@ export const DokkuCommands: DokkuCommands = {
 	appsListQuiet: (): string => "dokku --quiet apps:list",
 	appsCreate: (name: string): string => `dokku apps:create ${name}`,
 	appsDestroy: (name: string): string => `dokku apps:destroy ${name} --force`,
+	appsUnlock: (name: string): string => `dokku apps:unlock ${shellQuote(name)}`,
+	appsLock: (name: string): string => `dokku apps:lock ${shellQuote(name)}`,
 
 	// Process management
 	psReport: (app: string): string => `dokku ps:report ${app}`,
@@ -162,6 +172,29 @@ export const DokkuCommands: DokkuCommands = {
 	gitReport: (app: string): string => `dokku git:report ${app}`,
 	gitSetDeployBranch: (app: string, branch: string): string =>
 		`dokku git:set ${shellQuote(app)} deploy-branch ${shellQuote(branch)}`,
+	gitSync: (app: string, repo: string, branch?: string): GitSyncResult => {
+		const sanitizeRepoForDisplay = (url: string): string => {
+			try {
+				const urlObj = new URL(url);
+				if (urlObj.username || urlObj.password) {
+					urlObj.username = "[REDACTED]";
+					urlObj.password = "[REDACTED]";
+					return urlObj.toString();
+				}
+				return url;
+			} catch {
+				return url.replace(/\/\/[^@]+@/, "//[REDACTED]@");
+			}
+		};
+		const displayRepo = sanitizeRepoForDisplay(repo);
+		const execCmd = branch
+			? `dokku git:sync --build ${shellQuote(app)} ${shellQuote(repo)} ${shellQuote(branch)}`
+			: `dokku git:sync --build ${shellQuote(app)} ${shellQuote(repo)}`;
+		const displayCmd = branch
+			? `dokku git:sync --build ${shellQuote(app)} ${shellQuote(displayRepo)} ${shellQuote(branch)}`
+			: `dokku git:sync --build ${shellQuote(app)} ${shellQuote(displayRepo)}`;
+		return { execCommand: execCmd, displayCommand: displayCmd };
+	},
 
 	// Deployment - builder
 	builderReport: (app: string): string => `dokku builder:report ${app}`,

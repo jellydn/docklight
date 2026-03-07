@@ -173,6 +173,19 @@ export const DeploymentSettingsSchema = z.object({
 
 export type DeploymentSettings = z.infer<typeof DeploymentSettingsSchema>;
 
+// Git info schema
+export const GitInfoSchema = z.object({
+	deployBranch: z.string(),
+	globalDeployBranch: z.string(),
+	keepGitDir: z.boolean(),
+	revEnvVar: z.string(),
+	sha: z.string(),
+	sourceImage: z.string(),
+	lastUpdatedAt: z.string(),
+});
+
+export type GitInfo = z.infer<typeof GitInfoSchema>;
+
 // User role
 export const UserRoleSchema = z.enum(["admin", "operator", "viewer"]);
 export type UserRole = z.infer<typeof UserRoleSchema>;

@@ -316,17 +316,28 @@ describe("AppDetail", () => {
 	describe("with submitting states", () => {
 		it("should disable confirm button during restart action", async () => {
 			const user = userEvent.setup();
-			let resolveAction: (value: any) => void;
-			const pendingPromise = new Promise((resolve) => {
-				resolveAction = resolve;
+			let resolveStream: (() => void) | undefined;
+
+			const mockStream = new ReadableStream({
+				start(controller) {
+					const progress = `data: ${JSON.stringify({ type: "progress", message: "Connecting to SSH..." })}\n\n`;
+					controller.enqueue(new TextEncoder().encode(progress));
+					resolveStream = () => {
+						const result = `data: ${JSON.stringify({ type: "result", command: "dokku ps:restart test-app", exitCode: 0, stdout: "", stderr: "" })}\n\n`;
+						controller.enqueue(new TextEncoder().encode(result));
+						controller.close();
+					};
+				},
 			});
 
-			apiFetchMock.mockImplementation((_endpoint: string, _schema?: any, options?: any) => {
-				if (options?.method === "POST") {
-					return pendingPromise;
-				}
-				return Promise.resolve(mockAppDetail);
-			});
+			vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+				new Response(mockStream, {
+					status: 200,
+					headers: { "Content-Type": "text/event-stream" },
+				})
+			);
+
+			apiFetchMock.mockResolvedValue(mockAppDetail);
 
 			renderWithQueryClient(
 				<MemoryRouter initialEntries={["/apps/test-app"]}>
@@ -348,11 +359,12 @@ describe("AppDetail", () => {
 				expect(confirmButton).toBeDisabled();
 			});
 
-			// Cleanup: resolve pending state update inside act
 			await act(async () => {
-				resolveAction!({ exitCode: 0, stdout: "", stderr: "" });
+				resolveStream?.();
 				await Promise.resolve();
 			});
+
+			vi.restoreAllMocks();
 		});
 
 		it("should disable scale form during scale operation", async () => {
