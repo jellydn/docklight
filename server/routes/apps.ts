@@ -32,7 +32,8 @@ async function streamAction(
 	dokkuCommand: string,
 	userId: string | undefined,
 	auditAction: string,
-	appName: string
+	appName: string,
+	timeout: number = 120000
 ): Promise<void> {
 	const sse = createSSEWriter(res);
 	try {
@@ -45,7 +46,7 @@ async function streamAction(
 					sse.sendOutput(event.message, event.error);
 				}
 			},
-			30000,
+			timeout,
 			{ userId }
 		);
 
