@@ -71,7 +71,8 @@ export async function getDatabases(): Promise<
 
 				const dbLines = listResult.stdout
 					.split("\n")
-					.filter((line) => line.trim() && !line.trim().startsWith("=====>"));
+					.map((line) => line.trim())
+					.filter((line) => line && !line.startsWith("=====>"));
 
 				const dbs = await Promise.all(
 					dbLines.map(async (dbName) => {
@@ -79,13 +80,24 @@ export async function getDatabases(): Promise<
 
 						let linkedApps: string[] = [];
 						if (linkReportResult.exitCode === 0) {
-							const linkLines = linkReportResult.stdout.split("\n").filter((line) => line.trim());
+							const linkLines = linkReportResult.stdout.split("\n");
+							let collecting = false;
 							for (const line of linkLines) {
-								if (line.includes("linked apps")) {
-									const match = line.match(/linked apps:\s*(.+)/);
-									if (match) {
-										linkedApps = match[1].split(",").map((app) => app.trim());
+								const trimmedLine = line.trim();
+								if (!trimmedLine) continue;
+								if (trimmedLine.includes("linked apps")) {
+									const inlineMatch = trimmedLine.match(/linked apps:\s*(.+)/);
+									if (inlineMatch) {
+										linkedApps = inlineMatch[1].split(",").map((app) => app.trim()).filter(Boolean);
+										collecting = false;
+									} else {
+										collecting = true;
 									}
+									continue;
+								}
+								if (collecting) {
+									if (trimmedLine.startsWith("=====>")) break;
+									linkedApps.push(trimmedLine);
 								}
 							}
 						}
