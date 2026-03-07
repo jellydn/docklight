@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { z } from "zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "../components/ToastProvider.js";
+import { useStreamingAction } from "../hooks/use-streaming-action.js";
 import { apiFetch } from "../lib/api.js";
-import { createErrorResult } from "../lib/command-utils.js";
 import { useAuth } from "@/contexts/auth-context.js";
 import { queryKeys } from "../lib/query-keys.js";
-import { AppSchema, CommandResultSchema, type Database, DatabaseSchema } from "../lib/schemas.js";
+import { AppSchema, type Database, DatabaseSchema } from "../lib/schemas.js";
 
 const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"];
 
@@ -26,7 +25,7 @@ const PLUGIN_INSTALL_COMMANDS = [
 
 export function Databases() {
 	const { canModify } = useAuth();
-	const { addToast } = useToast();
+	const { execute: streamAction } = useStreamingAction();
 	const queryClient = useQueryClient();
 
 	const {
@@ -79,52 +78,30 @@ export function Databases() {
 		if (!newDbPlugin || !newDbName || createDbSubmitting) return;
 
 		setCreateDbSubmitting(true);
-		try {
-			const result = await apiFetch("/databases", CommandResultSchema, {
-				method: "POST",
-				body: JSON.stringify({ plugin: newDbPlugin, name: newDbName }),
-			});
-			addToast(result.exitCode === 0 ? "success" : "error", "Database created", result);
-			setNewDbPlugin("");
-			setNewDbName("");
-			void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to create database",
-				createErrorResult(`dokku ${newDbPlugin}:create ${newDbName}`, err)
-			);
-		} finally {
-			setCreateDbSubmitting(false);
-		}
+		await streamAction("/databases", `create ${newDbPlugin} ${newDbName}`, {
+			body: JSON.stringify({ plugin: newDbPlugin, name: newDbName }),
+			onSuccess: () => {
+				setNewDbPlugin("");
+				setNewDbName("");
+				void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
+			},
+		});
+		setCreateDbSubmitting(false);
 	};
 
 	const handleLinkDatabase = async () => {
 		if (!linkDbName || !linkAppName || linkSubmitting) return;
 
 		setLinkSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/databases/${encodeURIComponent(linkDbName)}/link`,
-				CommandResultSchema,
-				{
-					method: "POST",
-					body: JSON.stringify({ plugin: getDbPlugin(linkDbName), app: linkAppName }),
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Database linked", result);
-			setLinkDbName("");
-			setLinkAppName("");
-			void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to link database",
-				createErrorResult(`dokku ${getDbPlugin(linkDbName)}:link ${linkDbName} ${linkAppName}`, err)
-			);
-		} finally {
-			setLinkSubmitting(false);
-		}
+		await streamAction(`/databases/${encodeURIComponent(linkDbName)}/link`, "link database", {
+			body: JSON.stringify({ plugin: getDbPlugin(linkDbName), app: linkAppName }),
+			onSuccess: () => {
+				setLinkDbName("");
+				setLinkAppName("");
+				void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
+			},
+		});
+		setLinkSubmitting(false);
 	};
 
 	const handleUnlinkDatabase = (dbName: string, appName: string) => {
@@ -143,31 +120,21 @@ export function Databases() {
 		};
 
 		setUnlinkSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/databases/${encodeURIComponent(pendingUnlinkDb)}/unlink`,
-				CommandResultSchema,
-				{
-					method: "POST",
-					body: JSON.stringify({ plugin: getDbPlugin(pendingUnlinkDb), app: pendingUnlinkApp }),
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Database unlinked", result);
-			closeUnlinkDialog();
-			void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to unlink database",
-				createErrorResult(
-					`dokku ${getDbPlugin(pendingUnlinkDb)}:unlink ${pendingUnlinkDb} ${pendingUnlinkApp}`,
-					err
-				)
-			);
-			closeUnlinkDialog();
-		} finally {
-			setUnlinkSubmitting(false);
-		}
+		await streamAction(
+			`/databases/${encodeURIComponent(pendingUnlinkDb)}/unlink`,
+			"unlink database",
+			{
+				body: JSON.stringify({ plugin: getDbPlugin(pendingUnlinkDb), app: pendingUnlinkApp }),
+				onSuccess: () => {
+					closeUnlinkDialog();
+					void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
+				},
+				onError: () => {
+					closeUnlinkDialog();
+				},
+			}
+		);
+		setUnlinkSubmitting(false);
 	};
 
 	const handleDestroyDatabase = (dbName: string) => {
@@ -186,34 +153,21 @@ export function Databases() {
 		};
 
 		setDestroySubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/databases/${encodeURIComponent(pendingDestroyDb)}`,
-				CommandResultSchema,
-				{
-					method: "DELETE",
-					body: JSON.stringify({
-						plugin: getDbPlugin(pendingDestroyDb),
-						confirmName: confirmDestroyName,
-					}),
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Database destroyed", result);
-			closeDestroyDialog();
-			void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to destroy database",
-				createErrorResult(
-					`dokku ${getDbPlugin(pendingDestroyDb)}:destroy ${pendingDestroyDb} --force`,
-					err
-				)
-			);
-			closeDestroyDialog();
-		} finally {
-			setDestroySubmitting(false);
-		}
+		await streamAction(`/databases/${encodeURIComponent(pendingDestroyDb)}`, "destroy database", {
+			method: "DELETE",
+			body: JSON.stringify({
+				plugin: getDbPlugin(pendingDestroyDb),
+				confirmName: confirmDestroyName,
+			}),
+			onSuccess: () => {
+				closeDestroyDialog();
+				void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
+			},
+			onError: () => {
+				closeDestroyDialog();
+			},
+		});
+		setDestroySubmitting(false);
 	};
 
 	const toggleConnectionVisibility = (dbName: string) => {
