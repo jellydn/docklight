@@ -41,7 +41,7 @@ describe("databases", () => {
 			.mockResolvedValueOnce({
 				command: "dokku postgres:links main-db",
 				exitCode: 0,
-				stdout: "postgres service main-db linked apps: api, worker",
+				stdout: "=====> main-db linked apps\napi\nworker",
 				stderr: "",
 			});
 

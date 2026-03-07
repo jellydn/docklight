@@ -79,13 +79,22 @@ export async function getDatabases(): Promise<
 
 						let linkedApps: string[] = [];
 						if (linkReportResult.exitCode === 0) {
-							const linkLines = linkReportResult.stdout.split("\n").filter((line) => line.trim());
+							const linkLines = linkReportResult.stdout.split("\n");
+							let collecting = false;
 							for (const line of linkLines) {
-								if (line.includes("linked apps")) {
-									const match = line.match(/linked apps:\s*(.+)/);
-									if (match) {
-										linkedApps = match[1].split(",").map((app) => app.trim());
+								const trimmedLine = line.trim();
+								if (!trimmedLine) continue;
+								if (trimmedLine.includes("linked apps")) {
+									collecting = true;
+									const inlineMatch = trimmedLine.match(/linked apps:\s*(.+)/);
+									if (inlineMatch) {
+										linkedApps = inlineMatch[1].split(",").map((app) => app.trim()).filter(Boolean);
 									}
+									continue;
+								}
+								if (collecting) {
+									if (trimmedLine.startsWith("=====>")) break;
+									linkedApps.push(trimmedLine);
 								}
 							}
 						}
