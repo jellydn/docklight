@@ -56,6 +56,7 @@ export interface DokkuCommands {
 	// Deployment - git
 	gitReport(app: string): string;
 	gitSetDeployBranch(app: string, branch: string): string;
+	gitSync(app: string, repo: string, branch?: string): string;
 
 	// Deployment - builder
 	builderReport(app: string): string;
@@ -162,6 +163,10 @@ export const DokkuCommands: DokkuCommands = {
 	gitReport: (app: string): string => `dokku git:report ${app}`,
 	gitSetDeployBranch: (app: string, branch: string): string =>
 		`dokku git:set ${shellQuote(app)} deploy-branch ${shellQuote(branch)}`,
+	gitSync: (app: string, repo: string, branch?: string): string =>
+		branch
+			? `dokku git:sync --build ${shellQuote(app)} ${shellQuote(repo)} ${shellQuote(branch)}`
+			: `dokku git:sync --build ${shellQuote(app)} ${shellQuote(repo)}`,
 
 	// Deployment - builder
 	builderReport: (app: string): string => `dokku builder:report ${app}`,

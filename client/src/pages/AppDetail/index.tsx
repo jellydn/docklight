@@ -18,6 +18,7 @@ import {
 	type DeploymentSettings,
 	DeploymentSettingsSchema,
 	DockerOptionsSchema,
+	GitInfoSchema,
 	NetworkReportSchema,
 	type PortMapping,
 	PortsResponseSchema,
@@ -35,9 +36,10 @@ import { AppPorts } from "./AppPorts.js";
 import { AppBuildpacks } from "./AppBuildpacks.js";
 import { AppDockerOptions } from "./AppDockerOptions.js";
 import { AppNetwork } from "./AppNetwork.js";
+import { AppGit } from "./AppGit.js";
 import { ConfirmDialog, DeleteAppDialog, ScaleDialog } from "./Dialogs.js";
 
-type TabType = "overview" | "config" | "domains" | "logs" | "ssl" | "settings";
+type TabType = "overview" | "config" | "domains" | "logs" | "ssl" | "settings" | "git";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface ScaleChange {
@@ -276,6 +278,20 @@ export function AppDetail() {
 	const [editingNetworkKey, setEditingNetworkKey] = useState<string | null>(null);
 	const [networkEditValue, setNetworkEditValue] = useState("");
 	const [networkSubmitting, setNetworkSubmitting] = useState(false);
+
+	// Git info query
+	const {
+		data: gitInfo,
+		isLoading: gitLoading,
+		error: gitErrorData,
+		refetch: refetchGitInfo,
+	} = useQuery({
+		queryKey: queryKeys.apps.git(name || ""),
+		queryFn: () => apiFetch(`/apps/${encodeURIComponent(name || "")}/git`, GitInfoSchema),
+		enabled: activeTab === "git" && !!name,
+	});
+	const gitError = gitErrorData?.message || null;
+	const [gitSyncing, setGitSyncing] = useState(false);
 
 	// Log viewer state
 	const [logs, setLogs] = useState<string[]>([]);
@@ -1198,6 +1214,35 @@ export function AppDetail() {
 		}
 	};
 
+	const handleGitSync = async (repo: string, branch: string) => {
+		if (!name || gitSyncing) return;
+
+		setGitSyncing(true);
+		try {
+			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/git/sync`, CommandResultSchema, {
+				method: "POST",
+				body: JSON.stringify({ repo, ...(branch && { branch }) }),
+			});
+			addToast(
+				result.exitCode === 0 ? "success" : "error",
+				result.exitCode === 0 ? "Deployed from repository" : "Deployment failed",
+				result
+			);
+			if (result.exitCode === 0) {
+				void refetch();
+				void refetchGitInfo();
+			}
+		} catch (err) {
+			addToast(
+				"error",
+				"Failed to deploy from repository",
+				createErrorResult(`dokku git:sync --build ${name} ${repo}`, err)
+			);
+		} finally {
+			setGitSyncing(false);
+		}
+	};
+
 	const handleEnableSSL = async () => {
 		if (!name || sslSubmitting) return;
 
@@ -1575,6 +1620,13 @@ export function AppDetail() {
 					>
 						Settings
 					</button>
+					<button
+						onClick={() => setActiveTab("git")}
+						className={`pb-2 px-2 ${activeTab === "git" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+						type="button"
+					>
+						Git
+					</button>
 				</nav>
 			</div>
 
@@ -1738,6 +1790,17 @@ export function AppDetail() {
 						onValueChange={setNetworkEditValue}
 					/>
 				</div>
+			)}
+
+			{activeTab === "git" && (
+				<AppGit
+					gitInfo={gitInfo ?? null}
+					loading={gitLoading}
+					error={gitError}
+					syncing={gitSyncing}
+					canModify={canModify}
+					onSync={handleGitSync}
+				/>
 			)}
 		</div>
 	);

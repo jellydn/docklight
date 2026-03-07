@@ -11,6 +11,7 @@ export const queryKeys = {
 		buildpacks: (name: string) => ["apps", name, "buildpacks"] as const,
 		dockerOptions: (name: string) => ["apps", name, "docker-options"] as const,
 		network: (name: string) => ["apps", name, "network"] as const,
+		git: (name: string) => ["apps", name, "git"] as const,
 	},
 	users: ["users"] as const,
 	plugins: ["plugins"] as const,
