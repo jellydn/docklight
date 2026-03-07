@@ -1,145 +1,139 @@
 # Architecture
 
-**Analysis Date:** 2026-03-04
+**Analysis Date:** 2026-03-07
 
 ## Pattern Overview
 
-**Overall:** Client-Server with SSH Command Execution
+**Overall:** Three-tier client-server architecture with remote command execution
 
 **Key Characteristics:**
-- Single-page React application communicating via REST API
-- Express.js server that proxies commands to Dokku CLI over SSH
-- SQLite database for user authentication and audit logging
-- WebSocket connections for real-time log streaming
-- Modular route organization by feature domain
+- Monolithic backend (Express) with SQLite for persistence
+- React SPA client with React Router
+- Remote execution via SSH to Dokku server
+- WebSocket for real-time log streaming
+- SSE for long-running command progress
 
 ## Layers
 
-**Presentation Layer (Client):**
-- Purpose: React SPA providing web UI for Dokku management
+**Client Layer (React SPA):**
+- Purpose: User interface and client-side state management
 - Location: `client/src/`
-- Contains: React components, pages, contexts, hooks
-- Depends on: Express API server (via `/api` proxy)
-- Used by: End users in web browsers
+- Contains: React components, pages, hooks, API client
+- Depends on: Server REST API, WebSocket server
+- Used by: End users via web browser
 
-**API Layer (Server):**
-- Purpose: HTTP REST API handling authentication and routing
-- Location: `server/routes/` and `server/index.ts`
-- Contains: Express route handlers, middleware, auth
-- Depends on: Business logic layer (`server/lib/`)
-- Used by: React frontend
+**API Layer (Express Routes):**
+- Purpose: HTTP endpoints and request handling
+- Location: `server/routes/`
+- Contains: Route handlers, middleware, request validation
+- Depends on: Business logic in `server/lib/`, authentication middleware
+- Used by: Client layer
 
 **Business Logic Layer:**
-- Purpose: Core application logic and Dokku command execution
+- Purpose: Core application logic and Dokku interactions
 - Location: `server/lib/`
-- Contains: Command executors, data transformations, SSH pooling
-- Depends on: Dokku CLI (via SSH), SQLite database
-- Used by: API routes
+- Contains: Command execution, data processing, validation
+- Depends on: SSH executor, database, Dokku commands
+- Used by: API layer
 
-**Infrastructure Layer:**
-- Purpose: SSH connections and process execution
-- Location: `server/lib/executor.ts`, `server/lib/websocket.ts`
-- Contains: SSH pool management, WebSocket handling
-- Depends on: Remote Dokku server
+**Remote Execution Layer:**
+- Purpose: Execute commands on remote Dokku server
+- Location: `server/lib/executor.ts`, `server/lib/dokku.ts`
+- Contains: SSH connection pool, command building, execution
+- Depends on: node-ssh library, Dokku CLI
+- Used by: Business logic layer
+
+**Data Layer:**
+- Purpose: Persistent storage
+- Location: `server/lib/db.ts`
+- Contains: SQLite database operations, prepared statements
+- Depends on: better-sqlite3
 - Used by: Business logic layer
 
 ## Data Flow
 
 **Request Flow:**
-1. Browser makes HTTP request to `/api/*` endpoint
-2. Vite dev server proxies to Express (port 3001)
-3. Express middleware validates JWT authentication
-4. Route handler calls business logic function
-5. Business logic executes Dokku command via SSH
-6. Response transformed and returned as JSON
-7. Client receives and updates React state
+1. Browser sends HTTP request to Express server
+2. Request passes through authentication middleware (`authMiddleware`)
+3. Route handler calls business logic function (in `lib/`)
+4. Business logic executes remote SSH commands via executor
+5. Result returned to route handler
+6. Response sent back to client
 
-**WebSocket Flow:**
-1. Client opens WebSocket connection to `/api/logs`
-2. Server authenticates via token query parameter
-3. SSH connection established to Dokku server
-4. Log lines streamed in real-time to client
-5. Connection closed when client disconnects
+**Real-time Log Streaming:**
+1. Client connects via WebSocket (`server/lib/websocket.ts`)
+2. WebSocket handler executes `dokku logs` command via SSH
+3. Log lines streamed to client in real-time
 
-**Authentication Flow:**
-1. User posts credentials to `/api/auth/login`
-2. Server verifies against SQLite users table
-3. JWT generated with user ID and role
-4. Token stored in HTTP-only cookie
-5. Subsequent requests validate JWT via middleware
+**Command Execution with SSE:**
+1. Client sends request with `Accept: text/event-stream`
+2. Server sends progress updates via SSE
+3. Final result sent when command completes
 
 **State Management:**
-- Server stateless (JWT-based auth, SSH connection pooling)
-- Client uses React Context for auth state
-- Local component state for UI interactions
-- Server-side SQLite for persistent data
+- Server-side: SQLite for audit logs and settings
+- Client-side: TanStack Query for server state caching and synchronization
 
 ## Key Abstractions
 
-**CommandExecutor:**
-- Purpose: Abstract SSH command execution with connection pooling
-- Examples: `server/lib/executor.ts`
-- Pattern: Singleton pool with lazy connection initialization
+**Command Execution:**
+- Purpose: Encapsulate Dokku CLI command building and execution
+- Examples: `server/lib/dokku.ts`, `server/lib/executor.ts`
+- Pattern: Command builder pattern (`DokkuCommands` class), executor with timeout and error handling
 
-**DokkuCommands:**
-- Purpose: Generate Dokku CLI command strings
-- Examples: `server/lib/dokku.ts`
-- Pattern: Static methods returning command arrays
+**Route Organization:**
+- Purpose: Modular API endpoint registration
+- Examples: `server/routes/apps.ts`, `server/routes/auth.ts`
+- Pattern: One route file per resource, exports `register*Routes` functions
 
-**Route Registration:**
-- Purpose: Modular Express route setup
-- Examples: `server/routes/*.ts`
-- Pattern: `register*Routes(app)` functions
+**Audit Logging:**
+- Purpose: Track all executed commands
+- Examples: `server/lib/db.ts` (`saveCommand`), `server/lib/audit-rotation.ts`
+- Pattern: Async logging with automatic cleanup and truncation
 
-**React Context Providers:**
-- Purpose: Global state for authentication
-- Examples: `client/src/contexts/auth-context.tsx`
-- Pattern: Context + Custom Hook pattern
+**SSE Streaming:**
+- Purpose: Real-time command progress updates
+- Examples: `server/lib/sse.ts`
+- Pattern: Writer interface with typed methods
 
 ## Entry Points
 
 **Server Entry Point:**
 - Location: `server/index.ts`
-- Triggers: Node process startup
-- Responsibilities: Express app setup, route registration, WebSocket initialization, graceful shutdown
+- Triggers: Node.js process start
+- Responsibilities: Express app setup, route registration, WebSocket server setup, graceful shutdown handling
 
 **Client Entry Point:**
 - Location: `client/src/main.tsx`
-- Triggers: Browser loads the app
-- Responsibilities: React root rendering, BrowserRouter setup
+- Triggers: Browser loads application
+- Responsibilities: React app mount, router setup
 
-**Vite Dev Server:**
-- Location: `client/vite.config.ts`
-- Triggers: `bun run client-dev`
-- Responsibilities: HMR, API proxy to `localhost:3001`
-
-**Docker Entry:**
-- Location: `server/index.ts` (same as server)
-- Triggers: Container startup
-- Responsibilities: Production server with static file serving
+**Build Entry Points:**
+- Server: `server/index.ts` → `dist/index.js`
+- Client: `client/src/main.tsx` → `client/dist/index.html`
 
 ## Error Handling
 
-**Strategy:** Return typed error objects, never throw for expected failures
+**Strategy:** Return standardized error objects, never throw exceptions from command execution
 
 **Patterns:**
-- Command execution returns `{ exitCode, stdout, stderr, command }`
-- Validation errors return `{ error, exitCode: 400 }`
-- Try-catch for unexpected errors, typed with `error as { message?: string }`
-- Client displays error messages from API responses
+- Command execution returns `{ command, exitCode, stdout, stderr }`
+- Validation errors return `{ error, command, exitCode, stderr }`
+- HTTP responses use appropriate status codes (400, 401, 500, etc.)
+- Pino for structured error logging
 
 ## Cross-Cutting Concerns
 
-**Logging:** Pino structured logging with request context via pinoHttp
+**Logging:** Pino structured logging, HTTP requests logged via pino-http middleware
 
-**Validation:** Zod schemas on client, runtime checks on server
+**Validation:** Zod schemas for client validation, custom validation functions for server-side input
 
-**Authentication:** JWT-based auth with HTTP-only cookies, RBAC with admin role
+**Authentication:** JWT-based authentication with HTTP-only cookies, protected by `authMiddleware`
 
-**Rate Limiting:** Express-rate-limit per user and per command execution
+**Rate Limiting:** API and command execution rate-limited using express-rate-limit
 
-**Security:** Command allowlist enforcement, SSH target validation, HTTPS redirect in production
+**Command Allowlisting:** `server/lib/allowlist.ts` ensures only whitelisted commands can execute
 
 ---
 
-*Architecture analysis: 2026-03-04*
+*Architecture analysis: 2026-03-07*

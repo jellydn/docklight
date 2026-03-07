@@ -1,171 +1,172 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-03-04
+**Analysis Date:** 2026-03-07
 
 ## Directory Layout
 
 ```
-project-root/
-├── server/ # Express backend with TypeScript
-│   ├── lib/ # Core business logic and utilities
-│   ├── routes/ # API route handlers
-│   ├── data/ # SQLite database storage (gitignored)
-│   └── index.ts # Server entry point
-├── client/ # React + Vite frontend
-│   ├── src/
-│   │   ├── components/ # Reusable UI components
-│   │   ├── pages/ # Page-level components
+docklight/
+├── client/ # React frontend application
+│   ├── src/ # Client source code
+│   │   ├── components/ # Reusable React components
 │   │   ├── contexts/ # React contexts
 │   │   ├── hooks/ # Custom React hooks
-│   │   ├── lib/ # Client utilities
-│   │   └── main.tsx # Client entry point
-│   ├── e2e/ # Playwright end-to-end tests
-│   └── public/ # Static assets
+│   │   ├── lib/ # Utility libraries (API client, schemas)
+│   │   ├── pages/ # Page components
+│   │   └── test/ # Test setup and utilities
+│   ├── public/ # Static assets
+│   ├── dist/ # Built frontend (generated)
+│   ├── biome.json # Biome config for client
+│   ├── vite.config.ts # Vite build config
+│   ├── vitest.config.ts # Vitest test config
+│   ├── playwright.config.ts # Playwright E2E config
+│   └── package.json # Client dependencies
+├── server/ # Express backend application
+│   ├── lib/ # Business logic and utilities
+│   │   └── test-data/ # Test database files (generated)
+│   ├── routes/ # Express route handlers
+│   ├── dist/ # Compiled TypeScript (generated)
+│   ├── data/ # Runtime data directory (SQLite databases)
+│   ├── biome.json # Biome config for server
+│   ├── vitest.config.ts # Vitest test config
+│   ├── index.ts # Server entry point
+│   └── package.json # Server dependencies
+├── docs/ # Documentation
 ├── .github/ # GitHub Actions workflows
-│   └── workflows/ # CI/CD pipelines
-└── docs/ # Additional documentation
+├── .planning/ # Planning documents
+├── scripts/ # Build and deployment scripts
+├── tasks/ # Task management
+├── justfile # Task runner commands
+├── Dockerfile # Container image definition
+├── Procfile # Dokku process configuration
+└── README.md # Project documentation
 ```
 
 ## Directory Purposes
 
-**server/:**
-- Purpose: Express.js backend API server
-- Contains: Route handlers, business logic, database operations, SSH execution
-- Key files: `server/index.ts`, `server/lib/db.ts`, `server/lib/executor.ts`
-
-**server/lib/:**
-- Purpose: Core business logic and shared utilities
-- Contains: Dokku command executors, database operations, authentication, WebSocket handling
-- Key files: `server/lib/apps.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`, `server/lib/executor.ts`
-
-**server/routes/:**
-- Purpose: Express HTTP route handlers organized by feature
-- Contains: Auth, apps, databases, plugins, users, health endpoints
-- Key files: `server/routes/apps.ts`, `server/routes/auth.ts`, `server/routes/health.ts`
-
-**client/src/:**
-- Purpose: React frontend application source
-- Contains: Components, pages, contexts, hooks, utilities
-- Key files: `client/src/main.tsx`, `client/src/App.tsx`
+**client/:**
+- Purpose: React SPA frontend
+- Contains: UI components, pages, hooks, API client
+- Key files: `src/main.tsx` (entry), `src/App.tsx` (root component)
 
 **client/src/components/:**
-- Purpose: Reusable UI components and page-specific components
-- Contains: AppLayout, CreateAppDialog, audit filters, UI primitives (button, card, dialog)
-- Key files: `client/src/components/AppLayout.tsx`, `client/src/components/CreateAppDialog.tsx`
+- Purpose: Reusable React components
+- Contains: Dialogs, layouts, filters, and UI components
+- Key files: `AppLayout.tsx`, `CreateAppDialog.tsx`
 
 **client/src/pages/:**
-- Purpose: Route-level page components
-- Contains: Dashboard, Apps, AppDetail, Databases, Plugins, Audit, Users, Login
-- Key files: `client/src/pages/Apps.tsx`, `client/src/pages/AppDetail/index.tsx`
+- Purpose: Page-level components (routes)
+- Contains: One component per app page
+- Key files: `Dashboard.tsx`, `Apps.tsx`, `AppDetail.tsx`
+
+**client/src/hooks/:**
+- Purpose: Custom React hooks
+- Contains: API integration and state management hooks
+- Key files: `use-audit-log.ts`, `use-streaming-action.ts`
 
 **client/src/lib/:**
-- Purpose: Client-side utilities and API client
-- Contains: API client, validation schemas, command utilities
-- Key files: `client/src/lib/api.ts`, `client/src/lib/schemas.ts`
+- Purpose: Client utility libraries
+- Contains: API client, schemas, utility functions
+- Key files: `api.ts`, `schemas.ts`
 
-**.github/workflows/:**
-- Purpose: GitHub Actions CI/CD pipelines
-- Contains: CI checks, production deployment, staging deployment
-- Key files: `.github/workflows/ci.yml`, `.github/workflows/deploy-production.yml`
+**server/:**
+- Purpose: Express backend server
+- Contains: API routes, business logic, database access
+- Key files: `index.ts` (entry point)
+
+**server/lib/:**
+- Purpose: Business logic and utilities
+- Contains: Dokku integration, command execution, database operations
+- Key files: `executor.ts`, `dokku.ts`, `db.ts`, `apps.ts`
+
+**server/routes/:**
+- Purpose: Express route handlers
+- Contains: API endpoints grouped by resource
+- Key files: `apps.ts`, `auth.ts`, `commands.ts`
 
 ## Key File Locations
 
 **Entry Points:**
-- `server/index.ts`: Express server entry point
-- `client/src/main.tsx`: React client entry point
-- `server/index.ts`: Docker container entry point
+- `server/index.ts`: Express server startup, route registration, WebSocket setup
+- `client/src/main.tsx`: React app mount
 
 **Configuration:**
-- `server/tsconfig.json`: Server TypeScript config
-- `client/tsconfig.json`: Client TypeScript config
-- `server/biome.json`: Server linting/formatting rules
-- `client/biome.json`: Client linting/formatting rules
-- `server/vitest.config.ts`: Server test config
-- `client/vitest.config.ts`: Client test config
-- `client/playwright.config.ts`: E2E test config
-- `client/vite.config.ts`: Vite dev server config
-- `justfile`: Task runner commands
+- `server/vitest.config.ts`: Server test configuration
+- `client/vitest.config.ts`: Client test configuration
+- `client/vite.config.ts`: Vite build configuration
+- `client/biome.json`, `server/biome.json`: Code style configuration
+- `justfile`: Project task commands
 
 **Core Logic:**
-- `server/lib/executor.ts`: SSH command execution with pooling
+- `server/lib/executor.ts`: SSH command execution engine
+- `server/lib/dokku.ts`: Dokku CLI command builder
 - `server/lib/db.ts`: SQLite database operations
-- `server/lib/auth.ts`: JWT authentication
+- `server/lib/auth.ts`: JWT authentication middleware
 - `server/lib/websocket.ts`: WebSocket log streaming
-- `server/lib/dokku.ts`: Dokku CLI command builders
+- `server/lib/sse.ts`: SSE stream writer
 
 **Testing:**
-- `server/**/*.test.ts`: Server unit/integration tests (co-located)
-- `client/src/**/*.test.tsx`: Client component tests (co-located)
-- `client/e2e/*.spec.ts`: Playwright E2E tests
+- `server/lib/*.test.ts`: Unit tests for business logic
+- `server/routes/*.test.ts`: Integration tests for API endpoints
+- `client/src/**/*.test.tsx`: Component tests
 
 ## Naming Conventions
 
 **Files:**
-- kebab-case: `app-deployment.ts`, `create-user.ts`, `audit-filters.tsx`
-- Test files: Same name with `.test.ts` or `.test.tsx` suffix
+- kebab-case: `app-buildpacks.ts`, `create-app-dialog.tsx`
+- Test files: `*.test.ts`, `*.test.tsx` (co-located with source)
 
 **Directories:**
-- kebab-case: `app-detail/`, `docker-options/`
+- kebab-case: `src/components/`, `server/lib/`
 
 **Functions:**
-- camelCase: `getApps`, `executeCommand`, `isValidAppName`
-
-**Components:**
-- PascalCase: `AppLayout`, `CreateAppDialog`, `RequireAdmin`
+- camelCase: `getApps()`, `executeCommand()`, `isValidAppName()`
 
 **Types/Interfaces:**
-- PascalCase: `CommandResult`, `App`, `AppDetail`
+- PascalCase: `interface App`, `type CommandResult`, `interface SSEWriter`
 
 **Constants:**
-- SCREAMING_SNAKE_CASE: `INVALID_NAME_ERROR`, `MAX_RETRIES`
+- SCREAMING_SNAKE_CASE: `DEFAULT_SSH_PORT`, `JWT_SECRET` (env vars), but many constants use camelCase like `UNKNOWN_ERROR`
 
 ## Where to Add New Code
 
 **New Feature:**
-- Primary code: `server/lib/[feature].ts` (business logic)
-- API routes: `server/routes/[feature].ts`
-- Tests: `server/lib/[feature].test.ts`
-- Client pages: `client/src/pages/[Feature].tsx`
-- Client tests: `client/src/pages/[Feature].test.tsx`
+- Primary code: `server/lib/[feature].ts` (business logic), `server/routes/[feature].ts` (API)
+- Tests: `server/lib/[feature].test.ts`, `server/routes/[feature].test.ts`
+- Client: `client/src/pages/[Feature].tsx`, `client/src/components/[Feature]*.tsx`
 
 **New Component/Module:**
-- Implementation: `client/src/components/[ComponentName].tsx`
-- Tests: `client/src/components/[ComponentName].test.tsx`
+- Implementation: `client/src/components/[component-name].tsx` or `server/lib/[module-name].ts`
 
 **Utilities:**
-- Shared helpers: `server/lib/[utility].ts` (server) or `client/src/lib/[utility].ts` (client)
+- Shared helpers: `server/lib/[utility].ts` or `client/src/lib/[utility].ts`
 
-**New Dokku Command:**
-- Command builder: Add to `server/lib/dokku.ts` (DokkuCommands class)
-- Executor: Use via `executeCommand()` from `server/lib/executor.ts`
+**New API Route:**
+- Implementation: `server/routes/[resource].ts`
+- Registration: Add to `server/routes/index.ts`
 
 ## Special Directories
 
-**server/data/:**
-- Purpose: SQLite database storage location
-- Generated: Yes (database created at runtime)
-- Committed: No (gitignored)
+**server/lib/test-data/:**
+- Purpose: Test-generated SQLite database files
+- Generated: Yes
+- Committed: No (in .gitignore)
 
-**server/dist/:**
+**server/dist/, client/dist/:**
 - Purpose: Compiled JavaScript output
-- Generated: Yes (via `tsc`)
-- Committed: No (gitignored)
-
-**client/dist/:**
-- Purpose: Built React application
-- Generated: Yes (via `vite build`)
-- Committed: No (gitignored)
-
-**client/test-results/:**
-- Purpose: Playwright test output
-- Generated: Yes (via E2E test runs)
-- Committed: No (gitignored)
+- Generated: Yes
+- Committed: No (in .gitignore)
 
 **node_modules/:**
 - Purpose: Installed dependencies
-- Generated: Yes (via package manager)
-- Committed: No (gitignored)
+- Generated: Yes
+- Committed: No (in .gitignore)
+
+**data/:**
+- Purpose: Runtime SQLite databases
+- Generated: Yes
+- Committed: No (in .gitignore)
 
 ---
 
-*Structure analysis: 2026-03-04*
+*Structure analysis: 2026-03-07*

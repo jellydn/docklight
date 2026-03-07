@@ -1,257 +1,102 @@
-# Docklight External Integrations
+# External Integrations
 
-## Dokku Platform
+**Analysis Date:** 2026-03-07
 
-### Type: Platform as a Service (PaaS)
-**Description**: Self-hosted PaaS platform that deploys and manages applications. Docklight wraps Dokku CLI commands to provide a web UI for managing Dokku deployments.
+## APIs & External Services
 
-### Configuration
-- **Dokku SSH Target**: `DOCKLIGHT_DOKKU_SSH_TARGET`
-  - Format: `user@host`, `user@host:port`, `user@[ipv6]`, `ssh://user@host:port`
-  - Example: `dokku@95.111.232.131`
-  - Implemented in: `/server/lib/executor.ts`
+**SSH Remote Execution:**
+- Dokku CLI - Remote command execution via SSH
+- SDK/Client: `node-ssh` 13.2.1
+- Auth: SSH key-based authentication
+- Config: `DOCKLIGHT_DOKKU_SSH_TARGET`, `DOCKLIGHT_DOKKU_SSH_KEY_PATH`
 
-- **SSH Private Key**: `DOCKLIGHT_DOKKU_SSH_KEY_PATH`
-  - Path to SSH private key inside container
-  - Mounting recommended via: `dokku storage:mount docklight /home/dokku/.ssh/docklight:/app/.ssh/id_ed25519`
+**Git Repository Sync:**
+- Remote Git repositories - HTTPS and SSH protocols
+- Used for: `git:sync` app deployment feature
+- Implementation: Custom validation in `server/lib/git.ts`
 
-- **SSH Options**: `DOCKLIGHT_DOKKU_SSH_OPTS`
-  - Default: `-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10`
+## Data Storage
 
-### SSH Client Implementation
-- **Library**: `node-ssh` (version 13.2.1)
-- **Connection Pool**: `SSHPool` class maintains persistent SSH connections
-  - IDLE_TIMEOUT_MS: 5 minutes
-  - Retry logic for connection failures
-  - Channel error retry (SSH channel failures trigger reconnection)
-- **Command Execution**: Via SSH execution (`sshPool.execCommand()`)
+**Databases:**
+- SQLite (better-sqlite3 12.6.2) - Embedded database
+- Connection: File-based at `DOCKLIGHT_DB_PATH` (default: "data/docklight.db")
+- Client: better-sqlite3 with prepared statements
+- Tables: commands (audit log), settings (server configuration)
 
-### Supported Dokku Commands
-#### Apps Management
-- `apps:list`, `apps:create`, `apps:destroy`
-- `ps:report`, `ps:restart`, `ps:stop`, `ps:start`, `ps:rebuild`, `ps:scale`
-- `ps:status` (via apps:report)
+**File Storage:**
+- Local filesystem only - No external object storage
+- SQLite database files stored locally
 
-#### Configuration
-- `config:show`, `config:set`, `config:unset`
+**Caching:**
+- In-memory Map-based cache in `server/lib/cache.ts`
+- SSH connection pool maintained by `node-ssh`
 
-#### Domains
-- `domains:report`, `domains:add`, `domains:remove`
+## Authentication & Identity
 
-#### Logs
-- `logs <app> -t -n <lines>` (via WebSocket streaming)
+**Auth Provider:**
+- Custom JWT-based authentication
+- Implementation: JWT stored in HTTP-only cookies
+- Secret: `JWT_SECRET` environment variable (required)
+- Middleware: `server/lib/auth.ts` - `authMiddleware()`
+- Routes: `server/routes/auth.ts` - login/logout endpoints
 
-#### Databases
-- `plugin:list`, `<plugin>:list`, `<plugin>:links`
-- `<plugin>:create`, `<plugin>:link`, `<plugin>:unlink`, `<plugin>:destroy`
+## Monitoring & Observability
 
-#### Plugins
-- `plugin:list`, `plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`
+**Error Tracking:**
+- None - Manual error logging via Pino
 
-#### SSL
-- `letsencrypt:report`, `letsencrypt:ls`, `certs:report`
-- `letsencrypt:set <app> email <email>`
-- `letsencrypt:enable`, `letsencrypt:auto-renew`
+**Logs:**
+- Pino 10.3.1 - Structured logging with JSON output
+- HTTP requests logged via pino-http middleware
+- Log levels configurable via `LOG_LEVEL` env var
+- WebSocket-based live log streaming for app container logs
 
-### Integration Points
-- **Dokku SSH Access**: Container uses SSH to execute Dokku CLI commands
-- **Dokku Storage**: Persistent storage mounted for database persistence
-- **Dokku Let's Encrypt**: SSL/TLS certificate management
-- **Dokku CLI**: Dokku commands executed via SSH from container
+## CI/CD & Deployment
 
-## Docker
+**Hosting:**
+- Platform: Dokku (self-hosted PaaS)
+- Deployment: Git push to Dokku remote
 
-### Type: Container Runtime
-**Description**: Used for both containerizing Docklight itself and for running Dokku's managed applications.
+**CI Pipeline:**
+- GitHub Actions (`.github/workflows/`) - Basic CI
+- No external CI service configured
 
-### Container Configuration
-- **Base Image**: `node:24-alpine`
-- **SSH Client**: Installed via `apk add --no-cache openssh-client`
-- **Multi-stage Build**:
-  1. `client-build`: Build React app with Vite
-  2. `server-build`: Build Express server with TypeScript
-  3. `final-runtime`: Combine both with production dependencies
+## Environment Configuration
 
-### Environment Variables
-- `PORT`: Exposed port (default: 3001)
-- `NODE_ENV`: Runtime environment
+**Required env vars:**
+- `JWT_SECRET` - JWT signing secret (required for auth)
+- `DOCKLIGHT_DOKKU_SSH_TARGET` - SSH connection target (e.g., "dokku@server-ip")
+- `DOCKLIGHT_DOKKU_SSH_KEY_PATH` - Path to SSH private key for Dokku access
 
-### Persistent Storage
-- Database storage: `/app/data/docklight.db` (mountable via `dokku storage:mount`)
+**Optional env vars:**
+- `DOCKLIGHT_DB_PATH` - SQLite database path (default: "data/docklight.db")
+- `LOG_LEVEL` - Pino log level (default: "info")
+- `NODE_ENV` - Environment (development/production/test)
+- `PORT` - Server port (default: 3001)
 
-## Let's Encrypt (SSL/TLS)
+**Secrets location:**
+- Environment variables only
+- No secrets manager integration
 
-### Type: Certificate Authority
-**Description**: Automatic SSL certificate issuance and renewal for secure HTTPS connections.
+## Webhooks & Callbacks
 
-### Configuration
-- **Plugin**: `dokku-letsencrypt` (installed via `dokku plugin:install`)
-- **Email**: Configured via `letsencrypt:set docklight email`
-- **Enabled**: `letsencrypt:enable docklight`
+**Incoming:**
+- None - No webhook endpoints
 
-### Integration
-- **SSL Termination**: Dokku handles SSL termination on the edge
-- **Certificate Renewal**: Automatic via `letsencrypt:auto-renew` cron job
-- **HTTPS Redirect**: Docklight server enforces HTTPS in production via middleware
+**Outgoing:**
+- None - No external webhook calls
 
-### Integration Points
-- **Dokku SSL Plugin**: Manages certificate issuance and renewal
-- **Docklight HTTPS Middleware**: Enforces HTTPS in production environment
+## Real-time Communication
 
-## GitHub Actions
+**WebSocket Server:**
+- `ws` 8.19.0 - Live log streaming from app containers
+- Implementation: `server/lib/websocket.ts`
+- Client: Custom WebSocket connection in `client/src/hooks/use-streaming-action.ts`
 
-### Type: CI/CD Platform
-**Description**: GitHub Actions workflows for testing, linting, and deploying the application.
+**Server-Sent Events (SSE):**
+- `server/lib/sse.ts` - SSE writer for streaming command output
+- Used for: Long-running command execution with real-time progress
 
-### Workflows
-#### CI Workflow (`.github/workflows/ci.yml`)
-- **Typecheck**: Both server and client TypeScript compilation
-- **Lint**: Biome linter for both projects
-- **Test**: Vitest for server, Vitest for client (with coverage)
-- **E2E Tests**: Playwright for end-to-end testing
+---
 
-#### Deploy Production (`.github/workflows/deploy-production.yml`)
-- **Trigger**: Push to main branch
-- **Deployment Method**: SSH-based push to Dokku production
-- **Zero-downtime**: Automatic redeploy via Dokku
-- **Notification**: Simple echo message with deployment URL
-
-#### Deploy Staging (`.github/workflows/deploy-staging.yml`)
-- **Trigger**: Pull request opened/synced/reopened
-- **Deployment Method**: SSH-based push to Dokku staging
-- **PR Comment**: Automatically comments PR with staging URL
-- **Notification**: GitHub Script updates PR comment with staging URL
-
-### GitHub Secrets
-- `DOKKU_SSH_KEY`: SSH private key for deployment (ed25519 format)
-- `DOKKU_HOST`: Dokku server IP or hostname
-- `JWT_SECRET`: Production JWT signing secret (managed by Dokku config)
-- `DOCKLIGHT_DOKKU_SSH_KEY_PATH`: Path to SSH key inside container
-- `DOCKLIGHT_DOKKU_SSH_TARGET`: SSH target for Dokku commands
-- `DOCKLIGHT_DOKKU_SSH_OPTS`: SSH options
-
-### Integration Points
-- **Git**: Version control with GitHub
-- **SSH**: SSH key-based deployment
-- **Dokku**: PaaS deployment target
-- **GitHub Script**: PR comment automation
-- **Artifacts**: Playwright test reports
-
-## Authentication (Custom)
-
-### Type: Custom Authentication System
-**Description**: Multi-user authentication with role-based access control (RBAC).
-
-### Features
-- **Username/Password Authentication**: Basic credentials
-- **Password Hashing**: Scrypt (bcrypt-compatible)
-- **JWT Tokens**: Session management with 24-hour expiration
-- **Role-Based Access Control**: Three roles
-  - `admin`: Full system access
-  - `operator`: Limited app management
-  - `viewer`: Read-only access
-- **Session Management**: HTTP-only, secure cookies
-
-### Implementation
-- **JWT Library**: `jsonwebtoken` (version 9.0.3)
-- **Password Hashing**: Node.js `crypto` module (scrypt)
-- **Token Validation**: Middleware (`authMiddleware`)
-- **Role Enforcement**: `requireRole` and `requireAdmin` middlewares
-- **Cookie Management**: `setAuthCookie` and `clearAuthCookie` functions
-
-### Integration Points
-- **Database**: User accounts stored in SQLite
-- **API Routes**: Protected via middleware
-- **User Management**: CRUD operations via `/api/users` endpoints
-- **Audit Logs**: User actions tracked for compliance
-
-## Git
-
-### Type: Version Control
-**Description**: Git-based version control with remote hosting on GitHub.
-
-### Integration Points
-- **Source Code**: Hosted on GitHub repository
-- **CI/CD Triggers**: Push and pull request events
-- **Deployment Remote**: Dokku SSH remote for deployments
-- **Branching**: Main branch for production, staging via PRs
-
-### Git Configuration
-- **Remote**: `dokku` (production), `staging` (staging environment)
-- **Branching Strategy**: Git Flow (main branch for production)
-- **Remote URL Format**: `dokku@<host>:<app-name>`
-
-## SQLite
-
-### Type: Embedded Database
-**Description**: Local file-based database for storing users, command history, and audit logs.
-
-### Tables
-1. **users**: User accounts with password hashes and roles
-2. **command_history**: Execution history of Dokku commands
-3. **audit_log**: User action auditing
-
-### Features
-- **Prepared Statements**: Security via parameterized queries
-- **Automatic Indexing**: Created on `createdAt`, `exitCode`, `command`
-- **Transaction Support**: ACID transactions
-- **Backup/Restore**: Export/import functionality
-- **Audit Rotation**: Automatic cleanup of old logs
-
-### Integration Points
-- **Backend**: Centralized database for server application
-- **Authentication**: User credentials and roles
-- **Audit**: Command history and user actions
-- **Backup**: `exportBackup()` and `importBackup()` functions
-
-## Database Integration Summary
-
-| Integration | Type | Purpose | Configuration |
-|-------------|------|---------|---------------|
-| Dokku | PaaS | Application hosting | SSH target, key path |
-| Docker | Runtime | Containerization | Multi-stage build, alpine base |
-| Let's Encrypt | SSL/TLS | HTTPS certificates | Email config, plugin installation |
-| GitHub Actions | CI/CD | Testing & deployment | SSH key secrets, Dokku remote |
-| Custom Auth | Authentication | Multi-user access | JWT tokens, role-based RBAC |
-| Git | Version Control | Code management | GitHub remote, Dokku remote |
-| SQLite | Database | Local storage | File-based, mountable storage |
-
-## External Services (No Direct Integration)
-
-The following services are recommended but not directly integrated:
-
-1. **Cloudflare Zero Trust** (Optional): VPN-only access, firewall rules
-2. **Tailscale** (Optional): Zero-trust networking, VPN-only access
-3. **Monitoring Services** (Optional): Monitoring, alerting, metrics
-4. **Log Aggregation** (Optional): Centralized logging services
-
-## Authentication & Security
-
-### Direct Integrations
-- **Custom Authentication**: JWT-based with RBAC
-  - No external auth provider
-  - Self-hosted user management
-  - Database-stored credentials
-
-### Security Measures
-- **Rate Limiting**: API and command execution limits
-- **Command Allowlist**: Strict command execution restrictions
-- **HTTPS Enforcement**: Production-only HTTPS redirect
-- **HTTP-Only Cookies**: XSS protection
-- **Scrypt Hashing**: Secure password storage
-- **JWT Expiration**: Automatic session expiration
-- **Audit Logging**: All actions tracked for compliance
-
-## Deployment Integrations
-
-### Dokku
-- **SSH-based Deployments**: Push to Dokku remote
-- **Zero-downtime Deploys**: Automatic container restarts
-- **Buildpack System**: Automatic Docker image building
-- **Health Checks**: `/api/health` endpoint for container health
-
-### GitHub Actions
-- **Automated Testing**: Typecheck, lint, test on every push
-- **Automated Deployments**: Production and staging deployments
-- **PR-based Staging**: Automatic staging preview on PRs
-- **Artifact Upload**: Playwright test reports for debugging
+*Integration audit: 2026-03-07*
