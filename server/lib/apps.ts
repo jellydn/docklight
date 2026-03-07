@@ -381,3 +381,14 @@ export async function scaleApp(
 
 	return executeCommand(DokkuCommands.psScale(name, processType, count), 30000, { userId });
 }
+
+export async function unlockApp(
+	name: string,
+	userId?: string
+): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
+	if (!isValidAppName(name)) {
+		return createValidationError("unlock-app");
+	}
+
+	return executeCommand(DokkuCommands.appsUnlock(name), 30000, { userId });
+}

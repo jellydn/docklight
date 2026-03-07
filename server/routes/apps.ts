@@ -10,6 +10,7 @@ import {
 	destroyApp,
 	stopApp,
 	startApp,
+	unlockApp,
 } from "../lib/apps.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
 import { logger } from "../lib/logger.js";
@@ -135,6 +136,23 @@ export function registerAppRoutes(app: express.Application): void {
 		}
 
 		safeAuditLog(req, "app:start", name, { app: name });
+
+		clearPrefix("apps:");
+		res.json(result);
+	});
+
+	app.post("/api/apps/:name/unlock", authMiddleware, requireOperator, async (req, res) => {
+		const name = getParam(req.params, "name");
+		const userId = getUserId(req);
+		const result = await unlockApp(name, userId);
+
+		if (result.exitCode !== 0) {
+			const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
+			res.status(statusCode).json(result);
+			return;
+		}
+
+		safeAuditLog(req, "app:unlock", name, { app: name });
 
 		clearPrefix("apps:");
 		res.json(result);

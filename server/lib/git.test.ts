@@ -72,7 +72,7 @@ describe("getGitInfo", () => {
 	const mockExecuteCommand = executeCommand as ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
-		vi.clearAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it("should return error for invalid app name", async () => {
@@ -137,7 +137,7 @@ describe("syncFromRepo", () => {
 	const mockExecuteCommand = executeCommand as ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
-		vi.clearAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it("should return error for invalid app name", async () => {
@@ -172,8 +172,7 @@ describe("syncFromRepo", () => {
 
 	it("should execute sync command with https URL", async () => {
 		mockExecuteCommand.mockResolvedValueOnce({
-			command:
-				"dokku git:sync --build 'my-app' 'https://github.com/user/repo.git'",
+			command: "dokku git:sync --build 'my-app' 'https://github.com/user/repo.git'",
 			exitCode: 0,
 			stdout: "Syncing...",
 			stderr: "",
@@ -190,18 +189,13 @@ describe("syncFromRepo", () => {
 
 	it("should execute sync command with branch specified", async () => {
 		mockExecuteCommand.mockResolvedValueOnce({
-			command:
-				"dokku git:sync --build 'my-app' 'https://github.com/user/repo.git' 'develop'",
+			command: "dokku git:sync --build 'my-app' 'https://github.com/user/repo.git' 'develop'",
 			exitCode: 0,
 			stdout: "Syncing...",
 			stderr: "",
 		});
 
-		const result = await syncFromRepo(
-			"my-app",
-			"https://github.com/user/repo.git",
-			"develop"
-		);
+		const result = await syncFromRepo("my-app", "https://github.com/user/repo.git", "develop");
 
 		expect(result).toMatchObject({ exitCode: 0 });
 		expect(mockExecuteCommand).toHaveBeenCalledWith(

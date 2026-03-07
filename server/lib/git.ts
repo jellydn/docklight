@@ -2,6 +2,7 @@ import { type CommandResult, executeCommand } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
 import { DokkuCommands } from "./dokku.js";
+import { logger } from "./logger.js";
 
 export interface GitInfo {
 	deployBranch: string;
@@ -24,9 +25,7 @@ function createGitError(message: string, command = "", exitCode = 400): GitError
 	return { error: message, command, exitCode, stderr: message };
 }
 
-export async function getGitInfo(
-	name: string
-): Promise<GitInfo | GitErrorResult> {
+export async function getGitInfo(name: string): Promise<GitInfo | GitErrorResult> {
 	if (!isValidAppName(name)) {
 		return createGitError("Invalid app name");
 	}
@@ -48,6 +47,7 @@ export async function getGitInfo(
 		return parseGitReport(result.stdout);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
+		logger.error({ err }, "Unexpected executor failure while getting git info");
 		return {
 			error: err.message || "Unknown error occurred",
 			command,
@@ -68,7 +68,7 @@ export function parseGitReport(stdout: string): GitInfo {
 		lastUpdatedAt: "",
 	};
 
-	const lines = stdout.split("\n").map((line) => stripAnsi(line));
+	const lines = stripAnsi(stdout).split("\n");
 
 	for (const line of lines) {
 		const deployBranchMatch = line.match(/^\s*Git deploy branch:\s*(.*)$/i);
@@ -129,19 +129,21 @@ export async function syncFromRepo(
 		return createGitError("Repository URL is required");
 	}
 
-	if (!isValidRepoUrl(repo)) {
+	const normalizedRepo = repo.trim();
+	if (!isValidRepoUrl(normalizedRepo)) {
 		return createGitError("Invalid repository URL");
 	}
 
-	const command = DokkuCommands.gitSync(name, repo, branch);
+	const { execCommand, displayCommand } = DokkuCommands.gitSync(name, normalizedRepo, branch);
 
 	try {
-		return await executeCommand(command, 120000);
+		return await executeCommand(execCommand, 120000);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
+		logger.error({ err }, "Unexpected executor failure while syncing from git repo");
 		return {
 			error: err.message || "Unknown error occurred",
-			command,
+			command: displayCommand,
 			exitCode: 1,
 			stderr: err.message || "",
 		};
@@ -153,8 +155,6 @@ export function isValidRepoUrl(url: string): boolean {
 	const trimmed = url.trim();
 	if (!trimmed) return false;
 	return (
-		/^https?:\/\/.+/.test(trimmed) ||
-		/^git@.+:.+/.test(trimmed) ||
-		/^ssh:\/\/.+/.test(trimmed)
+		/^https?:\/\/.+/.test(trimmed) || /^git@.+:.+/.test(trimmed) || /^ssh:\/\/.+/.test(trimmed)
 	);
 }

@@ -3,25 +3,28 @@ import { getGitInfo, syncFromRepo } from "../lib/git.js";
 import { clearPrefix } from "../lib/cache.js";
 import { logger } from "../lib/logger.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
-import { getParam, safeAuditLog } from "./util.js";
+import { getParam, handleCommandResult, safeAuditLog } from "./util.js";
 
 export function registerAppGitRoutes(app: express.Application): void {
 	app.get("/api/apps/:name/git", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const gitInfo = await getGitInfo(name);
 		if ("error" in gitInfo) {
-			const statusCode =
-				gitInfo.exitCode >= 400 && gitInfo.exitCode < 600 ? gitInfo.exitCode : 500;
-			res.status(statusCode).json(gitInfo);
+			handleCommandResult(res, gitInfo);
 			return;
 		}
-
 		res.json(gitInfo);
 	});
 
 	app.post("/api/apps/:name/git/sync", authMiddleware, requireOperator, async (req, res) => {
 		try {
 			const name = getParam(req.params, "name");
+
+			if (typeof req.body !== "object" || req.body === null) {
+				res.status(400).json({ exitCode: 400, stderr: "request body must be a JSON object" });
+				return;
+			}
+
 			const { repo, branch } = req.body as { repo?: unknown; branch?: unknown };
 
 			if (!repo || typeof repo !== "string") {
@@ -35,15 +38,21 @@ export function registerAppGitRoutes(app: express.Application): void {
 			}
 
 			const result = await syncFromRepo(name, repo, branch);
+			if (!handleCommandResult(res, result)) return;
 
-			if (result.exitCode !== 0) {
-				const statusCode =
-					result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
-				res.status(statusCode).json(result);
-				return;
-			}
-
-			safeAuditLog(req, "app:git:sync", name, { repo, branch: branch || null });
+			const sanitizeRepoUrl = (url: string): string => {
+				try {
+					const urlObj = new URL(url);
+					urlObj.username = "";
+					urlObj.password = "";
+					urlObj.search = "";
+					return urlObj.toString();
+				} catch {
+					return url.replace(/\/\/[^@]+@/, "//[REDACTED]@").split("?")[0];
+				}
+			};
+			const sanitizedRepo = sanitizeRepoUrl(repo);
+			safeAuditLog(req, "app:git:sync", name, { repo: sanitizedRepo, branch: branch || null });
 			clearPrefix("apps:");
 			res.json(result);
 		} catch (error: unknown) {

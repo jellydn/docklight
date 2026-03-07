@@ -38,8 +38,8 @@ import { AppDockerOptions } from "./AppDockerOptions.js";
 import { AppNetwork } from "./AppNetwork.js";
 import { AppGit } from "./AppGit.js";
 import { ConfirmDialog, DeleteAppDialog, ScaleDialog } from "./Dialogs.js";
+import type { TabType } from "./types.js";
 
-type TabType = "overview" | "config" | "domains" | "logs" | "ssl" | "settings" | "git";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface ScaleChange {
@@ -114,6 +114,10 @@ export function AppDetail() {
 	const [showStartDialog, setShowStartDialog] = useState(false);
 	const [stopping, setStopping] = useState(false);
 	const [starting, setStarting] = useState(false);
+
+	// Unlock app state
+	const [showUnlockDialog, setShowUnlockDialog] = useState(false);
+	const [unlocking, setUnlocking] = useState(false);
 
 	// Domains query
 	const {
@@ -660,6 +664,37 @@ export function AppDetail() {
 			setShowStartDialog(false);
 		} finally {
 			setStarting(false);
+		}
+	};
+
+	const handleUnlockApp = () => {
+		setShowUnlockDialog(true);
+	};
+
+	const confirmUnlockApp = async () => {
+		if (!name) return;
+
+		setUnlocking(true);
+		try {
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/unlock`,
+				CommandResultSchema,
+				{
+					method: "POST",
+				}
+			);
+			addToast(result.exitCode === 0 ? "success" : "error", "App unlocked", result);
+			setShowUnlockDialog(false);
+			void refetch();
+		} catch (err) {
+			addToast(
+				"error",
+				"Failed to unlock app",
+				createErrorResult(`dokku apps:unlock ${name}`, err)
+			);
+			setShowUnlockDialog(false);
+		} finally {
+			setUnlocking(false);
 		}
 	};
 
@@ -1219,10 +1254,14 @@ export function AppDetail() {
 
 		setGitSyncing(true);
 		try {
-			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/git/sync`, CommandResultSchema, {
-				method: "POST",
-				body: JSON.stringify({ repo, ...(branch && { branch }) }),
-			});
+			const result = await apiFetch(
+				`/apps/${encodeURIComponent(name)}/git/sync`,
+				CommandResultSchema,
+				{
+					method: "POST",
+					body: JSON.stringify({ repo, ...(branch && { branch }) }),
+				}
+			);
 			addToast(
 				result.exitCode === 0 ? "success" : "error",
 				result.exitCode === 0 ? "Deployed from repository" : "Deployment failed",
@@ -1233,10 +1272,24 @@ export function AppDetail() {
 				void refetchGitInfo();
 			}
 		} catch (err) {
+			const sanitizeRepoUrl = (url: string): string => {
+				try {
+					const urlObj = new URL(url);
+					if (urlObj.username || urlObj.password) {
+						urlObj.username = "";
+						urlObj.password = "";
+						return urlObj.toString();
+					}
+					return url;
+				} catch {
+					return url.replace(/\/\/[^@]+@/, "//[REDACTED]@");
+				}
+			};
+			const redactedRepo = sanitizeRepoUrl(repo);
 			addToast(
 				"error",
 				"Failed to deploy from repository",
-				createErrorResult(`dokku git:sync --build ${name} ${repo}`, err)
+				createErrorResult(`dokku git:sync --build ${name} ${redactedRepo}`, err)
 			);
 		} finally {
 			setGitSyncing(false);
@@ -1436,6 +1489,21 @@ export function AppDetail() {
 			>
 				<p>
 					Are you sure you want to start <strong>{name}</strong>?
+				</p>
+			</ConfirmDialog>
+
+			{/* Unlock Dialog */}
+			<ConfirmDialog
+				visible={showUnlockDialog}
+				title="Unlock App"
+				onClose={() => setShowUnlockDialog(false)}
+				onConfirm={confirmUnlockApp}
+				submitting={unlocking}
+				confirmText="Unlock App"
+			>
+				<p>
+					Are you sure you want to unlock <strong>{name}</strong>? This will allow deployments to
+					proceed.
 				</p>
 			</ConfirmDialog>
 
@@ -1800,6 +1868,7 @@ export function AppDetail() {
 					syncing={gitSyncing}
 					canModify={canModify}
 					onSync={handleGitSync}
+					onUnlock={handleUnlockApp}
 				/>
 			)}
 		</div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { GitInfo } from "../../lib/schemas.js";
+import type { GitInfo } from "@/lib/schemas.js";
 
 interface AppGitProps {
 	gitInfo: GitInfo | null;
@@ -8,6 +8,7 @@ interface AppGitProps {
 	syncing: boolean;
 	canModify: boolean;
 	onSync: (repo: string, branch: string) => void;
+	onUnlock?: () => void;
 }
 
 export function AppGit({
@@ -17,6 +18,7 @@ export function AppGit({
 	syncing,
 	canModify,
 	onSync,
+	onUnlock,
 }: AppGitProps) {
 	const [repoUrl, setRepoUrl] = useState("");
 	const [branch, setBranch] = useState("");
@@ -24,6 +26,16 @@ export function AppGit({
 	const handleSync = () => {
 		if (!repoUrl.trim()) return;
 		onSync(repoUrl.trim(), branch.trim());
+	};
+
+	const isLockedError = (err: string): boolean => {
+		const lower = err.toLowerCase();
+		return (
+			lower.includes("app locked") ||
+			lower.includes("directory is locked") ||
+			lower.includes("git lock") ||
+			/\blocked:\s*(true|1)/.test(lower)
+		);
 	};
 
 	return (
@@ -36,7 +48,16 @@ export function AppGit({
 					</div>
 				) : error ? (
 					<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-						{error}
+						<p>{error}</p>
+						{onUnlock && isLockedError(error) && (
+							<button
+								type="button"
+								onClick={onUnlock}
+								className="mt-3 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+							>
+								Unlock App
+							</button>
+						)}
 					</div>
 				) : gitInfo ? (
 					<div className="space-y-3">
@@ -91,9 +112,18 @@ export function AppGit({
 						Connect and deploy your app directly from a remote Git repository (GitHub, GitLab,
 						Bitbucket, etc.), similar to how Vercel works.
 					</p>
-					<div className="space-y-4">
+					<form
+						onSubmit={(e) => {
+							e.preventDefault();
+							handleSync();
+						}}
+						className="space-y-4"
+					>
 						<div>
-							<label htmlFor="git-repo-url" className="block text-sm font-medium text-gray-700 mb-1">
+							<label
+								htmlFor="git-repo-url"
+								className="block text-sm font-medium text-gray-700 mb-1"
+							>
 								Repository URL
 							</label>
 							<input
@@ -105,8 +135,11 @@ export function AppGit({
 								className="w-full max-w-lg border rounded px-3 py-2"
 							/>
 							<p className="mt-1 text-sm text-gray-500">
-								Supports HTTPS, SSH (<code className="text-xs bg-gray-100 px-1 rounded">git@github.com:user/repo.git</code>), and{" "}
-								<code className="text-xs bg-gray-100 px-1 rounded">ssh://</code> URLs
+								Supports HTTPS, SSH (
+								<code className="text-xs bg-gray-100 px-1 rounded">
+									git@github.com:user/repo.git
+								</code>
+								), and <code className="text-xs bg-gray-100 px-1 rounded">ssh://</code> URLs
 							</p>
 						</div>
 						<div>
@@ -127,15 +160,14 @@ export function AppGit({
 						</div>
 						<div className="pt-2">
 							<button
-								onClick={handleSync}
+								type="submit"
 								disabled={syncing || !repoUrl.trim()}
 								className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-								type="button"
 							>
 								{syncing ? "Deploying..." : "Deploy from Repository"}
 							</button>
 						</div>
-					</div>
+					</form>
 				</div>
 			)}
 		</div>
