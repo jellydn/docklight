@@ -1219,47 +1219,16 @@ export function AppDetail() {
 		if (!name || gitSyncing) return;
 
 		setGitSyncing(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/git/sync`,
-				CommandResultSchema,
-				{
-					method: "POST",
-					body: JSON.stringify({ repo, ...(branch && { branch }) }),
-				}
-			);
-			addToast(
-				result.exitCode === 0 ? "success" : "error",
-				result.exitCode === 0 ? "Deployed from repository" : "Deployment failed",
-				result
-			);
-			if (result.exitCode === 0) {
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/git/sync`, "deploy", {
+			body: JSON.stringify({ repo, ...(branch && { branch }) }),
+			onSuccess: () => {
 				void refetch();
 				void refetchGitInfo();
-			}
-		} catch (err) {
-			const sanitizeRepoUrl = (url: string): string => {
-				try {
-					const urlObj = new URL(url);
-					if (urlObj.username || urlObj.password) {
-						urlObj.username = "";
-						urlObj.password = "";
-						return urlObj.toString();
-					}
-					return url;
-				} catch {
-					return url.replace(/\/\/[^@]+@/, "//[REDACTED]@");
-				}
-			};
-			const redactedRepo = sanitizeRepoUrl(repo);
-			addToast(
-				"error",
-				"Failed to deploy from repository",
-				createErrorResult(`dokku git:sync --build ${name} ${redactedRepo}`, err)
-			);
-		} finally {
-			setGitSyncing(false);
-		}
+			},
+		});
+
+		setGitSyncing(false);
 	};
 
 	const handleEnableSSL = async () => {

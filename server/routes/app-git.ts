@@ -1,8 +1,12 @@
 import type express from "express";
-import { getGitInfo, syncFromRepo } from "../lib/git.js";
+import { getGitInfo, isValidRepoUrl, syncFromRepo } from "../lib/git.js";
+import { isValidAppName } from "../lib/apps.js";
 import { clearPrefix } from "../lib/cache.js";
 import { logger } from "../lib/logger.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
+import { executeCommandStreaming } from "../lib/executor.js";
+import { DokkuCommands } from "../lib/dokku.js";
+import { isSSERequest, createSSEWriter } from "../lib/sse.js";
 import { getParam, handleCommandResult, safeAuditLog } from "./util.js";
 
 export function registerAppGitRoutes(app: express.Application): void {
@@ -37,9 +41,6 @@ export function registerAppGitRoutes(app: express.Application): void {
 				return;
 			}
 
-			const result = await syncFromRepo(name, repo, branch);
-			if (!handleCommandResult(res, result)) return;
-
 			const sanitizeRepoUrl = (url: string): string => {
 				try {
 					const urlObj = new URL(url);
@@ -51,6 +52,56 @@ export function registerAppGitRoutes(app: express.Application): void {
 					return url.replace(/\/\/[^@]+@/, "//[REDACTED]@").split("?")[0];
 				}
 			};
+
+			if (isSSERequest(req)) {
+				if (!isValidAppName(name)) {
+					res.status(400).json({ error: "Invalid app name" });
+					return;
+				}
+				if (!isValidRepoUrl(repo.trim())) {
+					res.status(400).json({ error: "Invalid repository URL" });
+					return;
+				}
+
+				const { execCommand } = DokkuCommands.gitSync(
+					name,
+					repo.trim(),
+					branch as string | undefined
+				);
+				const sse = createSSEWriter(res);
+				try {
+					const result = await executeCommandStreaming(
+						execCommand,
+						(event) => {
+							if (event.type === "progress") {
+								sse.sendProgress(event.message);
+							} else {
+								sse.sendOutput(event.message, event.error);
+							}
+						},
+						120000
+					);
+
+					if (result.exitCode === 0) {
+						const sanitizedRepo = sanitizeRepoUrl(repo);
+						safeAuditLog(req, "app:git:sync", name, {
+							repo: sanitizedRepo,
+							branch: branch || null,
+						});
+						clearPrefix("apps:");
+					}
+					sse.sendResult(result);
+				} catch (err) {
+					sse.sendError(err instanceof Error ? err.message : "Unknown error");
+				} finally {
+					sse.close();
+				}
+				return;
+			}
+
+			const result = await syncFromRepo(name, repo, branch);
+			if (!handleCommandResult(res, result)) return;
+
 			const sanitizedRepo = sanitizeRepoUrl(repo);
 			safeAuditLog(req, "app:git:sync", name, { repo: sanitizedRepo, branch: branch || null });
 			clearPrefix("apps:");
