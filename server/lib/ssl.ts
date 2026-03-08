@@ -22,7 +22,7 @@ function isValidEmail(email: string): boolean {
 	return EMAIL_PATTERN.test(email);
 }
 
-function parseReportLine(line: string): { key: string; value: string } | null {
+export function parseReportLine(line: string): { key: string; value: string } | null {
 	const clean = stripAnsi(line).trim();
 	const separatorIndex = clean.indexOf(":");
 	if (separatorIndex <= 0) {
@@ -35,7 +35,7 @@ function parseReportLine(line: string): { key: string; value: string } | null {
 	};
 }
 
-function parseBoolean(value: string): boolean | null {
+export function parseBoolean(value: string): boolean | null {
 	const normalized = value.trim().toLowerCase();
 	if (normalized === "true") {
 		return true;
@@ -46,12 +46,12 @@ function parseBoolean(value: string): boolean | null {
 	return null;
 }
 
-function extractExpiry(value: string): string | undefined {
+export function extractExpiry(value: string): string | undefined {
 	const dateMatch = value.match(/\d{4}-\d{2}-\d{2}/);
 	return dateMatch?.[0];
 }
 
-function parseLetsencryptReport(stdout: string): SSLStatus | null {
+export function parseLetsencryptReport(stdout: string): SSLStatus | null {
 	let active: boolean | null = null;
 	let expiryDate: string | undefined;
 
@@ -83,7 +83,7 @@ function parseLetsencryptReport(stdout: string): SSLStatus | null {
 	};
 }
 
-function parseCertsReport(stdout: string): SSLStatus | null {
+export function parseCertsReport(stdout: string): SSLStatus | null {
 	let active: boolean | null = null;
 	let expiryDate: string | undefined;
 	let hasCertEvidence = false;
@@ -123,7 +123,7 @@ function parseCertsReport(stdout: string): SSLStatus | null {
 	};
 }
 
-function parseLetsencryptList(stdout: string, appName: string): SSLStatus | null {
+export function parseLetsencryptList(stdout: string, appName: string): SSLStatus | null {
 	const lines = stdout.split("\n").map((line) => stripAnsi(line).trim());
 	for (const line of lines) {
 		if (!line.toLowerCase().includes(appName.toLowerCase())) {
