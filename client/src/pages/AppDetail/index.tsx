@@ -480,27 +480,17 @@ export function AppDetail() {
 		if (!name || !newConfigKey || !newConfigValue || configAddSubmitting) return;
 
 		setConfigAddSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/config`,
-				CommandResultSchema,
-				{
-					method: "POST",
-					body: JSON.stringify({ key: newConfigKey, value: newConfigValue }),
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Config var set", result);
-			resetConfigForm();
-			void refetchConfigVars();
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to set config var",
-				createErrorResult(`dokku config:set ${name} ${newConfigKey}=***`, err)
-			);
-		} finally {
-			setConfigAddSubmitting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/config`, "config:set", {
+			method: "POST",
+			body: JSON.stringify({ key: newConfigKey, value: newConfigValue }),
+			onSuccess: () => {
+				resetConfigForm();
+				void refetchConfigVars();
+			},
+		});
+
+		setConfigAddSubmitting(false);
 	};
 
 	const handleRemoveConfigVar = (key: string) => {
@@ -511,33 +501,26 @@ export function AppDetail() {
 	const confirmRemoveConfigVar = async () => {
 		if (!name || !pendingRemoveKey || configRemoveSubmitting) return;
 
-		const closeRemoveDialog = () => {
-			setShowRemoveDialog(false);
-			setPendingRemoveKey(null);
-		};
-
 		setConfigRemoveSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/config/${encodeURIComponent(pendingRemoveKey)}`,
-				CommandResultSchema,
-				{
-					method: "DELETE",
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Config var removed", result);
-			closeRemoveDialog();
-			void refetchConfigVars();
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to unset config var",
-				createErrorResult(`dokku config:unset ${name} ${pendingRemoveKey}`, err)
-			);
-			closeRemoveDialog();
-		} finally {
-			setConfigRemoveSubmitting(false);
-		}
+
+		await streamAction(
+			`/apps/${encodeURIComponent(name)}/config/${encodeURIComponent(pendingRemoveKey)}`,
+			"config:unset",
+			{
+				method: "DELETE",
+				onSuccess: () => {
+					setShowRemoveDialog(false);
+					setPendingRemoveKey(null);
+					void refetchConfigVars();
+				},
+				onError: () => {
+					setShowRemoveDialog(false);
+					setPendingRemoveKey(null);
+				},
+			}
+		);
+
+		setConfigRemoveSubmitting(false);
 	};
 
 	const toggleValueVisibility = (key: string) => {
@@ -668,27 +651,17 @@ export function AppDetail() {
 		if (!name || !newDomain || domainAddSubmitting) return;
 
 		setDomainAddSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/domains`,
-				CommandResultSchema,
-				{
-					method: "POST",
-					body: JSON.stringify({ domain: newDomain }),
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Domain added", result);
-			setNewDomain("");
-			void refetchDomains();
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to add domain",
-				createErrorResult(`dokku domains:add ${name} ${newDomain}`, err)
-			);
-		} finally {
-			setDomainAddSubmitting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/domains`, "domain:add", {
+			method: "POST",
+			body: JSON.stringify({ domain: newDomain }),
+			onSuccess: () => {
+				setNewDomain("");
+				void refetchDomains();
+			},
+		});
+
+		setDomainAddSubmitting(false);
 	};
 
 	const handleRemoveDomain = (domain: string) => {
@@ -699,33 +672,26 @@ export function AppDetail() {
 	const confirmRemoveDomain = async () => {
 		if (!name || !pendingRemoveDomain || domainRemoveSubmitting) return;
 
-		const closeDomainRemoveDialog = () => {
-			setShowDomainRemoveDialog(false);
-			setPendingRemoveDomain(null);
-		};
-
 		setDomainRemoveSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${name}/domains/${encodeURIComponent(pendingRemoveDomain)}`,
-				CommandResultSchema,
-				{
-					method: "DELETE",
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Domain removed", result);
-			closeDomainRemoveDialog();
-			void refetchDomains();
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to remove domain",
-				createErrorResult(`dokku domains:remove ${name} ${pendingRemoveDomain}`, err)
-			);
-			closeDomainRemoveDialog();
-		} finally {
-			setDomainRemoveSubmitting(false);
-		}
+
+		await streamAction(
+			`/apps/${name}/domains/${encodeURIComponent(pendingRemoveDomain)}`,
+			"domain:remove",
+			{
+				method: "DELETE",
+				onSuccess: () => {
+					setShowDomainRemoveDialog(false);
+					setPendingRemoveDomain(null);
+					void refetchDomains();
+				},
+				onError: () => {
+					setShowDomainRemoveDialog(false);
+					setPendingRemoveDomain(null);
+				},
+			}
+		);
+
+		setDomainRemoveSubmitting(false);
 	};
 
 	const handleAddPort = async () => {
@@ -755,30 +721,22 @@ export function AppDetail() {
 		}
 
 		setPortAddSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/ports`,
-				CommandResultSchema,
-				{
-					method: "POST",
-					body: JSON.stringify({
-						scheme: newPortScheme,
-						hostPort: hostPortNum,
-						containerPort: containerPortNum,
-					}),
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Port added", result);
-			if (result.exitCode === 0) {
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/ports`, "port:add", {
+			method: "POST",
+			body: JSON.stringify({
+				scheme: newPortScheme,
+				hostPort: hostPortNum,
+				containerPort: containerPortNum,
+			}),
+			onSuccess: () => {
 				setNewHostPort("");
 				setNewContainerPort("");
 				void refetchPorts();
-			}
-		} catch (err) {
-			addToast("error", "Failed to add port", createErrorResult(`dokku ports:add ${name}`, err));
-		} finally {
-			setPortAddSubmitting(false);
-		}
+			},
+		});
+
+		setPortAddSubmitting(false);
 	};
 
 	const handleRemovePort = (port: PortMapping) => {
@@ -790,148 +748,97 @@ export function AppDetail() {
 		if (!name || !pendingRemovePort || portRemoveSubmitting) return;
 
 		setPortRemoveSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/ports`,
-				CommandResultSchema,
-				{
-					method: "DELETE",
-					body: JSON.stringify({
-						scheme: pendingRemovePort.scheme,
-						hostPort: pendingRemovePort.hostPort,
-						containerPort: pendingRemovePort.containerPort,
-					}),
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Port removed", result);
-			setShowRemovePortDialog(false);
-			setPendingRemovePort(null);
-			void refetchPorts();
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to remove port",
-				createErrorResult(`dokku ports:remove ${name}`, err)
-			);
-			setShowRemovePortDialog(false);
-			setPendingRemovePort(null);
-		} finally {
-			setPortRemoveSubmitting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/ports`, "port:remove", {
+			method: "DELETE",
+			body: JSON.stringify({
+				scheme: pendingRemovePort.scheme,
+				hostPort: pendingRemovePort.hostPort,
+				containerPort: pendingRemovePort.containerPort,
+			}),
+			onSuccess: () => {
+				setShowRemovePortDialog(false);
+				setPendingRemovePort(null);
+				void refetchPorts();
+			},
+			onError: () => {
+				setShowRemovePortDialog(false);
+				setPendingRemovePort(null);
+			},
+		});
+
+		setPortRemoveSubmitting(false);
 	};
 
 	const confirmClearPorts = async () => {
 		if (!name || clearPortsSubmitting) return;
 
 		setClearPortsSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/ports/all`,
-				CommandResultSchema,
-				{
-					method: "DELETE",
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "All ports cleared", result);
-			setShowClearPortsDialog(false);
-			void refetchPorts();
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to clear ports",
-				createErrorResult(`dokku ports:clear ${name}`, err)
-			);
-			setShowClearPortsDialog(false);
-		} finally {
-			setClearPortsSubmitting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/ports/all`, "ports:clear", {
+			method: "DELETE",
+			onSuccess: () => {
+				setShowClearPortsDialog(false);
+				void refetchPorts();
+			},
+			onError: () => {
+				setShowClearPortsDialog(false);
+			},
+		});
+
+		setClearPortsSubmitting(false);
 	};
 
 	const handleEnableProxy = async () => {
 		if (!name || proxySubmitting) return;
 
 		setProxySubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/proxy/enable`,
-				CommandResultSchema,
-				{
-					method: "POST",
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Proxy enabled", result);
-			void refetchProxyReport();
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to enable proxy",
-				createErrorResult(`dokku proxy:enable ${name}`, err)
-			);
-		} finally {
-			setProxySubmitting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/proxy/enable`, "proxy:enable", {
+			onSuccess: () => void refetchProxyReport(),
+			onError: () => void refetchProxyReport(),
+		});
+
+		setProxySubmitting(false);
 	};
 
 	const handleDisableProxy = async () => {
 		if (!name || proxySubmitting) return;
 
 		setProxySubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/proxy/disable`,
-				CommandResultSchema,
-				{
-					method: "POST",
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Proxy disabled", result);
-			void refetchProxyReport();
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to disable proxy",
-				createErrorResult(`dokku proxy:disable ${name}`, err)
-			);
-		} finally {
-			setProxySubmitting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/proxy/disable`, "proxy:disable", {
+			onSuccess: () => void refetchProxyReport(),
+			onError: () => void refetchProxyReport(),
+		});
+
+		setProxySubmitting(false);
 	};
 
 	const handleAddBuildpack = async () => {
 		if (!name || !newBuildpackUrl || buildpackAddSubmitting) return;
 
 		setBuildpackAddSubmitting(true);
-		try {
-			const body: { url: string; index?: number } = { url: newBuildpackUrl };
-			if (newBuildpackIndex) {
-				const idx = parseInt(newBuildpackIndex, 10);
-				if (!Number.isNaN(idx) && idx > 0) {
-					body.index = idx;
-				}
+
+		const body: { url: string; index?: number } = { url: newBuildpackUrl };
+		if (newBuildpackIndex) {
+			const idx = parseInt(newBuildpackIndex, 10);
+			if (!Number.isNaN(idx) && idx > 0) {
+				body.index = idx;
 			}
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/buildpacks`,
-				CommandResultSchema,
-				{
-					method: "POST",
-					body: JSON.stringify(body),
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Buildpack added", result);
-			if (result.exitCode === 0) {
+		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/buildpacks`, "buildpack:add", {
+			method: "POST",
+			body: JSON.stringify(body),
+			onSuccess: () => {
 				setNewBuildpackUrl("");
 				setNewBuildpackIndex("");
 				void refetchBuildpacks();
-			}
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to add buildpack",
-				createErrorResult(`dokku buildpacks:add ${name}`, err)
-			);
-		} finally {
-			setBuildpackAddSubmitting(false);
-		}
+			},
+		});
+
+		setBuildpackAddSubmitting(false);
 	};
 
 	const handleRemoveBuildpack = (buildpack: Buildpack) => {
@@ -943,57 +850,41 @@ export function AppDetail() {
 		if (!name || !pendingRemoveBuildpack || buildpackRemoveSubmitting) return;
 
 		setBuildpackRemoveSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/buildpacks`,
-				CommandResultSchema,
-				{
-					method: "DELETE",
-					body: JSON.stringify({ url: pendingRemoveBuildpack.url }),
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Buildpack removed", result);
-			setShowRemoveBuildpackDialog(false);
-			setPendingRemoveBuildpack(null);
-			void refetchBuildpacks();
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to remove buildpack",
-				createErrorResult(`dokku buildpacks:remove ${name}`, err)
-			);
-			setShowRemoveBuildpackDialog(false);
-			setPendingRemoveBuildpack(null);
-		} finally {
-			setBuildpackRemoveSubmitting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/buildpacks`, "buildpack:remove", {
+			method: "DELETE",
+			body: JSON.stringify({ url: pendingRemoveBuildpack.url }),
+			onSuccess: () => {
+				setShowRemoveBuildpackDialog(false);
+				setPendingRemoveBuildpack(null);
+				void refetchBuildpacks();
+			},
+			onError: () => {
+				setShowRemoveBuildpackDialog(false);
+				setPendingRemoveBuildpack(null);
+			},
+		});
+
+		setBuildpackRemoveSubmitting(false);
 	};
 
 	const confirmClearBuildpacks = async () => {
 		if (!name || clearBuildpacksSubmitting) return;
 
 		setClearBuildpacksSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/buildpacks/all`,
-				CommandResultSchema,
-				{
-					method: "DELETE",
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "All buildpacks cleared", result);
-			setShowClearBuildpacksDialog(false);
-			void refetchBuildpacks();
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to clear buildpacks",
-				createErrorResult(`dokku buildpacks:clear ${name}`, err)
-			);
-			setShowClearBuildpacksDialog(false);
-		} finally {
-			setClearBuildpacksSubmitting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/buildpacks/all`, "buildpacks:clear", {
+			method: "DELETE",
+			onSuccess: () => {
+				setShowClearBuildpacksDialog(false);
+				void refetchBuildpacks();
+			},
+			onError: () => {
+				setShowClearBuildpacksDialog(false);
+			},
+		});
+
+		setClearBuildpacksSubmitting(false);
 	};
 
 	const handleSaveDeployment = async () => {
@@ -1015,51 +906,32 @@ export function AppDetail() {
 		}
 
 		setDeploymentSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/deployment`,
-				CommandResultSchema,
-				{
-					method: "PUT",
-					body: JSON.stringify(changes),
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Deployment settings updated", result);
-			void refetchDeploymentSettings();
-		} catch (err) {
-			addToast("error", "Failed to save deployment settings", createErrorResult("", err));
-		} finally {
-			setDeploymentSubmitting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/deployment`, "deployment:update", {
+			method: "PUT",
+			body: JSON.stringify(changes),
+			onSuccess: () => void refetchDeploymentSettings(),
+			onError: () => void refetchDeploymentSettings(),
+		});
+
+		setDeploymentSubmitting(false);
 	};
 
 	const handleAddDockerOption = async () => {
 		if (!name || !newDockerOption || dockerOptionAddSubmitting) return;
 
 		setDockerOptionAddSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/docker-options`,
-				CommandResultSchema,
-				{
-					method: "POST",
-					body: JSON.stringify({ phase: newDockerOptionPhase, option: newDockerOption }),
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Docker option added", result);
-			if (result.exitCode === 0) {
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/docker-options`, "docker-option:add", {
+			method: "POST",
+			body: JSON.stringify({ phase: newDockerOptionPhase, option: newDockerOption }),
+			onSuccess: () => {
 				setNewDockerOption("");
 				void refetchDockerOptions();
-			}
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to add docker option",
-				createErrorResult(`dokku docker-options:add ${name}`, err)
-			);
-		} finally {
-			setDockerOptionAddSubmitting(false);
-		}
+			},
+		});
+
+		setDockerOptionAddSubmitting(false);
 	};
 
 	const handleRemoveDockerOption = (phase: "build" | "deploy" | "run", option: string) => {
@@ -1071,33 +943,25 @@ export function AppDetail() {
 		if (!name || !pendingRemoveDockerOption || dockerOptionRemoveSubmitting) return;
 
 		setDockerOptionRemoveSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/docker-options`,
-				CommandResultSchema,
-				{
-					method: "DELETE",
-					body: JSON.stringify({
-						phase: pendingRemoveDockerOption.phase,
-						option: pendingRemoveDockerOption.option,
-					}),
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "Docker option removed", result);
-			setShowRemoveDockerOptionDialog(false);
-			setPendingRemoveDockerOption(null);
-			void refetchDockerOptions();
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to remove docker option",
-				createErrorResult(`dokku docker-options:remove ${name}`, err)
-			);
-			setShowRemoveDockerOptionDialog(false);
-			setPendingRemoveDockerOption(null);
-		} finally {
-			setDockerOptionRemoveSubmitting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/docker-options`, "docker-option:remove", {
+			method: "DELETE",
+			body: JSON.stringify({
+				phase: pendingRemoveDockerOption.phase,
+				option: pendingRemoveDockerOption.option,
+			}),
+			onSuccess: () => {
+				setShowRemoveDockerOptionDialog(false);
+				setPendingRemoveDockerOption(null);
+				void refetchDockerOptions();
+			},
+			onError: () => {
+				setShowRemoveDockerOptionDialog(false);
+				setPendingRemoveDockerOption(null);
+			},
+		});
+
+		setDockerOptionRemoveSubmitting(false);
 	};
 
 	const handleClearDockerPhase = (phase: "build" | "deploy" | "run") => {
@@ -1109,34 +973,22 @@ export function AppDetail() {
 		if (!name || !pendingClearDockerPhase || clearDockerPhaseSubmitting) return;
 
 		setClearDockerPhaseSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/docker-options`,
-				CommandResultSchema,
-				{
-					method: "DELETE",
-					body: JSON.stringify({ phase: pendingClearDockerPhase }),
-				}
-			);
-			addToast(
-				result.exitCode === 0 ? "success" : "error",
-				`${pendingClearDockerPhase} docker options cleared`,
-				result
-			);
-			setShowClearDockerPhaseDialog(false);
-			setPendingClearDockerPhase(null);
-			void refetchDockerOptions();
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to clear docker options",
-				createErrorResult(`dokku docker-options:clear ${name}`, err)
-			);
-			setShowClearDockerPhaseDialog(false);
-			setPendingClearDockerPhase(null);
-		} finally {
-			setClearDockerPhaseSubmitting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/docker-options`, "docker-options:clear", {
+			method: "DELETE",
+			body: JSON.stringify({ phase: pendingClearDockerPhase }),
+			onSuccess: () => {
+				setShowClearDockerPhaseDialog(false);
+				setPendingClearDockerPhase(null);
+				void refetchDockerOptions();
+			},
+			onError: () => {
+				setShowClearDockerPhaseDialog(false);
+				setPendingClearDockerPhase(null);
+			},
+		});
+
+		setClearDockerPhaseSubmitting(false);
 	};
 
 	const handleStartEditNetwork = (key: string, currentValue: string) => {
@@ -1153,66 +1005,34 @@ export function AppDetail() {
 		if (!name || networkSubmitting) return;
 
 		setNetworkSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/network`,
-				CommandResultSchema,
-				{
-					method: "PUT",
-					body: JSON.stringify({ key, value: networkEditValue }),
-				}
-			);
-			addToast(
-				result.exitCode === 0 ? "success" : "error",
-				result.exitCode === 0 ? "Network setting saved" : "Failed to save network setting",
-				result
-			);
-			if (result.exitCode === 0) {
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/network`, "network:set", {
+			method: "PUT",
+			body: JSON.stringify({ key, value: networkEditValue }),
+			onSuccess: () => {
 				setEditingNetworkKey(null);
 				setNetworkEditValue("");
 				void refetchNetwork();
-			}
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to save network setting",
-				createErrorResult(`dokku network:set ${name} ${key}`, err)
-			);
-		} finally {
-			setNetworkSubmitting(false);
-		}
+			},
+			onError: () => void refetchNetwork(),
+		});
+
+		setNetworkSubmitting(false);
 	};
 
 	const handleClearNetworkProperty = async (key: string) => {
 		if (!name || networkSubmitting) return;
 
 		setNetworkSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/network`,
-				CommandResultSchema,
-				{
-					method: "DELETE",
-					body: JSON.stringify({ key }),
-				}
-			);
-			addToast(
-				result.exitCode === 0 ? "success" : "error",
-				result.exitCode === 0 ? "Network setting cleared" : "Failed to clear network setting",
-				result
-			);
-			if (result.exitCode === 0) {
-				void refetchNetwork();
-			}
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to clear network setting",
-				createErrorResult(`dokku network:set ${name} ${key}`, err)
-			);
-		} finally {
-			setNetworkSubmitting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/network`, "network:clear", {
+			method: "DELETE",
+			body: JSON.stringify({ key }),
+			onSuccess: () => void refetchNetwork(),
+			onError: () => void refetchNetwork(),
+		});
+
+		setNetworkSubmitting(false);
 	};
 
 	const handleGitSync = async (repo: string, branch: string) => {
@@ -1262,54 +1082,29 @@ export function AppDetail() {
 		}
 
 		setSslSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/ssl/enable`,
-				CommandResultSchema,
-				{
-					method: "POST",
-					body: JSON.stringify({ email: normalizedEmail }),
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "SSL enabled", result);
-			void refetchSsl();
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to enable SSL",
-				createErrorResult(
-					`dokku letsencrypt:set ${name} email ${normalizedEmail} && dokku letsencrypt:enable ${name}`,
-					err
-				)
-			);
-		} finally {
-			setSslSubmitting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/ssl/enable`, "ssl:enable", {
+			method: "POST",
+			body: JSON.stringify({ email: normalizedEmail }),
+			onSuccess: () => void refetchSsl(),
+			onError: () => void refetchSsl(),
+		});
+
+		setSslSubmitting(false);
 	};
 
 	const handleRenewSSL = async () => {
 		if (!name || sslSubmitting) return;
 
 		setSslSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/ssl/renew`,
-				CommandResultSchema,
-				{
-					method: "POST",
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "SSL renewed", result);
-			void refetchSsl();
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to renew SSL",
-				createErrorResult(`dokku letsencrypt:auto-renew ${name}`, err)
-			);
-		} finally {
-			setSslSubmitting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/ssl/renew`, "ssl:renew", {
+			method: "POST",
+			onSuccess: () => void refetchSsl(),
+			onError: () => void refetchSsl(),
+		});
+
+		setSslSubmitting(false);
 	};
 
 	if (loading) {
