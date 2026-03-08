@@ -36,6 +36,22 @@ function maybeSaveCommand(result: CommandResult, skipHistory?: boolean): void {
 	}
 }
 
+function createErrorResult(
+	command: string,
+	message: string,
+	exitCode: number = 1,
+	skipHistory?: boolean
+): CommandResult {
+	const result: CommandResult = {
+		command,
+		exitCode,
+		stdout: "",
+		stderr: message,
+	};
+	maybeSaveCommand(result, skipHistory);
+	return result;
+}
+
 function getSshTarget(): string | undefined {
 	return process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
 }
@@ -56,11 +72,6 @@ function isSshWarningOnly(stderr: string): boolean {
 	);
 }
 
-/**
- * @description Parses SSH target strings with full IPv6 support.
- * Supports: "user@host", "user@host:port", "user@[ipv6]", "user@[ipv6]:port",
- * and "ssh://user@host:port" URLs.
- */
 function parseTarget(target: string): ParsedSshTarget | null {
 	const input = target.trim();
 
@@ -114,9 +125,8 @@ function parseTarget(target: string): ParsedSshTarget | null {
 	return { host: hostPart, username, port: DEFAULT_SSH_PORT };
 }
 
-const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 
-/** @description Maintains persistent SSH connections to avoid per-command handshake overhead. */
 export class SSHPool {
 	private connections = new Map<string, NodeSSH>();
 	private timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -253,15 +263,12 @@ async function executeViaPool(
 			{ maxRetries: 2, baseDelay: 100 }
 		);
 	} catch (connError) {
-		const connErrMessage = getErrorMessage(connError);
-		const result: CommandResult = {
+		return createErrorResult(
 			command,
-			exitCode: 1,
-			stdout: "",
-			stderr: `SSH connection failed after retries: ${connErrMessage}`,
-		};
-		maybeSaveCommand(result, options?.skipHistory);
-		return result;
+			`SSH connection failed after retries: ${getErrorMessage(connError)}`,
+			1,
+			options?.skipHistory
+		);
 	}
 
 	let execResult: { stdout: string; stderr: string; code: number | null };
@@ -286,15 +293,12 @@ async function executeViaPool(
 			{ maxRetries: 2, baseDelay: 100 }
 		);
 	} catch (execError) {
-		const execErrMessage = getErrorMessage(execError);
-		const result: CommandResult = {
+		return createErrorResult(
 			command,
-			exitCode: 1,
-			stdout: "",
-			stderr: `SSH command execution failed: ${execErrMessage}`,
-		};
-		maybeSaveCommand(result, options?.skipHistory);
-		return result;
+			`SSH command execution failed: ${getErrorMessage(execError)}`,
+			1,
+			options?.skipHistory
+		);
 	}
 
 	const result: CommandResult = {
@@ -374,15 +378,12 @@ async function executeViaPoolStreaming(
 			{ maxRetries: 2, baseDelay: 100 }
 		);
 	} catch (connError) {
-		const connErrMessage = getErrorMessage(connError);
-		const result: CommandResult = {
+		return createErrorResult(
 			command,
-			exitCode: 1,
-			stdout: "",
-			stderr: `SSH connection failed after retries: ${connErrMessage}`,
-		};
-		maybeSaveCommand(result, options?.skipHistory);
-		return result;
+			`SSH connection failed after retries: ${getErrorMessage(connError)}`,
+			1,
+			options?.skipHistory
+		);
 	}
 
 	onProgress({ type: "progress", message: `Running ${command}...` });
@@ -410,15 +411,12 @@ async function executeViaPoolStreaming(
 			{ maxRetries: 2, baseDelay: 100 }
 		);
 	} catch (execError) {
-		const execErrMessage = getErrorMessage(execError);
-		const result: CommandResult = {
+		return createErrorResult(
 			command,
-			exitCode: 1,
-			stdout: "",
-			stderr: `SSH command execution failed: ${execErrMessage}`,
-		};
-		maybeSaveCommand(result, options?.skipHistory);
-		return result;
+			`SSH command execution failed: ${getErrorMessage(execError)}`,
+			1,
+			options?.skipHistory
+		);
 	}
 
 	const result: CommandResult = {
@@ -440,26 +438,22 @@ export async function executeCommandStreaming(
 	if (options?.userId) {
 		const rateLimitResult = commandRateLimiter.checkLimit(options.userId);
 		if (!rateLimitResult.allowed) {
-			const result: CommandResult = {
+			return createErrorResult(
 				command,
-				exitCode: 429,
-				stdout: "",
-				stderr: `Rate limit exceeded. Please try again after ${rateLimitResult.resetAt?.toISOString()}.`,
-			};
-			maybeSaveCommand(result, options?.skipHistory);
-			return result;
+				`Rate limit exceeded. Please try again after ${rateLimitResult.resetAt?.toISOString()}.`,
+				429,
+				options?.skipHistory
+			);
 		}
 	}
 
 	if (!isCommandAllowed(command)) {
-		const result: CommandResult = {
+		return createErrorResult(
 			command,
-			exitCode: 1,
-			stdout: "",
-			stderr: `Command not allowed: ${command.split(" ")[0]}`,
-		};
-		maybeSaveCommand(result, options?.skipHistory);
-		return result;
+			`Command not allowed: ${command.split(" ")[0]}`,
+			1,
+			options?.skipHistory
+		);
 	}
 
 	const sshTarget = getSshTarget();
@@ -537,30 +531,25 @@ export async function executeCommand(
 	timeout: number = 30000,
 	options?: ExecuteCommandOptions
 ): Promise<CommandResult> {
-	// Check rate limit if userId is provided
 	if (options?.userId) {
 		const rateLimitResult = commandRateLimiter.checkLimit(options.userId);
 		if (!rateLimitResult.allowed) {
-			const result: CommandResult = {
+			return createErrorResult(
 				command,
-				exitCode: 429,
-				stdout: "",
-				stderr: `Rate limit exceeded. Please try again after ${rateLimitResult.resetAt?.toISOString()}.`,
-			};
-			maybeSaveCommand(result, options?.skipHistory);
-			return result;
+				`Rate limit exceeded. Please try again after ${rateLimitResult.resetAt?.toISOString()}.`,
+				429,
+				options?.skipHistory
+			);
 		}
 	}
 
 	if (!isCommandAllowed(command)) {
-		const result: CommandResult = {
+		return createErrorResult(
 			command,
-			exitCode: 1,
-			stdout: "",
-			stderr: `Command not allowed: ${command.split(" ")[0]}`,
-		};
-		maybeSaveCommand(result, options?.skipHistory);
-		return result;
+			`Command not allowed: ${command.split(" ")[0]}`,
+			1,
+			options?.skipHistory
+		);
 	}
 
 	const sshTarget = getSshTarget();

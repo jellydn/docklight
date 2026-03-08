@@ -49,7 +49,6 @@ function getDb(): Database {
 		createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
 	  )
 	`);
-	// Note: SQLite CURRENT_TIMESTAMP returns UTC (YYYY-MM-DD HH:MM:SS format)
 
 	// Create indexes for audit log query performance
 	newDb.exec(`
@@ -67,7 +66,6 @@ function getDb(): Database {
 		createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
 	  )
 	`);
-	// Note: SQLite CURRENT_TIMESTAMP returns UTC (YYYY-MM-DD HH:MM:SS format)
 
 	// Create audit_log table for RBAC user action auditing
 	newDb.exec(`
@@ -82,7 +80,6 @@ function getDb(): Database {
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 	  )
 	`);
-	// Note: SQLite CURRENT_TIMESTAMP returns UTC (YYYY-MM-DD HH:MM:SS format)
 
 	// Create indexes for audit_log performance
 	newDb.exec(`
@@ -95,17 +92,12 @@ function getDb(): Database {
 	return newDb;
 }
 
-// Validates ISO 8601 date string format
 function isValidISODate(date: string): boolean {
 	if (!date) return false;
 	const d = new Date(date);
 	return d instanceof Date && !Number.isNaN(d.getTime());
 }
 
-/**
- * Normalizes an end date filter to ISO 8601 format.
- * If the date is date-only (YYYY-MM-DD), appends end-of-day time.
- */
 function normalizeEndDateFilter(endDate: string): string {
 	return /^\d{4}-\d{2}-\d{2}$/.test(endDate) ? `${endDate}T23:59:59.999Z` : endDate;
 }

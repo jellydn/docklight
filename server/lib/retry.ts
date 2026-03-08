@@ -5,14 +5,6 @@ export interface RetryOptions {
 	baseDelay?: number;
 }
 
-/**
- * Retries an async function with exponential backoff.
- * Logs retry attempts for debugging.
- *
- * @param fn - The async function to retry
- * @param options - Retry configuration options
- * @returns The result of the function or throws the last error
- */
 export async function retryWithBackoff<T>(
 	fn: () => Promise<T>,
 	options: RetryOptions = {}
