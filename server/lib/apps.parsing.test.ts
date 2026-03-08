@@ -59,6 +59,16 @@ describe("parseStatus", () => {
 		const stdout = `app deployed: true\nrunning: false`;
 		expect(parseStatus(stdout)).toBe("stopped");
 	});
+
+	it("should use Running key, not Deployed key, for status", () => {
+		const stdout = `Deployed:                      true\nProcesses:                     1\nRunning:                       false`;
+		expect(parseStatus(stdout)).toBe("stopped");
+	});
+
+	it("should detect running from Running key in standard ps:report format", () => {
+		const stdout = `Deployed:                      true\nProcesses:                     1\nRunning:                       true`;
+		expect(parseStatus(stdout)).toBe("running");
+	});
 });
 
 describe("parseDeployTime", () => {

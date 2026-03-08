@@ -138,8 +138,7 @@ export function parseStatus(stdout: string): "running" | "stopped" {
 		}
 
 		const isRunningKey = /\brunning\b/.test(key);
-		const isDeployedKey = /\bdeployed\b/.test(key) && !/\bapp deployed\b/.test(key);
-		if (isRunningKey || isDeployedKey) {
+		if (isRunningKey) {
 			return value === "true" ? "running" : "stopped";
 		}
 	}
