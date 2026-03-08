@@ -12,6 +12,15 @@ const DEFAULT_JWT_SECRET = "docklight-dev-secret-change-in-production";
 const NODE_ENV = process.env.NODE_ENV ?? "development";
 const ALLOW_INSECURE_DEV_SECRET = NODE_ENV === "development" || NODE_ENV === "test";
 
+// Explicit production safety check
+if (NODE_ENV === "production" && !process.env.JWT_SECRET) {
+	const error =
+		"JWT_SECRET environment variable is REQUIRED in production. " +
+		"Add it to your environment: export JWT_SECRET=$(openssl rand -base64 32)";
+	logger.error(error);
+	throw new Error(error);
+}
+
 if (!process.env.JWT_SECRET && !ALLOW_INSECURE_DEV_SECRET) {
 	const error =
 		"JWT_SECRET environment variable must be set in production. " +

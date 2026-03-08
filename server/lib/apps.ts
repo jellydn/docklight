@@ -102,7 +102,7 @@ async function fetchAppDetails(stdout: string, userId?: string): Promise<App[]> 
 	);
 }
 
-function parseStatus(stdout: string): "running" | "stopped" {
+export function parseStatus(stdout: string): "running" | "stopped" {
 	const lines = stdout.split("\n").map((line) => stripAnsi(line));
 	let sawProcessStatus = false;
 	let sawRunningProcess = false;
@@ -151,10 +151,10 @@ function parseStatus(stdout: string): "running" | "stopped" {
 	return "stopped";
 }
 
-function parseDeployTime(stdout: string): string | undefined {
+export function parseDeployTime(stdout: string): string | undefined {
 	const lines = stdout.split("\n").map((line) => stripAnsi(line));
 	for (const line of lines) {
-		if (line.includes("deployed at")) {
+		if (line.toLowerCase().includes("deployed at")) {
 			const match = line.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
 			if (match) {
 				return match[1];
@@ -164,7 +164,7 @@ function parseDeployTime(stdout: string): string | undefined {
 	return undefined;
 }
 
-function parseDomains(stdout: string): string[] {
+export function parseDomains(stdout: string): string[] {
 	const lines = stdout.split("\n").map((line) => stripAnsi(line));
 	const domains = new Set<string>();
 
@@ -187,7 +187,17 @@ function parseDomains(stdout: string): string[] {
 	return [...domains];
 }
 
+const MAX_APP_NAME_LENGTH = 64;
+
 export function isValidAppName(name: string): boolean {
+	// Must be 1-64 chars, lowercase letters, numbers, hyphens only
+	// Cannot start or end with a hyphen (DNS label rules)
+	if (!name || name.length > MAX_APP_NAME_LENGTH || name.length < 1) {
+		return false;
+	}
+	if (name.startsWith("-") || name.endsWith("-")) {
+		return false;
+	}
 	return /^[a-z0-9-]+$/.test(name);
 }
 
