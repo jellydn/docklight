@@ -212,6 +212,45 @@ describe("databases", () => {
 		]);
 	});
 
+	it("getDatabases should parse Links from dbInfo output", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku plugin:list",
+				exitCode: 0,
+				stdout: "dokku-postgres",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku postgres:list",
+				exitCode: 0,
+				stdout: "store",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku postgres:links store",
+				exitCode: 0,
+				stdout: "store",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku postgres:info store",
+				exitCode: 0,
+				stdout: "=====> store postgres service information\n       Links:               store",
+				stderr: "",
+			});
+
+		const result = await getDatabases();
+
+		expect(result).toEqual([
+			{
+				name: "store",
+				plugin: "postgres",
+				linkedApps: ["store"],
+				connectionInfo: "postgresql://store@localhost",
+			},
+		]);
+	});
+
 	it("getDatabases should parse linked apps from dbInfo when dbLinks is empty", async () => {
 		mockExecuteCommand
 			.mockResolvedValueOnce({

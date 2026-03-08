@@ -88,12 +88,13 @@ export async function getDatabases(): Promise<
 							for (const line of lines) {
 								const trimmedLine = line.trim();
 								if (!trimmedLine) continue;
-								if (trimmedLine.toLowerCase().includes("linked apps")) {
-									const inlineMatch = trimmedLine.match(/linked apps:?\s*(.+)/i);
+								const lowerLine = trimmedLine.toLowerCase();
+								if (lowerLine.includes("linked apps") || lowerLine.includes("links:")) {
+									const inlineMatch = trimmedLine.match(/(?:linked apps|Links):\s*(.+)/i);
 									if (inlineMatch) {
 										const appsStr = inlineMatch[1].trim().toLowerCase();
-										if (appsStr && appsStr !== "no linked apps") {
-											return appsStr.split(",").map((app) => app.trim()).filter(Boolean);
+										if (appsStr && appsStr !== "no linked apps" && appsStr !== "-") {
+											return appsStr.split(/[,\s]+/).filter(Boolean);
 										}
 										collecting = false;
 									} else {
