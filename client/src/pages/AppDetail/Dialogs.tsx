@@ -27,13 +27,13 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
 	useEffect(() => {
 		const handleEsc = (e: KeyboardEvent) => {
-			if (e.key === "Escape" && !submitting) onClose();
+			if (e.key === "Escape") onClose();
 		};
 		if (visible) {
 			window.addEventListener("keydown", handleEsc);
 			return () => window.removeEventListener("keydown", handleEsc);
 		}
-	}, [visible, onClose, submitting]);
+	}, [visible, onClose]);
 
 	if (!visible) return null;
 
@@ -58,8 +58,7 @@ export function ConfirmDialog({
 					</h2>
 					<button
 						onClick={onClose}
-						disabled={submitting}
-						className="text-gray-500 hover:text-gray-700 disabled:opacity-50"
+						className="text-gray-500 hover:text-gray-700"
 						type="button"
 						aria-label="Close dialog"
 					>
@@ -70,8 +69,7 @@ export function ConfirmDialog({
 				<div className="flex justify-end space-x-2">
 					<button
 						onClick={onClose}
-						disabled={submitting}
-						className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-300 disabled:cursor-not-allowed"
+						className="px-4 py-2 border rounded hover:bg-gray-100"
 						type="button"
 					>
 						Cancel
@@ -111,13 +109,13 @@ export function DeleteAppDialog({
 }: DeleteAppDialogProps) {
 	useEffect(() => {
 		const handleEsc = (e: KeyboardEvent) => {
-			if (e.key === "Escape" && !submitting) onClose();
+			if (e.key === "Escape") onClose();
 		};
 		if (visible) {
 			window.addEventListener("keydown", handleEsc);
 			return () => window.removeEventListener("keydown", handleEsc);
 		}
-	}, [visible, onClose, submitting]);
+	}, [visible, onClose]);
 
 	if (!visible) return null;
 
@@ -200,13 +198,13 @@ export function ScaleDialog({
 }: ScaleDialogProps) {
 	useEffect(() => {
 		const handleEsc = (e: KeyboardEvent) => {
-			if (e.key === "Escape" && !submitting) onClose();
+			if (e.key === "Escape") onClose();
 		};
 		if (visible) {
 			window.addEventListener("keydown", handleEsc);
 			return () => window.removeEventListener("keydown", handleEsc);
 		}
-	}, [visible, onClose, submitting]);
+	}, [visible, onClose]);
 
 	if (!visible) return null;
 
@@ -221,8 +219,7 @@ export function ScaleDialog({
 					<h2 className="text-lg font-semibold">Confirm Scale</h2>
 					<button
 						onClick={onClose}
-						disabled={submitting}
-						className="text-gray-500 hover:text-gray-700 disabled:opacity-50"
+						className="text-gray-500 hover:text-gray-700"
 						type="button"
 						aria-label="Close dialog"
 					>
@@ -242,8 +239,7 @@ export function ScaleDialog({
 				<div className="flex justify-end space-x-2">
 					<button
 						onClick={onClose}
-						disabled={submitting}
-						className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-300 disabled:cursor-not-allowed"
+						className="px-4 py-2 border rounded hover:bg-gray-100"
 						type="button"
 					>
 						Cancel
