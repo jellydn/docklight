@@ -13,8 +13,6 @@ import {
 	AppDetailSchema,
 	type Buildpack,
 	BuildpacksResponseSchema,
-	type CommandResult,
-	CommandResultSchema,
 	ConfigVarsSchema,
 	type DeploymentSettings,
 	DeploymentSettingsSchema,
@@ -434,43 +432,25 @@ export function AppDetail() {
 		if (!name || pendingScaleChanges.length === 0 || scaleSubmitting) return;
 
 		setScaleSubmitting(true);
-		try {
-			for (const change of pendingScaleChanges) {
-				try {
-					const result = await apiFetch(
-						`/apps/${encodeURIComponent(name)}/scale`,
-						CommandResultSchema,
-						{
-							method: "POST",
-							body: JSON.stringify({
-								processType: change.processType,
-								count: change.count,
-							}),
-						}
-					);
-					addToast(
-						result.exitCode === 0 ? "success" : "error",
-						`Scale ${change.processType} to ${change.count}`,
-						result
-					);
-				} catch (err) {
-					const errorResult: CommandResult = {
-						command: `dokku ps:scale ${name} ${change.processType}=${change.count}`,
-						exitCode: 1,
-						stdout: "",
-						stderr: err instanceof Error ? err.message : "Scale failed",
-					};
-					addToast("error", `Scale ${change.processType} failed`, errorResult);
-				}
-			}
 
-			setShowScaleDialog(false);
-			setPendingScaleChanges([]);
-			setScaleChanges({});
-			void refetch();
-		} finally {
-			setScaleSubmitting(false);
+		for (const change of pendingScaleChanges) {
+			await streamAction(
+				`/apps/${encodeURIComponent(name)}/scale`,
+				`scale ${change.processType}=${change.count}`,
+				{
+					body: JSON.stringify({
+						processType: change.processType,
+						count: change.count,
+					}),
+				}
+			);
 		}
+
+		setShowScaleDialog(false);
+		setPendingScaleChanges([]);
+		setScaleChanges({});
+		void refetch();
+		setScaleSubmitting(false);
 	};
 
 	const resetConfigForm = () => {
@@ -543,33 +523,25 @@ export function AppDetail() {
 	};
 
 	const confirmDeleteApp = async () => {
-		if (!name || confirmDeleteName !== name) return;
+		if (!name || confirmDeleteName !== name || deleting) return;
 
 		setDeleting(true);
-		try {
-			const result = await apiFetch(`/apps/${encodeURIComponent(name)}`, CommandResultSchema, {
-				method: "DELETE",
-				body: JSON.stringify({ confirmName: name }),
-			});
-			if (result.exitCode === 0) {
-				addToast("success", `App ${name} deleted successfully`, result);
+
+		await streamAction(`/apps/${encodeURIComponent(name)}`, `destroy ${name}`, {
+			method: "DELETE",
+			body: JSON.stringify({ confirmName: name }),
+			onSuccess: () => {
+				setShowDeleteDialog(false);
+				setConfirmDeleteName("");
 				navigate("/apps");
-			} else {
-				addToast("error", `Failed to delete app: ${result.stderr}`, result);
-			}
-			setShowDeleteDialog(false);
-			setConfirmDeleteName("");
-		} catch (err) {
-			addToast(
-				"error",
-				"Failed to delete app",
-				createErrorResult(`dokku apps:destroy ${name} --force`, err)
-			);
-			setShowDeleteDialog(false);
-			setConfirmDeleteName("");
-		} finally {
-			setDeleting(false);
-		}
+			},
+			onError: () => {
+				setShowDeleteDialog(false);
+				setConfirmDeleteName("");
+			},
+		});
+
+		setDeleting(false);
 	};
 
 	const handleCopyRemote = async () => {

@@ -252,6 +252,24 @@ export function registerAppRoutes(app: express.Application): void {
 		const name = getParam(req.params, "name");
 		const { processType, count } = req.body;
 		const userId = getUserId(req);
+
+		if (isSSERequest(req)) {
+			if (!isValidAppName(name)) {
+				res.status(400).json({ error: "Invalid app name" });
+				return;
+			}
+			await streamAction(
+				req,
+				res,
+				DokkuCommands.psScale(name, processType, count),
+				userId,
+				"app:scale",
+				name,
+				60000
+			);
+			return;
+		}
+
 		const result = await scaleApp(name, processType, count, userId);
 
 		if (result.exitCode !== 0) {
@@ -274,6 +292,16 @@ export function registerAppRoutes(app: express.Application): void {
 			return;
 		}
 		const userId = getUserId(req);
+
+		if (isSSERequest(req)) {
+			if (!isValidAppName(name)) {
+				res.status(400).json({ error: "Invalid app name" });
+				return;
+			}
+			await streamAction(req, res, DokkuCommands.appsDestroy(name), userId, "app:destroy", name);
+			return;
+		}
+
 		const result = await destroyApp(name, confirmName, userId);
 
 		if (result.exitCode !== 0) {
