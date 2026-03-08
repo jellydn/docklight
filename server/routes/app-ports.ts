@@ -1,5 +1,12 @@
 import type express from "express";
-import { addPort, clearPorts, getPorts, removePort } from "../lib/ports.js";
+import {
+	addPort,
+	clearPorts,
+	getPorts,
+	removePort,
+	validatePort,
+	validateScheme,
+} from "../lib/ports.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { DokkuCommands } from "../lib/dokku.js";
@@ -33,15 +40,36 @@ export function registerAppPortRoutes(app: express.Application): void {
 		const { scheme, hostPort, containerPort } = req.body;
 
 		if (isSSERequest(req)) {
-			if (!isValidAppName(name) || !hostPort) {
-				res.status(400).json({ error: "Invalid app name or port" });
+			if (!isValidAppName(name)) {
+				res.status(400).json({ error: "Invalid app name" });
 				return;
 			}
+
+			const schemeValue = scheme || "http";
+			const schemeError = validateScheme(schemeValue);
+			if (schemeError) {
+				res.status(400).json({ error: schemeError });
+				return;
+			}
+
+			const hostPortError = validatePort(hostPort);
+			if (hostPortError) {
+				res.status(400).json({ error: hostPortError });
+				return;
+			}
+
+			const containerPortValue = containerPort || hostPort;
+			const containerPortError = validatePort(containerPortValue);
+			if (containerPortError) {
+				res.status(400).json({ error: `Container ${containerPortError}` });
+				return;
+			}
+
 			await streamAction(req, res, {
-				dokkuCommand: DokkuCommands.portsAdd(name, scheme || "http", hostPort, containerPort),
+				dokkuCommand: DokkuCommands.portsAdd(name, schemeValue, hostPort, containerPortValue),
 				auditAction: "port:add",
 				appName: name,
-				auditDetails: { scheme, hostPort, containerPort },
+				auditDetails: { scheme: schemeValue, hostPort, containerPort: containerPortValue },
 			});
 			return;
 		}
@@ -58,15 +86,36 @@ export function registerAppPortRoutes(app: express.Application): void {
 		const { scheme, hostPort, containerPort } = req.body;
 
 		if (isSSERequest(req)) {
-			if (!isValidAppName(name) || !hostPort) {
-				res.status(400).json({ error: "Invalid app name or port" });
+			if (!isValidAppName(name)) {
+				res.status(400).json({ error: "Invalid app name" });
 				return;
 			}
+
+			const schemeValue = scheme || "http";
+			const schemeError = validateScheme(schemeValue);
+			if (schemeError) {
+				res.status(400).json({ error: schemeError });
+				return;
+			}
+
+			const hostPortError = validatePort(hostPort);
+			if (hostPortError) {
+				res.status(400).json({ error: hostPortError });
+				return;
+			}
+
+			const containerPortValue = containerPort || hostPort;
+			const containerPortError = validatePort(containerPortValue);
+			if (containerPortError) {
+				res.status(400).json({ error: `Container ${containerPortError}` });
+				return;
+			}
+
 			await streamAction(req, res, {
-				dokkuCommand: DokkuCommands.portsRemove(name, scheme || "http", hostPort, containerPort),
+				dokkuCommand: DokkuCommands.portsRemove(name, schemeValue, hostPort, containerPortValue),
 				auditAction: "port:remove",
 				appName: name,
-				auditDetails: { scheme, hostPort, containerPort },
+				auditDetails: { scheme: schemeValue, hostPort, containerPort: containerPortValue },
 			});
 			return;
 		}

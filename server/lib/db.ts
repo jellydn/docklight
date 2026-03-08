@@ -50,7 +50,6 @@ function getDb(): Database {
 	  )
 	`);
 
-	// Create indexes for audit log query performance
 	newDb.exec(`
 	  CREATE INDEX IF NOT EXISTS idx_command_history_createdAt ON command_history(createdAt);
 	  CREATE INDEX IF NOT EXISTS idx_command_history_exitCode ON command_history(exitCode);
@@ -67,7 +66,6 @@ function getDb(): Database {
 	  )
 	`);
 
-	// Create audit_log table for RBAC user action auditing
 	newDb.exec(`
 	  CREATE TABLE IF NOT EXISTS audit_log (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,7 +79,6 @@ function getDb(): Database {
 	  )
 	`);
 
-	// Create indexes for audit_log performance
 	newDb.exec(`
 	  CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id);
 	  CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action);
@@ -102,20 +99,24 @@ function normalizeEndDateFilter(endDate: string): string {
 	return /^\d{4}-\d{2}-\d{2}$/.test(endDate) ? `${endDate}T23:59:59.999Z` : endDate;
 }
 
+function toSqliteUtcTimestamp(date: string): string {
+	return new Date(date).toISOString().slice(0, 19).replace("T", " ");
+}
+
 function buildDateRangeConditions(
 	filters: { startDate?: string; endDate?: string },
 	conditions: string[],
 	params: (string | number)[]
 ): void {
 	if (filters.startDate && isValidISODate(filters.startDate)) {
-		conditions.push("datetime(createdAt) >= datetime(?)");
-		params.push(filters.startDate);
+		conditions.push("createdAt >= ?");
+		params.push(toSqliteUtcTimestamp(filters.startDate));
 	}
 
 	if (filters.endDate && isValidISODate(filters.endDate)) {
 		const endDate = normalizeEndDateFilter(filters.endDate);
-		conditions.push("datetime(createdAt) <= datetime(?)");
-		params.push(endDate);
+		conditions.push("createdAt <= ?");
+		params.push(toSqliteUtcTimestamp(endDate));
 	}
 }
 

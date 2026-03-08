@@ -84,6 +84,11 @@ export function Databases() {
 				setNewDbPlugin("");
 				setNewDbName("");
 				void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
+				void queryClient.refetchQueries({ queryKey: queryKeys.databases });
+			},
+			onError: () => {
+				void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
+				void queryClient.refetchQueries({ queryKey: queryKeys.databases });
 			},
 		});
 		setCreateDbSubmitting(false);
@@ -99,6 +104,11 @@ export function Databases() {
 				setLinkDbName("");
 				setLinkAppName("");
 				void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
+				void queryClient.refetchQueries({ queryKey: queryKeys.databases });
+			},
+			onError: () => {
+				void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
+				void queryClient.refetchQueries({ queryKey: queryKeys.databases });
 			},
 		});
 		setLinkSubmitting(false);
@@ -128,9 +138,12 @@ export function Databases() {
 				onSuccess: () => {
 					closeUnlinkDialog();
 					void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
+					void queryClient.refetchQueries({ queryKey: queryKeys.databases });
 				},
 				onError: () => {
 					closeUnlinkDialog();
+					void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
+					void queryClient.refetchQueries({ queryKey: queryKeys.databases });
 				},
 			}
 		);
@@ -162,9 +175,12 @@ export function Databases() {
 			onSuccess: () => {
 				closeDestroyDialog();
 				void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
+				void queryClient.refetchQueries({ queryKey: queryKeys.databases });
 			},
 			onError: () => {
 				closeDestroyDialog();
+				void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
+				void queryClient.refetchQueries({ queryKey: queryKeys.databases });
 			},
 		});
 		setDestroySubmitting(false);

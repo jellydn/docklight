@@ -44,7 +44,7 @@ function createErrorResult(
 ): CommandResult {
 	const result: CommandResult = {
 		command,
-		exitCode,
+		exitCode: exitCode > 255 ? 1 : exitCode,
 		stdout: "",
 		stderr: message,
 	};
@@ -278,25 +278,19 @@ async function executeViaPool(
 
 	let execResult: { stdout: string; stderr: string; code: number | null };
 	try {
-		execResult = await retryWithBackoff(
-			async () => {
-				try {
-					return await execCommandWithTimeout(ssh, command, timeout);
-				} catch (error) {
-					const errMessage = getErrorMessage(error);
-					const isChannelError = /channel open failure|open failed|unable to exec/i.test(
-						errMessage
-					);
-					if (isChannelError) {
-						sshPool.closeConnection(target);
-						const freshSsh = await sshPool.getConnection(target, keyPath);
-						return await execCommandWithTimeout(freshSsh, command, timeout);
-					}
-					throw error;
-				}
-			},
-			{ maxRetries: 2, baseDelay: 100 }
-		);
+		try {
+			execResult = await execCommandWithTimeout(ssh, command, timeout);
+		} catch (error) {
+			const errMessage = getErrorMessage(error);
+			const isChannelError = /channel open failure|open failed|unable to exec/i.test(errMessage);
+			if (isChannelError) {
+				sshPool.closeConnection(target);
+				const freshSsh = await sshPool.getConnection(target, keyPath);
+				execResult = await execCommandWithTimeout(freshSsh, command, timeout);
+			} else {
+				throw error;
+			}
+		}
 	} catch (execError) {
 		return createErrorResult(
 			command,
@@ -360,56 +354,50 @@ async function executeViaPoolStreaming(
 
 	let execResult: { stdout: string; stderr: string; code: number | null };
 	try {
-		execResult = await retryWithBackoff(
-			async () => {
-				try {
-					return await execCommandWithTimeout(ssh, command, timeout, {
-						onStdout: (chunk: Buffer) => {
-							for (const line of chunk.toString().split("\n")) {
-								if (line.trim()) {
-									onProgress({ type: "output", message: line.trim() });
-								}
-							}
-						},
-						onStderr: (chunk: Buffer) => {
-							for (const line of chunk.toString().split("\n")) {
-								if (line.trim()) {
-									onProgress({ type: "output", message: line.trim(), error: true });
-								}
-							}
-						},
-					});
-				} catch (error) {
-					const errMessage = getErrorMessage(error);
-					const isChannelError = /channel open failure|open failed|unable to exec/i.test(
-						errMessage
-					);
-					if (isChannelError) {
-						sshPool.closeConnection(target);
-						onProgress({ type: "progress", message: "Reconnecting SSH channel..." });
-						const freshSsh = await sshPool.getConnection(target, keyPath);
-						return await execCommandWithTimeout(freshSsh, command, timeout, {
-							onStdout: (chunk: Buffer) => {
-								for (const line of chunk.toString().split("\n")) {
-									if (line.trim()) {
-										onProgress({ type: "output", message: line.trim() });
-									}
-								}
-							},
-							onStderr: (chunk: Buffer) => {
-								for (const line of chunk.toString().split("\n")) {
-									if (line.trim()) {
-										onProgress({ type: "output", message: line.trim(), error: true });
-									}
-								}
-							},
-						});
+		try {
+			execResult = await execCommandWithTimeout(ssh, command, timeout, {
+				onStdout: (chunk: Buffer) => {
+					for (const line of chunk.toString().split("\n")) {
+						if (line.trim()) {
+							onProgress({ type: "output", message: line.trim() });
+						}
 					}
-					throw error;
-				}
-			},
-			{ maxRetries: 2, baseDelay: 100 }
-		);
+				},
+				onStderr: (chunk: Buffer) => {
+					for (const line of chunk.toString().split("\n")) {
+						if (line.trim()) {
+							onProgress({ type: "output", message: line.trim(), error: true });
+						}
+					}
+				},
+			});
+		} catch (error) {
+			const errMessage = getErrorMessage(error);
+			const isChannelError = /channel open failure|open failed|unable to exec/i.test(errMessage);
+			if (isChannelError) {
+				sshPool.closeConnection(target);
+				onProgress({ type: "progress", message: "Reconnecting SSH channel..." });
+				const freshSsh = await sshPool.getConnection(target, keyPath);
+				execResult = await execCommandWithTimeout(freshSsh, command, timeout, {
+					onStdout: (chunk: Buffer) => {
+						for (const line of chunk.toString().split("\n")) {
+							if (line.trim()) {
+								onProgress({ type: "output", message: line.trim() });
+							}
+						}
+					},
+					onStderr: (chunk: Buffer) => {
+						for (const line of chunk.toString().split("\n")) {
+							if (line.trim()) {
+								onProgress({ type: "output", message: line.trim(), error: true });
+							}
+						}
+					},
+				});
+			} else {
+				throw error;
+			}
+		}
 	} catch (execError) {
 		return createErrorResult(
 			command,

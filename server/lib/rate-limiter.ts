@@ -38,7 +38,7 @@ const COMMAND_WINDOW_MS = parsePositiveInt(
 	process.env.DOCKLIGHT_COMMAND_WINDOW_MS,
 	DEFAULT_COMMAND_WINDOW_MS
 );
-const COMMAND_MAX_REQUESTS = getRateLimit(process.env.DOCKLIGHT_COMMAND_MAX_REQUESTS, 1000, 30);
+const COMMAND_MAX_REQUESTS = getRateLimit(process.env.DOCKLIGHT_COMMAND_MAX_REQUESTS, 1000, 300);
 
 interface UserCommandHistory {
 	timestamps: number[];

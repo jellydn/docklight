@@ -17,14 +17,14 @@ function createPortError(message: string): { error: string; command: string; exi
 	};
 }
 
-function validatePort(port: number): string | null {
+export function validatePort(port: number): string | null {
 	if (typeof port !== "number" || port < 1 || port > 65535) {
 		return "Port must be a number between 1 and 65535";
 	}
 	return null;
 }
 
-function validateScheme(scheme: string): string | null {
+export function validateScheme(scheme: string): string | null {
 	const validSchemes = ["http", "https", "tcp"];
 	if (!validSchemes.includes(scheme.toLowerCase())) {
 		return "Scheme must be http, https, or tcp";

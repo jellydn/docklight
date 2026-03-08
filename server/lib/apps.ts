@@ -187,7 +187,7 @@ export function parseDomains(stdout: string): string[] {
 	return [...domains];
 }
 
-const MAX_APP_NAME_LENGTH = 64;
+export const MAX_APP_NAME_LENGTH = 64;
 
 export function isValidAppName(name: string): boolean {
 	// Must be 1-64 chars, lowercase letters, numbers, hyphens only

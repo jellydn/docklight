@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "../../components/ToastProvider";
 import { useStreamingAction } from "../../hooks/use-streaming-action.js";
 import { apiFetch } from "../../lib/api.js";
@@ -64,6 +64,8 @@ export function AppDetail() {
 		queryFn: () => apiFetch(`/apps/${encodeURIComponent(name || "")}`, AppDetailSchema),
 		enabled: !!name,
 	});
+
+	const queryClient = useQueryClient();
 
 	const error = queryError?.message || null;
 
@@ -603,8 +605,16 @@ export function AppDetail() {
 		setStopping(true);
 
 		await streamAction(`/apps/${encodeURIComponent(name)}/stop`, "stop", {
-			onSuccess: () => void refetch(),
-			onError: () => void refetch(),
+			onSuccess: () => {
+				void refetch();
+				void queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
+				void queryClient.refetchQueries({ queryKey: queryKeys.apps.all });
+			},
+			onError: () => {
+				void refetch();
+				void queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
+				void queryClient.refetchQueries({ queryKey: queryKeys.apps.all });
+			},
 		});
 
 		setShowStopDialog(false);
@@ -621,8 +631,16 @@ export function AppDetail() {
 		setStarting(true);
 
 		await streamAction(`/apps/${encodeURIComponent(name)}/start`, "start", {
-			onSuccess: () => void refetch(),
-			onError: () => void refetch(),
+			onSuccess: () => {
+				void refetch();
+				void queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
+				void queryClient.refetchQueries({ queryKey: queryKeys.apps.all });
+			},
+			onError: () => {
+				void refetch();
+				void queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
+				void queryClient.refetchQueries({ queryKey: queryKeys.apps.all });
+			},
 		});
 
 		setShowStartDialog(false);

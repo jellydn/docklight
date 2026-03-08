@@ -16,13 +16,18 @@ export interface SSLStatus {
 	certProvider?: string;
 }
 
+export interface ParsedReportLine {
+	key: string;
+	value: string;
+}
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function isValidEmail(email: string): boolean {
 	return EMAIL_PATTERN.test(email);
 }
 
-export function parseReportLine(line: string): { key: string; value: string } | null {
+export function parseReportLine(line: string): ParsedReportLine | null {
 	const clean = stripAnsi(line).trim();
 	const separatorIndex = clean.indexOf(":");
 	if (separatorIndex <= 0) {
@@ -124,14 +129,14 @@ export function parseCertsReport(stdout: string): SSLStatus | null {
 }
 
 export function parseLetsencryptList(stdout: string, appName: string): SSLStatus | null {
+	const normalizedAppName = appName.toLowerCase();
 	const lines = stdout.split("\n").map((line) => stripAnsi(line).trim());
 	for (const line of lines) {
-		if (!line.toLowerCase().includes(appName.toLowerCase())) {
-			continue;
-		}
-
 		const parts = line.split(/\s+/).filter((part) => part.length > 0);
 		if (parts.length === 0) {
+			continue;
+		}
+		if (parts[0]?.toLowerCase() !== normalizedAppName) {
 			continue;
 		}
 

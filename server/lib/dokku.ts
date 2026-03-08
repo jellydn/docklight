@@ -140,7 +140,8 @@ export const DokkuCommands: DokkuCommands = {
 	configShow: (app: string): string => `dokku config:show ${app}`,
 	configSet: (app: string, key: string, value: string): string =>
 		`dokku config:set ${shellQuote(app)} ${shellQuote(key)}=${shellQuote(value)}`,
-	configUnset: (app: string, key: string): string => `dokku config:unset ${app} ${key}`,
+	configUnset: (app: string, key: string): string =>
+		`dokku config:unset ${shellQuote(app)} ${shellQuote(key)}`,
 
 	// Plugins (read-only)
 	pluginList: (): string => "dokku plugin:list",
@@ -148,10 +149,10 @@ export const DokkuCommands: DokkuCommands = {
 	// Ports
 	portsReport: (app: string): string => `dokku ports:report ${app}`,
 	portsAdd: (app: string, scheme: string, hostPort: number, containerPort: number): string =>
-		`dokku ports:add ${app} ${scheme}:${hostPort}:${containerPort}`,
+		`dokku ports:add ${shellQuote(app)} ${scheme}:${hostPort}:${containerPort}`,
 	portsRemove: (app: string, scheme: string, hostPort: number, containerPort: number): string =>
-		`dokku ports:remove ${app} ${scheme}:${hostPort}:${containerPort}`,
-	portsClear: (app: string): string => `dokku ports:clear ${app}`,
+		`dokku ports:remove ${shellQuote(app)} ${scheme}:${hostPort}:${containerPort}`,
+	portsClear: (app: string): string => `dokku ports:clear ${shellQuote(app)}`,
 
 	// Proxy
 	proxyReport: (app: string): string => `dokku proxy:report ${app}`,
@@ -233,14 +234,15 @@ export const DokkuCommands: DokkuCommands = {
 
 	// Database (dynamic plugin name)
 	dbList: (plugin: string): string => `dokku ${plugin}:list`,
-	dbLinks: (plugin: string, name: string): string => `dokku ${plugin}:links ${name}`,
-	dbInfo: (plugin: string, name: string): string => `dokku ${plugin}:info ${name}`,
-	dbCreate: (plugin: string, name: string): string => `dokku ${plugin}:create ${name}`,
+	dbLinks: (plugin: string, name: string): string => `dokku ${plugin}:links ${shellQuote(name)}`,
+	dbInfo: (plugin: string, name: string): string => `dokku ${plugin}:info ${shellQuote(name)}`,
+	dbCreate: (plugin: string, name: string): string => `dokku ${plugin}:create ${shellQuote(name)}`,
 	dbLink: (plugin: string, name: string, app: string): string =>
-		`dokku ${plugin}:link ${name} ${app}`,
+		`dokku ${plugin}:link ${shellQuote(name)} ${shellQuote(app)}`,
 	dbUnlink: (plugin: string, name: string, app: string): string =>
-		`dokku ${plugin}:unlink ${name} ${app}`,
-	dbDestroy: (plugin: string, name: string): string => `dokku ${plugin}:destroy ${name} --force`,
+		`dokku ${plugin}:unlink ${shellQuote(name)} ${shellQuote(app)}`,
+	dbDestroy: (plugin: string, name: string): string =>
+		`dokku ${plugin}:destroy ${shellQuote(name)} --force`,
 
 	// Logs
 	logsFollow: (app: string, lines: number): string =>

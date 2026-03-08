@@ -283,7 +283,7 @@ describe("clearPorts", () => {
 
 	it("should execute ports:clear for valid app", async () => {
 		mockExecuteCommand.mockResolvedValueOnce({
-			command: "dokku ports:clear my-app",
+			command: "dokku ports:clear 'my-app'",
 			exitCode: 0,
 			stdout: "",
 			stderr: "",
@@ -292,7 +292,7 @@ describe("clearPorts", () => {
 		const result = await clearPorts("my-app");
 
 		expect(result).toMatchObject({ exitCode: 0 });
-		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku ports:clear my-app");
+		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku ports:clear 'my-app'");
 	});
 });
 

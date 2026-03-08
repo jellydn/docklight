@@ -10,6 +10,7 @@ export interface StreamActionOptions {
 	appName: string;
 	auditDetails?: Record<string, unknown>;
 	timeout?: number;
+	cachePrefix?: string;
 }
 
 async function streamAction(
@@ -17,7 +18,14 @@ async function streamAction(
 	res: express.Response,
 	options: StreamActionOptions
 ): Promise<void> {
-	const { dokkuCommand, auditAction, appName, auditDetails, timeout = 60000 } = options;
+	const {
+		dokkuCommand,
+		auditAction,
+		appName,
+		auditDetails,
+		timeout = 60000,
+		cachePrefix = "apps:",
+	} = options;
 	const sse = createSSEWriter(res);
 
 	try {
@@ -35,7 +43,7 @@ async function streamAction(
 
 		if (result.exitCode === 0) {
 			safeAuditLog(req, auditAction, appName, auditDetails ?? null);
-			clearPrefix("apps:");
+			clearPrefix(cachePrefix);
 		}
 		sse.sendResult(result);
 	} catch (err) {

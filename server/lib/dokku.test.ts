@@ -87,7 +87,7 @@ describe("DokkuCommands", () => {
 		});
 
 		it("configUnset returns config:unset command", () => {
-			expect(DokkuCommands.configUnset("my-app", "KEY")).toBe("dokku config:unset my-app KEY");
+			expect(DokkuCommands.configUnset("my-app", "KEY")).toBe("dokku config:unset 'my-app' 'KEY'");
 		});
 	});
 
@@ -104,18 +104,18 @@ describe("DokkuCommands", () => {
 
 		it("portsAdd returns ports:add command", () => {
 			expect(DokkuCommands.portsAdd("my-app", "http", 80, 5000)).toBe(
-				"dokku ports:add my-app http:80:5000"
+				"dokku ports:add 'my-app' http:80:5000"
 			);
 		});
 
 		it("portsRemove returns ports:remove command", () => {
 			expect(DokkuCommands.portsRemove("my-app", "http", 80, 5000)).toBe(
-				"dokku ports:remove my-app http:80:5000"
+				"dokku ports:remove 'my-app' http:80:5000"
 			);
 		});
 
 		it("portsClear returns ports:clear command", () => {
-			expect(DokkuCommands.portsClear("my-app")).toBe("dokku ports:clear my-app");
+			expect(DokkuCommands.portsClear("my-app")).toBe("dokku ports:clear 'my-app'");
 		});
 
 		it("proxyReport returns proxy:report command", () => {
@@ -279,28 +279,28 @@ describe("DokkuCommands", () => {
 		});
 
 		it("dbLinks returns plugin links command", () => {
-			expect(DokkuCommands.dbLinks("postgres", "mydb")).toBe("dokku postgres:links mydb");
+			expect(DokkuCommands.dbLinks("postgres", "mydb")).toBe("dokku postgres:links 'mydb'");
 		});
 
 		it("dbCreate returns plugin create command", () => {
-			expect(DokkuCommands.dbCreate("postgres", "mydb")).toBe("dokku postgres:create mydb");
+			expect(DokkuCommands.dbCreate("postgres", "mydb")).toBe("dokku postgres:create 'mydb'");
 		});
 
 		it("dbLink returns plugin link command", () => {
 			expect(DokkuCommands.dbLink("postgres", "mydb", "my-app")).toBe(
-				"dokku postgres:link mydb my-app"
+				"dokku postgres:link 'mydb' 'my-app'"
 			);
 		});
 
 		it("dbUnlink returns plugin unlink command", () => {
 			expect(DokkuCommands.dbUnlink("postgres", "mydb", "my-app")).toBe(
-				"dokku postgres:unlink mydb my-app"
+				"dokku postgres:unlink 'mydb' 'my-app'"
 			);
 		});
 
 		it("dbDestroy returns plugin destroy command with --force flag", () => {
 			expect(DokkuCommands.dbDestroy("postgres", "mydb")).toBe(
-				"dokku postgres:destroy mydb --force"
+				"dokku postgres:destroy 'mydb' --force"
 			);
 		});
 	});
