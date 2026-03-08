@@ -80,6 +80,12 @@ describe("databases", () => {
 				exitCode: 0,
 				stdout: "",
 				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku mysql:info mydb",
+				exitCode: 0,
+				stdout: "",
+				stderr: "",
 			});
 
 		const result = await getDatabases();
@@ -112,6 +118,12 @@ describe("databases", () => {
 				command: "dokku postgres:links main-db",
 				exitCode: 0,
 				stdout: "postgres service main-db linked apps: api, worker",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku postgres:info main-db",
+				exitCode: 0,
+				stdout: "",
 				stderr: "",
 			});
 
@@ -177,6 +189,51 @@ describe("databases", () => {
 			})
 			.mockResolvedValueOnce({
 				command: "dokku postgres:links store",
+				exitCode: 0,
+				stdout: "=====> PostgreSQL service store\nLinked Apps:No linked apps\n=====> Connection Info:",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku postgres:info store",
+				exitCode: 0,
+				stdout: "=====> PostgreSQL service store\nLinked Apps:No linked apps\n=====> Connection Info:",
+				stderr: "",
+			});
+
+		const result = await getDatabases();
+
+		expect(result).toEqual([
+			{
+				name: "store",
+				plugin: "postgres",
+				linkedApps: [],
+				connectionInfo: "postgresql://store@localhost",
+			},
+		]);
+	});
+
+	it("getDatabases should parse linked apps from dbInfo when dbLinks is empty", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku plugin:list",
+				exitCode: 0,
+				stdout: "dokku-postgres",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku postgres:list",
+				exitCode: 0,
+				stdout: "store",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku postgres:links store",
+				exitCode: 0,
+				stdout: "",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku postgres:info store",
 				exitCode: 0,
 				stdout: "=====> PostgreSQL service store\nLinked Apps:No linked apps\n=====> Connection Info:",
 				stderr: "",

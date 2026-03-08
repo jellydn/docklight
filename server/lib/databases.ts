@@ -77,20 +77,23 @@ export async function getDatabases(): Promise<
 				const dbs = await Promise.all(
 					dbLines.map(async (dbName) => {
 						const linkReportResult = await executeCommand(DokkuCommands.dbLinks(plugin, dbName));
+						const infoReportResult = await executeCommand(DokkuCommands.dbInfo(plugin, dbName));
 
 						let linkedApps: string[] = [];
-						if (linkReportResult.exitCode === 0) {
-							const linkLines = linkReportResult.stdout.split("\n");
+
+						const parseLinkedApps = (output: string): string[] => {
+							const lines = output.split("\n");
 							let collecting = false;
-							for (const line of linkLines) {
+							const apps: string[] = [];
+							for (const line of lines) {
 								const trimmedLine = line.trim();
 								if (!trimmedLine) continue;
-								if (trimmedLine.includes("linked apps")) {
+								if (trimmedLine.toLowerCase().includes("linked apps")) {
 									const inlineMatch = trimmedLine.match(/linked apps:?\s*(.+)/i);
 									if (inlineMatch) {
 										const appsStr = inlineMatch[1].trim().toLowerCase();
 										if (appsStr && appsStr !== "no linked apps") {
-											linkedApps = appsStr.split(",").map((app) => app.trim()).filter(Boolean);
+											return appsStr.split(",").map((app) => app.trim()).filter(Boolean);
 										}
 										collecting = false;
 									} else {
@@ -100,9 +103,18 @@ export async function getDatabases(): Promise<
 								}
 								if (collecting) {
 									if (trimmedLine.startsWith("=====>")) break;
-									linkedApps.push(trimmedLine);
+									apps.push(trimmedLine);
 								}
 							}
+							return apps;
+						};
+
+						if (linkReportResult.exitCode === 0) {
+							linkedApps = parseLinkedApps(linkReportResult.stdout);
+						}
+
+						if (linkedApps.length === 0 && infoReportResult.exitCode === 0) {
+							linkedApps = parseLinkedApps(infoReportResult.stdout);
 						}
 
 						let connectionInfo = "";
