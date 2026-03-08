@@ -161,6 +161,39 @@ describe("databases", () => {
 		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku postgres:links main-db");
 	});
 
+	it("getDatabases should handle 'No linked apps' format", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku plugin:list",
+				exitCode: 0,
+				stdout: "dokku-postgres",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku postgres:list",
+				exitCode: 0,
+				stdout: "store",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku postgres:links store",
+				exitCode: 0,
+				stdout: "=====> PostgreSQL service store\nLinked Apps:No linked apps\n=====> Connection Info:",
+				stderr: "",
+			});
+
+		const result = await getDatabases();
+
+		expect(result).toEqual([
+			{
+				name: "store",
+				plugin: "postgres",
+				linkedApps: [],
+				connectionInfo: "postgresql://store@localhost",
+			},
+		]);
+	});
+
 	it("createDatabase should return clear error when plugin is not installed", async () => {
 		mockExecuteCommand.mockResolvedValueOnce({
 			command: "dokku plugin:list",

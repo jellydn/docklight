@@ -86,9 +86,12 @@ export async function getDatabases(): Promise<
 								const trimmedLine = line.trim();
 								if (!trimmedLine) continue;
 								if (trimmedLine.includes("linked apps")) {
-									const inlineMatch = trimmedLine.match(/linked apps:\s*(.+)/);
+									const inlineMatch = trimmedLine.match(/linked apps:?\s*(.+)/i);
 									if (inlineMatch) {
-										linkedApps = inlineMatch[1].split(",").map((app) => app.trim()).filter(Boolean);
+										const appsStr = inlineMatch[1].trim().toLowerCase();
+										if (appsStr && appsStr !== "no linked apps") {
+											linkedApps = appsStr.split(",").map((app) => app.trim()).filter(Boolean);
+										}
 										collecting = false;
 									} else {
 										collecting = true;
