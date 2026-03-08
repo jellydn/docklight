@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { useEffect } from "react";
+import { X } from "lucide-react";
 
 interface ConfirmDialogProps {
 	visible: boolean;
@@ -23,6 +25,16 @@ export function ConfirmDialog({
 	isDestructive = false,
 	children,
 }: ConfirmDialogProps) {
+	useEffect(() => {
+		const handleEsc = (e: KeyboardEvent) => {
+			if (e.key === "Escape" && !submitting) onClose();
+		};
+		if (visible) {
+			window.addEventListener("keydown", handleEsc);
+			return () => window.removeEventListener("keydown", handleEsc);
+		}
+	}, [visible, onClose, submitting]);
+
 	if (!visible) return null;
 
 	const buttonClass = isDestructive
@@ -30,11 +42,30 @@ export function ConfirmDialog({
 		: "bg-blue-600 text-white rounded hover:bg-blue-700";
 
 	return (
-		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+		<div
+			className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="dialog-title"
+		>
 			<div className="bg-white rounded p-6 max-w-md w-full">
-				<h2 className={`text-lg font-semibold mb-4 ${isDestructive ? "text-red-600" : ""}`}>
-					{title}
-				</h2>
+				<div className="flex justify-between items-start mb-4">
+					<h2
+						id="dialog-title"
+						className={`text-lg font-semibold ${isDestructive ? "text-red-600" : ""}`}
+					>
+						{title}
+					</h2>
+					<button
+						onClick={onClose}
+						disabled={submitting}
+						className="text-gray-500 hover:text-gray-700 disabled:opacity-50"
+						type="button"
+						aria-label="Close dialog"
+					>
+						<X className="w-5 h-5" />
+					</button>
+				</div>
 				<div className="mb-6">{children}</div>
 				<div className="flex justify-end space-x-2">
 					<button
@@ -78,12 +109,36 @@ export function DeleteAppDialog({
 	onConfirmNameChange,
 	submitting,
 }: DeleteAppDialogProps) {
+	useEffect(() => {
+		const handleEsc = (e: KeyboardEvent) => {
+			if (e.key === "Escape" && !submitting) onClose();
+		};
+		if (visible) {
+			window.addEventListener("keydown", handleEsc);
+			return () => window.removeEventListener("keydown", handleEsc);
+		}
+	}, [visible, onClose, submitting]);
+
 	if (!visible) return null;
 
 	return (
-		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+		<div
+			className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+			role="dialog"
+			aria-modal="true"
+		>
 			<div className="bg-white rounded p-6 max-w-md w-full">
-				<h2 className="text-lg font-semibold mb-4 text-red-600">Delete App</h2>
+				<div className="flex justify-between items-start mb-4">
+					<h2 className="text-lg font-semibold text-red-600">Delete App</h2>
+					<button
+						onClick={onClose}
+						className="text-gray-500 hover:text-gray-700"
+						type="button"
+						aria-label="Close dialog"
+					>
+						<X className="w-5 h-5" />
+					</button>
+				</div>
 				<p className="mb-4">
 					This action is <strong>irreversible</strong>. The app <strong>{appName}</strong> and all
 					its data will be permanently deleted.
@@ -143,12 +198,37 @@ export function ScaleDialog({
 	onConfirm,
 	submitting,
 }: ScaleDialogProps) {
+	useEffect(() => {
+		const handleEsc = (e: KeyboardEvent) => {
+			if (e.key === "Escape" && !submitting) onClose();
+		};
+		if (visible) {
+			window.addEventListener("keydown", handleEsc);
+			return () => window.removeEventListener("keydown", handleEsc);
+		}
+	}, [visible, onClose, submitting]);
+
 	if (!visible) return null;
 
 	return (
-		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+		<div
+			className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+			role="dialog"
+			aria-modal="true"
+		>
 			<div className="bg-white rounded p-6 max-w-md w-full">
-				<h2 className="text-lg font-semibold mb-4">Confirm Scale</h2>
+				<div className="flex justify-between items-start mb-4">
+					<h2 className="text-lg font-semibold">Confirm Scale</h2>
+					<button
+						onClick={onClose}
+						disabled={submitting}
+						className="text-gray-500 hover:text-gray-700 disabled:opacity-50"
+						type="button"
+						aria-label="Close dialog"
+					>
+						<X className="w-5 h-5" />
+					</button>
+				</div>
 				<p className="mb-3">
 					Apply these scaling changes for <strong>{appName}</strong>?
 				</p>
