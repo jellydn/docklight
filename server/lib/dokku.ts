@@ -93,6 +93,7 @@ export interface DokkuCommands {
 	// Database (dynamic plugin name)
 	dbList(plugin: string): string;
 	dbLinks(plugin: string, name: string): string;
+	dbInfo(plugin: string, name: string): string;
 	dbCreate(plugin: string, name: string): string;
 	dbLink(plugin: string, name: string, app: string): string;
 	dbUnlink(plugin: string, name: string, app: string): string;
@@ -233,6 +234,7 @@ export const DokkuCommands: DokkuCommands = {
 	// Database (dynamic plugin name)
 	dbList: (plugin: string): string => `dokku ${plugin}:list`,
 	dbLinks: (plugin: string, name: string): string => `dokku ${plugin}:links ${name}`,
+	dbInfo: (plugin: string, name: string): string => `dokku ${plugin}:info ${name}`,
 	dbCreate: (plugin: string, name: string): string => `dokku ${plugin}:create ${name}`,
 	dbLink: (plugin: string, name: string, app: string): string =>
 		`dokku ${plugin}:link ${name} ${app}`,

@@ -71,23 +71,51 @@ export async function getDatabases(): Promise<
 
 				const dbLines = listResult.stdout
 					.split("\n")
-					.filter((line) => line.trim() && !line.trim().startsWith("=====>"));
+					.map((line) => line.trim())
+					.filter((line) => line && !line.startsWith("=====>"));
 
 				const dbs = await Promise.all(
 					dbLines.map(async (dbName) => {
 						const linkReportResult = await executeCommand(DokkuCommands.dbLinks(plugin, dbName));
+						const infoReportResult = await executeCommand(DokkuCommands.dbInfo(plugin, dbName));
 
 						let linkedApps: string[] = [];
-						if (linkReportResult.exitCode === 0) {
-							const linkLines = linkReportResult.stdout.split("\n").filter((line) => line.trim());
-							for (const line of linkLines) {
-								if (line.includes("linked apps")) {
-									const match = line.match(/linked apps:\s*(.+)/);
-									if (match) {
-										linkedApps = match[1].split(",").map((app) => app.trim());
+
+						const parseLinkedApps = (output: string): string[] => {
+							const lines = output.split("\n");
+							let collecting = false;
+							const apps: string[] = [];
+							for (const line of lines) {
+								const trimmedLine = line.trim();
+								if (!trimmedLine) continue;
+								const lowerLine = trimmedLine.toLowerCase();
+								if (lowerLine.includes("linked apps") || lowerLine.includes("links:")) {
+									const inlineMatch = trimmedLine.match(/(?:linked apps|Links):\s*(.+)/i);
+									if (inlineMatch) {
+										const appsStr = inlineMatch[1].trim().toLowerCase();
+										if (appsStr && appsStr !== "no linked apps" && appsStr !== "-") {
+											return appsStr.split(/[,\s]+/).filter(Boolean);
+										}
+										collecting = false;
+									} else {
+										collecting = true;
 									}
+									continue;
+								}
+								if (collecting) {
+									if (trimmedLine.startsWith("=====>")) break;
+									apps.push(trimmedLine);
 								}
 							}
+							return apps;
+						};
+
+						if (linkReportResult.exitCode === 0) {
+							linkedApps = parseLinkedApps(linkReportResult.stdout);
+						}
+
+						if (linkedApps.length === 0 && infoReportResult.exitCode === 0) {
+							linkedApps = parseLinkedApps(infoReportResult.stdout);
 						}
 
 						let connectionInfo = "";
