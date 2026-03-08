@@ -448,7 +448,7 @@ describe("restartApp", () => {
 		const result = await restartApp(appName);
 
 		expect(result).toEqual(expectedResult);
-		expect(mockExecuteCommand).toHaveBeenCalledWith(`dokku ps:restart ${appName}`, 30000, {
+		expect(mockExecuteCommand).toHaveBeenCalledWith(`dokku ps:restart ${appName}`, 120000, {
 			userId: undefined,
 		});
 	});
@@ -486,7 +486,7 @@ describe("rebuildApp", () => {
 		const result = await rebuildApp(appName);
 
 		expect(result).toEqual(expectedResult);
-		expect(mockExecuteCommand).toHaveBeenCalledWith(`dokku ps:rebuild ${appName}`, 30000, {
+		expect(mockExecuteCommand).toHaveBeenCalledWith(`dokku ps:rebuild ${appName}`, 120000, {
 			userId: undefined,
 		});
 	});

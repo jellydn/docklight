@@ -11,6 +11,7 @@ export { registerAppBuildpackRoutes } from "./app-buildpacks.js";
 export { registerAppDockerOptionsRoutes } from "./app-docker-options.js";
 export { registerAppNetworkRoutes } from "./app-network.js";
 export { registerAppDeploymentRoutes } from "./app-deployment.js";
+export { registerAppGitRoutes } from "./app-git.js";
 export { registerAppSSLRoutes } from "./app-ssl.js";
 export { registerDatabaseRoutes } from "./databases.js";
 export { registerPluginRoutes } from "./plugins.js";

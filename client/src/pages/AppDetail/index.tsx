@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "../../components/ToastProvider";
+import { useStreamingAction } from "../../hooks/use-streaming-action.js";
 import { apiFetch } from "../../lib/api.js";
 import { useAuth } from "../../contexts/auth-context.js";
 import { createErrorResult } from "../../lib/command-utils.js";
@@ -18,6 +19,7 @@ import {
 	type DeploymentSettings,
 	DeploymentSettingsSchema,
 	DockerOptionsSchema,
+	GitInfoSchema,
 	NetworkReportSchema,
 	type PortMapping,
 	PortsResponseSchema,
@@ -35,9 +37,10 @@ import { AppPorts } from "./AppPorts.js";
 import { AppBuildpacks } from "./AppBuildpacks.js";
 import { AppDockerOptions } from "./AppDockerOptions.js";
 import { AppNetwork } from "./AppNetwork.js";
+import { AppGit } from "./AppGit.js";
 import { ConfirmDialog, DeleteAppDialog, ScaleDialog } from "./Dialogs.js";
+import type { TabType } from "./types.js";
 
-type TabType = "overview" | "config" | "domains" | "logs" | "ssl" | "settings";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface ScaleChange {
@@ -49,6 +52,7 @@ export function AppDetail() {
 	const { name } = useParams<{ name: string }>();
 	const navigate = useNavigate();
 	const { addToast } = useToast();
+	const { execute: streamAction } = useStreamingAction();
 	const { canModify } = useAuth();
 	const {
 		data: app,
@@ -112,6 +116,10 @@ export function AppDetail() {
 	const [showStartDialog, setShowStartDialog] = useState(false);
 	const [stopping, setStopping] = useState(false);
 	const [starting, setStarting] = useState(false);
+
+	// Unlock app state
+	const [showUnlockDialog, setShowUnlockDialog] = useState(false);
+	const [unlocking, setUnlocking] = useState(false);
 
 	// Domains query
 	const {
@@ -277,6 +285,20 @@ export function AppDetail() {
 	const [networkEditValue, setNetworkEditValue] = useState("");
 	const [networkSubmitting, setNetworkSubmitting] = useState(false);
 
+	// Git info query
+	const {
+		data: gitInfo,
+		isLoading: gitLoading,
+		error: gitErrorData,
+		refetch: refetchGitInfo,
+	} = useQuery({
+		queryKey: queryKeys.apps.git(name || ""),
+		queryFn: () => apiFetch(`/apps/${encodeURIComponent(name || "")}/git`, GitInfoSchema),
+		enabled: activeTab === "git" && !!name,
+	});
+	const gitError = gitErrorData?.message || null;
+	const [gitSyncing, setGitSyncing] = useState(false);
+
 	// Log viewer state
 	const [logs, setLogs] = useState<string[]>([]);
 	const [connectionStatus, setConnectionStatus] = useState<
@@ -363,27 +385,18 @@ export function AppDetail() {
 		if (!pendingAction || !name || actionSubmitting) return;
 
 		setActionSubmitting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/${encodeURIComponent(pendingAction)}`,
-				CommandResultSchema,
-				{
-					method: "POST",
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", `${pendingAction} completed`, result);
-			resetActionDialog();
-			void refetch();
-		} catch (err) {
-			addToast(
-				"error",
-				`${pendingAction} failed`,
-				createErrorResult(`dokku ps:${pendingAction} ${name}`, err)
-			);
-			resetActionDialog();
-		} finally {
-			setActionSubmitting(false);
-		}
+
+		await streamAction(
+			`/apps/${encodeURIComponent(name)}/${encodeURIComponent(pendingAction)}`,
+			pendingAction,
+			{
+				onSuccess: () => void refetch(),
+				onError: () => void refetch(),
+			}
+		);
+
+		resetActionDialog();
+		setActionSubmitting(false);
 	};
 
 	const handleScaleChange = (processType: string, count: number, currentCount: number) => {
@@ -605,19 +618,14 @@ export function AppDetail() {
 		if (!name) return;
 
 		setStopping(true);
-		try {
-			const result = await apiFetch(`/apps/${encodeURIComponent(name)}/stop`, CommandResultSchema, {
-				method: "POST",
-			});
-			addToast(result.exitCode === 0 ? "success" : "error", "App stopped", result);
-			setShowStopDialog(false);
-			void refetch();
-		} catch (err) {
-			addToast("error", "Failed to stop app", createErrorResult(`dokku ps:stop ${name}`, err));
-			setShowStopDialog(false);
-		} finally {
-			setStopping(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/stop`, "stop", {
+			onSuccess: () => void refetch(),
+			onError: () => void refetch(),
+		});
+
+		setShowStopDialog(false);
+		setStopping(false);
 	};
 
 	const handleStartApp = () => {
@@ -628,23 +636,32 @@ export function AppDetail() {
 		if (!name) return;
 
 		setStarting(true);
-		try {
-			const result = await apiFetch(
-				`/apps/${encodeURIComponent(name)}/start`,
-				CommandResultSchema,
-				{
-					method: "POST",
-				}
-			);
-			addToast(result.exitCode === 0 ? "success" : "error", "App started", result);
-			setShowStartDialog(false);
-			void refetch();
-		} catch (err) {
-			addToast("error", "Failed to start app", createErrorResult(`dokku ps:start ${name}`, err));
-			setShowStartDialog(false);
-		} finally {
-			setStarting(false);
-		}
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/start`, "start", {
+			onSuccess: () => void refetch(),
+			onError: () => void refetch(),
+		});
+
+		setShowStartDialog(false);
+		setStarting(false);
+	};
+
+	const handleUnlockApp = () => {
+		setShowUnlockDialog(true);
+	};
+
+	const confirmUnlockApp = async () => {
+		if (!name) return;
+
+		setUnlocking(true);
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/unlock`, "unlock", {
+			onSuccess: () => void refetch(),
+			onError: () => void refetch(),
+		});
+
+		setShowUnlockDialog(false);
+		setUnlocking(false);
 	};
 
 	const handleAddDomain = async () => {
@@ -1198,6 +1215,22 @@ export function AppDetail() {
 		}
 	};
 
+	const handleGitSync = async (repo: string, branch: string) => {
+		if (!name || gitSyncing) return;
+
+		setGitSyncing(true);
+
+		await streamAction(`/apps/${encodeURIComponent(name)}/git/sync`, "deploy", {
+			body: JSON.stringify({ repo, ...(branch && { branch }) }),
+			onSuccess: () => {
+				void refetch();
+				void refetchGitInfo();
+			},
+		});
+
+		setGitSyncing(false);
+	};
+
 	const handleEnableSSL = async () => {
 		if (!name || sslSubmitting) return;
 
@@ -1394,6 +1427,21 @@ export function AppDetail() {
 				</p>
 			</ConfirmDialog>
 
+			{/* Unlock Dialog */}
+			<ConfirmDialog
+				visible={showUnlockDialog}
+				title="Unlock App"
+				onClose={() => setShowUnlockDialog(false)}
+				onConfirm={confirmUnlockApp}
+				submitting={unlocking}
+				confirmText="Unlock App"
+			>
+				<p>
+					Are you sure you want to unlock <strong>{name}</strong>? This will allow deployments to
+					proceed.
+				</p>
+			</ConfirmDialog>
+
 			{/* Domain Remove Dialog */}
 			<ConfirmDialog
 				visible={showDomainRemoveDialog}
@@ -1575,6 +1623,13 @@ export function AppDetail() {
 					>
 						Settings
 					</button>
+					<button
+						onClick={() => setActiveTab("git")}
+						className={`pb-2 px-2 ${activeTab === "git" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+						type="button"
+					>
+						Git
+					</button>
 				</nav>
 			</div>
 
@@ -1738,6 +1793,18 @@ export function AppDetail() {
 						onValueChange={setNetworkEditValue}
 					/>
 				</div>
+			)}
+
+			{activeTab === "git" && (
+				<AppGit
+					gitInfo={gitInfo ?? null}
+					loading={gitLoading}
+					error={gitError}
+					syncing={gitSyncing}
+					canModify={canModify}
+					onSync={handleGitSync}
+					onUnlock={handleUnlockApp}
+				/>
 			)}
 		</div>
 	);

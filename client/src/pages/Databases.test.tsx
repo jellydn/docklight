@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -370,17 +370,35 @@ describe("Databases", () => {
 	});
 
 	describe("with submitting states", () => {
+		function mockPendingStream(): { resolve: () => void } {
+			let resolveStream: (() => void) | undefined;
+			const mockStream = new ReadableStream({
+				start(controller) {
+					const progress = `data: ${JSON.stringify({ type: "progress", message: "Connecting..." })}\n\n`;
+					controller.enqueue(new TextEncoder().encode(progress));
+					resolveStream = () => {
+						const result = `data: ${JSON.stringify({ type: "result", command: "", exitCode: 0, stdout: "", stderr: "" })}\n\n`;
+						controller.enqueue(new TextEncoder().encode(result));
+						controller.close();
+					};
+				},
+			});
+			vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+				new Response(mockStream, {
+					status: 200,
+					headers: { "Content-Type": "text/event-stream" },
+				})
+			);
+			return { resolve: () => resolveStream?.() };
+		}
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
 		it("should disable create button during database creation", async () => {
 			const user = userEvent.setup();
-			let createResolver: () => void;
-			const createPromise = new Promise<void>((resolve) => {
-				createResolver = resolve;
-			});
-
-			apiFetchMock.mockImplementation((endpoint: string, _schema?: any, options?: any) => {
-				if (endpoint === "/databases" && options?.method === "POST") {
-					return createPromise;
-				}
+			apiFetchMock.mockImplementation((endpoint: string) => {
 				if (endpoint === "/databases") return Promise.resolve([]);
 				if (endpoint === "/apps") return Promise.resolve(mockApps);
 				return Promise.reject(new Error("Unknown endpoint"));
@@ -396,15 +414,14 @@ describe("Databases", () => {
 				expect(screen.getByText("Create New Database")).toBeInTheDocument();
 			});
 
-			// Select plugin
 			const selectElement = screen.getByText("Select plugin").closest("select");
 			await user.selectOptions(selectElement!, "postgres");
 
-			// Type database name
 			const nameInput = screen.getByPlaceholderText("Database name");
 			await user.type(nameInput, "test-db");
 
-			// Click create button
+			const { resolve } = mockPendingStream();
+
 			const createButton = screen.getByText("Create").closest("button");
 			await user.click(createButton!);
 
@@ -412,26 +429,17 @@ describe("Databases", () => {
 				expect(createButton).toBeDisabled();
 			});
 
-			// Cleanup: resolve pending state update inside act
 			await act(async () => {
-				createResolver!();
+				resolve();
 				await Promise.resolve();
 			});
 		});
 
 		it("should disable link button during database linking", async () => {
 			const user = userEvent.setup();
-			let linkResolver: () => void;
-			const linkPromise = new Promise<void>((resolve) => {
-				linkResolver = resolve;
-			});
-
-			apiFetchMock.mockImplementation((endpoint: string, _schema?: any, options?: any) => {
+			apiFetchMock.mockImplementation((endpoint: string) => {
 				if (endpoint === "/databases") return Promise.resolve(mockDatabases);
 				if (endpoint === "/apps") return Promise.resolve(mockApps);
-				if (endpoint.includes("/link") && options?.method === "POST") {
-					return linkPromise;
-				}
 				return Promise.reject(new Error("Unknown endpoint"));
 			});
 
@@ -445,8 +453,6 @@ describe("Databases", () => {
 				expect(screen.getByText("redis-cache")).toBeInTheDocument();
 			});
 
-			// Find the link app select for redis-cache (which has no linked apps)
-			// The select should be within the redis-cache database section
 			const redisSection = screen.getByText("redis-cache").closest(".border.rounded.p-4.mb-4");
 			expect(redisSection).toBeInTheDocument();
 			if (!redisSection) return;
@@ -461,32 +467,25 @@ describe("Databases", () => {
 			await waitFor(() => {
 				expect(linkButton).not.toBeDisabled();
 			});
+
+			const { resolve } = mockPendingStream();
 			await user.click(linkButton);
 
 			await waitFor(() => {
 				expect(linkButton).toBeDisabled();
 			});
 
-			// Cleanup: resolve pending state update inside act
 			await act(async () => {
-				linkResolver!();
+				resolve();
 				await Promise.resolve();
 			});
 		});
 
 		it("should disable unlink button during unlink operation", async () => {
 			const user = userEvent.setup();
-			let unlinkResolver: () => void;
-			const unlinkPromise = new Promise<void>((resolve) => {
-				unlinkResolver = resolve;
-			});
-
-			apiFetchMock.mockImplementation((endpoint: string, _schema?: any, options?: any) => {
+			apiFetchMock.mockImplementation((endpoint: string) => {
 				if (endpoint === "/databases") return Promise.resolve(mockDatabases);
 				if (endpoint === "/apps") return Promise.resolve(mockApps);
-				if (endpoint.includes("/unlink") && options?.method === "POST") {
-					return unlinkPromise;
-				}
 				return Promise.reject(new Error("Unknown endpoint"));
 			});
 
@@ -513,10 +512,9 @@ describe("Databases", () => {
 			const unlinkDialogEl = unlinkDialog as HTMLElement;
 			const confirmButton = within(unlinkDialogEl).getByRole("button", { name: "Unlink" });
 
-			// Click the confirm button
+			const { resolve } = mockPendingStream();
 			await user.click(confirmButton);
 
-			// The dialog should stay open during the operation
 			await waitFor(
 				() => {
 					expect(within(unlinkDialogEl).getByRole("button", { name: /Unlink/ })).toBeDisabled();
@@ -524,9 +522,8 @@ describe("Databases", () => {
 				{ timeout: 3000 }
 			);
 
-			// Cleanup: resolve pending state update inside act
 			await act(async () => {
-				unlinkResolver!();
+				resolve();
 				await Promise.resolve();
 			});
 		});
@@ -536,13 +533,6 @@ describe("Databases", () => {
 			apiFetchMock.mockImplementation((endpoint: string) => {
 				if (endpoint === "/databases") return Promise.resolve(mockDatabases);
 				if (endpoint === "/apps") return Promise.resolve(mockApps);
-				if (
-					endpoint === "/databases/postgres-test-db" &&
-					!endpoint.includes("/link") &&
-					!endpoint.includes("/unlink")
-				) {
-					return new Promise(() => {}); // Never resolves
-				}
 				return Promise.reject(new Error("Unknown endpoint"));
 			});
 
@@ -567,11 +557,18 @@ describe("Databases", () => {
 			const confirmInput = screen.getByPlaceholderText(/postgres-test-db/);
 			await user.type(confirmInput, "postgres-test-db");
 
+			const { resolve } = mockPendingStream();
+
 			const destroyButton = screen.getByText("Destroy").closest("button");
 			await user.click(destroyButton!);
 
 			await waitFor(() => {
 				expect(destroyButton).toBeDisabled();
+			});
+
+			await act(async () => {
+				resolve();
+				await Promise.resolve();
 			});
 		});
 	});

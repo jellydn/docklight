@@ -313,7 +313,7 @@ export async function restartApp(
 		return createValidationError("restart-app");
 	}
 
-	return executeCommand(DokkuCommands.psRestart(name), 30000, { userId });
+	return executeCommand(DokkuCommands.psRestart(name), 120000, { userId });
 }
 
 export async function stopApp(
@@ -324,7 +324,7 @@ export async function stopApp(
 		return createValidationError("stop-app");
 	}
 
-	return executeCommand(DokkuCommands.psStop(name), 30000, { userId });
+	return executeCommand(DokkuCommands.psStop(name), 60000, { userId });
 }
 
 export async function startApp(
@@ -335,7 +335,7 @@ export async function startApp(
 		return createValidationError("start-app");
 	}
 
-	return executeCommand(DokkuCommands.psStart(name), 30000, { userId });
+	return executeCommand(DokkuCommands.psStart(name), 60000, { userId });
 }
 
 export async function rebuildApp(
@@ -346,7 +346,7 @@ export async function rebuildApp(
 		return createValidationError("rebuild-app");
 	}
 
-	return executeCommand(DokkuCommands.psRebuild(name), 30000, { userId });
+	return executeCommand(DokkuCommands.psRebuild(name), 120000, { userId });
 }
 
 export async function scaleApp(
@@ -380,4 +380,15 @@ export async function scaleApp(
 	}
 
 	return executeCommand(DokkuCommands.psScale(name, processType, count), 30000, { userId });
+}
+
+export async function unlockApp(
+	name: string,
+	userId?: string
+): Promise<CommandResult | { error: string; command: string; exitCode: number; stderr: string }> {
+	if (!isValidAppName(name)) {
+		return createValidationError("unlock-app");
+	}
+
+	return executeCommand(DokkuCommands.appsUnlock(name), 30000, { userId });
 }

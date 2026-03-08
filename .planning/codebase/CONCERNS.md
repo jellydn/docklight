@@ -1,153 +1,162 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-03-04
+**Analysis Date:** 2026-03-07
 
 ## Tech Debt
 
-**Dokku Output Parsing:**
-- Issue: String parsing relies on specific Dokku CLI output format that may change
-- Files: `server/lib/apps.ts`, `server/lib/ssl.ts`, `server/lib/network.ts`, `server/lib/deployment.ts`
-- Impact: Breaking changes when Dokku versions update
-- Fix approach: Implement more robust parsing with fallbacks, use structured output (Dokku 0.30+)
+**Command Allowlist Limitation:**
+- Issue: `server/lib/allowlist.ts` only allows 7 specific commands (`dokku`, `top`, `free`, `df`, `grep`, `awk`, `curl`)
+- Files: `server/lib/allowlist.ts`
+- Impact: May block some Dokku operations; whitelist updates needed for new features
+- Fix approach: Review and extend whitelist as needed; consider more flexible validation approach
 
-**Duplicated Validation Patterns:**
-- Issue: Similar validation and error handling patterns repeated across modules
-- Files: `server/lib/*.ts` (multiple modules)
-- Impact: Code duplication, harder to maintain
-- Fix approach: Extract common patterns into utility functions
+**Duplicate Shell Quote Logic:**
+- Issue: `shellQuote` function is duplicated in `server/lib/shell.ts` and `server/lib/executor.ts`
+- Files: `server/lib/shell.ts:1-3`, `server/lib/executor.ts:37-39`
+- Impact: Maintenance burden; changes in one file must be reflected in the other
+- Fix approach: Import from one location or create shared utility module
 
-**In-Memory Cache Without Persistence:**
-- Issue: Cache is lost on process restart, no eviction policy
-- Files: `server/lib/cache.ts`
-- Impact: Temporary performance hit after restarts
-- Fix approach: Consider Redis or implement LRU eviction
+**Rate Limiter Configuration:**
+- Issue: Rate limiters use hardcoded window sizes and max requests
+- Files: `server/lib/rate-limiter.ts`
+- Impact: May need adjustment based on production usage patterns
+- Fix approach: Consider making configurable via environment variables
 
 ## Known Bugs
 
-**No confirmed bugs** - Test coverage is comprehensive
+**No known open bugs at this time**
+
+(Confirmed by searching for TODO/FIXME/HACK/XXX comments - none found)
 
 ## Security Considerations
 
-**JWT Default Secret:**
-- Risk: Default secret could allow token forgery if JWT_SECRET not set
-- Files: `server/lib/auth.ts`
-- Current mitigation: Runtime check warns if default is used
-- Recommendations: Make JWT_SECRET strictly required, no default value
+**Command Output Storage:**
+- Risk: Command output is stored in database without validation for malicious content
+- Files: `server/lib/db.ts` (`saveCommand`, `saveSettings`)
+- Current mitigation: Parameterized statements used in SQL queries
+- Recommendations: Consider sanitizing output before storage, implement output size limits
 
-**Command Allowlist Completeness:**
-- Risk: Allowlist may not cover all necessary Dokku operations; `grep`, `awk`, `curl` allow remote code execution
-- Files: `server/lib/allowlist.ts`
-- Current mitigation: Basic command allowlist enforcement
-- Recommendations: Expand allowlist with explicit Dokku commands, add parameter validation
+**Sensitive Data Logging:**
+- Risk: Detailed error messages (potentially sensitive info) are logged to database
+- Files: `server/lib/db.ts` (`stderr` field)
+- Current mitigation: Logs require authentication to access
+- Recommendations: Review logging patterns, consider masking for sensitive data
 
-**Command Output Size:**
-- Risk: Unlimited command output stored in database, could include sensitive data
-- Files: `server/lib/executor.ts`, `server/lib/db.ts`
-- Current mitigation: None
-- Recommendations: Implement max output size (4KB), sanitize sensitive data
+**Environment Variable Exposure:**
+- Risk: SSH credentials and database paths passed via environment variables
+- Files: `server/index.ts`, `server/lib/executor.ts`
+- Current mitigation: Relies on server environment security
+- Recommendations: Document secure environment variable handling best practices
 
-**WebSocket Connection Limits:**
-- Risk: No per-IP WebSocket connection limits, potential DoS
-- Files: `server/lib/websocket.ts`
-- Current mitigation: Per-user and global limits only
-- Recommendations: Add per-IP connection limits and burst protection
+**Command Execution Timeouts:**
+- Risk: Some commands may timeout or hang indefinitely
+- Files: `server/lib/executor.ts`
+- Current mitigation: 30 second timeout for most commands, 120 seconds for git sync
+- Recommendations: Monitor long-running commands, consider configurable timeouts
+
+**Default Database Path:**
+- Risk: SQLite database path defaults to `data/docklight.db` without user configuration
+- Files: `server/lib/config.ts`
+- Current mitigation: Configurable via `DOCKLIGHT_DB_PATH`
+- Recommendations: Document defaults, consider requiring explicit configuration
 
 ## Performance Bottlenecks
 
-**Sequential App Listing:**
-- Problem: `getApps()` executes multiple Dokku commands sequentially with string parsing
-- Files: `server/lib/apps.ts`
-- Cause: Each app requires separate `ps:report` and `domains:report` calls
-- Improvement path: Parallel execution, result caching, batch operations
+**Uncached App List:**
+- Problem: Every dashboard load fetches all apps with detailed info via multiple Dokku commands
+- Files: `server/lib/apps.ts` (`getApps`)
+- Cause: Multiple Dokku commands executed per app
+- Improvement path: Implement caching with TTL, base infrastructure exists in `server/lib/cache.ts`
 
-**Database Connection:**
-- Problem: Single SQLite connection, no WAL mode
-- Files: `server/lib/db.ts`
-- Cause: Default SQLite configuration
-- Improvement path: Enable WAL mode, monitor for SQLITE_BUSY errors
+**Log Rotation:**
+- Problem: Audit logs rotate every 5 minutes, could cause heavy database writes under high usage
+- Files: `server/lib/audit-rotation.ts`
+- Cause: Periodic rotation to manage log size
+- Improvement path: Consider adaptive rotation intervals based on usage
 
-**No Query Result Caching:**
-- Problem: Repeated API calls execute Dokku commands every time
-- Files: `server/routes/*.ts`
-- Cause: No caching layer
-- Improvement path: Implement intelligent caching with TTL
+**SSH Connection Pool:**
+- Problem: Connection reuse depends on `node-ssh` implementation
+- Files: `server/lib/executor.ts` (`sshPool`)
+- Cause: Per-request connection management
+- Improvement path: Monitor connection pool performance, consider connection timeouts
 
 ## Fragile Areas
 
-**Dokku CLI Integration:**
-- Files: `server/lib/dokku.ts`, `server/lib/apps.ts`, `server/lib/ssl.ts`
-- Why fragile: Parsing CLI output assumes specific format
-- Safe modification: Add test coverage for various Dokku versions
-- Test coverage: Good, but version-specific testing needed
+**Dokku CLI Parsing:**
+- Files: `server/lib/dokku.ts`, `server/lib/apps.ts`, `server/lib/git.ts`, etc.
+- Why fragile: Relies on Dokku's text output which may change between versions
+- Safe modification: Use centralized parsing functions, add version detection
+- Test coverage: Good - most parsing functions have dedicated tests
 
-**Error Handling:**
-- Files: Multiple modules using generic `catch (error: unknown)`
-- Why fragile: Generic error messages, poor debugging context
-- Safe modification: Implement structured error types
-- Test coverage: Moderate, needs more error scenario tests
+**Date Parsing:**
+- Files: `server/lib/git.ts`, `server/lib/deployment.ts`, `server/lib/ssl.ts`
+- Why fragile: Multiple date formats, timezone handling
+- Safe modification: Use dedicated date parsing library, standardize formats
+- Test coverage: Various formats validated in tests
+
+**SSH Target Parsing with IPv6:**
+- Files: `server/lib/executor.ts` (`parseTarget`)
+- Why fragile: Complex IPv6 address parsing logic
+- Safe modification: Comprehensive testing of various address formats
+- Test coverage: Multiple formats covered in tests
 
 ## Scaling Limits
 
+**SQLite Write Concurrency:**
+- Current capacity: better-sqlite3 allows concurrent reads but writes are sequential
+- Limit: High write load could cause lock contention
+- Scaling path: Consider migrating to PostgreSQL for high-usage scenarios
+
+**Memory Usage:**
+- Current capacity: Single Node.js process
+- Limit: V8 heap limit (~1.4GB)
+- Scaling path: For high load, implement horizontal scaling or clustering
+
 **WebSocket Connections:**
-- Current capacity: 50 global, 5 per user
-- Limit: Memory and file descriptor limits
-- Scaling path: Adjust `WS_MAX_CONNECTIONS` env var
-
-**SSH Connection Pool:**
-- Current capacity: One connection per unique target
-- Limit: Remote server connection limits
-- Scaling path: Pool size is per-target, scales horizontally
-
-**SQLite Concurrency:**
-- Current capacity: Single writer, multiple readers
-- Limit: Write performance under high concurrency
-- Scaling path: Enable WAL mode for better concurrency
+- Current capacity: Single WebSocket server
+- Limit: Connections per server limited by memory
+- Scaling path: Use Redis pub/sub for multi-server WebSocket
 
 ## Dependencies at Risk
 
-**node-ssh:**
-- Risk: Package may have infrequent updates
-- Impact: SSH connection failures
-- Migration plan: Monitor for updates, consider native SSH client
-
 **better-sqlite3:**
-- Risk: Native module, requires rebuild on Node version changes
-- Impact: Database operations fail
-- Migration plan: Pre-built binaries available, monitor Node version support
+- Risk: Requires native compilation, can be difficult to install on some platforms
+- Impact: Database operations would fail
+- Migration plan: Consider PostgreSQL or MySQL for production environments
+
+**node-ssh:**
+- Risk: Potential maintenance issues with SSH library
+- Impact: Unable to execute remote commands
+- Migration plan: Consider using node-stdin or direct SSH client
 
 ## Missing Critical Features
 
-**None identified** - Core functionality is complete
+**User Management UI:**
+- Problem: User management exists via API but may lack complete UI
+- Blocks: Non-technical users cannot manage other users
+
+**Backup/Restore:**
+- Problem: No built-in backup mechanism for SQLite database
+- Blocks: Risk of data loss
+
+**Metrics/Monitoring:**
+- Problem: No built-in performance metrics
+- Blocks: Difficult to diagnose production issues
 
 ## Test Coverage Gaps
 
-**Dokku Version Testing:**
-- What's not tested: Different Dokku CLI output formats
-- Files: `server/lib/*.test.ts`
-- Risk: Breaking changes with Dokku updates
+**E2E Tests:**
+- What's not tested: Complete user workflows (Playwright config exists but tests may be incomplete)
+- Files: `client/playwright.config.ts`, `client/e2e/` (if exists)
+- Risk: UI integration issues could slip through
 - Priority: Medium
 
-**Error Scenario Tests:**
-- What's not tested: All error paths and edge cases
-- Files: Various test files
-- Risk: Unexpected failures in production
+**WebSocket Testing:**
+- What's not tested: Client-server WebSocket integration
+- Files: `server/lib/websocket.test.ts` exists but may not cover client integration
+- Risk: Real-time logs could fail
 - Priority: Low
-
-**WebSocket Error Handling:**
-- What's not tested: Connection failures, reconnection scenarios
-- Files: `server/lib/websocket.test.ts`
-- Risk: Poor user experience on connection issues
-- Priority: Low
-
-## Good Practices
-
-- Comprehensive security tests in `server/lib/security.test.ts`
-- Graceful shutdown with proper cleanup
-- Input validation on all user inputs
-- Multiple layers of rate limiting
-- Health endpoint with connectivity checks
-- 201 test files with good coverage
 
 ---
 
-*Concerns audit: 2026-03-04*
+*Concerns audit: 2026-03-07*
