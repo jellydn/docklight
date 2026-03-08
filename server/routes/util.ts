@@ -52,6 +52,17 @@ export function getOptionalParam(params: unknown, key: string): string | undefin
 	return value as string | undefined;
 }
 
+function isPrivateIp(ip: string): boolean {
+	if (ip.startsWith("127.") || ip.startsWith("10.") || ip.startsWith("192.168.")) {
+		return true;
+	}
+	if (!ip.startsWith("172.")) return false;
+	const parts = ip.split(".");
+	if (parts.length !== 4) return false;
+	const second = Number.parseInt(parts[1], 10);
+	return second >= 16 && second <= 31;
+}
+
 /**
  * Gets the IP address from the request, checking common proxy headers
  * Only trusts X-Forwarded-For and X-Real-IP headers if request is from a trusted proxy
@@ -59,21 +70,7 @@ export function getOptionalParam(params: unknown, key: string): string | undefin
 export function getIpAddress(req: express.Request): string | undefined {
 	const trustProxy = req.app?.get("trust proxy") as boolean | undefined;
 	const remoteAddress = req.socket?.remoteAddress;
-
-	const isTrustedProxy =
-		trustProxy === true ||
-		(remoteAddress &&
-			(remoteAddress.startsWith("127.") ||
-				remoteAddress.startsWith("10.") ||
-				remoteAddress.startsWith("192.168.") ||
-				(remoteAddress.startsWith("172.") &&
-					// Only match 172.16.0.0 - 172.31.255.255 (RFC 1918 private range)
-					(() => {
-						const parts = remoteAddress.split(".");
-						if (parts.length !== 4) return false;
-						const second = parseInt(parts[1], 10);
-						return second >= 16 && second <= 31;
-					})())));
+	const isTrustedProxy = trustProxy === true || (remoteAddress && isPrivateIp(remoteAddress));
 
 	if (isTrustedProxy) {
 		return (

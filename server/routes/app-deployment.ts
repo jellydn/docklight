@@ -13,7 +13,7 @@ import { executeCommandStreaming } from "../lib/executor.js";
 import { DokkuCommands } from "../lib/dokku.js";
 import { isSSERequest, createSSEWriter } from "../lib/sse.js";
 import { isValidAppName } from "../lib/apps.js";
-import { getParam, safeAuditLog, type CommandResultLike } from "./util.js";
+import { getParam, getStatusCode, safeAuditLog, type CommandResultLike } from "./util.js";
 import type { ProgressCallback } from "../lib/executor.js";
 
 function forwardSSEEvents(sse: ReturnType<typeof createSSEWriter>): ProgressCallback {
@@ -36,11 +36,7 @@ export function registerAppDeploymentRoutes(app: express.Application): void {
 		const name = getParam(req.params, "name");
 		const deploymentSettings = await getDeploymentSettings(name);
 		if ("error" in deploymentSettings) {
-			const statusCode =
-				deploymentSettings.exitCode >= 400 && deploymentSettings.exitCode < 600
-					? deploymentSettings.exitCode
-					: 500;
-			res.status(statusCode).json(deploymentSettings);
+			res.status(getStatusCode(deploymentSettings.exitCode)).json(deploymentSettings);
 			return;
 		}
 
