@@ -8,6 +8,17 @@ import { isSSERequest, createSSEWriter } from "../lib/sse.js";
 import { isValidAppName } from "../lib/apps.js";
 import { getParam, safeAuditLog } from "./util.js";
 import { streamAction } from "./stream-util.js";
+import type { ProgressCallback } from "../lib/executor.js";
+
+function forwardSSEEvents(sse: ReturnType<typeof createSSEWriter>): ProgressCallback {
+	return (event) => {
+		if (event.type === "progress") {
+			sse.sendProgress(event.message);
+		} else {
+			sse.sendOutput(event.message, event.error);
+		}
+	};
+}
 
 export function registerAppSSLRoutes(app: express.Application): void {
 	app.get("/api/apps/:name/ssl", authMiddleware, async (req, res) => {
@@ -37,13 +48,7 @@ export function registerAppSSLRoutes(app: express.Application): void {
 					sse.sendProgress("Setting email...");
 					const emailResult = await executeCommandStreaming(
 						DokkuCommands.letsencryptSetEmail(name, normalizedEmail),
-						(event) => {
-							if (event.type === "progress") {
-								sse.sendProgress(event.message);
-							} else {
-								sse.sendOutput(event.message, event.error);
-							}
-						},
+						forwardSSEEvents(sse),
 						60000
 					);
 					if (emailResult.exitCode !== 0) {
@@ -56,13 +61,7 @@ export function registerAppSSLRoutes(app: express.Application): void {
 				sse.sendProgress("Enabling SSL...");
 				const result = await executeCommandStreaming(
 					DokkuCommands.letsencryptEnable(name),
-					(event) => {
-						if (event.type === "progress") {
-							sse.sendProgress(event.message);
-						} else {
-							sse.sendOutput(event.message, event.error);
-						}
-					},
+					forwardSSEEvents(sse),
 					120000
 				);
 

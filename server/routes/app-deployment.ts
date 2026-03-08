@@ -14,6 +14,22 @@ import { DokkuCommands } from "../lib/dokku.js";
 import { isSSERequest, createSSEWriter } from "../lib/sse.js";
 import { isValidAppName } from "../lib/apps.js";
 import { getParam, safeAuditLog, type CommandResultLike } from "./util.js";
+import type { ProgressCallback } from "../lib/executor.js";
+
+function forwardSSEEvents(sse: ReturnType<typeof createSSEWriter>): ProgressCallback {
+	return (e) =>
+		e.type === "progress" ? sse.sendProgress(e.message) : sse.sendOutput(e.message, e.error);
+}
+
+function sendValidationError(sse: ReturnType<typeof createSSEWriter>, message: string): void {
+	sse.sendResult({
+		command: "",
+		exitCode: 400,
+		stdout: "",
+		stderr: message,
+	});
+	sse.close();
+}
 
 export function registerAppDeploymentRoutes(app: express.Application): void {
 	app.get("/api/apps/:name/deployment", authMiddleware, async (req, res) => {
@@ -48,25 +64,12 @@ export function registerAppDeploymentRoutes(app: express.Application): void {
 				try {
 					if (deployBranch !== undefined) {
 						if (typeof deployBranch !== "string") {
-							sse.sendResult({
-								command: "",
-								exitCode: 400,
-								stdout: "",
-								stderr: "deployBranch must be a string",
-							});
-							sse.close();
+							sendValidationError(sse, "deployBranch must be a string");
 							return;
 						}
 						sse.sendProgress(`Setting deploy branch to ${deployBranch}...`);
 						const cmd = DokkuCommands.gitSetDeployBranch(name, deployBranch);
-						const result = await executeCommandStreaming(
-							cmd,
-							(e) =>
-								e.type === "progress"
-									? sse.sendProgress(e.message)
-									: sse.sendOutput(e.message, e.error),
-							60000
-						);
+						const result = await executeCommandStreaming(cmd, forwardSSEEvents(sse), 60000);
 						if (result.exitCode !== 0) {
 							sse.sendResult(result);
 							sse.close();
@@ -77,13 +80,7 @@ export function registerAppDeploymentRoutes(app: express.Application): void {
 
 					if (buildDir !== undefined) {
 						if (buildDir !== null && typeof buildDir !== "string") {
-							sse.sendResult({
-								command: "",
-								exitCode: 400,
-								stdout: "",
-								stderr: "buildDir must be a string or null",
-							});
-							sse.close();
+							sendValidationError(sse, "buildDir must be a string or null");
 							return;
 						}
 						sse.sendProgress(
@@ -92,14 +89,7 @@ export function registerAppDeploymentRoutes(app: express.Application): void {
 						const cmd = buildDir
 							? DokkuCommands.builderSetBuildDir(name, buildDir)
 							: DokkuCommands.builderClearBuildDir(name);
-						const result = await executeCommandStreaming(
-							cmd,
-							(e) =>
-								e.type === "progress"
-									? sse.sendProgress(e.message)
-									: sse.sendOutput(e.message, e.error),
-							60000
-						);
+						const result = await executeCommandStreaming(cmd, forwardSSEEvents(sse), 60000);
 						if (result.exitCode !== 0) {
 							sse.sendResult(result);
 							sse.close();
@@ -110,27 +100,14 @@ export function registerAppDeploymentRoutes(app: express.Application): void {
 
 					if (builder !== undefined) {
 						if (typeof builder !== "string") {
-							sse.sendResult({
-								command: "",
-								exitCode: 400,
-								stdout: "",
-								stderr: "builder must be a string",
-							});
-							sse.close();
+							sendValidationError(sse, "builder must be a string");
 							return;
 						}
 						sse.sendProgress(builder ? `Setting builder to ${builder}...` : "Clearing builder...");
 						const cmd = builder
 							? DokkuCommands.builderSetSelected(name, builder)
 							: DokkuCommands.builderClearSelected(name);
-						const result = await executeCommandStreaming(
-							cmd,
-							(e) =>
-								e.type === "progress"
-									? sse.sendProgress(e.message)
-									: sse.sendOutput(e.message, e.error),
-							60000
-						);
+						const result = await executeCommandStreaming(cmd, forwardSSEEvents(sse), 60000);
 						if (result.exitCode !== 0) {
 							sse.sendResult(result);
 							sse.close();
@@ -140,13 +117,10 @@ export function registerAppDeploymentRoutes(app: express.Application): void {
 					}
 
 					if (Object.keys(auditDetails).length === 0) {
-						sse.sendResult({
-							command: "",
-							exitCode: 400,
-							stdout: "",
-							stderr: "At least one of deployBranch, buildDir, or builder is required",
-						});
-						sse.close();
+						sendValidationError(
+							sse,
+							"At least one of deployBranch, buildDir, or builder is required"
+						);
 						return;
 					}
 
