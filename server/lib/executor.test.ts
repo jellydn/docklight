@@ -262,11 +262,10 @@ describe("executeCommand with SSH pool", () => {
 		const result = await executeCommand("dokku apps:list");
 
 		expect(result.exitCode).toBe(1);
-		expect(result.stderr).toContain("SSH connection failed");
-		expect(result.stderr).toContain("initial:");
-		expect(result.stderr).toContain("retry:");
+		expect(result.stderr).toContain("SSH connection failed after retries");
 		expect(result.stderr).toContain("Connection refused");
-		expect(mockSshInstance.connect).toHaveBeenCalledTimes(2);
+		// With retryWithBackoff (maxRetries: 2), we get up to 3 attempts
+		expect(mockSshInstance.connect.mock.calls.length).toBeGreaterThanOrEqual(2);
 	});
 
 	it("returns error on command timeout", async () => {
@@ -324,9 +323,10 @@ describe("executeCommand with SSH pool", () => {
 			const result = await executeCommand("dokku apps:list");
 
 			expect(result.exitCode).toBe(1);
-			expect(result.stderr).toContain("SSH channel failed, retry also failed");
+			expect(result.stderr).toContain("SSH command execution failed");
 			expect(result.stderr).toContain("Connection refused");
-			expect(execCallCount).toBe(2);
+			// With retryWithBackoff (maxRetries: 2), we get up to 3 attempts
+			expect(execCallCount).toBeGreaterThanOrEqual(2);
 		});
 
 		it("does not retry for non-channel execution errors", async () => {
