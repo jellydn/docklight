@@ -14,13 +14,20 @@ export type CommandResultLike =
 	  };
 
 /**
+ * Converts an exit code to an appropriate HTTP status code
+ * Returns the exit code if it's in the 4xx-5xx range, otherwise returns 500
+ */
+export function getStatusCode(exitCode: number): number {
+	return exitCode >= 400 && exitCode < 600 ? exitCode : 500;
+}
+
+/**
  * Handles command result responses with proper status codes
  * @returns true if successful, false if error was sent
  */
 export function handleCommandResult(res: express.Response, result: CommandResultLike): boolean {
 	if (result.exitCode !== 0) {
-		const statusCode = result.exitCode >= 400 && result.exitCode < 600 ? result.exitCode : 500;
-		res.status(statusCode).json(result);
+		res.status(getStatusCode(result.exitCode)).json(result);
 		return false;
 	}
 	return true;
