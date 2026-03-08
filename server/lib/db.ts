@@ -49,6 +49,7 @@ function getDb(): Database {
 		createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
 	  )
 	`);
+	// Note: SQLite CURRENT_TIMESTAMP returns UTC (YYYY-MM-DD HH:MM:SS format)
 
 	// Create indexes for audit log query performance
 	newDb.exec(`
@@ -66,6 +67,7 @@ function getDb(): Database {
 		createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
 	  )
 	`);
+	// Note: SQLite CURRENT_TIMESTAMP returns UTC (YYYY-MM-DD HH:MM:SS format)
 
 	// Create audit_log table for RBAC user action auditing
 	newDb.exec(`
@@ -80,6 +82,7 @@ function getDb(): Database {
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 	  )
 	`);
+	// Note: SQLite CURRENT_TIMESTAMP returns UTC (YYYY-MM-DD HH:MM:SS format)
 
 	// Create indexes for audit_log performance
 	newDb.exec(`
@@ -105,6 +108,27 @@ function isValidISODate(date: string): boolean {
  */
 function normalizeEndDateFilter(endDate: string): string {
 	return /^\d{4}-\d{2}-\d{2}$/.test(endDate) ? `${endDate}T23:59:59.999Z` : endDate;
+}
+
+function buildDateRangeConditions(
+	filters: { startDate?: string; endDate?: string },
+	conditions: string[],
+	params: (string | number)[]
+): void {
+	if (filters.startDate && isValidISODate(filters.startDate)) {
+		conditions.push("datetime(createdAt) >= datetime(?)");
+		params.push(filters.startDate);
+	}
+
+	if (filters.endDate && isValidISODate(filters.endDate)) {
+		const endDate = normalizeEndDateFilter(filters.endDate);
+		conditions.push("datetime(createdAt) <= datetime(?)");
+		params.push(endDate);
+	}
+}
+
+function buildWhereClause(conditions: string[]): string {
+	return conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 }
 
 export interface CommandHistory {
@@ -165,20 +189,10 @@ export function getAuditLogs(filters: AuditLogFilters = {}): AuditLogResult {
 	const limit = Math.min(filters.limit ?? 50, 500);
 	const offset = filters.offset ?? 0;
 
-	// Build WHERE clause conditions
 	const conditions: string[] = [];
 	const params: (string | number)[] = [];
 
-	if (filters.startDate && isValidISODate(filters.startDate)) {
-		conditions.push("datetime(createdAt) >= datetime(?)");
-		params.push(filters.startDate);
-	}
-
-	if (filters.endDate && isValidISODate(filters.endDate)) {
-		const endDate = normalizeEndDateFilter(filters.endDate);
-		conditions.push("datetime(createdAt) <= datetime(?)");
-		params.push(endDate);
-	}
+	buildDateRangeConditions(filters, conditions, params);
 
 	if (filters.command) {
 		conditions.push("command LIKE ?");
@@ -191,15 +205,12 @@ export function getAuditLogs(filters: AuditLogFilters = {}): AuditLogResult {
 		conditions.push("exitCode != 0");
 	}
 
-	// Build WHERE clause
-	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+	const whereClause = buildWhereClause(conditions);
 
-	// Get total count
 	const countStmt = getDb().prepare(`SELECT COUNT(*) as count FROM command_history ${whereClause}`);
 	const countResult = countStmt.get(...params) as { count: number };
 	const total = countResult.count;
 
-	// Get paginated results
 	const dataStmt = getDb().prepare(
 		`SELECT id, command, exitCode, stdout, stderr, createdAt
 		 FROM command_history
@@ -510,16 +521,7 @@ export function getCommandHistoryForExport(filters: AuditLogFilters = {}): Comma
 	const conditions: string[] = [];
 	const params: (string | number)[] = [];
 
-	if (filters.startDate && isValidISODate(filters.startDate)) {
-		conditions.push("datetime(createdAt) >= datetime(?)");
-		params.push(filters.startDate);
-	}
-
-	if (filters.endDate && isValidISODate(filters.endDate)) {
-		const endDate = normalizeEndDateFilter(filters.endDate);
-		conditions.push("datetime(createdAt) <= datetime(?)");
-		params.push(endDate);
-	}
+	buildDateRangeConditions(filters, conditions, params);
 
 	if (filters.command) {
 		conditions.push("command LIKE ?");
@@ -532,7 +534,7 @@ export function getCommandHistoryForExport(filters: AuditLogFilters = {}): Comma
 		conditions.push("exitCode != 0");
 	}
 
-	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+	const whereClause = buildWhereClause(conditions);
 	const stmt = getDb().prepare(
 		`SELECT id, command, exitCode, stdout, stderr, createdAt
 		 FROM command_history
@@ -556,18 +558,9 @@ export function getUserAuditLogsForExport(filters: UserAuditLogFilters = {}): Au
 		params.push(filters.action);
 	}
 
-	if (filters.startDate && isValidISODate(filters.startDate)) {
-		conditions.push("datetime(createdAt) >= datetime(?)");
-		params.push(filters.startDate);
-	}
+	buildDateRangeConditions(filters, conditions, params);
 
-	if (filters.endDate && isValidISODate(filters.endDate)) {
-		const endDate = normalizeEndDateFilter(filters.endDate);
-		conditions.push("datetime(createdAt) <= datetime(?)");
-		params.push(endDate);
-	}
-
-	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+	const whereClause = buildWhereClause(conditions);
 	const stmt = getDb().prepare(
 		`SELECT id, user_id as userId, action, resource, details, ip_address as ipAddress,
 		        strftime('%Y-%m-%dT%H:%M:%SZ', createdAt) as createdAt
@@ -582,7 +575,6 @@ export function getUserAuditLogs(filters: UserAuditLogFilters = {}): UserAuditLo
 	const limit = Math.min(filters.limit ?? 50, 500);
 	const offset = filters.offset ?? 0;
 
-	// Build WHERE clause conditions
 	const conditions: string[] = [];
 	const params: (number | string)[] = [];
 
@@ -596,26 +588,14 @@ export function getUserAuditLogs(filters: UserAuditLogFilters = {}): UserAuditLo
 		params.push(filters.action);
 	}
 
-	if (filters.startDate && isValidISODate(filters.startDate)) {
-		conditions.push("datetime(createdAt) >= datetime(?)");
-		params.push(filters.startDate);
-	}
+	buildDateRangeConditions(filters, conditions, params);
 
-	if (filters.endDate && isValidISODate(filters.endDate)) {
-		const endDate = normalizeEndDateFilter(filters.endDate);
-		conditions.push("datetime(createdAt) <= datetime(?)");
-		params.push(endDate);
-	}
+	const whereClause = buildWhereClause(conditions);
 
-	// Build WHERE clause
-	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-
-	// Get total count
 	const countStmt = getDb().prepare(`SELECT COUNT(*) as count FROM audit_log ${whereClause}`);
 	const countResult = countStmt.get(...params) as { count: number };
 	const total = countResult.count;
 
-	// Get paginated results
 	const dataStmt = getDb().prepare(
 		`SELECT id, user_id as userId, action, resource, details, ip_address as ipAddress,
 		        strftime('%Y-%m-%dT%H:%M:%SZ', createdAt) as createdAt
