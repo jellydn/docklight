@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseStatus, parseDeployTime, parseDomains } from "./apps.js";
+import { parseStatus, toISODateTime, parseDomains } from "./apps.js";
 
 describe("parseStatus", () => {
 	it("should parse 'deployed state: running' format", () => {
@@ -71,39 +71,29 @@ describe("parseStatus", () => {
 	});
 });
 
-describe("parseDeployTime", () => {
-	it("should parse standard deploy time format", () => {
-		const stdout = `App deployed at: 2024-03-15 14:30:25`;
-		expect(parseDeployTime(stdout)).toBe("2024-03-15 14:30:25");
+describe("toISODateTime", () => {
+	it("should convert space-separated datetime to ISO format", () => {
+		expect(toISODateTime("2024-03-15 14:30:25")).toBe("2024-03-15T14:30:25.000Z");
 	});
 
-	it("should parse deploy time with 'deployed at' in different case", () => {
-		const stdout = `Last Deployed At: 2023-12-01 09:15:00`;
-		expect(parseDeployTime(stdout)).toBe("2023-12-01 09:15:00");
+	it("should pass through ISO format", () => {
+		expect(toISODateTime("2024-01-15T10:30:00Z")).toBe("2024-01-15T10:30:00.000Z");
 	});
 
-	it("should return undefined when no deploy time found", () => {
-		const stdout = `App status: running\nProcesses: 2`;
-		expect(parseDeployTime(stdout)).toBeUndefined();
+	it("should return undefined for empty string", () => {
+		expect(toISODateTime("")).toBeUndefined();
 	});
 
-	it("should handle empty output", () => {
-		expect(parseDeployTime("")).toBeUndefined();
+	it("should return undefined for undefined", () => {
+		expect(toISODateTime(undefined)).toBeUndefined();
 	});
 
-	it("should extract first valid date when multiple present", () => {
-		const stdout = `App deployed at: 2024-01-01 00:00:00\nAnother date: 2024-06-15 12:00:00`;
-		expect(parseDeployTime(stdout)).toBe("2024-01-01 00:00:00");
+	it("should return undefined for whitespace-only string", () => {
+		expect(toISODateTime("   ")).toBeUndefined();
 	});
 
-	it("should handle ANSI escape codes", () => {
-		const stdout = "\x1b[36mApp deployed at: 2024-07-20 18:45:30\x1b[0m";
-		expect(parseDeployTime(stdout)).toBe("2024-07-20 18:45:30");
-	});
-
-	it("should not match invalid date formats", () => {
-		const stdout = `deployed at: 2024/03/15 14:30:25`;
-		expect(parseDeployTime(stdout)).toBeUndefined();
+	it("should return undefined for invalid date string", () => {
+		expect(toISODateTime("not-a-date")).toBeUndefined();
 	});
 });
 
