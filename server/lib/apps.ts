@@ -87,22 +87,23 @@ async function fetchAppDetails(stdout: string, userId?: string): Promise<App[]> 
 
 	return Promise.all(
 		appNames.map(async (appName) => {
-			const [psReportResult, domainsReportResult] = await Promise.all([
+			const [psReportResult, domainsReportResult, gitReportResult] = await Promise.all([
 				executeCommand(DokkuCommands.psReport(appName), 30000, { userId }),
 				executeCommand(DokkuCommands.domainsReport(appName), 30000, { userId }),
+				executeCommand(DokkuCommands.gitReport(appName), 30000, { userId }),
 			]);
 
 			return {
 				name: appName,
 				status: parseStatus(psReportResult.stdout),
 				domains: parseDomains(domainsReportResult.stdout),
-				lastDeployTime: parseDeployTime(psReportResult.stdout),
+				lastDeployTime: toISODateTime(parseLastUpdatedAt(gitReportResult.stdout)),
 			};
 		})
 	);
 }
 
-function parseStatus(stdout: string): "running" | "stopped" {
+export function parseStatus(stdout: string): "running" | "stopped" {
 	const lines = stdout.split("\n").map((line) => stripAnsi(line));
 	let sawProcessStatus = false;
 	let sawRunningProcess = false;
@@ -138,8 +139,7 @@ function parseStatus(stdout: string): "running" | "stopped" {
 		}
 
 		const isRunningKey = /\brunning\b/.test(key);
-		const isDeployedKey = /\bdeployed\b/.test(key) && !/\bapp deployed\b/.test(key);
-		if (isRunningKey || isDeployedKey) {
+		if (isRunningKey) {
 			return value === "true" ? "running" : "stopped";
 		}
 	}
@@ -151,20 +151,28 @@ function parseStatus(stdout: string): "running" | "stopped" {
 	return "stopped";
 }
 
-function parseDeployTime(stdout: string): string | undefined {
+function parseLastUpdatedAt(stdout: string): string | undefined {
 	const lines = stdout.split("\n").map((line) => stripAnsi(line));
 	for (const line of lines) {
-		if (line.includes("deployed at")) {
-			const match = line.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
-			if (match) {
-				return match[1];
-			}
+		const match = line.match(/^\s*Git last updated at:\s*(.+)$/i);
+		if (match) {
+			return match[1].trim() || undefined;
 		}
 	}
 	return undefined;
 }
 
-function parseDomains(stdout: string): string[] {
+export function toISODateTime(value: string | undefined): string | undefined {
+	if (!value) return undefined;
+	const trimmed = value.trim();
+	if (!trimmed) return undefined;
+
+	const date = new Date(trimmed.includes("T") ? trimmed : `${trimmed.replace(" ", "T")}Z`);
+	if (Number.isNaN(date.getTime())) return undefined;
+	return date.toISOString();
+}
+
+export function parseDomains(stdout: string): string[] {
 	const lines = stdout.split("\n").map((line) => stripAnsi(line));
 	const domains = new Set<string>();
 
@@ -187,7 +195,17 @@ function parseDomains(stdout: string): string[] {
 	return [...domains];
 }
 
+export const MAX_APP_NAME_LENGTH = 64;
+
 export function isValidAppName(name: string): boolean {
+	// Must be 1-64 chars, lowercase letters, numbers, hyphens only
+	// Cannot start or end with a hyphen (DNS label rules)
+	if (!name || name.length > MAX_APP_NAME_LENGTH || name.length < 1) {
+		return false;
+	}
+	if (name.startsWith("-") || name.endsWith("-")) {
+		return false;
+	}
 	return /^[a-z0-9-]+$/.test(name);
 }
 

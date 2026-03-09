@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppDetail as AppDetailData } from "../lib/schemas.js";
 import { AppDetail } from "./AppDetail";
 
@@ -185,7 +185,7 @@ describe("AppDetail", () => {
 		await waitFor(() => {
 			const confirmHeading = screen.getByText("Confirm Action");
 			expect(confirmHeading).toBeInTheDocument();
-			expect(confirmHeading.parentElement).toHaveTextContent(
+			expect(confirmHeading.closest(".bg-white")).toHaveTextContent(
 				"Are you sure you want to restart test-app?"
 			);
 		});
@@ -314,6 +314,32 @@ describe("AppDetail", () => {
 	});
 
 	describe("with submitting states", () => {
+		function mockPendingStream(): { resolve: () => void } {
+			let resolveStream: (() => void) | undefined;
+			const mockStream = new ReadableStream({
+				start(controller) {
+					const progress = `data: ${JSON.stringify({ type: "progress", message: "Connecting..." })}\n\n`;
+					controller.enqueue(new TextEncoder().encode(progress));
+					resolveStream = () => {
+						const result = `data: ${JSON.stringify({ type: "result", command: "", exitCode: 0, stdout: "", stderr: "" })}\n\n`;
+						controller.enqueue(new TextEncoder().encode(result));
+						controller.close();
+					};
+				},
+			});
+			vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+				new Response(mockStream, {
+					status: 200,
+					headers: { "Content-Type": "text/event-stream" },
+				})
+			);
+			return { resolve: () => resolveStream?.() };
+		}
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
 		it("should disable confirm button during restart action", async () => {
 			const user = userEvent.setup();
 			let resolveStream: (() => void) | undefined;
@@ -413,17 +439,9 @@ describe("AppDetail", () => {
 
 		it("should disable config var set button during submission", async () => {
 			const user = userEvent.setup();
-			let configResolver: () => void;
-			const configPromise = new Promise<void>((resolve) => {
-				configResolver = resolve;
-			});
+			apiFetchMock.mockResolvedValue(mockAppDetail);
 
-			apiFetchMock.mockImplementation((endpoint: string, _schema?: any, options?: any) => {
-				if (endpoint.includes("config") && options?.method === "POST") {
-					return configPromise;
-				}
-				return Promise.resolve(mockAppDetail);
-			});
+			const { resolve } = mockPendingStream();
 
 			renderWithQueryClient(
 				<MemoryRouter initialEntries={["/apps/test-app"]}>
@@ -456,21 +474,18 @@ describe("AppDetail", () => {
 				expect(setButton).toBeDisabled();
 			});
 
-			// Cleanup: resolve pending state update inside act
+			// Cleanup: resolve pending stream
 			await act(async () => {
-				configResolver!();
+				resolve();
 				await Promise.resolve();
 			});
 		});
 
 		it("should disable add domain button during submission", async () => {
 			const user = userEvent.setup();
-			apiFetchMock.mockImplementation((endpoint: string, _schema?: any, options?: any) => {
-				if (endpoint.includes("domains") && options?.method === "POST") {
-					return new Promise(() => {}); // Never resolves
-				}
-				return Promise.resolve(mockAppDetail);
-			});
+			apiFetchMock.mockResolvedValue(mockAppDetail);
+
+			const { resolve } = mockPendingStream();
 
 			renderWithQueryClient(
 				<MemoryRouter initialEntries={["/apps/test-app"]}>
@@ -498,6 +513,12 @@ describe("AppDetail", () => {
 
 			await waitFor(() => {
 				expect(addButton).toBeDisabled();
+			});
+
+			// Cleanup: resolve pending stream
+			await act(async () => {
+				resolve();
+				await Promise.resolve();
 			});
 		});
 	});

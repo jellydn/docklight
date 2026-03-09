@@ -63,10 +63,11 @@ describe("getApps", () => {
 				stdout: "my-app\nanother-app",
 				stderr: "",
 			})
+			// my-app: ps:report, domains:report, git:report
 			.mockResolvedValueOnce({
 				command: "dokku ps:report my-app",
 				exitCode: 0,
-				stdout: "Myapp deployed state: running\nMyapp deployed at: 2024-01-15 10:30:00",
+				stdout: "Deployed: true\nRunning: true",
 				stderr: "",
 			})
 			.mockResolvedValueOnce({
@@ -76,15 +77,28 @@ describe("getApps", () => {
 				stderr: "",
 			})
 			.mockResolvedValueOnce({
+				command: "dokku git:report my-app",
+				exitCode: 0,
+				stdout: "Git last updated at: 2024-01-15 10:30:00",
+				stderr: "",
+			})
+			// another-app: ps:report, domains:report, git:report
+			.mockResolvedValueOnce({
 				command: "dokku ps:report another-app",
 				exitCode: 0,
-				stdout: "Anotherapp deployed state: running",
+				stdout: "Deployed: true\nRunning: true",
 				stderr: "",
 			})
 			.mockResolvedValueOnce({
 				command: "dokku domains:report another-app",
 				exitCode: 0,
 				stdout: "Anotherapp domains vhosts:",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report another-app",
+				exitCode: 0,
+				stdout: "Git last updated at:",
 				stderr: "",
 			});
 
@@ -97,11 +111,12 @@ describe("getApps", () => {
 		expect(firstApp.name).toBe("my-app");
 		expect(firstApp.status).toBe("running");
 		expect(firstApp.domains).toEqual(["my-app.example.com", "www.example.com"]);
-		expect(firstApp.lastDeployTime).toBe("2024-01-15 10:30:00");
+		expect(firstApp.lastDeployTime).toBe("2024-01-15T10:30:00.000Z");
 
 		expect(secondApp.name).toBe("another-app");
 		expect(secondApp.status).toBe("running");
 		expect(secondApp.domains).toEqual([]);
+		expect(secondApp.lastDeployTime).toBeUndefined();
 	});
 
 	it("should mark app as stopped when not deployed", async () => {
@@ -122,6 +137,12 @@ describe("getApps", () => {
 				command: "dokku domains:report stopped-app",
 				exitCode: 0,
 				stdout: "Stoppedapp domains vhosts:",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report stopped-app",
+				exitCode: 0,
+				stdout: "",
 				stderr: "",
 			});
 
@@ -150,6 +171,12 @@ describe("getApps", () => {
 				exitCode: 0,
 				stdout: "Myapp domains vhosts:",
 				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report my-app",
+				exitCode: 0,
+				stdout: "",
+				stderr: "",
 			});
 
 		const result = await getApps();
@@ -176,6 +203,12 @@ describe("getApps", () => {
 				command: "dokku domains:report my-app",
 				exitCode: 0,
 				stdout: "Myapp domains vhosts:",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku git:report my-app",
+				exitCode: 0,
+				stdout: "",
 				stderr: "",
 			});
 

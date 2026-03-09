@@ -39,7 +39,7 @@ describe("databases", () => {
 				stderr: "",
 			})
 			.mockResolvedValueOnce({
-				command: "dokku postgres:links main-db",
+				command: "dokku postgres:links 'main-db'",
 				exitCode: 0,
 				stdout: "=====> main-db linked apps\napi\nworker",
 				stderr: "",
@@ -115,7 +115,7 @@ describe("databases", () => {
 				stderr: "",
 			})
 			.mockResolvedValueOnce({
-				command: "dokku postgres:links main-db",
+				command: "dokku postgres:links 'main-db'",
 				exitCode: 0,
 				stdout: "postgres service main-db linked apps: api, worker",
 				stderr: "",
@@ -154,7 +154,7 @@ describe("databases", () => {
 				stderr: "",
 			})
 			.mockResolvedValueOnce({
-				command: "dokku postgres:links main-db",
+				command: "dokku postgres:links 'main-db'",
 				exitCode: 0,
 				stdout: "=====> main-db linked apps\r\napi\r\nworker\r\n",
 				stderr: "",
@@ -170,7 +170,7 @@ describe("databases", () => {
 				connectionInfo: "postgresql://main-db@localhost",
 			},
 		]);
-		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku postgres:links main-db");
+		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku postgres:links 'main-db'");
 	});
 
 	it("getDatabases should handle 'No linked apps' format", async () => {
@@ -190,13 +190,15 @@ describe("databases", () => {
 			.mockResolvedValueOnce({
 				command: "dokku postgres:links store",
 				exitCode: 0,
-				stdout: "=====> PostgreSQL service store\nLinked Apps:No linked apps\n=====> Connection Info:",
+				stdout:
+					"=====> PostgreSQL service store\nLinked Apps:No linked apps\n=====> Connection Info:",
 				stderr: "",
 			})
 			.mockResolvedValueOnce({
 				command: "dokku postgres:info store",
 				exitCode: 0,
-				stdout: "=====> PostgreSQL service store\nLinked Apps:No linked apps\n=====> Connection Info:",
+				stdout:
+					"=====> PostgreSQL service store\nLinked Apps:No linked apps\n=====> Connection Info:",
 				stderr: "",
 			});
 
@@ -274,7 +276,8 @@ describe("databases", () => {
 			.mockResolvedValueOnce({
 				command: "dokku postgres:info store",
 				exitCode: 0,
-				stdout: "=====> PostgreSQL service store\nLinked Apps:No linked apps\n=====> Connection Info:",
+				stdout:
+					"=====> PostgreSQL service store\nLinked Apps:No linked apps\n=====> Connection Info:",
 				stderr: "",
 			});
 

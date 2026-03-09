@@ -6,7 +6,7 @@ import {
 	mockCommands,
 	MOCK_APP_DETAIL,
 } from "./helpers.js";
-import { mockJsonEndpoint, mockMethodRoute } from "./route-utils.js";
+import { mockJsonEndpoint, mockMethodRoute, fulfillSSE, fulfillJson } from "./route-utils.js";
 
 test.describe("App lifecycle", () => {
 	test.beforeEach(async ({ page }) => {
@@ -143,9 +143,15 @@ test.describe("App lifecycle", () => {
 	test("should delete an app successfully", async ({ page }) => {
 		await mockApps(page, []);
 
-		await mockJsonEndpoint(page, "**/api/apps/my-app", {
-			GET: MOCK_APP_DETAIL,
-			DELETE: { exitCode: 0, stdout: "Deleted my-app", stderr: "", command: "" },
+		await page.route("**/api/apps/my-app", (route) => {
+			const method = route.request().method();
+			if (method === "GET") {
+				fulfillJson(route, MOCK_APP_DETAIL);
+			} else if (method === "DELETE") {
+				fulfillSSE(route, { exitCode: 0, stdout: "Deleted my-app", stderr: "", command: "" });
+			} else {
+				route.continue();
+			}
 		});
 
 		await page.goto("/apps/my-app");

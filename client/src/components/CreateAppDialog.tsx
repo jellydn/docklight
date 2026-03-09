@@ -10,9 +10,9 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ToastProvider.js";
+import { useStreamingAction } from "../hooks/use-streaming-action.js";
 import { apiFetch } from "../lib/api.js";
-import { CommandResultSchema, CreateAppResultSchema } from "../lib/schemas.js";
+import { CreateAppResultSchema } from "../lib/schemas.js";
 
 interface CreateAppDialogProps {
 	open: boolean;
@@ -33,7 +33,7 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 	const [builder, setBuilder] = useState("");
 	const [advancedWarning, setAdvancedWarning] = useState<string | null>(null);
 	const navigate = useNavigate();
-	const { addToast } = useToast();
+	const { execute: streamAction } = useStreamingAction();
 
 	const hostname = typeof window !== "undefined" ? window.location.hostname : "";
 
@@ -63,33 +63,24 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 			onCreated?.(appName);
 
 			if (deployBranch || buildDir || builder) {
-				try {
-					const result = await apiFetch(
-						`/apps/${encodeURIComponent(appName)}/deployment`,
-						CommandResultSchema,
-						{
-							method: "PUT",
-							body: JSON.stringify({
-								deployBranch: deployBranch || undefined,
-								buildDir: buildDir || undefined,
-								builder: builder || undefined,
-							}),
-						}
-					);
-
-					if (result.exitCode !== 0) {
-						throw new Error(result.stderr || "Failed to apply advanced settings");
+				const result = await streamAction(
+					`/apps/${encodeURIComponent(appName)}/deployment`,
+					"deployment:update",
+					{
+						method: "PUT",
+						body: JSON.stringify({
+							deployBranch: deployBranch || undefined,
+							buildDir: buildDir || undefined,
+							builder: builder || undefined,
+						}),
+						onError: () => {
+							setAdvancedWarning("Failed to apply advanced settings");
+						},
 					}
-				} catch (advErr) {
-					const warningMsg =
-						advErr instanceof Error ? advErr.message : "Failed to apply advanced settings";
-					setAdvancedWarning(warningMsg);
-					addToast("error", "App created, but advanced settings failed", {
-						command: "",
-						exitCode: 1,
-						stdout: "",
-						stderr: warningMsg,
-					});
+				);
+
+				if (!result || result.exitCode !== 0) {
+					setAdvancedWarning(result?.stderr || "Failed to apply advanced settings");
 				}
 			}
 		} catch (err) {

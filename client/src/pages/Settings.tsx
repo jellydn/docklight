@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { type JSX, useCallback, useEffect, useRef, useState } from "react";
+import { useStreamingAction } from "@/hooks/use-streaming-action.js";
 import { apiFetch } from "@/lib/api.js";
 import { queryClient } from "@/lib/query-client.js";
 import { queryKeys } from "@/lib/query-keys.js";
@@ -8,6 +9,7 @@ import { ServerSettingsSchema, type ServerSettings } from "@/lib/schemas.js";
 const LOG_LEVELS = ["fatal", "error", "warn", "info", "debug", "trace"];
 
 export function Settings(): JSX.Element {
+	const { execute: streamAction } = useStreamingAction();
 	const {
 		data: settings,
 		isLoading,
@@ -24,6 +26,7 @@ export function Settings(): JSX.Element {
 	});
 	const [saveError, setSaveError] = useState("");
 	const [saveSuccess, setSaveSuccess] = useState(false);
+	const [testingConnection, setTestingConnection] = useState(false);
 	const isDirty = useRef(false);
 	const successTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -70,6 +73,19 @@ export function Settings(): JSX.Element {
 		setSaveError("");
 		setSaveSuccess(false);
 		updateMutation.mutate(form);
+	};
+
+	const handleTestConnection = async (): Promise<void> => {
+		if (!form.dokkuSshTarget || testingConnection) return;
+		setTestingConnection(true);
+		await streamAction("/settings/test-connection", "test-connection", {
+			method: "POST",
+			body: JSON.stringify({
+				target: form.dokkuSshTarget,
+				keyPath: form.dokkuSshKeyPath,
+			}),
+		});
+		setTestingConnection(false);
 	};
 
 	const errorMessage = error?.message || "";
@@ -131,6 +147,16 @@ export function Settings(): JSX.Element {
 								<p className="text-xs text-gray-400 mt-1">
 									Absolute path to the SSH private key file on the server
 								</p>
+							</div>
+							<div className="flex items-center gap-3 mt-2">
+								<button
+									type="button"
+									onClick={handleTestConnection}
+									disabled={!form.dokkuSshTarget || testingConnection}
+									className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									{testingConnection ? "Testing..." : "Test Connection"}
+								</button>
 							</div>
 						</div>
 					</div>
