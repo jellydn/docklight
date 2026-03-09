@@ -85,6 +85,15 @@ export function createStatefulMock<T>(
 	};
 }
 
+export function fulfillSSE(route: Route, result: { exitCode: number; stdout: string; stderr: string; command: string }): void {
+	const data = JSON.stringify({ type: "result", ...result });
+	route.fulfill({
+		status: 200,
+		contentType: "text/event-stream",
+		body: `data: ${data}\n\n`,
+	});
+}
+
 export async function mockMethodRoute(
 	page: Page,
 	pattern: string,
