@@ -12,6 +12,7 @@ export const queryKeys = {
 		dockerOptions: (name: string) => ["apps", name, "docker-options"] as const,
 		network: (name: string) => ["apps", name, "network"] as const,
 		git: (name: string) => ["apps", name, "git"] as const,
+		checks: (name: string) => ["apps", name, "checks"] as const,
 	},
 	users: ["users"] as const,
 	plugins: ["plugins"] as const,

@@ -99,6 +99,13 @@ export interface DokkuCommands {
 	dbUnlink(plugin: string, name: string, app: string): string;
 	dbDestroy(plugin: string, name: string): string;
 
+	// Checks (health checks)
+	checksReport(app: string): string;
+	checksEnable(app: string): string;
+	checksDisable(app: string): string;
+	checksSkip(app: string): string;
+	checksRun(app: string): string;
+
 	// Logs
 	logsFollow(app: string, lines: number): string;
 }
@@ -243,6 +250,13 @@ export const DokkuCommands: DokkuCommands = {
 		`dokku ${plugin}:unlink ${shellQuote(name)} ${shellQuote(app)}`,
 	dbDestroy: (plugin: string, name: string): string =>
 		`dokku ${plugin}:destroy ${shellQuote(name)} --force`,
+
+	// Checks (health checks)
+	checksReport: (app: string): string => `dokku checks:report ${shellQuote(app)}`,
+	checksEnable: (app: string): string => `dokku checks:enable ${shellQuote(app)}`,
+	checksDisable: (app: string): string => `dokku checks:disable ${shellQuote(app)}`,
+	checksSkip: (app: string): string => `dokku checks:skip ${shellQuote(app)}`,
+	checksRun: (app: string): string => `dokku checks:run ${shellQuote(app)}`,
 
 	// Logs
 	logsFollow: (app: string, lines: number): string =>
