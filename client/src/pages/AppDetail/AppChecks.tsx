@@ -15,15 +15,44 @@ interface AppChecksProps {
 	onRun: () => void;
 }
 
-function StatusBadge({ active, trueLabel = "Yes", falseLabel = "No" }: { active: boolean; trueLabel?: string; falseLabel?: string }) {
-	return active ? (
-		<span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-			{trueLabel}
-		</span>
-	) : (
-		<span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-			{falseLabel}
-		</span>
+function StatusBanner({ enabled, skipped }: { enabled: boolean; skipped: boolean }) {
+	if (!enabled) {
+		return (
+			<div className="flex items-center gap-2 rounded-md bg-yellow-50 border border-yellow-200 px-4 py-3">
+				<span className="text-yellow-600 text-lg">⚠</span>
+				<span className="text-sm font-medium text-yellow-800">
+					Health checks are disabled — Dokku will not wait for the app to respond during deploys.
+				</span>
+			</div>
+		);
+	}
+	if (skipped) {
+		return (
+			<div className="flex items-center gap-2 rounded-md bg-orange-50 border border-orange-200 px-4 py-3">
+				<span className="text-orange-600 text-lg">⏭</span>
+				<span className="text-sm font-medium text-orange-800">
+					Health checks are skipped for the current deploy.
+				</span>
+			</div>
+		);
+	}
+	return (
+		<div className="flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-4 py-3">
+			<span className="text-green-600 text-lg">✓</span>
+			<span className="text-sm font-medium text-green-800">
+				Health checks are enabled — Dokku will verify the app is responding before completing
+				deploys.
+			</span>
+		</div>
+	);
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="flex justify-between py-2 border-b border-gray-100 last:border-0">
+			<span className="text-sm text-gray-500">{label}</span>
+			<span className="text-sm text-gray-900">{value}</span>
+		</div>
 	);
 }
 
@@ -41,8 +70,8 @@ export function AppChecks({
 	onSkip,
 	onRun,
 }: AppChecksProps) {
-	const isDisabled = checksReport?.computedDisabled ?? true;
-	const isSkipAll = checksReport?.computedSkipAll ?? true;
+	const isEnabled = !(checksReport?.computedDisabled ?? true);
+	const isSkipAll = checksReport?.computedSkipAll ?? false;
 
 	return (
 		<div className="space-y-6">
@@ -59,55 +88,19 @@ export function AppChecks({
 					</div>
 				) : checksReport ? (
 					<div className="space-y-4">
-						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-							<div>
-								<span className="text-sm font-medium text-gray-500">Checks Disabled</span>
-								<div className="mt-1">
-									<StatusBadge active={checksReport.computedDisabled} trueLabel="Disabled" falseLabel="Enabled" />
-								</div>
-							</div>
-							<div>
-								<span className="text-sm font-medium text-gray-500">Skip All Checks</span>
-								<div className="mt-1">
-									<StatusBadge active={checksReport.computedSkipAll} trueLabel="Yes" falseLabel="No" />
-								</div>
-							</div>
-							<div>
-								<span className="text-sm font-medium text-gray-500">Disabled Process Types</span>
-								<p className="mt-1 text-sm text-gray-700">
-									{checksReport.disabledList || "none"}
-								</p>
-							</div>
-							<div>
-								<span className="text-sm font-medium text-gray-500">Skipped Process Types</span>
-								<p className="mt-1 text-sm text-gray-700">
-									{checksReport.skippedList || "none"}
-								</p>
-							</div>
-							{checksReport.computedSkipped && (
-								<div>
-									<span className="text-sm font-medium text-gray-500">Computed Skipped</span>
-									<p className="mt-1 text-sm text-gray-700">{checksReport.computedSkipped}</p>
-								</div>
+						<StatusBanner enabled={isEnabled} skipped={isSkipAll} />
+
+						<div className="mt-4">
+							<DetailRow label="Status" value={isEnabled ? "Enabled" : "Disabled"} />
+							<DetailRow label="Skip All" value={isSkipAll ? "Yes" : "No"} />
+							{checksReport.disabledList && checksReport.disabledList !== "none" && (
+								<DetailRow label="Disabled Processes" value={checksReport.disabledList} />
 							)}
-							<div>
-								<span className="text-sm font-medium text-gray-500">Global Disabled</span>
-								<div className="mt-1">
-									<StatusBadge active={checksReport.globalDisabled} trueLabel="Yes" falseLabel="No" />
-								</div>
-							</div>
-							<div>
-								<span className="text-sm font-medium text-gray-500">Global Skip All</span>
-								<div className="mt-1">
-									<StatusBadge active={checksReport.globalSkipAll} trueLabel="Yes" falseLabel="No" />
-								</div>
-							</div>
-							{checksReport.globalSkipped && (
-								<div>
-									<span className="text-sm font-medium text-gray-500">Global Skipped</span>
-									<p className="mt-1 text-sm text-gray-700">{checksReport.globalSkipped}</p>
-								</div>
+							{checksReport.skippedList && checksReport.skippedList !== "none" && (
+								<DetailRow label="Skipped Processes" value={checksReport.skippedList} />
 							)}
+							{checksReport.globalDisabled && <DetailRow label="Global Disabled" value="Yes" />}
+							{checksReport.globalSkipAll && <DetailRow label="Global Skip All" value="Yes" />}
 						</div>
 					</div>
 				) : null}
@@ -120,7 +113,7 @@ export function AppChecks({
 						<button
 							type="button"
 							onClick={onEnable}
-							disabled={enabling || !isDisabled}
+							disabled={enabling || isEnabled}
 							className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 						>
 							{enabling ? "Enabling..." : "Enable Checks"}
@@ -128,7 +121,7 @@ export function AppChecks({
 						<button
 							type="button"
 							onClick={onDisable}
-							disabled={disabling || isDisabled}
+							disabled={disabling || !isEnabled}
 							className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 						>
 							{disabling ? "Disabling..." : "Disable Checks"}
@@ -151,8 +144,8 @@ export function AppChecks({
 						</button>
 					</div>
 					<p className="mt-3 text-sm text-gray-500">
-						<strong>Enable/Disable:</strong> controls whether Dokku waits for health checks
-						during deployment. <strong>Skip:</strong> skips checks for this deploy only.{" "}
+						<strong>Enable/Disable:</strong> controls whether Dokku waits for health checks during
+						deployment. <strong>Skip:</strong> skips checks for this deploy only.{" "}
 						<strong>Run:</strong> manually triggers the CHECKS file against the live app.
 					</p>
 				</div>

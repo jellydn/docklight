@@ -160,7 +160,7 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			expect(screen.getAllByText("No")).toHaveLength(3);
+			expect(screen.getByText("No")).toBeInTheDocument();
 		});
 
 		it("should display skip all status as yes when true", () => {
@@ -202,10 +202,11 @@ describe("AppChecks", () => {
 				/>
 			);
 
+			expect(screen.getByText("Disabled Processes")).toBeInTheDocument();
 			expect(screen.getByText("web worker")).toBeInTheDocument();
 		});
 
-		it("should display 'none' when disabled list is empty", () => {
+		it("should hide disabled processes when list is 'none'", () => {
 			render(
 				<AppChecks
 					checksReport={mockChecksReport}
@@ -223,12 +224,10 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			const disabledSection = screen.getByText("Disabled Process Types")
-				.nextElementSibling as HTMLElement;
-			expect(disabledSection?.textContent).toContain("none");
+			expect(screen.queryByText("Disabled Processes")).not.toBeInTheDocument();
 		});
 
-		it("should display 'none' when skipped list is empty", () => {
+		it("should hide skipped processes when list is 'none'", () => {
 			render(
 				<AppChecks
 					checksReport={mockChecksReport}
@@ -246,12 +245,10 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			const skippedSection = screen.getByText("Skipped Process Types")
-				.nextElementSibling as HTMLElement;
-			expect(skippedSection?.textContent).toContain("none");
+			expect(screen.queryByText("Skipped Processes")).not.toBeInTheDocument();
 		});
 
-		it("should display computed skipped when present", () => {
+		it("should display skipped processes when present", () => {
 			render(
 				<AppChecks
 					checksReport={mockSkipAllReport}
@@ -269,40 +266,19 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			expect(screen.getByText("Computed Skipped")).toBeInTheDocument();
-			expect(screen.getAllByText("web")).toHaveLength(2);
+			expect(screen.getByText("Skipped Processes")).toBeInTheDocument();
+			expect(screen.getByText("web")).toBeInTheDocument();
 		});
 
-		it("should not display computed skipped when empty", () => {
-			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
-
-			expect(screen.queryByText("Computed Skipped")).not.toBeInTheDocument();
-		});
-
-		it("should display global skipped when present", () => {
-			const reportWithGlobalSkipped: ChecksReport = {
+		it("should show global disabled when true", () => {
+			const reportWithGlobalDisabled: ChecksReport = {
 				...mockChecksReport,
-				globalSkipped: "worker",
+				globalDisabled: true,
 			};
 
 			render(
 				<AppChecks
-					checksReport={reportWithGlobalSkipped}
+					checksReport={reportWithGlobalDisabled}
 					loading={false}
 					error={null}
 					canModify={true}
@@ -317,11 +293,10 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			expect(screen.getByText("Global Skipped")).toBeInTheDocument();
-			expect(screen.getByText("worker")).toBeInTheDocument();
+			expect(screen.getByText("Global Disabled")).toBeInTheDocument();
 		});
 
-		it("should not display global skipped when empty", () => {
+		it("should hide global disabled when false", () => {
 			render(
 				<AppChecks
 					checksReport={mockChecksReport}
@@ -339,7 +314,7 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			expect(screen.queryByText("Global Skipped")).not.toBeInTheDocument();
+			expect(screen.queryByText("Global Disabled")).not.toBeInTheDocument();
 		});
 	});
 

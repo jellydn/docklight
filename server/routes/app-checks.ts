@@ -8,10 +8,16 @@ import { isValidAppName } from "../lib/apps.js";
 import { getParam, getStatusCode } from "./util.js";
 import { streamAction } from "./stream-util.js";
 
+const CHECKS_RUN_TIMEOUT_MS = 120_000;
+
 /** Registers API routes for checks management (enable/disable/skip/run) */
 export function registerAppChecksRoutes(app: express.Application): void {
 	app.get("/api/apps/:name/checks", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
+		if (!isValidAppName(name)) {
+			res.status(400).json({ error: "Invalid app name" });
+			return;
+		}
 		const cacheKey = `apps:${name}:checks`;
 		const cached = get(cacheKey);
 
@@ -95,7 +101,7 @@ export function registerAppChecksRoutes(app: express.Application): void {
 			dokkuCommand: DokkuCommands.checksRun(name),
 			auditAction: "checks:run",
 			appName: name,
-			timeout: 120000,
+			timeout: CHECKS_RUN_TIMEOUT_MS,
 		});
 	});
 }

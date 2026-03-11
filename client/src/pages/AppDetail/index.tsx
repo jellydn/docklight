@@ -309,8 +309,7 @@ export function AppDetail() {
 		refetch: refetchChecks,
 	} = useQuery({
 		queryKey: queryKeys.apps.checks(name || ""),
-		queryFn: () =>
-			apiFetch(`/apps/${encodeURIComponent(name || "")}/checks`, ChecksReportSchema),
+		queryFn: () => apiFetch(`/apps/${encodeURIComponent(name || "")}/checks`, ChecksReportSchema),
 		enabled: activeTab === "checks" && !!name,
 	});
 	const checksError = checksErrorData?.message || null;
