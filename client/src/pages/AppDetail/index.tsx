@@ -1100,6 +1100,7 @@ export function AppDetail() {
 		await streamAction(`/apps/${encodeURIComponent(name)}/checks/run`, "checks:run", {
 			method: "POST",
 			onSuccess: () => void refetchChecks(),
+			onError: () => void refetchChecks(),
 		});
 		setChecksRunning(false);
 	};
@@ -1483,7 +1484,7 @@ export function AppDetail() {
 						className={`pb-2 px-2 ${activeTab === "checks" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
 						type="button"
 					>
-						Health
+						Checks
 					</button>
 				</nav>
 			</div>
