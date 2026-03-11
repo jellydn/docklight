@@ -292,7 +292,14 @@ export function Audit() {
 											<Fragment key={log.id}>
 												<tr
 													className="hover:bg-gray-50 cursor-pointer"
+													tabIndex={0}
 													onClick={() => toggleRowExpansion(log.id, false)}
+													onKeyDown={(e) => {
+														if (e.key === "Enter" || e.key === " ") {
+															e.preventDefault();
+															toggleRowExpansion(log.id, false);
+														}
+													}}
 												>
 													<td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
 														{formatTimestamp(log.createdAt)}
@@ -427,7 +434,14 @@ export function Audit() {
 											<Fragment key={log.id}>
 												<tr
 													className="hover:bg-gray-50 cursor-pointer"
+													tabIndex={0}
 													onClick={() => toggleRowExpansion(log.id, true)}
+													onKeyDown={(e) => {
+														if (e.key === "Enter" || e.key === " ") {
+															e.preventDefault();
+															toggleRowExpansion(log.id, true);
+														}
+													}}
 												>
 													<td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
 														{formatTimestamp(log.createdAt)}

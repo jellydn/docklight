@@ -17,13 +17,7 @@ function formatSha(sha: string): string {
 	return sha.length > 7 ? sha.slice(0, 7) : sha;
 }
 
-function InfoRow({
-	label,
-	children,
-}: {
-	label: string;
-	children: React.ReactNode;
-}) {
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
 	return (
 		<div className="flex items-center justify-between py-3">
 			<span className="text-sm text-gray-500">{label}</span>
@@ -94,9 +88,7 @@ export function AppGit({
 								{formatSha(gitInfo.sha)}
 							</code>
 						</InfoRow>
-						<InfoRow label="Last Deployed">
-							{formatDeployTime(gitInfo.lastUpdatedAt)}
-						</InfoRow>
+						<InfoRow label="Last Deployed">{formatDeployTime(gitInfo.lastUpdatedAt)}</InfoRow>
 						{gitInfo.sourceImage && (
 							<InfoRow label="Source Image">
 								<code className="bg-gray-100 px-2 py-0.5 rounded text-xs font-mono break-all">
@@ -138,9 +130,7 @@ export function AppGit({
 							/>
 							<p className="mt-1 text-xs text-gray-400">
 								HTTPS, SSH (
-								<code className="bg-gray-100 px-1 rounded">
-									git@github.com:user/repo.git
-								</code>
+								<code className="bg-gray-100 px-1 rounded">git@github.com:user/repo.git</code>
 								), or <code className="bg-gray-100 px-1 rounded">ssh://</code>
 							</p>
 						</div>
@@ -156,9 +146,7 @@ export function AppGit({
 								placeholder={deployBranch !== "-" ? deployBranch : "main"}
 								className="w-full max-w-xs border rounded px-3 py-2"
 							/>
-							<p className="mt-1 text-xs text-gray-400">
-								Defaults to the configured deploy branch
-							</p>
+							<p className="mt-1 text-xs text-gray-400">Defaults to the configured deploy branch</p>
 						</div>
 						<div className="pt-2">
 							<button
