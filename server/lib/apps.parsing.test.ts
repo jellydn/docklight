@@ -95,6 +95,10 @@ describe("toISODateTime", () => {
 	it("should return undefined for invalid date string", () => {
 		expect(toISODateTime("not-a-date")).toBeUndefined();
 	});
+
+	it("should handle datetime with timezone offset from Dokku", () => {
+		expect(toISODateTime("2024-01-15 10:30:00 +0000")).toBe("2024-01-15T10:30:00.000Z");
+	});
 });
 
 describe("parseDomains", () => {

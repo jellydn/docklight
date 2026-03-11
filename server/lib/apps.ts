@@ -85,22 +85,25 @@ async function fetchAppDetails(stdout: string, userId?: string): Promise<App[]> 
 		return [];
 	}
 
-	return Promise.all(
-		appNames.map(async (appName) => {
-			const [psReportResult, domainsReportResult, gitReportResult] = await Promise.all([
-				executeCommand(DokkuCommands.psReport(appName), 30000, { userId }),
-				executeCommand(DokkuCommands.domainsReport(appName), 30000, { userId }),
-				executeCommand(DokkuCommands.gitReport(appName), 30000, { userId }),
-			]);
+	const apps: App[] = [];
+	for (const appName of appNames) {
+		const [psReportResult, domainsReportResult, gitReportResult] = await Promise.all([
+			executeCommand(DokkuCommands.psReport(appName), 30000, { userId }),
+			executeCommand(DokkuCommands.domainsReport(appName), 30000, { userId }),
+			executeCommand(DokkuCommands.gitReport(appName), 30000, { userId }),
+		]);
 
-			return {
-				name: appName,
-				status: parseStatus(psReportResult.stdout),
-				domains: parseDomains(domainsReportResult.stdout),
-				lastDeployTime: toISODateTime(parseLastUpdatedAt(gitReportResult.stdout)),
-			};
-		})
-	);
+		apps.push({
+			name: appName,
+			status: psReportResult.exitCode === 0 ? parseStatus(psReportResult.stdout) : "stopped",
+			domains: domainsReportResult.exitCode === 0 ? parseDomains(domainsReportResult.stdout) : [],
+			lastDeployTime:
+				gitReportResult.exitCode === 0
+					? toISODateTime(parseLastUpdatedAt(gitReportResult.stdout))
+					: undefined,
+		});
+	}
+	return apps;
 }
 
 export function parseStatus(stdout: string): "running" | "stopped" {
@@ -167,7 +170,9 @@ export function toISODateTime(value: string | undefined): string | undefined {
 	const trimmed = value.trim();
 	if (!trimmed) return undefined;
 
-	const date = new Date(trimmed.includes("T") ? trimmed : `${trimmed.replace(" ", "T")}Z`);
+	const hasTimezone = /[+-]\d{2}:?\d{2}$|Z$/i.test(trimmed) || trimmed.includes("T");
+	const input = hasTimezone ? trimmed : `${trimmed.replace(" ", "T")}Z`;
+	const date = new Date(input);
 	if (Number.isNaN(date.getTime())) return undefined;
 	return date.toISOString();
 }
