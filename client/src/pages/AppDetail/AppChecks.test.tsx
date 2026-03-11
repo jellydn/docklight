@@ -18,35 +18,33 @@ const mockChecksReport: ChecksReport = {
 const mockDisabledChecksReport: ChecksReport = {
 	...mockChecksReport,
 	computedDisabled: true,
-	disabledList: "web worker",
+	disabledList: "_all_",
 };
 
 const mockSkipAllReport: ChecksReport = {
 	...mockChecksReport,
 	computedSkipAll: true,
-	skippedList: "web",
-	computedSkipped: "web",
+	skippedList: "_all_",
+};
+
+const defaultProps = {
+	loading: false,
+	error: null,
+	canModify: true,
+	enabling: false,
+	disabling: false,
+	skipping: false,
+	running: false,
+	onEnable: vi.fn(),
+	onDisable: vi.fn(),
+	onSkip: vi.fn(),
+	onRun: vi.fn(),
 };
 
 describe("AppChecks", () => {
 	describe("loading state", () => {
 		it("should render loading spinner when loading is true", () => {
-			render(
-				<AppChecks
-					checksReport={null}
-					loading={true}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+			render(<AppChecks {...defaultProps} checksReport={null} loading={true} />);
 
 			const spinner = document.querySelector(".animate-spin");
 			expect(spinner).toBeInTheDocument();
@@ -56,635 +54,167 @@ describe("AppChecks", () => {
 	describe("error state", () => {
 		it("should render error message when error is present", () => {
 			const errorMessage = "Failed to fetch checks report";
-
-			render(
-				<AppChecks
-					checksReport={null}
-					loading={false}
-					error={errorMessage}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+			render(<AppChecks {...defaultProps} checksReport={null} error={errorMessage} />);
 
 			expect(screen.getByText(errorMessage)).toBeInTheDocument();
 		});
 	});
 
-	describe("checks report display", () => {
-		it("should render health checks heading", () => {
-			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+	describe("status banner", () => {
+		it("should show active status when checks are enabled", () => {
+			render(<AppChecks {...defaultProps} checksReport={mockChecksReport} />);
 
-			expect(screen.getByText("Health Checks")).toBeInTheDocument();
+			expect(screen.getByText("Zero-downtime deploys are active")).toBeInTheDocument();
 		});
 
-		it("should display checks disabled status as enabled when false", () => {
-			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+		it("should show disabled warning when checks are disabled", () => {
+			render(<AppChecks {...defaultProps} checksReport={mockDisabledChecksReport} />);
 
-			expect(screen.getByText("Enabled")).toBeInTheDocument();
+			expect(screen.getByText("Zero-downtime deploys are disabled")).toBeInTheDocument();
 		});
 
-		it("should display checks disabled status as disabled when true", () => {
-			render(
-				<AppChecks
-					checksReport={mockDisabledChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+		it("should show skipped status when checks are skipped", () => {
+			render(<AppChecks {...defaultProps} checksReport={mockSkipAllReport} />);
 
-			expect(screen.getByText("Disabled")).toBeInTheDocument();
-		});
-
-		it("should display skip all status as no when false", () => {
-			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
-
-			expect(screen.getByText("No")).toBeInTheDocument();
-		});
-
-		it("should display skip all status as yes when true", () => {
-			render(
-				<AppChecks
-					checksReport={mockSkipAllReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
-
-			expect(screen.getByText("Yes")).toBeInTheDocument();
-		});
-
-		it("should display disabled process types list", () => {
-			render(
-				<AppChecks
-					checksReport={mockDisabledChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
-
-			expect(screen.getByText("Disabled Processes")).toBeInTheDocument();
-			expect(screen.getByText("web worker")).toBeInTheDocument();
-		});
-
-		it("should hide disabled processes when list is 'none'", () => {
-			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
-
-			expect(screen.queryByText("Disabled Processes")).not.toBeInTheDocument();
-		});
-
-		it("should hide skipped processes when list is 'none'", () => {
-			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
-
-			expect(screen.queryByText("Skipped Processes")).not.toBeInTheDocument();
-		});
-
-		it("should display skipped processes when present", () => {
-			render(
-				<AppChecks
-					checksReport={mockSkipAllReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
-
-			expect(screen.getByText("Skipped Processes")).toBeInTheDocument();
-			expect(screen.getByText("web")).toBeInTheDocument();
-		});
-
-		it("should show global disabled when true", () => {
-			const reportWithGlobalDisabled: ChecksReport = {
-				...mockChecksReport,
-				globalDisabled: true,
-			};
-
-			render(
-				<AppChecks
-					checksReport={reportWithGlobalDisabled}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
-
-			expect(screen.getByText("Global Disabled")).toBeInTheDocument();
-		});
-
-		it("should hide global disabled when false", () => {
-			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
-
-			expect(screen.queryByText("Global Disabled")).not.toBeInTheDocument();
+			expect(screen.getByText("Checks are being skipped")).toBeInTheDocument();
 		});
 	});
 
 	describe("manage checks section", () => {
 		it("should not render manage checks when canModify is false", () => {
 			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={false}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
+				<AppChecks {...defaultProps} checksReport={mockChecksReport} canModify={false} />,
 			);
 
 			expect(screen.queryByText("Manage Checks")).not.toBeInTheDocument();
 		});
 
 		it("should render manage checks when canModify is true", () => {
-			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+			render(<AppChecks {...defaultProps} checksReport={mockChecksReport} />);
 
 			expect(screen.getByText("Manage Checks")).toBeInTheDocument();
 		});
 
-		it("should render contextual action buttons when enabled", () => {
-			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+		it("should show Disable button when checks are enabled", () => {
+			render(<AppChecks {...defaultProps} checksReport={mockChecksReport} />);
 
-			expect(screen.getByRole("button", { name: "Disable Checks" })).toBeInTheDocument();
-			expect(screen.queryByRole("button", { name: "Enable Checks" })).not.toBeInTheDocument();
-			expect(screen.getByRole("button", { name: "Skip Checks" })).toBeInTheDocument();
-			expect(screen.getByRole("button", { name: "Run Checks" })).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "Disable" })).toBeInTheDocument();
+			expect(screen.queryByRole("button", { name: "Enable" })).not.toBeInTheDocument();
 		});
 
 		it("should show Enable button when checks are disabled", () => {
-			render(
-				<AppChecks
-					checksReport={mockDisabledChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+			render(<AppChecks {...defaultProps} checksReport={mockDisabledChecksReport} />);
 
-			expect(screen.getByText("Enable Checks")).toBeInTheDocument();
-			expect(screen.queryByText("Disable Checks")).not.toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "Enable" })).toBeInTheDocument();
+			expect(screen.queryByRole("button", { name: "Disable" })).not.toBeInTheDocument();
 		});
 
 		it("should render inline descriptions for each action", () => {
-			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+			render(<AppChecks {...defaultProps} checksReport={mockChecksReport} />);
 
-			expect(screen.getByText("Deploy Health Checks")).toBeInTheDocument();
-			expect(screen.getByText(/Skip health checks for the next deploy/)).toBeInTheDocument();
-			expect(screen.getByText(/Manually run the CHECKS file/)).toBeInTheDocument();
+			expect(screen.getByText("Deploy Checks")).toBeInTheDocument();
+			expect(screen.getByText(/Skip the default wait period/)).toBeInTheDocument();
+			expect(screen.getByText(/Manually run health checks/)).toBeInTheDocument();
 		});
 	});
 
 	describe("enable button behavior", () => {
-		it("should be enabled when checks are disabled", () => {
+		it("should be clickable when checks are disabled", async () => {
+			const user = userEvent.setup();
 			const onEnable = vi.fn();
 
 			render(
 				<AppChecks
+					{...defaultProps}
 					checksReport={mockDisabledChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
 					onEnable={onEnable}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
+				/>,
 			);
 
-			const enableButton = screen.getByRole("button", { name: "Enable Checks" });
+			const enableButton = screen.getByRole("button", { name: "Enable" });
 			expect(enableButton).not.toBeDisabled();
+			await user.click(enableButton);
+
+			expect(onEnable).toHaveBeenCalledTimes(1);
 		});
 
 		it("should not render when checks are already enabled", () => {
-			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+			render(<AppChecks {...defaultProps} checksReport={mockChecksReport} />);
 
-			expect(screen.queryByText("Enable Checks")).not.toBeInTheDocument();
+			expect(screen.queryByRole("button", { name: "Enable" })).not.toBeInTheDocument();
 		});
 
 		it("should be disabled during enabling operation", () => {
 			render(
 				<AppChecks
+					{...defaultProps}
 					checksReport={mockDisabledChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
 					enabling={true}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
+				/>,
 			);
 
-			const enableButton = screen.getByText("Enabling...").closest("button");
+			const enableButton = screen.getByRole("button", { name: "Enabling..." });
 			expect(enableButton).toBeDisabled();
-		});
-
-		it("should call onEnable when clicked", async () => {
-			const user = userEvent.setup();
-			const onEnable = vi.fn();
-
-			render(
-				<AppChecks
-					checksReport={mockDisabledChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={onEnable}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
-
-			const enableButton = screen.getByRole("button", { name: "Enable Checks" });
-			await user.click(enableButton!);
-
-			expect(onEnable).toHaveBeenCalledTimes(1);
 		});
 	});
 
 	describe("disable button behavior", () => {
-		it("should be enabled when checks are enabled", () => {
-			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
-
-			const disableButton = screen.getByRole("button", { name: "Disable Checks" });
-			expect(disableButton).not.toBeDisabled();
-		});
-
-		it("should not render when checks are already disabled", () => {
-			render(
-				<AppChecks
-					checksReport={mockDisabledChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
-
-			expect(screen.queryByText("Disable Checks")).not.toBeInTheDocument();
-		});
-
-		it("should be disabled during disabling operation", () => {
-			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={true}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
-
-			const disableButton = screen.getByText("Disabling...").closest("button");
-			expect(disableButton).toBeDisabled();
-		});
-
-		it("should call onDisable when clicked", async () => {
+		it("should be clickable when checks are enabled", async () => {
 			const user = userEvent.setup();
 			const onDisable = vi.fn();
 
 			render(
 				<AppChecks
+					{...defaultProps}
 					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
 					onDisable={onDisable}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
+				/>,
 			);
 
-			const disableButton = screen.getByRole("button", { name: "Disable Checks" });
-			await user.click(disableButton!);
+			const disableButton = screen.getByRole("button", { name: "Disable" });
+			expect(disableButton).not.toBeDisabled();
+			await user.click(disableButton);
 
 			expect(onDisable).toHaveBeenCalledTimes(1);
+		});
+
+		it("should not render when checks are already disabled", () => {
+			render(<AppChecks {...defaultProps} checksReport={mockDisabledChecksReport} />);
+
+			expect(screen.queryByRole("button", { name: "Disable" })).not.toBeInTheDocument();
+		});
+
+		it("should be disabled during disabling operation", () => {
+			render(
+				<AppChecks {...defaultProps} checksReport={mockChecksReport} disabling={true} />,
+			);
+
+			const disableButton = screen.getByRole("button", { name: "Disabling..." });
+			expect(disableButton).toBeDisabled();
 		});
 	});
 
 	describe("skip button behavior", () => {
 		it("should be enabled when skip all is false", () => {
-			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+			render(<AppChecks {...defaultProps} checksReport={mockChecksReport} />);
 
-			const skipButton = screen.getByRole("button", { name: "Skip Checks" });
+			const skipButton = screen.getByRole("button", { name: "Skip" });
 			expect(skipButton).not.toBeDisabled();
 		});
 
 		it("should be disabled when skip all is already true", () => {
-			render(
-				<AppChecks
-					checksReport={mockSkipAllReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+			render(<AppChecks {...defaultProps} checksReport={mockSkipAllReport} />);
 
-			const skipButton = screen.getByRole("button", { name: "Skip Checks" });
+			const skipButton = screen.getByRole("button", { name: "Skip" });
 			expect(skipButton).toBeDisabled();
 		});
 
 		it("should be disabled during skipping operation", () => {
 			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={true}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
+				<AppChecks {...defaultProps} checksReport={mockChecksReport} skipping={true} />,
 			);
 
-			const skipButton = screen.getByText("Skipping...").closest("button");
+			const skipButton = screen.getByRole("button", { name: "Skipping..." });
 			expect(skipButton).toBeDisabled();
 		});
 
@@ -693,23 +223,10 @@ describe("AppChecks", () => {
 			const onSkip = vi.fn();
 
 			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={onSkip}
-					onRun={vi.fn()}
-				/>
+				<AppChecks {...defaultProps} checksReport={mockChecksReport} onSkip={onSkip} />,
 			);
 
-			const skipButton = screen.getByRole("button", { name: "Skip Checks" });
+			const skipButton = screen.getByRole("button", { name: "Skip" });
 			await user.click(skipButton);
 
 			expect(onSkip).toHaveBeenCalledTimes(1);
@@ -718,46 +235,18 @@ describe("AppChecks", () => {
 
 	describe("run button behavior", () => {
 		it("should be enabled when not running", () => {
-			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+			render(<AppChecks {...defaultProps} checksReport={mockChecksReport} />);
 
-			const runButton = screen.getByRole("button", { name: "Run Checks" });
+			const runButton = screen.getByRole("button", { name: "Run" });
 			expect(runButton).not.toBeDisabled();
 		});
 
 		it("should be disabled during running operation", () => {
 			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={true}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
+				<AppChecks {...defaultProps} checksReport={mockChecksReport} running={true} />,
 			);
 
-			const runButton = screen.getByText("Running...").closest("button");
+			const runButton = screen.getByRole("button", { name: "Running..." });
 			expect(runButton).toBeDisabled();
 		});
 
@@ -766,23 +255,10 @@ describe("AppChecks", () => {
 			const onRun = vi.fn();
 
 			render(
-				<AppChecks
-					checksReport={mockChecksReport}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={onRun}
-				/>
+				<AppChecks {...defaultProps} checksReport={mockChecksReport} onRun={onRun} />,
 			);
 
-			const runButton = screen.getByRole("button", { name: "Run Checks" });
+			const runButton = screen.getByRole("button", { name: "Run" });
 			await user.click(runButton);
 
 			expect(onRun).toHaveBeenCalledTimes(1);
@@ -791,67 +267,22 @@ describe("AppChecks", () => {
 
 	describe("null report handling", () => {
 		it("should not crash when checksReport is null", () => {
-			render(
-				<AppChecks
-					checksReport={null}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+			render(<AppChecks {...defaultProps} checksReport={null} />);
 
-			expect(screen.getByText("Health Checks")).toBeInTheDocument();
+			expect(screen.getByText("Zero-Downtime Checks")).toBeInTheDocument();
 		});
 
-		it("should enable enable button when report is null", () => {
-			render(
-				<AppChecks
-					checksReport={null}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+		it("should show enable button when report is null", () => {
+			render(<AppChecks {...defaultProps} checksReport={null} />);
 
-			const enableButton = screen.getByRole("button", { name: "Enable Checks" });
+			const enableButton = screen.getByRole("button", { name: "Enable" });
 			expect(enableButton).not.toBeDisabled();
 		});
 
 		it("should not render disable button when report is null", () => {
-			render(
-				<AppChecks
-					checksReport={null}
-					loading={false}
-					error={null}
-					canModify={true}
-					enabling={false}
-					disabling={false}
-					skipping={false}
-					running={false}
-					onEnable={vi.fn()}
-					onDisable={vi.fn()}
-					onSkip={vi.fn()}
-					onRun={vi.fn()}
-				/>
-			);
+			render(<AppChecks {...defaultProps} checksReport={null} />);
 
-			expect(screen.queryByText("Disable Checks")).not.toBeInTheDocument();
+			expect(screen.queryByRole("button", { name: "Disable" })).not.toBeInTheDocument();
 		});
 	});
 });
