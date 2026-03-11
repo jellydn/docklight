@@ -15,17 +15,9 @@ interface AppChecksProps {
 	onRun: () => void;
 }
 
-function isAllDisabled(report: ChecksReport): boolean {
-	return report.computedDisabled || report.disabledList === "_all_";
-}
-
-function isAllSkipped(report: ChecksReport): boolean {
-	return report.computedSkipAll || report.skippedList === "_all_";
-}
-
 function StatusBanner({ report }: { report: ChecksReport }) {
-	const disabled = isAllDisabled(report);
-	const skipped = isAllSkipped(report);
+	const disabled = report.disabled;
+	const skipped = report.skipped;
 
 	if (disabled) {
 		return (
@@ -80,8 +72,8 @@ export function AppChecks({
 	onSkip,
 	onRun,
 }: AppChecksProps) {
-	const isEnabled = checksReport ? !isAllDisabled(checksReport) : false;
-	const isSkipAll = checksReport ? isAllSkipped(checksReport) : false;
+	const isEnabled = checksReport ? !checksReport.disabled : false;
+	const isSkipAll = checksReport ? checksReport.skipped : false;
 
 	return (
 		<div className="space-y-6">

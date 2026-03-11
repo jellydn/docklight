@@ -5,26 +5,27 @@ import type { ChecksReport } from "../../lib/schemas.js";
 import { AppChecks } from "./AppChecks.js";
 
 const mockChecksReport: ChecksReport = {
+	disabled: false,
+	skipped: false,
 	disabledList: "none",
 	skippedList: "none",
-	computedDisabled: false,
-	computedSkipAll: false,
-	computedSkipped: "",
-	globalDisabled: false,
-	globalSkipAll: false,
-	globalSkipped: "",
+	waitToRetire: 60,
 };
 
 const mockDisabledChecksReport: ChecksReport = {
-	...mockChecksReport,
-	computedDisabled: true,
+	disabled: true,
+	skipped: false,
 	disabledList: "_all_",
+	skippedList: "none",
+	waitToRetire: 60,
 };
 
 const mockSkipAllReport: ChecksReport = {
-	...mockChecksReport,
-	computedSkipAll: true,
+	disabled: false,
+	skipped: true,
+	disabledList: "none",
 	skippedList: "_all_",
+	waitToRetire: 60,
 };
 
 const defaultProps = {

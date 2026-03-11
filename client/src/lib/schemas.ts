@@ -237,14 +237,11 @@ export type UserAuditLogResult = z.infer<typeof UserAuditLogResultSchema>;
 
 // Checks report schema
 export const ChecksReportSchema = z.object({
+	disabled: z.boolean(),
+	skipped: z.boolean(),
 	disabledList: z.string(),
 	skippedList: z.string(),
-	computedDisabled: z.boolean(),
-	computedSkipAll: z.boolean(),
-	computedSkipped: z.string(),
-	globalDisabled: z.boolean(),
-	globalSkipAll: z.boolean(),
-	globalSkipped: z.string(),
+	waitToRetire: z.number(),
 });
 
 export type ChecksReport = z.infer<typeof ChecksReportSchema>;

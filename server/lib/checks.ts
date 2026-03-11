@@ -5,14 +5,11 @@ import { DokkuCommands } from "./dokku.js";
 import { logger } from "./logger.js";
 
 export interface ChecksReport {
+	disabled: boolean;
+	skipped: boolean;
 	disabledList: string;
 	skippedList: string;
-	computedDisabled: boolean;
-	computedSkipAll: boolean;
-	computedSkipped: string;
-	globalDisabled: boolean;
-	globalSkipAll: boolean;
-	globalSkipped: string;
+	waitToRetire: number;
 }
 
 type ChecksErrorResult = {
@@ -29,69 +26,41 @@ function createChecksError(message: string, command = "", exitCode = 400): Check
 
 /** Parses the output of dokku checks:report into a structured ChecksReport object */
 export function parseChecksReport(stdout: string): ChecksReport {
-	const report: ChecksReport = {
-		disabledList: "",
-		skippedList: "",
-		computedDisabled: false,
-		computedSkipAll: false,
-		computedSkipped: "",
-		globalDisabled: false,
-		globalSkipAll: false,
-		globalSkipped: "",
-	};
+	let disabledList = "";
+	let skippedList = "";
+	let waitToRetire = 60;
 
 	const lines = stripAnsi(stdout).split("\n");
 
 	for (const line of lines) {
 		const disabledListMatch = line.match(/^\s*Checks disabled list:\s*(.*)$/i);
 		if (disabledListMatch) {
-			report.disabledList = disabledListMatch[1]?.trim() ?? "";
+			disabledList = disabledListMatch[1]?.trim() ?? "";
 			continue;
 		}
 
 		const skippedListMatch = line.match(/^\s*Checks skipped list:\s*(.*)$/i);
 		if (skippedListMatch) {
-			report.skippedList = skippedListMatch[1]?.trim() ?? "";
+			skippedList = skippedListMatch[1]?.trim() ?? "";
 			continue;
 		}
 
-		const computedDisabledMatch = line.match(/^\s*Checks computed disabled:\s*(.*)$/i);
-		if (computedDisabledMatch) {
-			report.computedDisabled = computedDisabledMatch[1]?.trim().toLowerCase() === "true";
-			continue;
-		}
-
-		const computedSkipAllMatch = line.match(/^\s*Checks computed skip all:\s*(.*)$/i);
-		if (computedSkipAllMatch) {
-			report.computedSkipAll = computedSkipAllMatch[1]?.trim().toLowerCase() === "true";
-			continue;
-		}
-
-		const computedSkippedMatch = line.match(/^\s*Checks computed skipped:\s*(.*)$/i);
-		if (computedSkippedMatch) {
-			report.computedSkipped = computedSkippedMatch[1]?.trim() ?? "";
-			continue;
-		}
-
-		const globalDisabledMatch = line.match(/^\s*Checks global disabled:\s*(.*)$/i);
-		if (globalDisabledMatch) {
-			report.globalDisabled = globalDisabledMatch[1]?.trim().toLowerCase() === "true";
-			continue;
-		}
-
-		const globalSkipAllMatch = line.match(/^\s*Checks global skip all:\s*(.*)$/i);
-		if (globalSkipAllMatch) {
-			report.globalSkipAll = globalSkipAllMatch[1]?.trim().toLowerCase() === "true";
-			continue;
-		}
-
-		const globalSkippedMatch = line.match(/^\s*Checks global skipped:\s*(.*)$/i);
-		if (globalSkippedMatch) {
-			report.globalSkipped = globalSkippedMatch[1]?.trim() ?? "";
+		const waitMatch = line.match(/^\s*Checks computed wait to retire:\s*(.*)$/i);
+		if (waitMatch) {
+			const parsed = Number.parseInt(waitMatch[1]?.trim() ?? "", 10);
+			if (!Number.isNaN(parsed)) {
+				waitToRetire = parsed;
+			}
 		}
 	}
 
-	return report;
+	return {
+		disabled: disabledList === "_all_",
+		skipped: skippedList === "_all_",
+		disabledList,
+		skippedList,
+		waitToRetire,
+	};
 }
 
 /** Fetches the checks report for a Dokku app and parses the CLI output */

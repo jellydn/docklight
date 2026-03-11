@@ -6,80 +6,88 @@ vi.mock("./executor.js", () => ({
 	executeCommand: vi.fn(),
 }));
 
+const REAL_DOKKU_OUTPUT = [
+	"=====> my-app checks information",
+	"       Checks disabled list:          none",
+	"       Checks skipped list:           none",
+	"       Checks computed wait to retire: 60",
+	"       Checks global wait to retire:  60",
+	"       Checks wait to retire:",
+].join("\n");
+
 describe("parseChecksReport", () => {
 	it("should parse all checks report fields", () => {
-		const stdout = [
-			"=====> my-app checks information",
-			"       Checks disabled list:          none",
-			"       Checks skipped list:           none",
-			"       Checks computed disabled:      false",
-			"       Checks computed skip all:      false",
-			"       Checks computed skipped:       ",
-			"       Checks global disabled:        false",
-			"       Checks global skip all:        false",
-			"       Checks global skipped:         ",
-		].join("\n");
-
-		const result = parseChecksReport(stdout);
+		const result = parseChecksReport(REAL_DOKKU_OUTPUT);
 
 		expect(result).toEqual({
+			disabled: false,
+			skipped: false,
 			disabledList: "none",
 			skippedList: "none",
-			computedDisabled: false,
-			computedSkipAll: false,
-			computedSkipped: "",
-			globalDisabled: false,
-			globalSkipAll: false,
-			globalSkipped: "",
+			waitToRetire: 60,
 		});
 	});
 
-	it("should parse disabled and skipped as true", () => {
+	it("should derive disabled=true when disabledList is _all_", () => {
 		const stdout = [
 			"=====> my-app checks information",
-			"       Checks computed disabled:      true",
-			"       Checks computed skip all:      true",
-			"       Checks global disabled:        true",
-			"       Checks global skip all:        true",
+			"       Checks disabled list:          _all_",
+			"       Checks skipped list:           none",
+			"       Checks computed wait to retire: 60",
+			"       Checks global wait to retire:  60",
+			"       Checks wait to retire:",
 		].join("\n");
 
 		const result = parseChecksReport(stdout);
 
-		expect(result.computedDisabled).toBe(true);
-		expect(result.computedSkipAll).toBe(true);
-		expect(result.globalDisabled).toBe(true);
-		expect(result.globalSkipAll).toBe(true);
+		expect(result.disabled).toBe(true);
+		expect(result.disabledList).toBe("_all_");
 	});
 
-	it("should parse process-specific skipped and disabled lists", () => {
+	it("should derive skipped=true when skippedList is _all_", () => {
+		const stdout = [
+			"=====> my-app checks information",
+			"       Checks disabled list:          none",
+			"       Checks skipped list:           _all_",
+			"       Checks computed wait to retire: 60",
+			"       Checks global wait to retire:  60",
+			"       Checks wait to retire:",
+		].join("\n");
+
+		const result = parseChecksReport(stdout);
+
+		expect(result.skipped).toBe(true);
+		expect(result.skippedList).toBe("_all_");
+	});
+
+	it("should parse process-specific disabled and skipped lists", () => {
 		const stdout = [
 			"=====> my-app checks information",
 			"       Checks disabled list:          web worker",
 			"       Checks skipped list:           web",
-			"       Checks computed skipped:       web",
-			"       Checks global skipped:         worker",
+			"       Checks computed wait to retire: 30",
+			"       Checks global wait to retire:  60",
+			"       Checks wait to retire:",
 		].join("\n");
 
 		const result = parseChecksReport(stdout);
 
 		expect(result.disabledList).toBe("web worker");
 		expect(result.skippedList).toBe("web");
-		expect(result.computedSkipped).toBe("web");
-		expect(result.globalSkipped).toBe("worker");
+		expect(result.disabled).toBe(false);
+		expect(result.skipped).toBe(false);
+		expect(result.waitToRetire).toBe(30);
 	});
 
 	it("should return defaults for empty output", () => {
 		const result = parseChecksReport("");
 
 		expect(result).toEqual({
+			disabled: false,
+			skipped: false,
 			disabledList: "",
 			skippedList: "",
-			computedDisabled: false,
-			computedSkipAll: false,
-			computedSkipped: "",
-			globalDisabled: false,
-			globalSkipAll: false,
-			globalSkipped: "",
+			waitToRetire: 60,
 		});
 	});
 
@@ -112,31 +120,18 @@ describe("getChecksReport", () => {
 		mockExecuteCommand.mockResolvedValueOnce({
 			command: "dokku checks:report 'my-app'",
 			exitCode: 0,
-			stdout: [
-				"=====> my-app checks information",
-				"       Checks disabled list:          none",
-				"       Checks skipped list:           none",
-				"       Checks computed disabled:      false",
-				"       Checks computed skip all:      false",
-				"       Checks computed skipped:       ",
-				"       Checks global disabled:        false",
-				"       Checks global skip all:        false",
-				"       Checks global skipped:         ",
-			].join("\n"),
+			stdout: REAL_DOKKU_OUTPUT,
 			stderr: "",
 		});
 
 		const result = await getChecksReport("my-app");
 
 		expect(result).toEqual({
+			disabled: false,
+			skipped: false,
 			disabledList: "none",
 			skippedList: "none",
-			computedDisabled: false,
-			computedSkipAll: false,
-			computedSkipped: "",
-			globalDisabled: false,
-			globalSkipAll: false,
-			globalSkipped: "",
+			waitToRetire: 60,
 		});
 	});
 
@@ -201,25 +196,6 @@ describe("getChecksReport", () => {
 			exitCode: 400,
 		});
 		expect(mockExecuteCommand).not.toHaveBeenCalled();
-	});
-
-	it("should parse boolean true values case-insensitively", async () => {
-		mockExecuteCommand.mockResolvedValueOnce({
-			command: "dokku checks:report 'my-app'",
-			exitCode: 0,
-			stdout: [
-				"       Checks computed disabled:      TRUE",
-				"       Checks computed skip all:      True",
-			].join("\n"),
-			stderr: "",
-		});
-
-		const result = await getChecksReport("my-app");
-
-		expect(result).toMatchObject({
-			computedDisabled: true,
-			computedSkipAll: true,
-		});
 	});
 
 	it("should strip ANSI codes from command output", async () => {
