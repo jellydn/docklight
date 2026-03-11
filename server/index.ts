@@ -17,6 +17,7 @@ import {
 	registerAppDockerOptionsRoutes,
 	registerAppDomainRoutes,
 	registerAppGitRoutes,
+	registerAppChecksRoutes,
 	registerAppNetworkRoutes,
 	registerAppPortRoutes,
 	registerAppProxyRoutes,
@@ -80,6 +81,7 @@ registerAppDockerOptionsRoutes(app);
 registerAppNetworkRoutes(app);
 registerAppDeploymentRoutes(app);
 registerAppGitRoutes(app);
+registerAppChecksRoutes(app);
 registerAppSSLRoutes(app);
 registerDatabaseRoutes(app);
 registerPluginRoutes(app);

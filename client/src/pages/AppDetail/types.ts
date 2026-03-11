@@ -1,6 +1,14 @@
 import type { ReactNode } from "react";
 
-export type TabType = "overview" | "config" | "domains" | "logs" | "ssl" | "settings" | "git";
+export type TabType =
+	| "overview"
+	| "config"
+	| "domains"
+	| "logs"
+	| "ssl"
+	| "settings"
+	| "git"
+	| "checks";
 
 export interface ScaleChange {
 	processType: string;

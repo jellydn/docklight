@@ -13,6 +13,7 @@ import {
 	AppDetailSchema,
 	type Buildpack,
 	BuildpacksResponseSchema,
+	ChecksReportSchema,
 	ConfigVarsSchema,
 	type DeploymentSettings,
 	DeploymentSettingsSchema,
@@ -36,6 +37,7 @@ import { AppBuildpacks } from "./AppBuildpacks.js";
 import { AppDockerOptions } from "./AppDockerOptions.js";
 import { AppNetwork } from "./AppNetwork.js";
 import { AppGit } from "./AppGit.js";
+import { AppChecks } from "./AppChecks.js";
 import { ConfirmDialog, DeleteAppDialog, ScaleDialog } from "./Dialogs.js";
 import type { TabType } from "./types.js";
 
@@ -298,6 +300,23 @@ export function AppDetail() {
 	});
 	const gitError = gitErrorData?.message || null;
 	const [gitSyncing, setGitSyncing] = useState(false);
+
+	// Checks query
+	const {
+		data: checksReport,
+		isLoading: checksLoading,
+		error: checksErrorData,
+		refetch: refetchChecks,
+	} = useQuery({
+		queryKey: queryKeys.apps.checks(name || ""),
+		queryFn: () => apiFetch(`/apps/${encodeURIComponent(name || "")}/checks`, ChecksReportSchema),
+		enabled: activeTab === "checks" && !!name,
+	});
+	const checksError = checksErrorData?.message || null;
+	const [checksEnabling, setChecksEnabling] = useState(false);
+	const [checksDisabling, setChecksDisabling] = useState(false);
+	const [checksSkipping, setChecksSkipping] = useState(false);
+	const [checksRunning, setChecksRunning] = useState(false);
 
 	// Log viewer state
 	const [logs, setLogs] = useState<string[]>([]);
@@ -1041,6 +1060,50 @@ export function AppDetail() {
 		setGitSyncing(false);
 	};
 
+	const handleChecksEnable = async () => {
+		if (!name || checksEnabling) return;
+		setChecksEnabling(true);
+		await streamAction(`/apps/${encodeURIComponent(name)}/checks/enable`, "checks:enable", {
+			method: "POST",
+			onSuccess: () => void refetchChecks(),
+			onError: () => void refetchChecks(),
+		});
+		setChecksEnabling(false);
+	};
+
+	const handleChecksDisable = async () => {
+		if (!name || checksDisabling) return;
+		setChecksDisabling(true);
+		await streamAction(`/apps/${encodeURIComponent(name)}/checks/disable`, "checks:disable", {
+			method: "POST",
+			onSuccess: () => void refetchChecks(),
+			onError: () => void refetchChecks(),
+		});
+		setChecksDisabling(false);
+	};
+
+	const handleChecksSkip = async () => {
+		if (!name || checksSkipping) return;
+		setChecksSkipping(true);
+		await streamAction(`/apps/${encodeURIComponent(name)}/checks/skip`, "checks:skip", {
+			method: "POST",
+			onSuccess: () => void refetchChecks(),
+			onError: () => void refetchChecks(),
+		});
+		setChecksSkipping(false);
+	};
+
+	const handleChecksRun = async () => {
+		if (!name || checksRunning) return;
+		setChecksRunning(true);
+		await streamAction(`/apps/${encodeURIComponent(name)}/checks/run`, "checks:run", {
+			method: "POST",
+			onSuccess: () => void refetchChecks(),
+			onError: () => void refetchChecks(),
+		});
+		setChecksRunning(false);
+	};
+
 	const handleEnableSSL = async () => {
 		if (!name || sslSubmitting) return;
 
@@ -1415,6 +1478,13 @@ export function AppDetail() {
 					>
 						Git
 					</button>
+					<button
+						onClick={() => setActiveTab("checks")}
+						className={`pb-2 px-2 ${activeTab === "checks" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+						type="button"
+					>
+						Checks
+					</button>
 				</nav>
 			</div>
 
@@ -1589,6 +1659,23 @@ export function AppDetail() {
 					canModify={canModify}
 					onSync={handleGitSync}
 					onUnlock={handleUnlockApp}
+				/>
+			)}
+
+			{activeTab === "checks" && (
+				<AppChecks
+					checksReport={checksReport ?? null}
+					loading={checksLoading}
+					error={checksError}
+					canModify={canModify}
+					enabling={checksEnabling}
+					disabling={checksDisabling}
+					skipping={checksSkipping}
+					running={checksRunning}
+					onEnable={handleChecksEnable}
+					onDisable={handleChecksDisable}
+					onSkip={handleChecksSkip}
+					onRun={handleChecksRun}
 				/>
 			)}
 		</div>
