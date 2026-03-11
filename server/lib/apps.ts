@@ -170,6 +170,11 @@ export function toISODateTime(value: string | undefined): string | undefined {
 	const trimmed = value.trim();
 	if (!trimmed) return undefined;
 
+	if (/^\d{9,10}$/.test(trimmed)) {
+		const date = new Date(Number(trimmed) * 1000);
+		if (!Number.isNaN(date.getTime())) return date.toISOString();
+	}
+
 	const hasTimezone = /[+-]\d{2}:?\d{2}$|Z$/i.test(trimmed) || trimmed.includes("T");
 	const input = hasTimezone ? trimmed : `${trimmed.replace(" ", "T")}Z`;
 	const date = new Date(input);

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CreateAppDialog } from "@/components/CreateAppDialog.js";
 import { apiFetch } from "../lib/api.js";
 import { useAuth } from "@/contexts/auth-context.js";
+import { formatDeployTime } from "@/lib/utils.js";
 import { queryKeys } from "../lib/query-keys.js";
 import { AppSchema } from "../lib/schemas.js";
 
@@ -101,7 +102,7 @@ export function Apps() {
 												)}
 											</td>
 											<td className="py-3 px-4 text-sm text-gray-600">
-												{app.lastDeployTime || "-"}
+												{formatDeployTime(app.lastDeployTime)}
 											</td>
 										</tr>
 									))}

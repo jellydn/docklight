@@ -99,6 +99,17 @@ describe("toISODateTime", () => {
 	it("should handle datetime with timezone offset from Dokku", () => {
 		expect(toISODateTime("2024-01-15 10:30:00 +0000")).toBe("2024-01-15T10:30:00.000Z");
 	});
+
+	it("should handle Unix timestamp (seconds)", () => {
+		const result = toISODateTime("1773268058");
+		expect(result).toBeDefined();
+		expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+	});
+
+	it("should handle 9-digit Unix timestamp", () => {
+		const result = toISODateTime("100000000");
+		expect(result).toBe("1973-03-03T09:46:40.000Z");
+	});
 });
 
 describe("parseDomains", () => {

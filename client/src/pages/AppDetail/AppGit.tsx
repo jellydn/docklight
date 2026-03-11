@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { GitInfo } from "@/lib/schemas.js";
+import { formatDeployTime } from "@/lib/utils.js";
 
 interface AppGitProps {
 	gitInfo: GitInfo | null;
@@ -9,14 +10,6 @@ interface AppGitProps {
 	canModify: boolean;
 	onSync: (repo: string, branch: string) => void;
 	onUnlock?: () => void;
-}
-
-function formatTimestamp(value: string): string {
-	if (!value || value === "-") return "-";
-	const asNumber = Number(value);
-	const date = Number.isNaN(asNumber) ? new Date(value) : new Date(asNumber * 1000);
-	if (Number.isNaN(date.getTime())) return value;
-	return date.toLocaleString();
 }
 
 function formatSha(sha: string): string {
@@ -102,7 +95,7 @@ export function AppGit({
 							</code>
 						</InfoRow>
 						<InfoRow label="Last Deployed">
-							{formatTimestamp(gitInfo.lastUpdatedAt)}
+							{formatDeployTime(gitInfo.lastUpdatedAt)}
 						</InfoRow>
 						{gitInfo.sourceImage && (
 							<InfoRow label="Source Image">
