@@ -1,6 +1,6 @@
 import type express from "express";
 import { getChecksReport } from "../lib/checks.js";
-import { clearPrefix, get, set } from "../lib/cache.js";
+import { get, set } from "../lib/cache.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { DokkuCommands } from "../lib/dokku.js";
 import { isValidAppName } from "../lib/apps.js";
@@ -39,7 +39,6 @@ export function registerAppChecksRoutes(app: express.Application): void {
 			validate: () => isValidAppName(name),
 			errorMessage: "Invalid app name",
 		});
-		clearPrefix(`apps:${name}:checks`);
 	});
 
 	app.post("/api/apps/:name/checks/disable", authMiddleware, requireOperator, async (req, res) => {
@@ -53,7 +52,6 @@ export function registerAppChecksRoutes(app: express.Application): void {
 			validate: () => isValidAppName(name),
 			errorMessage: "Invalid app name",
 		});
-		clearPrefix(`apps:${name}:checks`);
 	});
 
 	app.post("/api/apps/:name/checks/skip", authMiddleware, requireOperator, async (req, res) => {
@@ -67,7 +65,6 @@ export function registerAppChecksRoutes(app: express.Application): void {
 			validate: () => isValidAppName(name),
 			errorMessage: "Invalid app name",
 		});
-		clearPrefix(`apps:${name}:checks`);
 	});
 
 	app.post("/api/apps/:name/checks/run", authMiddleware, requireOperator, async (req, res) => {
