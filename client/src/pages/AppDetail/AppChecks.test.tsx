@@ -361,10 +361,34 @@ describe("AppChecks", () => {
 			expect(screen.getByText("Manage Checks")).toBeInTheDocument();
 		});
 
-		it("should render all action buttons", () => {
+		it("should render contextual action buttons when enabled", () => {
 			render(
 				<AppChecks
 					checksReport={mockChecksReport}
+					loading={false}
+					error={null}
+					canModify={true}
+					enabling={false}
+					disabling={false}
+					skipping={false}
+					running={false}
+					onEnable={vi.fn()}
+					onDisable={vi.fn()}
+					onSkip={vi.fn()}
+					onRun={vi.fn()}
+				/>
+			);
+
+			expect(screen.getByRole("button", { name: "Disable Checks" })).toBeInTheDocument();
+			expect(screen.queryByRole("button", { name: "Enable Checks" })).not.toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "Skip Checks" })).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "Run Checks" })).toBeInTheDocument();
+		});
+
+		it("should show Enable button when checks are disabled", () => {
+			render(
+				<AppChecks
+					checksReport={mockDisabledChecksReport}
 					loading={false}
 					error={null}
 					canModify={true}
@@ -380,12 +404,10 @@ describe("AppChecks", () => {
 			);
 
 			expect(screen.getByText("Enable Checks")).toBeInTheDocument();
-			expect(screen.getByText("Disable Checks")).toBeInTheDocument();
-			expect(screen.getByText("Skip Checks")).toBeInTheDocument();
-			expect(screen.getByText("Run Checks")).toBeInTheDocument();
+			expect(screen.queryByText("Disable Checks")).not.toBeInTheDocument();
 		});
 
-		it("should render help text explaining actions", () => {
+		it("should render inline descriptions for each action", () => {
 			render(
 				<AppChecks
 					checksReport={mockChecksReport}
@@ -403,9 +425,9 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			expect(screen.getByText(/Enable\/Disable:/)).toBeInTheDocument();
-			expect(screen.getByText(/Skip:/)).toBeInTheDocument();
-			expect(screen.getByText(/Run:/)).toBeInTheDocument();
+			expect(screen.getByText("Deploy Health Checks")).toBeInTheDocument();
+			expect(screen.getByText(/Skip health checks for the next deploy/)).toBeInTheDocument();
+			expect(screen.getByText(/Manually run the CHECKS file/)).toBeInTheDocument();
 		});
 	});
 
@@ -430,11 +452,11 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			const enableButton = screen.getByText("Enable Checks").closest("button");
+			const enableButton = screen.getByRole("button", { name: "Enable Checks" });
 			expect(enableButton).not.toBeDisabled();
 		});
 
-		it("should be disabled when checks are already enabled", () => {
+		it("should not render when checks are already enabled", () => {
 			render(
 				<AppChecks
 					checksReport={mockChecksReport}
@@ -452,8 +474,7 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			const enableButton = screen.getByText("Enable Checks").closest("button");
-			expect(enableButton).toBeDisabled();
+			expect(screen.queryByText("Enable Checks")).not.toBeInTheDocument();
 		});
 
 		it("should be disabled during enabling operation", () => {
@@ -499,7 +520,7 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			const enableButton = screen.getByText("Enable Checks").closest("button");
+			const enableButton = screen.getByRole("button", { name: "Enable Checks" });
 			await user.click(enableButton!);
 
 			expect(onEnable).toHaveBeenCalledTimes(1);
@@ -525,11 +546,11 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			const disableButton = screen.getByText("Disable Checks").closest("button");
+			const disableButton = screen.getByRole("button", { name: "Disable Checks" });
 			expect(disableButton).not.toBeDisabled();
 		});
 
-		it("should be disabled when checks are already disabled", () => {
+		it("should not render when checks are already disabled", () => {
 			render(
 				<AppChecks
 					checksReport={mockDisabledChecksReport}
@@ -547,8 +568,7 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			const disableButton = screen.getByText("Disable Checks").closest("button");
-			expect(disableButton).toBeDisabled();
+			expect(screen.queryByText("Disable Checks")).not.toBeInTheDocument();
 		});
 
 		it("should be disabled during disabling operation", () => {
@@ -594,7 +614,7 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			const disableButton = screen.getByText("Disable Checks").closest("button");
+			const disableButton = screen.getByRole("button", { name: "Disable Checks" });
 			await user.click(disableButton!);
 
 			expect(onDisable).toHaveBeenCalledTimes(1);
@@ -620,7 +640,7 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			const skipButton = screen.getByText("Skip Checks").closest("button");
+			const skipButton = screen.getByRole("button", { name: "Skip Checks" });
 			expect(skipButton).not.toBeDisabled();
 		});
 
@@ -642,7 +662,7 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			const skipButton = screen.getByText("Skip Checks").closest("button");
+			const skipButton = screen.getByRole("button", { name: "Skip Checks" });
 			expect(skipButton).toBeDisabled();
 		});
 
@@ -689,8 +709,8 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			const skipButton = screen.getByText("Skip Checks").closest("button");
-			await user.click(skipButton!);
+			const skipButton = screen.getByRole("button", { name: "Skip Checks" });
+			await user.click(skipButton);
 
 			expect(onSkip).toHaveBeenCalledTimes(1);
 		});
@@ -715,7 +735,7 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			const runButton = screen.getByText("Run Checks").closest("button");
+			const runButton = screen.getByRole("button", { name: "Run Checks" });
 			expect(runButton).not.toBeDisabled();
 		});
 
@@ -762,8 +782,8 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			const runButton = screen.getByText("Run Checks").closest("button");
-			await user.click(runButton!);
+			const runButton = screen.getByRole("button", { name: "Run Checks" });
+			await user.click(runButton);
 
 			expect(onRun).toHaveBeenCalledTimes(1);
 		});
@@ -809,11 +829,11 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			const enableButton = screen.getByText("Enable Checks").closest("button");
+			const enableButton = screen.getByRole("button", { name: "Enable Checks" });
 			expect(enableButton).not.toBeDisabled();
 		});
 
-		it("should disable disable button when report is null", () => {
+		it("should not render disable button when report is null", () => {
 			render(
 				<AppChecks
 					checksReport={null}
@@ -831,8 +851,7 @@ describe("AppChecks", () => {
 				/>
 			);
 
-			const disableButton = screen.getByText("Disable Checks").closest("button");
-			expect(disableButton).toBeDisabled();
+			expect(screen.queryByText("Disable Checks")).not.toBeInTheDocument();
 		});
 	});
 });

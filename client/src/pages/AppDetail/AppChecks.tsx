@@ -109,45 +109,70 @@ export function AppChecks({
 			{canModify && (
 				<div className="bg-white rounded-lg shadow p-6">
 					<h2 className="text-lg font-semibold mb-4">Manage Checks</h2>
-					<div className="flex flex-wrap gap-3">
-						<button
-							type="button"
-							onClick={onEnable}
-							disabled={enabling || isEnabled}
-							className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-						>
-							{enabling ? "Enabling..." : "Enable Checks"}
-						</button>
-						<button
-							type="button"
-							onClick={onDisable}
-							disabled={disabling || !isEnabled}
-							className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-						>
-							{disabling ? "Disabling..." : "Disable Checks"}
-						</button>
-						<button
-							type="button"
-							onClick={onSkip}
-							disabled={skipping || isSkipAll}
-							className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-						>
-							{skipping ? "Skipping..." : "Skip Checks"}
-						</button>
-						<button
-							type="button"
-							onClick={onRun}
-							disabled={running}
-							className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-						>
-							{running ? "Running..." : "Run Checks"}
-						</button>
+					<div className="space-y-4">
+						<div className="flex items-start gap-4 pb-4 border-b border-gray-100">
+							<div className="flex-1">
+								<p className="text-sm font-medium text-gray-900">Deploy Health Checks</p>
+								<p className="text-sm text-gray-500">
+									Dokku {isEnabled ? "waits" : "does not wait"} for the app to respond before
+									completing deploys.
+								</p>
+							</div>
+							{isEnabled ? (
+								<button
+									type="button"
+									onClick={onDisable}
+									disabled={disabling}
+									className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+								>
+									{disabling ? "Disabling..." : "Disable Checks"}
+								</button>
+							) : (
+								<button
+									type="button"
+									onClick={onEnable}
+									disabled={enabling}
+									className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+								>
+									{enabling ? "Enabling..." : "Enable Checks"}
+								</button>
+							)}
+						</div>
+
+						<div className="flex items-start gap-4 pb-4 border-b border-gray-100">
+							<div className="flex-1">
+								<p className="text-sm font-medium text-gray-900">Skip Checks</p>
+								<p className="text-sm text-gray-500">
+									Skip health checks for the next deploy only.
+								</p>
+							</div>
+							<button
+								type="button"
+								onClick={onSkip}
+								disabled={skipping || isSkipAll}
+								className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+							>
+								{skipping ? "Skipping..." : "Skip Checks"}
+							</button>
+						</div>
+
+						<div className="flex items-start gap-4">
+							<div className="flex-1">
+								<p className="text-sm font-medium text-gray-900">Run Checks</p>
+								<p className="text-sm text-gray-500">
+									Manually run the CHECKS file against the live app.
+								</p>
+							</div>
+							<button
+								type="button"
+								onClick={onRun}
+								disabled={running}
+								className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+							>
+								{running ? "Running..." : "Run Checks"}
+							</button>
+						</div>
 					</div>
-					<p className="mt-3 text-sm text-gray-500">
-						<strong>Enable/Disable:</strong> controls whether Dokku waits for health checks during
-						deployment. <strong>Skip:</strong> skips checks for this deploy only.{" "}
-						<strong>Run:</strong> manually triggers the CHECKS file against the live app.
-					</p>
 				</div>
 			)}
 		</div>
