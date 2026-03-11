@@ -93,7 +93,7 @@
 ## Naming Conventions
 
 **Files:**
-- kebab-case for files: `app-buildpacks.ts`, `create-user.ts`
+- kebab-case for files: `app-buildpacks.ts`, `docker-options.ts`
 - Test files: `<filename>.test.ts` or `<filename>.test.tsx`
 - Route files: `app-*.ts` prefix for app-specific routes
 
@@ -136,11 +136,6 @@
 - Purpose: SQLite database files
 - Generated: Yes
 - Committed: No (in .gitignore)
-
-**server/test-data:**
-- Purpose: Test fixtures and mock data
-- Generated: No
-- Committed: Yes
 
 **client/dist:**
 - Purpose: Built client assets

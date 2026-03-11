@@ -5,12 +5,12 @@
 ## Naming Patterns
 
 **Files:**
-- kebab-case: `app-buildpacks.ts`, `create-user.ts`, `use-streaming-action.ts`
+- kebab-case: `app-buildpacks.ts`, `use-streaming-action.ts`
 - Test files: `<filename>.test.ts` or `<filename>.test.tsx`
 
 **Functions:**
 - camelCase: `getApps()`, `restartApp()`, `isValidAppName()`, `executeCommand()`
-- Async functions prefix with async: `async function getApp(name: string)`
+- Declare async functions using the `async` keyword: `async function getApp(name: string)`
 
 **Variables:**
 - camelCase: `appName`, `exitCode`, `stdout`, `stderr`
@@ -59,11 +59,16 @@
 
 **Example:**
 ```typescript
+// External dependencies
 import express from "express";
-import type { Request, Response } from "express";
+import { cn } from "@/lib/utils"; // Client alias
+
+// Internal modules
 import { getData } from "./lib/db.js";
+
+// Type-only imports
+import type { Request, Response } from "express";
 import type { Data } from "./lib/types.js";
-import { cn } from "@/lib/utils"; // Client only
 ```
 
 ## Error Handling

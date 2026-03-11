@@ -6,7 +6,7 @@
 
 **Runner:**
 - Vitest 4.0.0 (both server and client)
-- Config: `server/vitest.config.ts`, `client/vite.config.ts`
+- Config: `server/vitest.config.ts`, `client/vitest.config.ts`
 
 **Assertion Library:**
 - Vitest built-in assertions (based on Chai)
@@ -14,11 +14,13 @@
 
 **Run Commands:**
 ```bash
-just test                # Run all tests
-just server-test          # Run server tests
-just client-test          # Run client tests
-cd server && bun run test:watch     # Watch mode
-cd client && bun run test:coverage  # Coverage
+just test                         # Run all tests
+just server-test                  # Run server tests
+just client-test                  # Run client tests
+cd server && bun run test:watch   # Server watch mode
+cd client && bun run test:watch   # Client watch mode
+cd server && bun run test:coverage  # Server coverage
+cd client && bun run test:coverage  # Client coverage
 ```
 
 ## Test File Organization
@@ -90,7 +92,7 @@ vi.mock("./lib/executor.js", () => ({
 }));
 
 // Get typed mock
-const mockExecuteCommand = executeCommand as ReturnType<typeof vi.fn>;
+const mockExecuteCommand = vi.mocked(executeCommand);
 
 // Setup mock return value
 mockExecuteCommand.mockResolvedValue({
@@ -117,12 +119,11 @@ beforeEach(() => {
 ## Fixtures and Factories
 
 **Test Data:**
-- Located in `server/test-data/`
-- Files like `apps-list.txt`, `ps-report.txt` for CLI output fixtures
-- Used via `fs.readFileSync()` in tests
+- Inline in test files (no separate fixtures directory)
+- Mock data defined as constants or inline strings in each test
 
 **Location:**
-- `server/test-data/` directory contains Dokku command output fixtures
+- Co-located with test files, defined inline
 
 ## Coverage
 

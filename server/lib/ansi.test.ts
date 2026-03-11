@@ -40,7 +40,12 @@ describe("stripAnsi", () => {
 		expect(stripAnsi(dokkuOutput)).toBe("=====> test-app deployed state: running");
 	});
 
-	it("should remove all escape character occurrences", () => {
+	it("should remove multiple ANSI sequences", () => {
 		expect(stripAnsi("\u001b[31m\u001b[31mDouble escape\u001b[0m")).toBe("Double escape");
+	});
+
+	it("should remove stray escape characters", () => {
+		expect(stripAnsi("Hello\u001b World\u001b")).toBe("Hello World");
+		expect(stripAnsi("\u001b\u001b[31mText\u001b[0m")).toBe("Text");
 	});
 });

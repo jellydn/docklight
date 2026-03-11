@@ -4,11 +4,10 @@
 
 ## Tech Debt
 
-**ANSI Code Parsing:**
-- Issue: Manual ANSI escape code parsing in `server/lib/ansi.ts` is fragile
+**ANSI Code Parsing:** ✅ Resolved
+- Was: Manual ANSI escape code parsing in `server/lib/ansi.ts`
+- Fix: Replaced with `strip-ansi` library plus stray ESC cleanup
 - Files: `server/lib/ansi.ts`, `server/lib/apps.ts` (usage)
-- Impact: May fail with new ANSI codes from Dokku updates
-- Fix approach: Consider using a dedicated ANSI parsing library
 
 **CLI Output Parsing:**
 - Issue: Heavy reliance on parsing Dokku CLI output throughout codebase
@@ -74,10 +73,9 @@
 - Safe modification: Add more test fixtures from different Dokku versions
 - Test coverage: Good coverage of parsing functions (apps.test.ts, ssl.parsing.test.ts)
 
-**ANSI Parsing:**
+**ANSI Parsing:** ✅ Resolved
 - Files: `server/lib/ansi.ts`
-- Why fragile: ANSI escape codes are complex and varied
-- Safe modification: Use established library
+- Now uses `strip-ansi` library with stray ESC cleanup
 - Test coverage: Has tests (ansi.test.ts)
 
 **WebSocket Reconnection:**
