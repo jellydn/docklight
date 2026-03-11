@@ -8,6 +8,7 @@ import { isValidAppName } from "../lib/apps.js";
 import { getParam, getStatusCode } from "./util.js";
 import { streamAction } from "./stream-util.js";
 
+/** Registers API routes for checks management (enable/disable/skip/run) */
 export function registerAppChecksRoutes(app: express.Application): void {
 	app.get("/api/apps/:name/checks", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");

@@ -22,10 +22,12 @@ type ChecksErrorResult = {
 	stderr: string;
 };
 
+/** Creates an error result object for checks operations */
 function createChecksError(message: string, command = "", exitCode = 400): ChecksErrorResult {
 	return { error: message, command, exitCode, stderr: message };
 }
 
+/** Parses the output of dokku checks:report into a structured ChecksReport object */
 export function parseChecksReport(stdout: string): ChecksReport {
 	const report: ChecksReport = {
 		disabledList: "",
@@ -92,9 +94,8 @@ export function parseChecksReport(stdout: string): ChecksReport {
 	return report;
 }
 
-export async function getChecksReport(
-	name: string
-): Promise<ChecksReport | ChecksErrorResult> {
+/** Fetches the checks report for a Dokku app and parses the CLI output */
+export async function getChecksReport(name: string): Promise<ChecksReport | ChecksErrorResult> {
 	if (!isValidAppName(name)) {
 		return createChecksError("Invalid app name");
 	}
@@ -126,9 +127,8 @@ export async function getChecksReport(
 	}
 }
 
-export async function runChecks(
-	name: string
-): Promise<CommandResult | ChecksErrorResult> {
+/** Executes dokku checks:run for a Dokku app and returns the command result */
+export async function runChecks(name: string): Promise<CommandResult | ChecksErrorResult> {
 	if (!isValidAppName(name)) {
 		return createChecksError("Invalid app name");
 	}
