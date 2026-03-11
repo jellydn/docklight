@@ -1,139 +1,140 @@
 # Architecture
 
-**Analysis Date:** 2026-03-07
+**Analysis Date:** 2026-03-11
 
 ## Pattern Overview
 
-**Overall:** Three-tier client-server architecture with remote command execution
+**Overall:** Client-Server with SSH Orchestration
 
 **Key Characteristics:**
-- Monolithic backend (Express) with SQLite for persistence
-- React SPA client with React Router
-- Remote execution via SSH to Dokku server
+- Monolithic backend (Express) + SPA frontend (React)
+- SSH-based command execution to Dokku
+- No microservices
+- Stateful backend (SQLite database)
 - WebSocket for real-time log streaming
-- SSE for long-running command progress
 
 ## Layers
 
-**Client Layer (React SPA):**
-- Purpose: User interface and client-side state management
+**Presentation Layer (Client):**
+- Purpose: React SPA user interface
 - Location: `client/src/`
-- Contains: React components, pages, hooks, API client
-- Depends on: Server REST API, WebSocket server
-- Used by: End users via web browser
+- Contains: React components, pages, hooks
+- Depends on: API endpoints via `@tanstack/react-query`
+- Used by: Browser
 
-**API Layer (Express Routes):**
-- Purpose: HTTP endpoints and request handling
+**API Layer (Server Routes):**
+- Purpose: HTTP endpoint handlers
 - Location: `server/routes/`
-- Contains: Route handlers, middleware, request validation
+- Contains: Route registration, request validation, response formatting
 - Depends on: Business logic in `server/lib/`, authentication middleware
-- Used by: Client layer
+- Used by: React client
 
 **Business Logic Layer:**
 - Purpose: Core application logic and Dokku interactions
 - Location: `server/lib/`
-- Contains: Command execution, data processing, validation
-- Depends on: SSH executor, database, Dokku commands
-- Used by: API layer
-
-**Remote Execution Layer:**
-- Purpose: Execute commands on remote Dokku server
-- Location: `server/lib/executor.ts`, `server/lib/dokku.ts`
-- Contains: SSH connection pool, command building, execution
-- Depends on: node-ssh library, Dokku CLI
-- Used by: Business logic layer
+- Contains: App management, database operations, SSH execution, auth
+- Depends on: Dokku CLI, SQLite database, SSH connection pool
+- Used by: API routes
 
 **Data Layer:**
 - Purpose: Persistent storage
-- Location: `server/lib/db.ts`
-- Contains: SQLite database operations, prepared statements
+- Location: `server/lib/db.ts`, `server/data/docklight.db`
+- Contains: SQLite schema, prepared statements
 - Depends on: better-sqlite3
 - Used by: Business logic layer
 
 ## Data Flow
 
 **Request Flow:**
-1. Browser sends HTTP request to Express server
-2. Request passes through authentication middleware (`authMiddleware`)
-3. Route handler calls business logic function (in `lib/`)
-4. Business logic executes remote SSH commands via executor
-5. Result returned to route handler
-6. Response sent back to client
+1. Browser → React SPA (client/src/)
+2. React → API fetch (`client/src/lib/api.ts`)
+3. API Route (`server/routes/*.ts`) → Business Logic (`server/lib/*.ts`)
+4. Business Logic → SSH Execution (`server/lib/executor.ts`) → Dokku CLI
+5. Dokku CLI → Docker
+6. Response flows back through the chain
 
-**Real-time Log Streaming:**
-1. Client connects via WebSocket (`server/lib/websocket.ts`)
-2. WebSocket handler executes `dokku logs` command via SSH
-3. Log lines streamed to client in real-time
-
-**Command Execution with SSE:**
-1. Client sends request with `Accept: text/event-stream`
-2. Server sends progress updates via SSE
-3. Final result sent when command completes
+**WebSocket Flow (Logs):**
+1. Client connects via WebSocket
+2. Server authenticates via session token
+3. Server spawns SSH connection and streams stdout/stderr
+4. Client receives real-time log lines
 
 **State Management:**
-- Server-side: SQLite for audit logs and settings
-- Client-side: TanStack Query for server state caching and synchronization
+- Server: SQLite for persistent state, in-memory cache for ephemeral data
+- Client: @tanstack/react-query for server state, React Context for auth
 
 ## Key Abstractions
 
 **Command Execution:**
-- Purpose: Encapsulate Dokku CLI command building and execution
-- Examples: `server/lib/dokku.ts`, `server/lib/executor.ts`
-- Pattern: Command builder pattern (`DokkuCommands` class), executor with timeout and error handling
+- Purpose: Abstract SSH vs local shell execution
+- Examples: `server/lib/executor.ts`, `server/lib/dokku.ts`
+- Pattern: Result objects with `{command, exitCode, stdout, stderr}`
 
-**Route Organization:**
-- Purpose: Modular API endpoint registration
-- Examples: `server/routes/apps.ts`, `server/routes/auth.ts`
-- Pattern: One route file per resource, exports `register*Routes` functions
+**App Management:**
+- Purpose: Dokku app CRUD operations
+- Examples: `server/lib/apps.ts`, `server/lib/databases.ts`
+- Pattern: Parse CLI output into typed objects
 
-**Audit Logging:**
-- Purpose: Track all executed commands
-- Examples: `server/lib/db.ts` (`saveCommand`), `server/lib/audit-rotation.ts`
-- Pattern: Async logging with automatic cleanup and truncation
+**Authentication:**
+- Purpose: JWT-based session management
+- Examples: `server/lib/auth.ts`
+- Pattern: Middleware guards (`authMiddleware`, `requireRole`, `requireAdmin`)
 
-**SSE Streaming:**
-- Purpose: Real-time command progress updates
-- Examples: `server/lib/sse.ts`
-- Pattern: Writer interface with typed methods
+**Rate Limiting:**
+- Purpose: Prevent abuse of expensive operations
+- Examples: `server/lib/rate-limiter.ts`
+- Pattern: Sliding window per-user rate limiting
 
 ## Entry Points
 
 **Server Entry Point:**
 - Location: `server/index.ts`
-- Triggers: Node.js process start
-- Responsibilities: Express app setup, route registration, WebSocket server setup, graceful shutdown handling
+- Triggers: `bun run dev` or `node dist/index.js`
+- Responsibilities: Express app setup, route registration, WebSocket server, graceful shutdown
 
 **Client Entry Point:**
 - Location: `client/src/main.tsx`
-- Triggers: Browser loads application
-- Responsibilities: React app mount, router setup
+- Triggers: Browser loads the SPA
+- Responsibilities: React app mounting, query client setup
 
-**Build Entry Points:**
-- Server: `server/index.ts` → `dist/index.js`
-- Client: `client/src/main.tsx` → `client/dist/index.html`
+**Admin User Creation:**
+- Location: `server/createUser.ts`
+- Triggers: `npx tsx createUser.ts <username> <password>`
+- Responsibilities: Create initial admin user
 
 ## Error Handling
 
-**Strategy:** Return standardized error objects, never throw exceptions from command execution
+**Strategy:** Never throw for expected failures
 
 **Patterns:**
-- Command execution returns `{ command, exitCode, stdout, stderr }`
-- Validation errors return `{ error, command, exitCode, stderr }`
-- HTTP responses use appropriate status codes (400, 401, 500, etc.)
-- Pino for structured error logging
+- Return error objects: `{error: string, command?: string, exitCode?: number, stderr?: string}`
+- Validate early: Route-level validation for app names, params
+- Graceful degradation: Parse failures return empty arrays, not errors
+- SSH errors: Return error result objects, preserve command details
+- Rate limit exceeded: Return 429 with retry-after time
 
 ## Cross-Cutting Concerns
 
-**Logging:** Pino structured logging, HTTP requests logged via pino-http middleware
+**Logging:**
+- Pino structured logging (server/lib/logger.ts)
+- HTTP request logging via pino-http
+- Audit logging for all command executions
 
-**Validation:** Zod schemas for client validation, custom validation functions for server-side input
+**Validation:**
+- Server: Runtime type checking via TypeScript
+- Client: Zod schemas for API responses (`client/src/lib/schemas.ts`)
+- Route-level validation for app names, parameters
 
-**Authentication:** JWT-based authentication with HTTP-only cookies, protected by `authMiddleware`
+**Authentication:**
+- JWT tokens in httpOnly cookies
+- Middleware guards on protected routes
+- Role-based access control (admin, operator, viewer)
 
-**Rate Limiting:** API and command execution rate-limited using express-rate-limit
-
-**Command Allowlisting:** `server/lib/allowlist.ts` ensures only whitelisted commands can execute
+**Caching:**
+- Simple in-memory cache (`server/lib/cache.ts`)
+- Cache keys follow pattern: `<entity>:<id>:<attribute>`
+- Invalidated on write operations
 
 ---
 
-*Architecture analysis: 2026-03-07*
+*Architecture analysis: 2026-03-11*

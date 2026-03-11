@@ -1,55 +1,52 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-03-08
+**Analysis Date:** 2026-03-11
 
 ## Test Framework
 
 **Runner:**
-- Vitest 4.0.0
-- Config: `server/vitest.config.ts` (server), `client/vitest.config.ts` (client)
+- Vitest 4.0.0 (both server and client)
+- Config: `server/vitest.config.ts`, `client/vite.config.ts`
 
 **Assertion Library:**
-- Vitest built-in assertions (Chai-based)
-- @testing-library/jest-dom 6.9.1 for DOM matchers in client components
+- Vitest built-in assertions (based on Chai)
+- @testing-library/jest-dom for DOM assertions (client)
 
 **Run Commands:**
 ```bash
-just server-test       # Run server tests
-just client-test       # Run client tests
-just test              # Run all tests
-just server-test:watch # Server watch mode
-just client-test:watch # Client watch mode
-bun run test:coverage  # Run with coverage
+just test                # Run all tests
+just server-test          # Run server tests
+just client-test          # Run client tests
+cd server && bun run test:watch     # Watch mode
+cd client && bun run test:coverage  # Coverage
 ```
 
 ## Test File Organization
 
 **Location:**
-- Co-located with source files
+- Co-located with source: `app.test.ts` next to `app.ts`
+- Server: `server/lib/*.test.ts`, `server/routes/*.test.ts`
+- Client: `client/src/pages/*.test.tsx`, `client/src/components/*.test.tsx`
 
 **Naming:**
-- `*.test.ts` for server files
-- `*.test.tsx` for client components
+- Source: `<module>.ts` → Test: `<module>.test.ts`
+- Component: `<Component>.tsx` → Test: `<Component>.test.tsx`
 
 **Structure:**
 ```
 server/
-├── lib/
-│   ├── apps.ts
-│   ├── apps.test.ts
-│   └── executor.test.ts
-├── routes/
-│   ├── apps.ts
-│   └── apps.test.ts
-└── index.test.ts
-
+  lib/
+    apps.ts
+    apps.test.ts
+    executor.ts
+    executor.test.ts
 client/src/
-├── components/
-│   ├── AppLayout.tsx
-│   └── AppLayout.test.tsx
-└── pages/
-    ├── Dashboard.tsx
-    └── Dashboard.test.tsx
+  pages/
+    Apps.tsx
+    Apps.test.tsx
+  components/
+    AppLayout.tsx
+    AppLayout.test.tsx
 ```
 
 ## Test Structure
@@ -63,137 +60,123 @@ describe("functionName", () => {
     vi.clearAllMocks();
   });
 
-  it("should do something", async () => {
+  it("should do something when condition is met", async () => {
     // Arrange
-    const input = "test";
+    const input = { ... };
 
     // Act
-    const result = await functionUnderTest(input);
+    const result = await functionName(input);
 
     // Assert
-    expect(result).toBe(expected);
+    expect(result).toEqual(expected);
   });
 });
 ```
 
 **Patterns:**
-- Setup: Reset mocks in `beforeEach`
-- Teardown: Vitest handles cleanup automatically
-- Assertion: `expect()` matchers
+- Setup: `beforeEach()` to reset mocks before each test
+- Arrange-Act-Assert structure for clarity
+- Descriptive test names: "should [do something] when [condition]"
 
 ## Mocking
 
-**Framework:** Vitest `vi`
+**Framework:** Vitest (`vi`)
 
 **Patterns:**
 ```typescript
-// Mock external modules
-vi.mock("./executor.js", () => ({
+// Mock a module
+vi.mock("./lib/executor.js", () => ({
   executeCommand: vi.fn(),
 }));
 
-// Access mocked function
+// Get typed mock
 const mockExecuteCommand = executeCommand as ReturnType<typeof vi.fn>;
 
-// Set return value
+// Setup mock return value
 mockExecuteCommand.mockResolvedValue({
-  command: "test",
+  command: "dokku apps:list",
   exitCode: 0,
-  stdout: "output",
+  stdout: "my-app",
   stderr: "",
 });
 
-// Reset between tests
+// Reset mocks
 beforeEach(() => {
   vi.clearAllMocks();
 });
 ```
 
 **What to Mock:**
-- External dependencies (SSH execution, filesystem)
-- Module imports (`./executor.js`, database calls)
+- External dependencies (SSH, file system, HTTP)
+- Module imports (`executeCommand`, database queries)
 
 **What NOT to Mock:**
-- Business logic functions (test the implementation)
-- Pure functions
+- Pure functions and utilities
+- Parsing logic
 
 ## Fixtures and Factories
 
 **Test Data:**
-```typescript
-// Typical mock data pattern
-const mockApps = [
-  { name: "app1", status: "running", domains: ["app1.example.com"] },
-  { name: "app2", status: "stopped", domains: [] },
-];
-
-// Mock response
-mockExecuteCommand.mockResolvedValueOnce({
-  command: "dokku apps:list",
-  exitCode: 0,
-  stdout: "app1\napp2",
-  stderr: "",
-});
-```
+- Located in `server/test-data/`
+- Files like `apps-list.txt`, `ps-report.txt` for CLI output fixtures
+- Used via `fs.readFileSync()` in tests
 
 **Location:**
-- Inline in test files (no separate fixtures directory)
+- `server/test-data/` directory contains Dokku command output fixtures
 
 ## Coverage
 
-**Requirements:** No enforced requirements (quality gate)
+**Requirements:** No enforced target, but good coverage maintained
 
 **View Coverage:**
 ```bash
-bun run test:coverage  # Generate coverage reports for server and client
+cd server && bun run test:coverage
+cd client && bun run test:coverage
 ```
 
-- Provider: v8 (Vitest built-in)
-- Reporters: text, json (server), html (both)
-- Server coverage: includes `lib/**/*.ts`, `*.ts`, excludes `**/*.test.ts`
-- Client coverage: default settings
+**Coverage tool:** @vitest/coverage-v8 (c8/v8 based)
 
 ## Test Types
 
 **Unit Tests:**
-- Server business logic (`server/lib/*.test.ts`)
-- Client components and hooks (`client/src/**/*.test.tsx`)
-- Fast, isolated, use mocks
+- Focus: Individual functions and modules
+- Scope: Pure functions, CLI output parsing, validation
+- Mock external dependencies
 
 **Integration Tests:**
-- API routes (`server/routes/*.test.ts`)
-- Use supertest for HTTP endpoint testing
-- Test request/response cycles, authentication, error handling
+- Focus: API endpoints with Supertest (server)
+- Scope: HTTP request/response handling, authentication middleware
 
 **E2E Tests:**
-- Framework: Playwright 1.58.2
-- Config: `client/playwright.config.ts`
-- Run: `bun run test:e2e`, `bun run test:e2e:ui`
-- Test complete user workflows
+- Framework: Playwright
+- Location: `client/playwright.config.ts`
+- Commands: `just client-e2e`, `just client-e2e-ui`
+- Scope: Full user flows through the UI
 
 ## Common Patterns
 
 **Async Testing:**
 ```typescript
 it("should handle async operations", async () => {
-  mockExecuteCommand.mockResolvedValue(mockResult);
-  const result = await getApps();
+  const result = await asyncFunction();
   expect(result).toEqual(expected);
 });
 ```
 
 **Error Testing:**
 ```typescript
-it("should return error on failure", async () => {
+it("should return error when command fails", async () => {
   mockExecuteCommand.mockResolvedValue({
-    command: "test",
     exitCode: 1,
-    stdout: "",
     stderr: "Error message",
   });
 
   const result = await functionUnderTest();
-  expect(result).toHaveProperty("error");
+  expect(result).toEqual({
+    error: "Failed to ...",
+    exitCode: 1,
+    stderr: "Error message",
+  });
 });
 ```
 
@@ -202,14 +185,14 @@ it("should return error on failure", async () => {
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 
-describe("Component", () => {
-  it("should render", () => {
-    render(<Component />);
-    expect(screen.getByText("Content")).toBeInTheDocument();
+describe("MyComponent", () => {
+  it("should render text", () => {
+    render(<MyComponent />);
+    expect(screen.getByText("Hello")).toBeInTheDocument();
   });
 });
 ```
 
 ---
 
-*Testing analysis: 2026-03-08*
+*Testing analysis: 2026-03-11*
