@@ -11,6 +11,34 @@ interface AppGitProps {
 	onUnlock?: () => void;
 }
 
+function formatTimestamp(value: string): string {
+	if (!value || value === "-") return "-";
+	const asNumber = Number(value);
+	const date = Number.isNaN(asNumber) ? new Date(value) : new Date(asNumber * 1000);
+	if (Number.isNaN(date.getTime())) return value;
+	return date.toLocaleString();
+}
+
+function formatSha(sha: string): string {
+	if (!sha || sha === "-" || sha === "HEAD") return "-";
+	return sha.length > 7 ? sha.slice(0, 7) : sha;
+}
+
+function InfoRow({
+	label,
+	children,
+}: {
+	label: string;
+	children: React.ReactNode;
+}) {
+	return (
+		<div className="flex items-center justify-between py-3">
+			<span className="text-sm text-gray-500">{label}</span>
+			<span className="text-sm text-gray-900">{children}</span>
+		</div>
+	);
+}
+
 export function AppGit({
 	gitInfo,
 	loading,
@@ -38,10 +66,12 @@ export function AppGit({
 		);
 	};
 
+	const deployBranch = gitInfo?.deployBranch || gitInfo?.globalDeployBranch || "-";
+
 	return (
 		<div className="space-y-6">
 			<div className="bg-white rounded-lg shadow p-6">
-				<h2 className="text-lg font-semibold mb-4">Git Information</h2>
+				<h2 className="text-lg font-semibold mb-2">Git</h2>
 				{loading ? (
 					<div className="flex justify-center py-8">
 						<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
@@ -60,57 +90,36 @@ export function AppGit({
 						)}
 					</div>
 				) : gitInfo ? (
-					<div className="space-y-3">
-						<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-							<div>
-								<span className="text-sm font-medium text-gray-500">Deploy Branch</span>
-								<p className="mt-1">
-									<code className="bg-gray-100 px-2 py-1 rounded text-sm">
-										{gitInfo.deployBranch || "-"}
-									</code>
-								</p>
-							</div>
-							<div>
-								<span className="text-sm font-medium text-gray-500">Global Deploy Branch</span>
-								<p className="mt-1">
-									<code className="bg-gray-100 px-2 py-1 rounded text-sm">
-										{gitInfo.globalDeployBranch || "-"}
-									</code>
-								</p>
-							</div>
-							<div>
-								<span className="text-sm font-medium text-gray-500">Commit SHA</span>
-								<p className="mt-1">
-									<code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-xs">
-										{gitInfo.sha || "-"}
-									</code>
-								</p>
-							</div>
-							<div>
-								<span className="text-sm font-medium text-gray-500">Last Updated</span>
-								<p className="mt-1 text-sm text-gray-700">{gitInfo.lastUpdatedAt || "-"}</p>
-							</div>
-							{gitInfo.sourceImage && (
-								<div className="sm:col-span-2">
-									<span className="text-sm font-medium text-gray-500">Source Image</span>
-									<p className="mt-1">
-										<code className="bg-gray-100 px-2 py-1 rounded text-sm break-all">
-											{gitInfo.sourceImage}
-										</code>
-									</p>
-								</div>
-							)}
-						</div>
+					<div className="divide-y divide-gray-100">
+						<InfoRow label="Branch">
+							<code className="bg-gray-100 px-2 py-0.5 rounded text-xs font-mono">
+								{deployBranch}
+							</code>
+						</InfoRow>
+						<InfoRow label="Commit">
+							<code className="bg-gray-100 px-2 py-0.5 rounded text-xs font-mono">
+								{formatSha(gitInfo.sha)}
+							</code>
+						</InfoRow>
+						<InfoRow label="Last Deployed">
+							{formatTimestamp(gitInfo.lastUpdatedAt)}
+						</InfoRow>
+						{gitInfo.sourceImage && (
+							<InfoRow label="Source Image">
+								<code className="bg-gray-100 px-2 py-0.5 rounded text-xs font-mono break-all">
+									{gitInfo.sourceImage}
+								</code>
+							</InfoRow>
+						)}
 					</div>
 				) : null}
 			</div>
 
 			{canModify && (
 				<div className="bg-white rounded-lg shadow p-6">
-					<h2 className="text-lg font-semibold mb-2">Deploy from Remote Repository</h2>
+					<h2 className="text-lg font-semibold mb-1">Deploy from Repository</h2>
 					<p className="text-sm text-gray-500 mb-4">
-						Connect and deploy your app directly from a remote Git repository (GitHub, GitLab,
-						Bitbucket, etc.), similar to how Vercel works.
+						Deploy directly from a remote Git repository.
 					</p>
 					<form
 						onSubmit={(e) => {
@@ -134,28 +143,28 @@ export function AppGit({
 								placeholder="https://github.com/user/repo.git"
 								className="w-full max-w-lg border rounded px-3 py-2"
 							/>
-							<p className="mt-1 text-sm text-gray-500">
-								Supports HTTPS, SSH (
-								<code className="text-xs bg-gray-100 px-1 rounded">
+							<p className="mt-1 text-xs text-gray-400">
+								HTTPS, SSH (
+								<code className="bg-gray-100 px-1 rounded">
 									git@github.com:user/repo.git
 								</code>
-								), and <code className="text-xs bg-gray-100 px-1 rounded">ssh://</code> URLs
+								), or <code className="bg-gray-100 px-1 rounded">ssh://</code>
 							</p>
 						</div>
 						<div>
 							<label htmlFor="git-branch" className="block text-sm font-medium text-gray-700 mb-1">
-								Branch (optional)
+								Branch
 							</label>
 							<input
 								id="git-branch"
 								type="text"
 								value={branch}
 								onChange={(e) => setBranch(e.target.value)}
-								placeholder="main"
+								placeholder={deployBranch !== "-" ? deployBranch : "main"}
 								className="w-full max-w-xs border rounded px-3 py-2"
 							/>
-							<p className="mt-1 text-sm text-gray-500">
-								Leave blank to use the configured deploy branch
+							<p className="mt-1 text-xs text-gray-400">
+								Defaults to the configured deploy branch
 							</p>
 						</div>
 						<div className="pt-2">
@@ -164,7 +173,7 @@ export function AppGit({
 								disabled={syncing || !repoUrl.trim()}
 								className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 							>
-								{syncing ? "Deploying..." : "Deploy from Repository"}
+								{syncing ? "Deploying..." : "Deploy"}
 							</button>
 						</div>
 					</form>
