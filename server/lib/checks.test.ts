@@ -156,6 +156,84 @@ describe("getChecksReport", () => {
 			stderr: "app not found",
 		});
 	});
+
+	it("should return error when executeCommand throws", async () => {
+		const errorMessage = "SSH connection failed";
+		mockExecuteCommand.mockRejectedValueOnce(new Error(errorMessage));
+
+		const result = await getChecksReport("my-app");
+
+		expect(result).toMatchObject({
+			error: errorMessage,
+			exitCode: 1,
+			command: "dokku checks:report 'my-app'",
+			stderr: errorMessage,
+		});
+	});
+
+	it("should handle error object without message property", async () => {
+		mockExecuteCommand.mockRejectedValueOnce({});
+
+		const result = await getChecksReport("my-app");
+
+		expect(result).toMatchObject({
+			error: "Unknown error occurred",
+			exitCode: 1,
+			command: "dokku checks:report 'my-app'",
+		});
+	});
+
+	it("should handle empty string app name", async () => {
+		const result = await getChecksReport("");
+
+		expect(result).toMatchObject({
+			error: "Invalid app name",
+			exitCode: 400,
+		});
+		expect(mockExecuteCommand).not.toHaveBeenCalled();
+	});
+
+	it("should handle app name with uppercase letters", async () => {
+		const result = await getChecksReport("MyApp");
+
+		expect(result).toMatchObject({
+			error: "Invalid app name",
+			exitCode: 400,
+		});
+		expect(mockExecuteCommand).not.toHaveBeenCalled();
+	});
+
+	it("should parse boolean true values case-insensitively", async () => {
+		mockExecuteCommand.mockResolvedValueOnce({
+			command: "dokku checks:report 'my-app'",
+			exitCode: 0,
+			stdout: [
+				"       Checks computed disabled:      TRUE",
+				"       Checks computed skip all:      True",
+			].join("\n"),
+			stderr: "",
+		});
+
+		const result = await getChecksReport("my-app");
+
+		expect(result).toMatchObject({
+			computedDisabled: true,
+			computedSkipAll: true,
+		});
+	});
+
+	it("should strip ANSI codes from command output", async () => {
+		mockExecuteCommand.mockResolvedValueOnce({
+			command: "dokku checks:report 'my-app'",
+			exitCode: 0,
+			stdout: "       Checks disabled list: \u001b[32mnone\u001b[0m",
+			stderr: "",
+		});
+
+		const result = await getChecksReport("my-app");
+
+		expect((result as { disabledList: string }).disabledList).toBe("none");
+	});
 });
 
 describe("runChecks", () => {
@@ -187,5 +265,64 @@ describe("runChecks", () => {
 
 		expect(result).toMatchObject({ exitCode: 0 });
 		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku checks:run 'my-app'", 120000);
+	});
+
+	it("should return command result with non-zero exit code when checks fail", async () => {
+		mockExecuteCommand.mockResolvedValueOnce({
+			command: "dokku checks:run 'my-app'",
+			exitCode: 1,
+			stdout: "",
+			stderr: "Health check failed",
+		});
+
+		const result = await runChecks("my-app");
+
+		expect(result).toMatchObject({
+			exitCode: 1,
+			stderr: "Health check failed",
+		});
+	});
+
+	it("should return error result when executeCommand throws", async () => {
+		const errorMessage = "SSH connection failed";
+		mockExecuteCommand.mockRejectedValueOnce(new Error(errorMessage));
+
+		const result = await runChecks("my-app");
+
+		expect(result).toMatchObject({
+			error: errorMessage,
+			exitCode: 1,
+			command: "dokku checks:run 'my-app'",
+		});
+	});
+
+	it("should handle empty string app name", async () => {
+		const result = await runChecks("");
+
+		expect(result).toMatchObject({
+			error: "Invalid app name",
+			exitCode: 400,
+		});
+		expect(mockExecuteCommand).not.toHaveBeenCalled();
+	});
+
+	it("should handle app name with underscore", async () => {
+		const result = await runChecks("my_app");
+
+		expect(result).toMatchObject({
+			error: "Invalid app name",
+			exitCode: 400,
+		});
+		expect(mockExecuteCommand).not.toHaveBeenCalled();
+	});
+
+	it("should handle app name with spaces", async () => {
+		const result = await runChecks("my app");
+
+		expect(result).toMatchObject({
+			error: "Invalid app name",
+			exitCode: 400,
+		});
+		expect(mockExecuteCommand).not.toHaveBeenCalled();
 	});
 });
