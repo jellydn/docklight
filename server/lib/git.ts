@@ -1,5 +1,5 @@
 import { type CommandResult, executeCommand } from "./executor.js";
-import { isValidAppName } from "./apps.js";
+import { isValidAppName, toISODateTime } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
 import { DokkuCommands } from "./dokku.js";
 import { logger } from "./logger.js";
@@ -109,7 +109,8 @@ export function parseGitReport(stdout: string): GitInfo {
 
 		const lastUpdatedAtMatch = line.match(/^\s*Git last updated at:\s*(.*)$/i);
 		if (lastUpdatedAtMatch) {
-			info.lastUpdatedAt = lastUpdatedAtMatch[1]?.trim() ?? "";
+			const raw = lastUpdatedAtMatch[1]?.trim() ?? "";
+			info.lastUpdatedAt = toISODateTime(raw) ?? raw;
 		}
 	}
 

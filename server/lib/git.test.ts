@@ -28,7 +28,7 @@ describe("parseGitReport", () => {
 			revEnvVar: "GIT_REV",
 			sha: "abc1234def5678",
 			sourceImage: "",
-			lastUpdatedAt: "2024-01-15 10:30:00 +0000",
+			lastUpdatedAt: "2024-01-15T10:30:00.000Z",
 		});
 	});
 
@@ -111,7 +111,7 @@ describe("getGitInfo", () => {
 			revEnvVar: "GIT_REV",
 			sha: "abc1234",
 			sourceImage: "",
-			lastUpdatedAt: "2024-01-15 10:30:00 +0000",
+			lastUpdatedAt: "2024-01-15T10:30:00.000Z",
 		});
 	});
 
