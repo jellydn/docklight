@@ -1,102 +1,92 @@
 # Technology Stack
 
-**Analysis Date:** 2026-03-07
+**Analysis Date:** 2026-03-11
 
 ## Languages
 
 **Primary:**
-- TypeScript 5.x - Server (Express) and Client (React)
-- JavaScript (ESM modules) - Some configs and runtime
-
-**Secondary:**
-- Shell - Bash scripts via justfile
-- SQL - SQLite queries
+- TypeScript 5.3.2 (server) - Node.js backend with Express
+- TypeScript 5.9.3 (client) - React frontend with Vite
 
 ## Runtime
 
 **Environment:**
-- Node.js 20+ (server)
-- Bun 1.x (package manager, dev server)
+- Node.js 20+ (via Bun package manager)
+- Docker/Dokku (deployment target)
 
 **Package Manager:**
 - Bun 1.x
-- Lockfile: `bun.lockb` (binary)
+- Lockfile: `bun.lock` (server), `client/bun.lock`
 
 ## Frameworks
 
-**Core:**
-- Express 5.0.0 - Backend HTTP server
-- React 19.2.0 - Frontend UI
+**Core Backend:**
+- Express 5.0.0 - Web server and API routing
+- TypeScript 5.3.2 - Type safety
+- node-ssh 13.2.1 - SSH connection pool for Dokku commands
+
+**Core Frontend:**
+- React 19.2.0 - UI framework
 - React Router DOM 7.13.1 - Client-side routing
-- Vite 7.3.1 - Frontend build tool and dev server
-- Tailwind CSS 4 - Styling
+- Vite 7.3.1 - Build tool and dev server
 
 **Testing:**
-- Vitest 4.0.0 - Unit and integration tests (server + client)
-- Playwright 1.58.2 - E2E tests (client)
-- @testing-library/react 16.3.2 - Component testing
-- supertest 7.0.0 - HTTP endpoint testing
+- Vitest 4.0.0 - Unit and integration test runner
+- @vitest/coverage-v8 - Code coverage reporting
+- Supertest 7.0.0 - HTTP endpoint testing (server)
+- @testing-library/react 16.3.2 - Component testing (client)
+- Playwright 1.58.2 - E2E testing (client)
 
 **Build/Dev:**
+- tsx 4.6.2 - TypeScript execution for development
 - Biome 2.4.4 - Linting and formatting
-- tsx 4.6.2 - TypeScript execution for server
-- @vitejs/plugin-react 5.1.1 - React support in Vite
+- Tailwind CSS 4 - Styling
+- @tailwindcss/postcss 4.2.1 - Tailwind PostCSS integration
 
 ## Key Dependencies
 
-**Critical:**
-- better-sqlite3 12.6.2 - Embedded SQLite database for audit logs and settings
-- node-ssh 13.2.1 - SSH connection pool for executing Dokku commands remotely
-- jsonwebtoken 9.0.3 - JWT authentication
-- ws 8.19.0 - WebSocket server for live log streaming
-- express-rate-limit 8.2.1 - API rate limiting
-
-**Infrastructure:**
+**Critical Backend:**
+- better-sqlite3 12.6.2 - Embedded database for users, audit logs, settings
+- jsonwebtoken 9.0.3 - JWT session authentication
 - pino 10.3.1 - Structured logging
-- pino-http 11.0.0 - HTTP request logging middleware
-- cookie-parser 1.4.7 - Cookie parsing for JWT sessions
-- zod 4.3.6 - Runtime schema validation (client)
-- @tanstack/react-query 5.90.21 - Server state management
+- pino-http 11.0.0 - HTTP request logging
+- ws 8.19.0 - WebSocket for live log streaming
+- express-rate-limit 8.2.1 - Rate limiting middleware
+- cookie-parser 1.4.7 - Cookie parsing for sessions
 
-**UI Components:**
-- @radix-ui/react-dialog 1.1.15 - Dialog component
-- @radix-ui/react-slot 1.2.4 - Slot component for composition
+**Critical Frontend:**
+- @tanstack/react-query 5.90.21 - Server state management and caching
+- zod 4.3.6 - Runtime type validation and API schemas
 - lucide-react 0.577.0 - Icon library
 - sonner 2.0.7 - Toast notifications
-- class-variance-authority 0.7.1 - Component variant styling
+- @radix-ui/react-dialog 1.1.15 - Accessible dialog components
+- @radix-ui/react-slot 1.2.4 - Component composition primitives
+- class-variance-authority 0.7.1 - Component variant management
+- tailwind-merge 3.5.0 - Tailwind class merging utilities
 
 ## Configuration
 
 **Environment:**
-- `.env` files or environment variables
-- Key configs required:
-  - `JWT_SECRET` - JWT signing secret (required)
-  - `DOCKLIGHT_DOKKU_SSH_TARGET` - SSH target (e.g., "dokku@server-ip")
-  - `DOCKLIGHT_DOKKU_SSH_KEY_PATH` - Path to SSH private key
-  - `DOCKLIGHT_DB_PATH` - SQLite database path (default: "data/docklight.db")
-  - `LOG_LEVEL` - Logging level (default: "info")
-  - `PORT` - Server port (default: 3001)
+- `.env` files for local development (see `server/.env.example`)
+- Environment variables for production secrets
 
 **Build:**
-- `server/tsconfig.json` - Server TypeScript config
-- `client/tsconfig.json` - Client TypeScript config with `@/` alias
-- `server/vitest.config.ts` - Server test config with Node environment
-- `client/vitest.config.ts` - Client test config with jsdom environment
-- `client/playwright.config.ts` - E2E test config
-- `justfile` - Task runner commands
+- `server/tsconfig.json` - TypeScript config for backend
+- `client/tsconfig.json` - TypeScript config for frontend
+- `biome.json` - Shared linting/formatting rules
+- `justfile` - Task runner commands (alternative to npm scripts)
 
 ## Platform Requirements
 
 **Development:**
-- Node.js 20+
-- Bun 1.x
-- SSH access to a Dokku server for testing
+- Bun 1.x or Node.js 20+
+- macOS/Linux/WSL2
 
 **Production:**
-- Linux server with Dokku installed
-- Docker (via Dokku)
-- Node.js runtime for running Docklight itself
+- Docker via Dokku
+- VPS with SSH access
+- 512MB+ RAM recommended
 
 ---
 
-*Stack analysis: 2026-03-07*
+*Stack analysis: 2026-03-11*

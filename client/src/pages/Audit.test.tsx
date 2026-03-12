@@ -223,7 +223,7 @@ describe("Audit", () => {
 		});
 	});
 
-	it("should expand log details when view details is clicked", async () => {
+	it("should expand log details when row is clicked", async () => {
 		const user = userEvent.setup();
 		apiFetchMock.mockResolvedValue(mockLogResult);
 
@@ -234,12 +234,11 @@ describe("Audit", () => {
 		);
 
 		await waitFor(() => {
-			const viewButtons = screen.getAllByText("View Details");
-			expect(viewButtons.length).toBeGreaterThan(0);
+			expect(screen.getByText("dokku apps:create my-app")).toBeInTheDocument();
 		});
 
-		const viewButtons = screen.getAllByText("View Details");
-		await user.click(viewButtons[0]);
+		const row = screen.getByText("dokku apps:create my-app").closest("tr");
+		await user.click(row!);
 
 		await waitFor(() => {
 			expect(screen.getByText("Stdout")).toBeInTheDocument();
@@ -247,7 +246,7 @@ describe("Audit", () => {
 		});
 	});
 
-	it("should collapse log details when hide details is clicked", async () => {
+	it("should collapse log details when row is clicked again", async () => {
 		const user = userEvent.setup();
 		apiFetchMock.mockResolvedValue(mockLogResult);
 
@@ -258,20 +257,17 @@ describe("Audit", () => {
 		);
 
 		await waitFor(() => {
-			const viewButtons = screen.getAllByText("View Details");
-			expect(viewButtons.length).toBeGreaterThan(0);
+			expect(screen.getByText("dokku apps:create my-app")).toBeInTheDocument();
 		});
 
-		const viewButtons = screen.getAllByText("View Details");
-		await user.click(viewButtons[0]);
+		const row = screen.getByText("dokku apps:create my-app").closest("tr");
+		await user.click(row!);
 
 		await waitFor(() => {
-			const hideButtons = screen.getAllByText("Hide Details");
-			expect(hideButtons.length).toBeGreaterThan(0);
+			expect(screen.getByText("Stdout")).toBeInTheDocument();
 		});
 
-		const hideButtons = screen.getAllByText("Hide Details");
-		await user.click(hideButtons[0]);
+		await user.click(row!);
 
 		await waitFor(() => {
 			expect(screen.queryByText("Stdout")).not.toBeInTheDocument();
@@ -324,12 +320,11 @@ describe("Audit", () => {
 		);
 
 		await waitFor(() => {
-			const viewButtons = screen.getAllByText("View Details");
-			expect(viewButtons.length).toBeGreaterThan(0);
+			expect(screen.getByText("dokku domains:add my-app invalid-domain")).toBeInTheDocument();
 		});
 
-		const viewButtons = screen.getAllByText("View Details");
-		await userEvent.click(viewButtons[2]); // Click the one with empty stdout
+		const row = screen.getByText("dokku domains:add my-app invalid-domain").closest("tr");
+		await userEvent.click(row!);
 
 		await waitFor(() => {
 			expect(screen.getByText("No output")).toBeInTheDocument();
@@ -346,12 +341,11 @@ describe("Audit", () => {
 		);
 
 		await waitFor(() => {
-			const viewButtons = screen.getAllByText("View Details");
-			expect(viewButtons.length).toBeGreaterThan(0);
+			expect(screen.getByText("dokku apps:create my-app")).toBeInTheDocument();
 		});
 
-		const viewButtons = screen.getAllByText("View Details");
-		await userEvent.click(viewButtons[0]); // Click the one with empty stderr
+		const row = screen.getByText("dokku apps:create my-app").closest("tr");
+		await userEvent.click(row!);
 
 		await waitFor(() => {
 			expect(screen.getByText("No errors")).toBeInTheDocument();
@@ -561,8 +555,7 @@ describe("Audit", () => {
 		});
 	});
 
-	it("should expand user log details when view details is clicked", async () => {
-		// Arrange
+	it("should expand user log details when row is clicked", async () => {
 		const user = userEvent.setup();
 		apiFetchMock.mockResolvedValue(mockUserLogResult);
 
@@ -572,26 +565,22 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		// Act - switch to user actions tab
 		const userActionsTab = screen.getByRole("button", { name: "User Actions" });
 		await user.click(userActionsTab);
 
 		await waitFor(() => {
-			const viewButtons = screen.getAllByText("View Details");
-			expect(viewButtons.length).toBeGreaterThan(0);
+			expect(screen.getByText("apps:create")).toBeInTheDocument();
 		});
 
-		const viewButtons = screen.getAllByText("View Details");
-		await user.click(viewButtons[0]);
+		const row = screen.getByText("apps:create").closest("tr");
+		await user.click(row!);
 
-		// Assert
 		await waitFor(() => {
 			expect(screen.getByText("Details")).toBeInTheDocument();
 		});
 	});
 
 	it("should display no details message when details is empty", async () => {
-		// Arrange
 		const user = userEvent.setup();
 		const logsWithEmptyDetails: UserAuditLog[] = [
 			{
@@ -617,14 +606,16 @@ describe("Audit", () => {
 			</MemoryRouter>
 		);
 
-		// Act
 		const userActionsTab = screen.getByRole("button", { name: "User Actions" });
 		await user.click(userActionsTab);
 
-		const viewButtons = await screen.findAllByText("View Details");
-		await user.click(viewButtons[0]);
+		await waitFor(() => {
+			expect(screen.getByText("login")).toBeInTheDocument();
+		});
 
-		// Assert
+		const row = screen.getByText("login").closest("tr");
+		await user.click(row!);
+
 		await waitFor(() => {
 			expect(screen.getByText("No details")).toBeInTheDocument();
 		});

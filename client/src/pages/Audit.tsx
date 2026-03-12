@@ -285,15 +285,22 @@ export function Audit() {
 											<th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
 												Exit Code
 											</th>
-											<th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-												Actions
-											</th>
 										</tr>
 									</thead>
 									<tbody className="bg-white divide-y divide-gray-200">
 										{commandLogs.map((log) => (
 											<Fragment key={log.id}>
-												<tr className="hover:bg-gray-50">
+												<tr
+													className="hover:bg-gray-50 cursor-pointer"
+													tabIndex={0}
+													onClick={() => toggleRowExpansion(log.id, false)}
+													onKeyDown={(e) => {
+														if (e.key === "Enter" || e.key === " ") {
+															e.preventDefault();
+															toggleRowExpansion(log.id, false);
+														}
+													}}
+												>
 													<td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
 														{formatTimestamp(log.createdAt)}
 													</td>
@@ -305,19 +312,10 @@ export function Audit() {
 													<td className="px-4 py-3 whitespace-nowrap">
 														{getExitCodeBadge(log.exitCode)}
 													</td>
-													<td className="px-4 py-3 whitespace-nowrap text-sm">
-														<button
-															onClick={() => toggleRowExpansion(log.id, false)}
-															className="text-blue-600 hover:text-blue-800"
-															type="button"
-														>
-															{expandedCommandRows.has(log.id) ? "Hide Details" : "View Details"}
-														</button>
-													</td>
 												</tr>
 												{expandedCommandRows.has(log.id) && (
 													<tr className="bg-gray-50">
-														<td colSpan={4} className="px-4 py-4">
+														<td colSpan={3} className="px-4 py-4">
 															<div className="space-y-3">
 																<div>
 																	<h4 className="text-sm font-medium text-gray-700 mb-1">Stdout</h4>
@@ -429,15 +427,22 @@ export function Audit() {
 											<th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
 												IP Address
 											</th>
-											<th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-												Actions
-											</th>
 										</tr>
 									</thead>
 									<tbody className="bg-white divide-y divide-gray-200">
 										{userLogs.map((log) => (
 											<Fragment key={log.id}>
-												<tr className="hover:bg-gray-50">
+												<tr
+													className="hover:bg-gray-50 cursor-pointer"
+													tabIndex={0}
+													onClick={() => toggleRowExpansion(log.id, true)}
+													onKeyDown={(e) => {
+														if (e.key === "Enter" || e.key === " ") {
+															e.preventDefault();
+															toggleRowExpansion(log.id, true);
+														}
+													}}
+												>
 													<td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
 														{formatTimestamp(log.createdAt)}
 													</td>
@@ -453,19 +458,10 @@ export function Audit() {
 													<td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
 														{log.ipAddress ?? "N/A"}
 													</td>
-													<td className="px-4 py-3 whitespace-nowrap text-sm">
-														<button
-															onClick={() => toggleRowExpansion(log.id, true)}
-															className="text-blue-600 hover:text-blue-800"
-															type="button"
-														>
-															{expandedUserRows.has(log.id) ? "Hide Details" : "View Details"}
-														</button>
-													</td>
 												</tr>
 												{expandedUserRows.has(log.id) && (
 													<tr className="bg-gray-50">
-														<td colSpan={6} className="px-4 py-4">
+														<td colSpan={5} className="px-4 py-4">
 															<div className="space-y-3">
 																<div>
 																	<h4 className="text-sm font-medium text-gray-700 mb-1">
