@@ -46,7 +46,8 @@ describe("getDomains", () => {
 		mockExecuteCommand.mockResolvedValueOnce({
 			command: "dokku domains:report my-app",
 			exitCode: 0,
-			stdout: "       Domains app vhosts: \u001b[32mmy-app.example.com\u001b[0m",
+			stdout:
+				"       Domains app enabled: \u001b[32mtrue\u001b[0m\n       Domains app vhosts: \u001b[32mmy-app.example.com\u001b[0m",
 			stderr: "",
 		});
 
@@ -55,11 +56,34 @@ describe("getDomains", () => {
 		expect(result).toEqual(["my-app.example.com"]);
 	});
 
+	it("should return empty array when domains app is disabled", async () => {
+		mockExecuteCommand.mockResolvedValueOnce({
+			command: "dokku domains:report my-app",
+			exitCode: 0,
+			stdout: [
+				"=====> my-app domains information",
+				"       Domains app enabled: false",
+				"       Domains app vhosts: my-app.example.com",
+				"       Domains global enabled: true",
+				"       Domains global vhosts: example.com",
+			].join("\n"),
+			stderr: "",
+		});
+
+		const result = await getDomains("my-app");
+
+		expect(result).toEqual([]);
+	});
+
 	it("should return empty array when no domains are set", async () => {
 		mockExecuteCommand.mockResolvedValueOnce({
 			command: "dokku domains:report my-app",
 			exitCode: 0,
-			stdout: ["=====> my-app domains information", "       Domains app vhosts:    -"].join("\n"),
+			stdout: [
+				"=====> my-app domains information",
+				"       Domains app enabled: true",
+				"       Domains app vhosts:    -",
+			].join("\n"),
 			stderr: "",
 		});
 

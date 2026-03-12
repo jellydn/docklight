@@ -19,7 +19,7 @@ Git last updated at: 2024-03-15 14:30:25`;
 			revEnvVar: "GIT_REV",
 			sha: "abc123def456",
 			sourceImage: "myapp:latest",
-			lastUpdatedAt: "2024-03-15 14:30:25",
+			lastUpdatedAt: "2024-03-15T14:30:25.000Z",
 		});
 	});
 
@@ -140,6 +140,6 @@ Git source image: myapp:dev`;
 	it("should handle last updated with ISO format", () => {
 		const stdout = `Git last updated at: 2024-01-15T10:30:00Z`;
 		const result = parseGitReport(stdout);
-		expect(result.lastUpdatedAt).toBe("2024-01-15T10:30:00Z");
+		expect(result.lastUpdatedAt).toBe("2024-01-15T10:30:00.000Z");
 	});
 });

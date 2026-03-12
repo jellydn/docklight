@@ -99,22 +99,33 @@ describe("toISODateTime", () => {
 	it("should handle datetime with timezone offset from Dokku", () => {
 		expect(toISODateTime("2024-01-15 10:30:00 +0000")).toBe("2024-01-15T10:30:00.000Z");
 	});
+
+	it("should handle Unix timestamp (seconds)", () => {
+		const result = toISODateTime("1773268058");
+		expect(result).toBeDefined();
+		expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+	});
+
+	it("should handle 9-digit Unix timestamp", () => {
+		const result = toISODateTime("100000000");
+		expect(result).toBe("1973-03-03T09:46:40.000Z");
+	});
 });
 
 describe("parseDomains", () => {
 	it("should parse domains vhosts format", () => {
-		const stdout = `Domains app vhosts: example.com www.example.com`;
+		const stdout = `Domains app enabled:           true\nDomains app vhosts: example.com www.example.com`;
 		expect(parseDomains(stdout)).toEqual(["example.com", "www.example.com"]);
 	});
 
 	it("should parse domains vhosts with single domain", () => {
-		const stdout = `Domains app vhosts: myapp.dokku.me`;
+		const stdout = `Domains app enabled:           true\nDomains app vhosts: myapp.dokku.me`;
 		expect(parseDomains(stdout)).toEqual(["myapp.dokku.me"]);
 	});
 
-	it("should parse 'domains vhosts' format (without 'app')", () => {
-		const stdout = `domains vhosts: app.example.com api.example.com`;
-		expect(parseDomains(stdout)).toEqual(["app.example.com", "api.example.com"]);
+	it("should return empty array when app domains disabled", () => {
+		const stdout = `Domains app enabled:           false\nDomains app vhosts: sky-alert.itman.fyi`;
+		expect(parseDomains(stdout)).toEqual([]);
 	});
 
 	it("should return empty array when no domains found", () => {
@@ -123,43 +134,44 @@ describe("parseDomains", () => {
 	});
 
 	it("should filter out dash placeholder", () => {
-		const stdout = `Domains app vhosts: -`;
+		const stdout = `Domains app enabled:           true\nDomains app vhosts: -`;
 		expect(parseDomains(stdout)).toEqual([]);
 	});
 
 	it("should filter out '(none)' placeholder", () => {
-		const stdout = `Domains app vhosts: (none)`;
+		const stdout = `Domains app enabled:           true\nDomains app vhosts: (none)`;
 		expect(parseDomains(stdout)).toEqual([]);
 	});
 
 	it("should handle case insensitive matching", () => {
-		const stdout = `DOMAINS APP VHOSTS: EXAMPLE.COM`;
+		const stdout = `DOMAINS APP ENABLED:           TRUE\nDOMAINS APP VHOSTS: EXAMPLE.COM`;
 		expect(parseDomains(stdout)).toEqual(["EXAMPLE.COM"]);
 	});
 
 	it("should handle ANSI escape codes", () => {
-		const stdout = "\x1b[32mDomains app vhosts: example.com\x1b[0m";
+		const stdout =
+			"\x1b[32mDomains app enabled:           true\x1b[0m\n\x1b[32mDomains app vhosts: example.com\x1b[0m";
 		expect(parseDomains(stdout)).toEqual(["example.com"]);
 	});
 
 	it("should deduplicate domains", () => {
-		const stdout = `Domains app vhosts: example.com example.com www.example.com`;
+		const stdout = `Domains app enabled:           true\nDomains app vhosts: example.com example.com www.example.com`;
 		expect(parseDomains(stdout)).toEqual(["example.com", "www.example.com"]);
 	});
 
 	it("should handle extra whitespace", () => {
-		const stdout = `Domains app vhosts:   example.com    www.example.com  `;
+		const stdout = `Domains app enabled:           true\nDomains app vhosts:   example.com    www.example.com  `;
 		expect(parseDomains(stdout)).toEqual(["example.com", "www.example.com"]);
 	});
 
 	it("should handle multiple domains lines", () => {
-		const stdout = `Domains app vhosts: example.com
+		const stdout = `Domains app enabled:           true\nDomains app vhosts: example.com
 Domains app vhosts: www.example.com`;
 		expect(parseDomains(stdout)).toEqual(["example.com", "www.example.com"]);
 	});
 
 	it("should handle empty domains list", () => {
-		const stdout = `Domains app vhosts:`;
+		const stdout = `Domains app enabled:           true\nDomains app vhosts:`;
 		expect(parseDomains(stdout)).toEqual([]);
 	});
 });

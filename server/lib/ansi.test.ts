@@ -25,7 +25,7 @@ describe("stripAnsi", () => {
 
 	it("should handle partial ANSI sequences", () => {
 		expect(stripAnsi("\u001b[31mUnclosed color")).toBe("Unclosed color");
-		expect(stripAnsi("Partial \u001b[31mcolor\u001b text")).toBe("Partial color text");
+		expect(stripAnsi("Partial \u001b[31mcolor\u001b[0m text")).toBe("Partial color text");
 	});
 
 	it("should remove multiple ANSI sequences from same string", () => {
@@ -40,7 +40,12 @@ describe("stripAnsi", () => {
 		expect(stripAnsi(dokkuOutput)).toBe("=====> test-app deployed state: running");
 	});
 
-	it("should remove all escape character occurrences", () => {
-		expect(stripAnsi("\u001b\u001b[31mDouble escape\u001b[0m")).toBe("Double escape");
+	it("should remove multiple ANSI sequences", () => {
+		expect(stripAnsi("\u001b[31m\u001b[31mDouble escape\u001b[0m")).toBe("Double escape");
+	});
+
+	it("should remove stray escape characters", () => {
+		expect(stripAnsi("Hello\u001b World\u001b")).toBe("Hello World");
+		expect(stripAnsi("\u001b\u001b[31mText\u001b[0m")).toBe("Text");
 	});
 });

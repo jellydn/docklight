@@ -83,9 +83,7 @@ describe("AppChecks", () => {
 
 	describe("manage checks section", () => {
 		it("should not render manage checks when canModify is false", () => {
-			render(
-				<AppChecks {...defaultProps} checksReport={mockChecksReport} canModify={false} />,
-			);
+			render(<AppChecks {...defaultProps} checksReport={mockChecksReport} canModify={false} />);
 
 			expect(screen.queryByText("Manage Checks")).not.toBeInTheDocument();
 		});
@@ -125,11 +123,7 @@ describe("AppChecks", () => {
 			const onEnable = vi.fn();
 
 			render(
-				<AppChecks
-					{...defaultProps}
-					checksReport={mockDisabledChecksReport}
-					onEnable={onEnable}
-				/>,
+				<AppChecks {...defaultProps} checksReport={mockDisabledChecksReport} onEnable={onEnable} />
 			);
 
 			const enableButton = screen.getByRole("button", { name: "Enable" });
@@ -147,11 +141,7 @@ describe("AppChecks", () => {
 
 		it("should be disabled during enabling operation", () => {
 			render(
-				<AppChecks
-					{...defaultProps}
-					checksReport={mockDisabledChecksReport}
-					enabling={true}
-				/>,
+				<AppChecks {...defaultProps} checksReport={mockDisabledChecksReport} enabling={true} />
 			);
 
 			const enableButton = screen.getByRole("button", { name: "Enabling..." });
@@ -164,13 +154,7 @@ describe("AppChecks", () => {
 			const user = userEvent.setup();
 			const onDisable = vi.fn();
 
-			render(
-				<AppChecks
-					{...defaultProps}
-					checksReport={mockChecksReport}
-					onDisable={onDisable}
-				/>,
-			);
+			render(<AppChecks {...defaultProps} checksReport={mockChecksReport} onDisable={onDisable} />);
 
 			const disableButton = screen.getByRole("button", { name: "Disable" });
 			expect(disableButton).not.toBeDisabled();
@@ -186,9 +170,7 @@ describe("AppChecks", () => {
 		});
 
 		it("should be disabled during disabling operation", () => {
-			render(
-				<AppChecks {...defaultProps} checksReport={mockChecksReport} disabling={true} />,
-			);
+			render(<AppChecks {...defaultProps} checksReport={mockChecksReport} disabling={true} />);
 
 			const disableButton = screen.getByRole("button", { name: "Disabling..." });
 			expect(disableButton).toBeDisabled();
@@ -211,9 +193,7 @@ describe("AppChecks", () => {
 		});
 
 		it("should be disabled during skipping operation", () => {
-			render(
-				<AppChecks {...defaultProps} checksReport={mockChecksReport} skipping={true} />,
-			);
+			render(<AppChecks {...defaultProps} checksReport={mockChecksReport} skipping={true} />);
 
 			const skipButton = screen.getByRole("button", { name: "Skipping..." });
 			expect(skipButton).toBeDisabled();
@@ -223,9 +203,7 @@ describe("AppChecks", () => {
 			const user = userEvent.setup();
 			const onSkip = vi.fn();
 
-			render(
-				<AppChecks {...defaultProps} checksReport={mockChecksReport} onSkip={onSkip} />,
-			);
+			render(<AppChecks {...defaultProps} checksReport={mockChecksReport} onSkip={onSkip} />);
 
 			const skipButton = screen.getByRole("button", { name: "Skip" });
 			await user.click(skipButton);
@@ -243,9 +221,7 @@ describe("AppChecks", () => {
 		});
 
 		it("should be disabled during running operation", () => {
-			render(
-				<AppChecks {...defaultProps} checksReport={mockChecksReport} running={true} />,
-			);
+			render(<AppChecks {...defaultProps} checksReport={mockChecksReport} running={true} />);
 
 			const runButton = screen.getByRole("button", { name: "Running..." });
 			expect(runButton).toBeDisabled();
@@ -255,9 +231,7 @@ describe("AppChecks", () => {
 			const user = userEvent.setup();
 			const onRun = vi.fn();
 
-			render(
-				<AppChecks {...defaultProps} checksReport={mockChecksReport} onRun={onRun} />,
-			);
+			render(<AppChecks {...defaultProps} checksReport={mockChecksReport} onRun={onRun} />);
 
 			const runButton = screen.getByRole("button", { name: "Run" });
 			await user.click(runButton);

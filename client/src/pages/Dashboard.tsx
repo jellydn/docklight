@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateAppDialog } from "@/components/CreateAppDialog.js";
 import { apiFetch } from "../lib/api.js";
 import { useAuth } from "@/contexts/auth-context.js";
+import { formatDeployTime } from "@/lib/utils.js";
 import { queryKeys } from "../lib/query-keys.js";
 import { ServerHealthSchema, AppSchema, CommandHistorySchema } from "../lib/schemas.js";
 
@@ -165,7 +166,7 @@ export function Dashboard() {
 														<span className="text-gray-400">-</span>
 													)}
 												</td>
-												<td className="py-2 px-4">{app.lastDeployTime || "-"}</td>
+												<td className="py-2 px-4">{formatDeployTime(app.lastDeployTime)}</td>
 											</tr>
 										))}
 									</tbody>

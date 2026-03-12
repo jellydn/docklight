@@ -1,29 +1,30 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-03-07
+**Analysis Date:** 2026-03-11
 
 ## Naming Patterns
 
 **Files:**
-- kebab-case: `app-buildpacks.ts`, `create-app-dialog.tsx`, `use-streaming-action.ts`
-- Test files: co-located with source, `.test.ts` suffix
+- kebab-case: `app-buildpacks.ts`, `use-streaming-action.ts`
+- Test files: `<filename>.test.ts` or `<filename>.test.tsx`
 
 **Functions:**
-- camelCase: `getApps()`, `executeCommand()`, `isValidAppName()`, `createSSEWriter()`
+- camelCase: `getApps()`, `restartApp()`, `isValidAppName()`, `executeCommand()`
+- Declare async functions using the `async` keyword: `async function getApp(name: string)`
 
 **Variables:**
-- camelCase: `const mockExecuteCommand`, `const listResult`
-- Constants: Mixed - some SCREAMING_SNAKE_CASE (`DEFAULT_SSH_PORT`), some camelCase (`UNKNOWN_ERROR`)
+- camelCase: `appName`, `exitCode`, `stdout`, `stderr`
+- Constants: SCREAMING_SNAKE_CASE: `ALLOWED_COMMANDS`, `IDLE_TIMEOUT_MS`
 
 **Types:**
-- PascalCase for interfaces and types: `interface App`, `type CommandResult`, `interface SSEWriter`
-- Use `interface` for object shapes
-- Use `type` for unions and primitives
+- PascalCase for interfaces/types: `App`, `AppDetail`, `CommandResult`
+- Descriptive names: `UserRole`, `JWTPayload`, `ChecksReport`
+- Use `type` for unions/primitives, `interface` for object shapes
 
 ## Code Style
 
 **Formatting:**
-- Tool: Biome 2.4.4
+- Biome 2.4.4 (all-in-one linter and formatter)
 - Key settings:
   - Indent style: Tabs
   - Indent width: 2
@@ -33,117 +34,114 @@
   - Semicolons: Always
 
 **Linting:**
-- Tool: Biome (recommended rules enabled)
-- Key rules:
-  - `useImportType`: "on" - 使用 `import type` 进行类型导入
-  - `noExplicitAny`: "off" - 允许 `any` 类型
-  - `noUnusedVariables`: "warn" - 未使用的变量发出警告
+- Biome linter with recommended rules enabled
+- Specific overrides:
+  - `noExplicitAny`: off
+  - `noTemplateCurlyInString`: off
+  - `useImportType`: on
+  - `useParseIntRadix`: off
+
+**Commands:**
+- `just format` - Format all code
+- `just lint` - Lint all code
+- `just server-format` / `just client-format` - Format specific project
 
 ## Import Organization
 
 **Order:**
-1. 外部依赖（node_modules）
-2. 内部导入（相对路径）
-3. 类型导入（使用 `import type`）
+1. External dependencies (npm packages)
+2. Internal modules (relative imports with `./`)
+3. Type-only imports (using `import type`)
 
 **Path Aliases:**
-- Client: `@/` 映射到 `client/src/`（在 vite.config.ts 中配置）
-- Server: `@/` 映射到服务器根目录（在 vitest.config.ts 中配置）
+- Client: `@/` alias for `client/src/*` (configured in `client/tsconfig.json`)
+- Server: Relative imports with `.js` extension (even for `.ts` files)
 
-**Extension convention:**
-- 相对导入使用 `.js` 扩展名（即使在 `.ts` 文件中）- Node.js ESM 要求
+**Example:**
+```typescript
+// External dependencies
+import express from "express";
+import { cn } from "@/lib/utils"; // Client alias
+
+// Internal modules
+import { getData } from "./lib/db.js";
+
+// Type-only imports
+import type { Request, Response } from "express";
+import type { Data } from "./lib/types.js";
+```
 
 ## Error Handling
 
 **Patterns:**
-- 命令执行从不抛出异常；返回带 `exitCode`、`stdout`、`stderr`、`command` 的 `CommandResult` 对象
-- 验证错误返回带 `error` 字段的对象
-- 对捕获的未知错误使用类型断言：`error as { message?: string }`
-- 通过 Pino 记录错误，包含上下文：`logger.error({ err }, "Error message")`
+- Return error objects instead of throwing: `{error: string, command?: string, exitCode?: number}`
+- Never throw for expected failures (command execution, parsing)
+- Validate early and return error responses
+- Type assertions for caught errors: `const err = error as {code?: number; message?: string}`
 
 **Example:**
 ```typescript
 try {
-  const result = await executeCommand(command);
-  if (result.exitCode !== 0) {
-    return { error: "Failed", command: result.command, exitCode: result.exitCode, stderr: result.stderr };
-  }
-  return result;
+  const result = await execAsync(cmd, {timeout});
+  return {command: cmd, exitCode: 0, stdout: result.stdout.trim(), stderr: result.stderr.trim()};
 } catch (error: unknown) {
-  const err = error as { message?: string };
-  logger.error({ err }, "Unexpected failure");
-  return { error: err.message || "Unknown error", command, exitCode: 1, stderr: "" };
+  const err = error as {code?: number; message?: string};
+  return {command: cmd, exitCode: err.code || 1, stdout: "", stderr: err.message || ""};
 }
 ```
 
 ## Logging
 
-**Framework:** Pino 10.3.1
+**Framework:** Pino (server), client-side logger (client)
 
 **Patterns:**
-- 使用从 `server/lib/logger.ts` 导入的 `logger`
-- 日志级别：`logger.info()`、`logger.error()`、`logger.warn()`、`logger.debug()`
-- 错误始终包含上下文对象：`logger.error({ err }, "Message")`
-- HTTP 请求通过 pino-http 中间件自动记录
+- Server: Use `logger` from `server/lib/logger.ts`
+- Log errors with context: `logger.error({err}, "Error message")`
+- Log with appropriate levels: `fatal`, `error`, `warn`, `info`, `debug`, `trace`
 
 ## Comments
 
 **When to Comment:**
-- 极少 - 代码应自解释
-- 复杂逻辑需要解释
-- 公共 API 函数（一些使用 JSDoc）
+- Minimal comments - prefer self-documenting code
+- JSDoc only for public APIs and complex functions
+- No comments for obvious code
 
 **JSDoc/TSDoc:**
-- 最小使用
-- 一些导出的函数使用简单的 `@description` 标签
+- Used sparingly in `server/lib/auth.ts`, `server/lib/checks.ts`
+- Focus on parameter types and return values
 
 ## Function Design
 
-**Size:** 小函数，专注单一职责
+**Size:** Keep functions focused and under 50 lines when possible
 
 **Parameters:**
-- 必要时使用选项对象：`interface ExecuteCommandOptions { userId?: string; skipHistory?: boolean }`
-- 默认参数很少使用；首选对象选项
+- Use objects for multiple related parameters: `{userId, timeout, skipHistory}`
+- Destructure parameters in function signature
 
 **Return Values:**
-- 命令函数返回 `CommandResult` 或带 `error` 的错误对象
-- 从不抛出预期错误
-- 使用联合类型表示成功/失败：`Promise<App[] | { error: string; ... }>`
+- Consistent return types (success or error objects)
+- Explicit return types for public functions
+
+**Example:**
+```typescript
+async function executeCommand(
+  command: string,
+  timeout: number = 30000,
+  options?: ExecuteCommandOptions
+): Promise<CommandResult>
+```
 
 ## Module Design
 
 **Exports:**
-- 使用命名导出：`export function getApps()`, `export interface App`
-- 使用 `export type` 进行类型导出
+- Named exports for functions: `export function getApps()`
+- Type exports: `export type { App, AppDetail }`
+- Barrel files: `server/routes/index.ts` exports all route registers
 
-**Barrel Files:** 不使用（每个模块直接导入）
-
-## React Conventions
-
-**Components:**
-- 函数式组件配合 hooks
-- Props 接口在组件上方定义
-- 使用 `class-variance-authority` (cva) 进行变体样式
-
-**State:**
-- 服务器状态使用 `@tanstack/react-query`
-- 本地状态使用 `useState`，派生值使用 `useMemo`
-
-**Styling:**
-- 使用 `clsx` 和 `tailwind-merge` 通过 `cn()` 辅助函数进行类合并
-- Tailwind CSS 实用类优先
-- `tw-animate-css` 用于动画
-
-## Testing Conventions
-
-**Vitest (Server + Client):**
-- 使用 `describe`、`it`、`expect`、`vi`、`beforeEach`
-- 使用 `vi.mock()` 进行外部依赖模拟
-- 在 `beforeEach` 中用 `vi.clearAllMocks()` 清除模拟
-
-**Playwright (Client E2E):**
-- 用于端到端用户流程测试
+**Barrel Files:**
+- `server/routes/index.ts`: Consolidates all route registration functions
+- `client/src/pages/AppDetail/index.tsx`: Exports app detail component
 
 ---
 
-*Convention analysis: 2026-03-07*
+*Convention analysis: 2026-03-11*

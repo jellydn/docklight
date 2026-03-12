@@ -1,102 +1,98 @@
 # External Integrations
 
-**Analysis Date:** 2026-03-07
+**Analysis Date:** 2026-03-11
 
 ## APIs & External Services
 
-**SSH Remote Execution:**
-- Dokku CLI - Remote command execution via SSH
-- SDK/Client: `node-ssh` 13.2.1
-- Auth: SSH key-based authentication
-- Config: `DOCKLIGHT_DOKKU_SSH_TARGET`, `DOCKLIGHT_DOKKU_SSH_KEY_PATH`
+**Dokku CLI:**
+- SSH-based command execution via `node-ssh`
+- Custom command builder in `server/lib/dokku.ts`
+- Command allowlist in `server/lib/allowlist.ts`
+- Auth: SSH key authentication (`DOCKLIGHT_DOKKU_SSH_KEY_PATH`)
 
-**Git Repository Sync:**
-- Remote Git repositories - HTTPS and SSH protocols
-- Used for: `git:sync` app deployment feature
-- Implementation: Custom validation in `server/lib/git.ts`
+**No external API calls:**
+- All functionality is self-contained
+- No third-party SaaS dependencies
+- No webhooks to external services
 
 ## Data Storage
 
 **Databases:**
-- SQLite (better-sqlite3 12.6.2) - Embedded database
-- Connection: File-based at `DOCKLIGHT_DB_PATH` (default: "data/docklight.db")
+- SQLite (better-sqlite3)
+- Connection: File-based (`DOCKLIGHT_DB_PATH`, default `data/docklight.db`)
 - Client: better-sqlite3 with prepared statements
-- Tables: commands (audit log), settings (server configuration)
+- Tables: users, audit_logs, settings
 
 **File Storage:**
-- Local filesystem only - No external object storage
-- SQLite database files stored locally
+- Local filesystem only
+- Command history stored in SQLite
+- No cloud storage integration
 
 **Caching:**
-- In-memory Map-based cache in `server/lib/cache.ts`
-- SSH connection pool maintained by `node-ssh`
+- In-memory simple cache implementation (`server/lib/cache.ts`)
+- No Redis or external cache
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Custom JWT-based authentication
-- Implementation: JWT stored in HTTP-only cookies
-- Secret: `JWT_SECRET` environment variable (required)
-- Middleware: `server/lib/auth.ts` - `authMiddleware()`
-- Routes: `server/routes/auth.ts` - login/logout endpoints
+- Custom implementation
+- JWT-based session tokens (`jsonwebtoken`)
+- Password hashing with scrypt (Node.js crypto)
+- Role-based access control: admin, operator, viewer
+- Cookie-based session storage (httpOnly, secure, sameSite=strict)
+
+**User Management:**
+- CLI user creation via `server/createUser.ts`
+- SQLite user storage
+- No external identity providers (OAuth, LDAP, etc.)
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None - Manual error logging via Pino
+- None (manual log review only)
 
 **Logs:**
-- Pino 10.3.1 - Structured logging with JSON output
-- HTTP requests logged via pino-http middleware
-- Log levels configurable via `LOG_LEVEL` env var
-- WebSocket-based live log streaming for app container logs
+- Pino structured logging
+- Log levels: fatal, error, warn, info, debug, trace
+- Configurable via `LOG_LEVEL` env var
+- Audit log rotation (`server/lib/audit-rotation.ts`)
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Platform: Dokku (self-hosted PaaS)
-- Deployment: Git push to Dokku remote
+- Self-hosted on Dokku
+- Configured via `DOCKLIGHT_DOKKU_SSH_TARGET`
 
 **CI Pipeline:**
-- GitHub Actions (`.github/workflows/`) - Basic CI
-- No external CI service configured
+- GitHub Actions workflows in `.github/workflows/`
+- See `.github/workflows/` directory for details
 
 ## Environment Configuration
 
 **Required env vars:**
-- `JWT_SECRET` - JWT signing secret (required for auth)
-- `DOCKLIGHT_DOKKU_SSH_TARGET` - SSH connection target (e.g., "dokku@server-ip")
-- `DOCKLIGHT_DOKKU_SSH_KEY_PATH` - Path to SSH private key for Dokku access
+- `JWT_SECRET` - JWT signing secret (required in production)
 
 **Optional env vars:**
-- `DOCKLIGHT_DB_PATH` - SQLite database path (default: "data/docklight.db")
-- `LOG_LEVEL` - Pino log level (default: "info")
-- `NODE_ENV` - Environment (development/production/test)
-- `PORT` - Server port (default: 3001)
+- `DOCKLIGHT_DOKKU_SSH_TARGET` - SSH target for remote Dokku
+- `DOCKLIGHT_DOKKU_SSH_KEY_PATH` - Path to SSH private key
+- `DOCKLIGHT_DOKKU_SSH_OPTS` - Additional SSH options
+- `PORT` - Server port (default 3001)
+- `LOG_LEVEL` - Logging level (default info)
+- `DOCKLIGHT_DB_PATH` - SQLite database path
+- Rate limiting: `DOCKLIGHT_RATE_LIMIT_WINDOW_MS`, `DOCKLIGHT_AUTH_MAX_REQUESTS`, etc.
 
 **Secrets location:**
 - Environment variables only
-- No secrets manager integration
+- No secrets in code or config files
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None - No webhook endpoints
+- None
 
 **Outgoing:**
-- None - No external webhook calls
-
-## Real-time Communication
-
-**WebSocket Server:**
-- `ws` 8.19.0 - Live log streaming from app containers
-- Implementation: `server/lib/websocket.ts`
-- Client: Custom WebSocket connection in `client/src/hooks/use-streaming-action.ts`
-
-**Server-Sent Events (SSE):**
-- `server/lib/sse.ts` - SSE writer for streaming command output
-- Used for: Long-running command execution with real-time progress
+- None
 
 ---
 
-*Integration audit: 2026-03-07*
+*Integration audit: 2026-03-11*
