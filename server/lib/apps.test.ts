@@ -73,7 +73,7 @@ describe("getApps", () => {
 			.mockResolvedValueOnce({
 				command: "dokku domains:report my-app",
 				exitCode: 0,
-				stdout: "Myapp domains vhosts: my-app.example.com www.example.com",
+				stdout: "Domains app enabled: true\nDomains app vhosts: my-app.example.com www.example.com",
 				stderr: "",
 			})
 			.mockResolvedValueOnce({
@@ -92,7 +92,7 @@ describe("getApps", () => {
 			.mockResolvedValueOnce({
 				command: "dokku domains:report another-app",
 				exitCode: 0,
-				stdout: "Anotherapp domains vhosts:",
+				stdout: "Domains app enabled: true\nDomains app vhosts:",
 				stderr: "",
 			})
 			.mockResolvedValueOnce({
@@ -136,7 +136,7 @@ describe("getApps", () => {
 			.mockResolvedValueOnce({
 				command: "dokku domains:report stopped-app",
 				exitCode: 0,
-				stdout: "Stoppedapp domains vhosts:",
+				stdout: "Domains app enabled: true\nDomains app vhosts:",
 				stderr: "",
 			})
 			.mockResolvedValueOnce({
@@ -169,7 +169,7 @@ describe("getApps", () => {
 			.mockResolvedValueOnce({
 				command: "dokku domains:report my-app",
 				exitCode: 0,
-				stdout: "Myapp domains vhosts:",
+				stdout: "Domains app enabled: true\nDomains app vhosts:",
 				stderr: "",
 			})
 			.mockResolvedValueOnce({
@@ -202,7 +202,7 @@ describe("getApps", () => {
 			.mockResolvedValueOnce({
 				command: "dokku domains:report my-app",
 				exitCode: 0,
-				stdout: "Myapp domains vhosts:",
+				stdout: "Domains app enabled: true\nDomains app vhosts:",
 				stderr: "",
 			})
 			.mockResolvedValueOnce({
@@ -305,7 +305,7 @@ describe("getAppDetail", () => {
 			.mockResolvedValueOnce({
 				command: "dokku domains:report my-app",
 				exitCode: 0,
-				stdout: "Myapp domains vhosts: my-app.example.com",
+				stdout: "Domains app enabled: true\nDomains app vhosts: my-app.example.com",
 				stderr: "",
 			});
 
@@ -361,7 +361,7 @@ describe("getAppDetail", () => {
 			.mockResolvedValueOnce({
 				command: "dokku domains:report stopped-app",
 				exitCode: 0,
-				stdout: "Myapp domains vhosts:",
+				stdout: "Domains app enabled: true\nDomains app vhosts:",
 				stderr: "",
 			});
 
@@ -382,7 +382,7 @@ describe("getAppDetail", () => {
 			.mockResolvedValueOnce({
 				command: "dokku domains:report stopped-app",
 				exitCode: 0,
-				stdout: "Stoppedapp domains vhosts:",
+				stdout: "Domains app enabled: true\nDomains app vhosts:",
 				stderr: "",
 			});
 
@@ -403,7 +403,7 @@ describe("getAppDetail", () => {
 			.mockResolvedValueOnce({
 				command: "dokku domains:report my-app",
 				exitCode: 0,
-				stdout: "Myapp domains vhosts:",
+				stdout: "Domains app enabled: true\nDomains app vhosts:",
 				stderr: "",
 			});
 
@@ -424,7 +424,7 @@ describe("getAppDetail", () => {
 			.mockResolvedValueOnce({
 				command: "dokku domains:report my-app",
 				exitCode: 0,
-				stdout: "Domains app vhosts: my-app.example.com",
+				stdout: "Domains app enabled: true\nDomains app vhosts: my-app.example.com",
 				stderr: "",
 			});
 
@@ -449,7 +449,7 @@ describe("getAppDetail", () => {
 			.mockResolvedValueOnce({
 				command: "dokku domains:report my-app",
 				exitCode: 0,
-				stdout: "Myapp domains vhosts:",
+				stdout: "Domains app enabled: true\nDomains app vhosts:",
 				stderr: "",
 			});
 
