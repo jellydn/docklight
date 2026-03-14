@@ -15,6 +15,7 @@ export interface AppDetail {
 	gitRemote: string;
 	domains: string[];
 	processes: Record<string, number>;
+	canScale: boolean;
 }
 
 const UNKNOWN_ERROR = "Unknown error";
@@ -257,6 +258,7 @@ export async function getAppDetail(
 			gitRemote: parseGitRemote(psReportResult.stdout),
 			domains: parseDomains(domainsReportResult.stdout),
 			processes: parseProcesses(psReportResult.stdout),
+			canScale: parseCanScale(psReportResult.stdout),
 		};
 	} catch (error: unknown) {
 		const err = error as { message?: string };
@@ -277,6 +279,17 @@ function parseGitRemote(stdout: string): string {
 		}
 	}
 	return "";
+}
+
+function parseCanScale(stdout: string): boolean {
+	const lines = stdout.split("\n").map((line) => stripAnsi(line));
+	for (const line of lines) {
+		const match = line.match(/ps\s+can\s+scale:\s*(true|false)/i);
+		if (match) {
+			return match[1].toLowerCase() === "true";
+		}
+	}
+	return true;
 }
 
 function parseProcesses(stdout: string): Record<string, number> {

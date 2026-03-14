@@ -48,6 +48,7 @@ const mockAppDetail: AppDetailData = {
 	gitRemote: "dokku@test-app.example.com",
 	domains: ["test-app.example.com"],
 	processes: { web: 1, worker: 2 },
+	canScale: true,
 };
 
 describe("AppDetail", () => {

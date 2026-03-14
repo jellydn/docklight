@@ -317,6 +317,7 @@ describe("getAppDetail", () => {
 			gitRemote: "Myapp app deployed: dokku@my-app.dokku.app:my-app/app.git",
 			domains: ["my-app.example.com"],
 			processes: { web: 2, worker: 1 },
+			canScale: true,
 		});
 	});
 

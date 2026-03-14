@@ -66,6 +66,7 @@ export const AppDetailSchema = z.object({
 	gitRemote: z.string(),
 	domains: z.array(z.string()),
 	processes: z.record(z.string(), z.number()),
+	canScale: z.boolean(),
 });
 
 export type AppDetail = z.infer<typeof AppDetailSchema>;
