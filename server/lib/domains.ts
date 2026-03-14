@@ -62,11 +62,18 @@ export async function getDomains(
 			};
 		}
 
-		const domains = new Set<string>();
 		const lines = result.stdout.split("\n").map((line) => stripAnsi(line));
 
+		const appEnabled = lines.some((line) => /domains\s+app\s+enabled:\s*true/i.test(line));
+
+		if (!appEnabled) {
+			return [];
+		}
+
+		const domains = new Set<string>();
+
 		for (const line of lines) {
-			const vhostsMatch = line.match(/domains(?:\s+app)?\s+vhosts:\s*(.+)$/i);
+			const vhostsMatch = line.match(/domains\s+app\s+vhosts:\s*(.+)$/i);
 			if (!vhostsMatch) {
 				continue;
 			}
