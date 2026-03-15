@@ -106,7 +106,7 @@ export function AppOverview({
 											<span className="text-gray-600">Current:</span>
 											<span className="font-mono">{count}</span>
 										</div>
-										{canModify && (
+										{canModify && app.canScale && (
 											<div className="flex items-center space-x-2">
 												<span className="text-gray-600">Scale to:</span>
 												<input
@@ -122,7 +122,7 @@ export function AppOverview({
 									</div>
 								))}
 							</div>
-							{canModify && Object.keys(scaleChanges).length > 0 && (
+							{canModify && app.canScale && Object.keys(scaleChanges).length > 0 && (
 								<div className="mt-4">
 									<button
 										onClick={onApplyScale}

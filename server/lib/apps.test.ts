@@ -299,6 +299,7 @@ describe("getAppDetail", () => {
 					"Myapp deployed state: running",
 					"Myapp app deployed: dokku@my-app.dokku.app:my-app/app.git",
 					"Myapp process type scale: web=2 worker=1",
+					"Ps can scale: true",
 				].join("\n"),
 				stderr: "",
 			})
@@ -317,6 +318,39 @@ describe("getAppDetail", () => {
 			gitRemote: "Myapp app deployed: dokku@my-app.dokku.app:my-app/app.git",
 			domains: ["my-app.example.com"],
 			processes: { web: 2, worker: 1 },
+			canScale: true,
+		});
+	});
+
+	it("should return canScale false when app cannot be scaled", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku ps:report my-app",
+				exitCode: 0,
+				stdout: [
+					"Myapp deployed state: running",
+					"Myapp app deployed: dokku@my-app.dokku.app:my-app/app.git",
+					"Myapp process type scale: web=1",
+					"Ps can scale: false",
+				].join("\n"),
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku domains:report my-app",
+				exitCode: 0,
+				stdout: "Domains app enabled: true\nDomains app vhosts: my-app.example.com",
+				stderr: "",
+			});
+
+		const result = await getAppDetail("my-app");
+
+		expect(result).toEqual({
+			name: "my-app",
+			status: "running",
+			gitRemote: "Myapp app deployed: dokku@my-app.dokku.app:my-app/app.git",
+			domains: ["my-app.example.com"],
+			processes: { web: 1 },
+			canScale: false,
 		});
 	});
 

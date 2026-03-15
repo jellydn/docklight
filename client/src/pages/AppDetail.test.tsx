@@ -48,6 +48,7 @@ const mockAppDetail: AppDetailData = {
 	gitRemote: "dokku@test-app.example.com",
 	domains: ["test-app.example.com"],
 	processes: { web: 1, worker: 2 },
+	canScale: true,
 };
 
 describe("AppDetail", () => {
@@ -207,6 +208,24 @@ describe("AppDetail", () => {
 			expect(screen.getByText("web")).toBeInTheDocument();
 			expect(screen.getByText("worker")).toBeInTheDocument();
 		});
+	});
+
+	it("should hide scale controls when app cannot be scaled", async () => {
+		apiFetchMock.mockResolvedValue({ ...mockAppDetail, canScale: false });
+
+		renderWithQueryClient(
+			<MemoryRouter initialEntries={["/apps/test-app"]}>
+				<Routes>
+					<Route path="/apps/:name" element={<AppDetail />} />
+				</Routes>
+			</MemoryRouter>
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText(/processes/i)).toBeInTheDocument();
+		});
+
+		expect(screen.queryByText("Apply Scaling")).not.toBeInTheDocument();
 	});
 
 	it("should show danger zone with delete button", async () => {

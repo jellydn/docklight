@@ -488,6 +488,7 @@ describe("API Routes", () => {
 				domains: ["example.com"],
 				processes: { web: 1 },
 				gitRemote: "git@example.com:my-app.git",
+				canScale: true,
 			};
 			vi.mocked(getAppDetail).mockResolvedValue(mockAppDetail as never);
 
