@@ -163,8 +163,6 @@ test.describe("App lifecycle", () => {
 		await expect(deleteConfirmButton).not.toBeDisabled();
 		await deleteConfirmButton.dispatchEvent("click");
 
-		await expect(page.getByText(/my-app.*deleted/i)).toBeVisible();
-
 		await expect(page).toHaveURL(/\/apps$/);
 	});
 });

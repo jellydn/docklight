@@ -289,7 +289,7 @@ function parseCanScale(stdout: string): boolean {
 			return match[1].toLowerCase() === "true";
 		}
 	}
-	return true;
+	return false;
 }
 
 function parseProcesses(stdout: string): Record<string, number> {
