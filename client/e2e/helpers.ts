@@ -24,6 +24,7 @@ export const MOCK_APP_DETAIL = {
 	gitRemote: "dokku@my-app.example.com",
 	domains: ["my-app.example.com"],
 	processes: { web: 1 },
+	canScale: true,
 };
 
 export const MOCK_PLUGINS = [
