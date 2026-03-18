@@ -6,11 +6,14 @@ import { logger } from "../lib/logger.js";
 import { queryClient } from "../lib/query-client.js";
 import { queryKeys } from "../lib/query-keys.js";
 import { useAuth } from "@/contexts/auth-context.js";
+import { useAppEvents } from "@/hooks/use-app-events.js";
 
 export function AppLayout() {
 	const navigate = useNavigate();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const { role, username } = useAuth();
+
+	useAppEvents();
 
 	const handleLogout = async () => {
 		try {

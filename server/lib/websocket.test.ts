@@ -40,6 +40,10 @@ vi.mock("./allowlist.js", () => ({
 	isCommandAllowed: vi.fn().mockReturnValue(true),
 }));
 
+vi.mock("./app-events.js", () => ({
+	subscribeToAppEvents: vi.fn().mockReturnValue(vi.fn()),
+}));
+
 vi.mock("child_process", () => ({
 	spawn: vi.fn().mockReturnValue({
 		stdout: new EventEmitter(),
@@ -435,5 +439,77 @@ describe("cleanup interval", () => {
 			expect.objectContaining({ terminated: 1, active: 0 }),
 			"WebSocket connection metrics"
 		);
+	});
+});
+
+describe("event stream endpoint", () => {
+	let server: http.Server;
+	let upgradeHandler: (req: http.IncomingMessage, socket: net.Socket, head: Buffer) => void;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+
+		mockWss.clients.clear();
+		mockWss.on.mockReset();
+		mockWss.handleUpgrade.mockReset();
+		mockWss.emit.mockReset();
+
+		server = new EventEmitter() as unknown as http.Server;
+		(
+			server as unknown as { on: (event: string, handler: (...args: unknown[]) => void) => void }
+		).on = vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+			if (event === "upgrade") {
+				upgradeHandler = handler as (
+					req: http.IncomingMessage,
+					socket: net.Socket,
+					head: Buffer
+				) => void;
+			}
+		});
+
+		vi.mocked(isValidAppName).mockReturnValue(true);
+		vi.mocked(verifyToken).mockReturnValue({ authenticated: true, username: "admin" });
+
+		setupLogStreaming(server);
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("should allow upgrade for /api/events/stream with valid auth", () => {
+		const socket = makeSocket();
+		upgradeHandler(makeReq("/api/events/stream", "session=valid-token"), socket, Buffer.alloc(0));
+		expect(mockWss.handleUpgrade).toHaveBeenCalled();
+		expect(socket.destroy).not.toHaveBeenCalled();
+	});
+
+	it("should reject /api/events/stream with no session cookie", () => {
+		const socket = makeSocket();
+		upgradeHandler(makeReq("/api/events/stream"), socket, Buffer.alloc(0));
+		expect((socket as unknown as { write: (d: string) => void }).write).toHaveBeenCalledWith(
+			"HTTP/1.1 401 Unauthorized\r\n\r\n"
+		);
+		expect(socket.destroy).toHaveBeenCalled();
+	});
+
+	it("should reject /api/events/stream with invalid token", () => {
+		vi.mocked(verifyToken).mockReturnValue(null);
+		const socket = makeSocket();
+		upgradeHandler(
+			makeReq("/api/events/stream", "session=bad-token"),
+			socket,
+			Buffer.alloc(0)
+		);
+		expect((socket as unknown as { write: (d: string) => void }).write).toHaveBeenCalledWith(
+			"HTTP/1.1 401 Unauthorized\r\n\r\n"
+		);
+		expect(socket.destroy).toHaveBeenCalled();
+	});
+
+	it("should destroy socket for unknown path", () => {
+		const socket = makeSocket();
+		upgradeHandler(makeReq("/api/unknown"), socket, Buffer.alloc(0));
+		expect(socket.destroy).toHaveBeenCalled();
 	});
 });
