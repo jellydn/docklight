@@ -86,25 +86,56 @@ async function fetchAppDetails(stdout: string, userId?: string): Promise<App[]> 
 		return [];
 	}
 
-	const apps: App[] = [];
-	for (const appName of appNames) {
-		const [psReportResult, domainsReportResult, gitReportResult] = await Promise.all([
-			executeCommand(DokkuCommands.psReport(appName), 30000, { userId }),
-			executeCommand(DokkuCommands.domainsReport(appName), 30000, { userId }),
-			executeCommand(DokkuCommands.gitReport(appName), 30000, { userId }),
-		]);
+	const MAX_CONCURRENT = 2;
+	const semaphore = { count: 0, queue: [] as (() => void)[] };
+	const results: (App | null)[] = new Array(appNames.length).fill(null);
 
-		apps.push({
-			name: appName,
-			status: psReportResult.exitCode === 0 ? parseStatus(psReportResult.stdout) : "stopped",
-			domains: domainsReportResult.exitCode === 0 ? parseDomains(domainsReportResult.stdout) : [],
-			lastDeployTime:
-				gitReportResult.exitCode === 0
-					? toISODateTime(parseLastUpdatedAt(gitReportResult.stdout))
-					: undefined,
+	const acquire = (): Promise<void> => {
+		return new Promise((resolve) => {
+			if (semaphore.count < MAX_CONCURRENT) {
+				semaphore.count++;
+				resolve();
+			} else {
+				semaphore.queue.push(resolve);
+			}
 		});
-	}
-	return apps;
+	};
+
+	const release = (): void => {
+		const next = semaphore.queue.shift();
+		if (next) {
+			next();
+		} else {
+			semaphore.count--;
+		}
+	};
+
+	const fetchApp = async (appName: string, idx: number): Promise<void> => {
+		await acquire();
+		try {
+			const [psResult, domainsResult, gitResult] = await Promise.all([
+				executeCommand(DokkuCommands.psReport(appName), 30000, { userId }),
+				executeCommand(DokkuCommands.domainsReport(appName), 30000, { userId }),
+				executeCommand(DokkuCommands.gitReport(appName), 30000, { userId }),
+			]);
+
+			results[idx] = {
+				name: appName,
+				status: psResult.exitCode === 0 ? parseStatus(psResult.stdout) : "stopped",
+				domains: domainsResult.exitCode === 0 ? parseDomains(domainsResult.stdout) : [],
+				lastDeployTime:
+					gitResult.exitCode === 0
+						? toISODateTime(parseLastUpdatedAt(gitResult.stdout))
+						: undefined,
+			};
+		} finally {
+			release();
+		}
+	};
+
+	await Promise.all(appNames.map((appName, idx) => fetchApp(appName, idx)));
+
+	return results.filter((r): r is App => r !== null);
 }
 
 export function parseStatus(stdout: string): "running" | "stopped" {
