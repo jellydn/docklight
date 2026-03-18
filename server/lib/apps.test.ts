@@ -56,51 +56,70 @@ describe("getApps", () => {
 	});
 
 	it("should return array of apps with status, domains, and deploy time", async () => {
-		mockExecuteCommand
-			.mockResolvedValueOnce({
+		const mockResponses: Record<
+			string,
+			{ command: string; exitCode: number; stdout: string; stderr: string }
+		> = {
+			"dokku --quiet apps:list": {
 				command: "dokku --quiet apps:list",
 				exitCode: 0,
 				stdout: "my-app\nanother-app",
 				stderr: "",
-			})
-			// my-app: ps:report, domains:report, git:report
-			.mockResolvedValueOnce({
+			},
+			"dokku apps:list": {
+				command: "dokku apps:list",
+				exitCode: 0,
+				stdout: "my-app\nanother-app",
+				stderr: "",
+			},
+			"dokku ps:report my-app": {
 				command: "dokku ps:report my-app",
 				exitCode: 0,
 				stdout: "Deployed: true\nRunning: true",
 				stderr: "",
-			})
-			.mockResolvedValueOnce({
+			},
+			"dokku domains:report my-app": {
 				command: "dokku domains:report my-app",
 				exitCode: 0,
 				stdout: "Domains app enabled: true\nDomains app vhosts: my-app.example.com www.example.com",
 				stderr: "",
-			})
-			.mockResolvedValueOnce({
+			},
+			"dokku git:report my-app": {
 				command: "dokku git:report my-app",
 				exitCode: 0,
 				stdout: "Git last updated at: 2024-01-15 10:30:00",
 				stderr: "",
-			})
-			// another-app: ps:report, domains:report, git:report
-			.mockResolvedValueOnce({
+			},
+			"dokku ps:report another-app": {
 				command: "dokku ps:report another-app",
 				exitCode: 0,
 				stdout: "Deployed: true\nRunning: true",
 				stderr: "",
-			})
-			.mockResolvedValueOnce({
+			},
+			"dokku domains:report another-app": {
 				command: "dokku domains:report another-app",
 				exitCode: 0,
 				stdout: "Domains app enabled: true\nDomains app vhosts:",
 				stderr: "",
-			})
-			.mockResolvedValueOnce({
+			},
+			"dokku git:report another-app": {
 				command: "dokku git:report another-app",
 				exitCode: 0,
 				stdout: "Git last updated at:",
 				stderr: "",
-			});
+			},
+		};
+
+		mockExecuteCommand.mockImplementation((cmd: string) =>
+			Promise.resolve(
+				mockResponses[cmd] ?? {
+					command: cmd,
+					exitCode: 1,
+					stdout: "",
+					stderr: "Unknown command",
+				}
+			)
+		);
 
 		const result = await getApps();
 

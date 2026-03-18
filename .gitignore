@@ -26,3 +26,4 @@ client/package-lock.json
 client/playwright-report/
 client/test-results/
 server/lib/test-data
+package-lock.json
