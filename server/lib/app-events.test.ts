@@ -1,4 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { logger } from "./logger.js";
+
+vi.mock("./logger.js", () => ({
+	logger: {
+		error: vi.fn(),
+	},
+}));
 
 // Import the module fresh each time via dynamic import to reset state
 // We use vi.isolateModules for tests that need isolated state
@@ -57,7 +64,7 @@ describe("app-events", () => {
 		const listener1 = vi.fn();
 		const listener2 = vi.fn();
 		const unsub1 = subscribeToAppEvents(listener1);
-		subscribeToAppEvents(listener2);
+		const unsub2 = subscribeToAppEvents(listener2);
 
 		unsub1();
 
@@ -65,5 +72,31 @@ describe("app-events", () => {
 
 		expect(listener1).not.toHaveBeenCalled();
 		expect(listener2).toHaveBeenCalled();
+
+		unsub2();
+	});
+
+	it("should continue broadcasting to other listeners when one throws", async () => {
+		const { subscribeToAppEvents, broadcastAppEvent } = await import("./app-events.js");
+
+		const failingListener = vi.fn(() => {
+			throw new Error("Listener error");
+		});
+		const workingListener = vi.fn();
+		const failingUnsub = subscribeToAppEvents(failingListener);
+		const workingUnsub = subscribeToAppEvents(workingListener);
+
+		const event = { type: "app:restart", appName: "my-app", timestamp: "2024-01-01T00:00:00.000Z" };
+		broadcastAppEvent(event);
+
+		expect(failingListener).toHaveBeenCalledWith(event);
+		expect(workingListener).toHaveBeenCalledWith(event);
+		expect(logger.error).toHaveBeenCalledWith(
+			expect.objectContaining({ eventType: event.type, appName: event.appName }),
+			"Error in app event listener"
+		);
+
+		failingUnsub();
+		workingUnsub();
 	});
 });

@@ -1,3 +1,5 @@
+import { logger } from "./logger.js";
+
 export interface AppEvent {
 	type: string;
 	appName: string;
@@ -15,6 +17,10 @@ export function subscribeToAppEvents(listener: EventListener): () => void {
 
 export function broadcastAppEvent(event: AppEvent): void {
 	for (const listener of listeners) {
-		listener(event);
+		try {
+			listener(event);
+		} catch (err) {
+			logger.error({ err, eventType: event.type, appName: event.appName }, "Error in app event listener");
+		}
 	}
 }

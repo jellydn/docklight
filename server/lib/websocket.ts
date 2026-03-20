@@ -347,7 +347,7 @@ export function setupLogStreaming(server: http.Server) {
 			"WebSocket connection established"
 		);
 
-		const handleClose = (logProcess?: ChildProcess | null) => {
+		const handleClose = (logProcess?: ChildProcess | null): void => {
 			setImmediate(() => {
 				logger.info({ userId, active: wss.clients.size }, "WebSocket connection closed");
 			});
@@ -360,8 +360,8 @@ export function setupLogStreaming(server: http.Server) {
 			removeFromPerIPTracking(clientIP, ws, connectionsPerIP);
 		};
 
-		const handleError = (error: Error, logProcess?: ChildProcess | null) => {
-			logger.error({ err: error }, "WebSocket error");
+		const handleError = (error: Error, logProcess?: ChildProcess | null): void => {
+			logger.error({ err: error, userId, clientIP, appName, isEventStream }, "WebSocket error");
 			if (logProcess && !logProcess.killed) {
 				logProcess.kill();
 			}
@@ -372,19 +372,19 @@ export function setupLogStreaming(server: http.Server) {
 		};
 
 		if (isEventStream) {
-			const unsubscribe = subscribeToAppEvents((event) => {
+			const unsubscribe = subscribeToAppEvents((event): void => {
 				if (ws.readyState === ws.OPEN) {
 					markActivity(ws);
 					ws.send(JSON.stringify(event));
 				}
 			});
 
-			ws.on("close", () => {
+			ws.on("close", (): void => {
 				unsubscribe();
 				handleClose();
 			});
 
-			ws.on("error", (error: Error) => {
+			ws.on("error", (error: Error): void => {
 				unsubscribe();
 				handleError(error);
 			});
@@ -394,8 +394,33 @@ export function setupLogStreaming(server: http.Server) {
 
 		let lineCount = 100;
 		let logProcess: ChildProcess | null = null;
+		let initialMessageReceived = false;
 
-		ws.on("message", (data: Buffer) => {
+		const startLogProcess = (count: number): void => {
+			const dokkuCommand = DokkuCommands.logsFollow(appName as string, count);
+			if (!isCommandAllowed(dokkuCommand)) {
+				logger.error({ command: dokkuCommand }, "Rejected non-allowlisted log streaming command");
+				ws.close();
+				return;
+			}
+			const command = buildRuntimeCommand(dokkuCommand);
+			logProcess = spawn("sh", ["-lc", command]);
+
+			logProcess.stdout?.on("data", (data: Buffer) => sendLogLines(ws, data, false));
+
+			logProcess.stderr?.on("data", (data: Buffer) => sendLogLines(ws, data, true));
+
+			logProcess.on("error", (error: Error) => {
+				ws.send(JSON.stringify({ error: error.message }));
+				ws.close();
+			});
+
+			logProcess.on("close", () => {
+				ws.close();
+			});
+		};
+
+		ws.on("message", (data: Buffer): void => {
 			markActivity(ws);
 			try {
 				const message = JSON.parse(data.toString());
@@ -405,35 +430,28 @@ export function setupLogStreaming(server: http.Server) {
 			} catch (error) {
 				logger.error({ err: error }, "Error parsing WebSocket message");
 			}
+
+			if (!initialMessageReceived) {
+				initialMessageReceived = true;
+				startLogProcess(lineCount);
+			} else if (logProcess) {
+				logProcess.kill();
+				startLogProcess(lineCount);
+			}
 		});
 
-		const dokkuCommand = DokkuCommands.logsFollow(appName as string, lineCount);
-		if (!isCommandAllowed(dokkuCommand)) {
-			logger.error({ command: dokkuCommand }, "Rejected non-allowlisted log streaming command");
-			ws.close();
-			return;
-		}
-		const command = buildRuntimeCommand(dokkuCommand);
-		logProcess = spawn("sh", ["-lc", command]);
+		setTimeout((): void => {
+			if (!initialMessageReceived) {
+				initialMessageReceived = true;
+				startLogProcess(lineCount);
+			}
+		}, 100);
 
-		logProcess.stdout?.on("data", (data: Buffer) => sendLogLines(ws, data, false));
-
-		logProcess.stderr?.on("data", (data: Buffer) => sendLogLines(ws, data, true));
-
-		logProcess.on("error", (error: Error) => {
-			ws.send(JSON.stringify({ error: error.message }));
-			ws.close();
-		});
-
-		logProcess.on("close", () => {
-			ws.close();
-		});
-
-		ws.on("close", () => {
+		ws.on("close", (): void => {
 			handleClose(logProcess);
 		});
 
-		ws.on("error", (error: Error) => {
+		ws.on("error", (error: Error): void => {
 			handleError(error, logProcess);
 		});
 	});

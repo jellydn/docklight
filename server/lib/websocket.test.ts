@@ -525,7 +525,7 @@ describe("event stream endpoint", () => {
 	it("should send app event to connected WebSocket client", () => {
 		expect(mockWss.on).toHaveBeenCalledWith("connection", expect.any(Function));
 
-		const connectionHandler = mockWss.on.mock.calls.find(call => call[0] === "connection")![1];
+		const connectionHandler = mockWss.on.mock.calls.find(call => call[0] === "connection")?.[1];
 
 		const mockWs = {
 			isAlive: true,
