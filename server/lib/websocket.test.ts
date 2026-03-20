@@ -10,6 +10,12 @@ const mockWss = vi.hoisted(() => ({
 	emit: vi.fn(),
 }));
 
+const capturedEventListener = vi.hoisted(() => {
+	return {
+		current: null as ((event: { type: string; appName: string; timestamp: string }) => void) | null,
+	};
+});
+
 vi.mock("./auth.js", () => ({
 	verifyToken: vi.fn(),
 }));
@@ -41,7 +47,7 @@ vi.mock("./allowlist.js", () => ({
 }));
 
 vi.mock("./app-events.js", () => ({
-	subscribeToAppEvents: vi.fn().mockReturnValue(vi.fn()),
+	subscribeToAppEvents: vi.fn(),
 }));
 
 vi.mock("child_process", () => ({
@@ -66,6 +72,7 @@ import { verifyToken } from "./auth.js";
 import { isValidAppName } from "./apps.js";
 import { logger } from "./logger.js";
 import { setupLogStreaming } from "./websocket.js";
+import { subscribeToAppEvents } from "./app-events.js";
 
 // Helper: create a minimal mock socket
 function makeSocket(): net.Socket {
@@ -453,6 +460,7 @@ describe("event stream endpoint", () => {
 		mockWss.on.mockReset();
 		mockWss.handleUpgrade.mockReset();
 		mockWss.emit.mockReset();
+		capturedEventListener.current = null;
 
 		server = new EventEmitter() as unknown as http.Server;
 		(
@@ -475,6 +483,7 @@ describe("event stream endpoint", () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		capturedEventListener.current = null;
 	});
 
 	it("should allow upgrade for /api/events/stream with valid auth", () => {
@@ -511,5 +520,42 @@ describe("event stream endpoint", () => {
 		const socket = makeSocket();
 		upgradeHandler(makeReq("/api/unknown"), socket, Buffer.alloc(0));
 		expect(socket.destroy).toHaveBeenCalled();
+	});
+
+	it("should send app event to connected WebSocket client", () => {
+		expect(mockWss.on).toHaveBeenCalledWith("connection", expect.any(Function));
+
+		const connectionHandler = mockWss.on.mock.calls.find(call => call[0] === "connection")![1];
+
+		const mockWs = {
+			isAlive: true,
+			lastActivityAt: Date.now(),
+			readyState: 1,
+			send: vi.fn(),
+			on: vi.fn(),
+			close: vi.fn(),
+			terminate: vi.fn(),
+			ping: vi.fn(),
+		};
+
+		Object.defineProperty(mockWs, "OPEN", { value: 1, writable: true });
+		Object.defineProperty(mockWs, "readyState", {
+			get: () => 1,
+			set: () => {},
+			configurable: true,
+		});
+
+		const mockReq = makeReq("/api/events/stream", "session=valid-token") as http.IncomingMessage & { isEventStream?: boolean };
+		mockReq.isEventStream = true;
+
+		connectionHandler(mockWs, mockReq);
+
+		expect(vi.mocked(subscribeToAppEvents)).toHaveBeenCalled();
+		const capturedListener = vi.mocked(subscribeToAppEvents).mock.calls[0][0];
+
+		const testEvent = { type: "app:restart", appName: "my-app", timestamp: "2024-01-01T00:00:00.000Z" };
+		capturedListener(testEvent);
+
+		expect(mockWs.send).toHaveBeenCalledWith(JSON.stringify(testEvent));
 	});
 });

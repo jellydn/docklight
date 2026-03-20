@@ -32,7 +32,9 @@ export function useAppEvents() {
 
 					if (type === "app:create" || type === "app:destroy") {
 						void queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
-					} else if (appName) {
+					} else if (!appName) {
+						return;
+					} else {
 						void queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
 						void queryClient.invalidateQueries({ queryKey: queryKeys.apps.detail(appName) });
 					}

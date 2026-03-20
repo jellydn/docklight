@@ -17,8 +17,8 @@ const MAX_CONNECTIONS_PER_USER = Number(process.env.WS_MAX_CONNECTIONS_PER_USER 
 const MAX_CONNECTIONS_PER_IP = Number(process.env.WS_MAX_CONNECTIONS_PER_IP ?? 10);
 const MAX_IP_BURST_RATE = Number(process.env.WS_MAX_IP_BURST_RATE ?? 30);
 const IP_BURST_WINDOW_MS = Number(process.env.WS_IP_BURST_WINDOW_MS ?? 60 * 1000); // 1 minute
-const IDLE_TIMEOUT_MS = Number(process.env.WS_IDLE_TIMEOUT_MS ?? 30 * 60 * 1000); // 30 minutes
-const CLEANUP_INTERVAL_MS = Number(process.env.WS_CLEANUP_INTERVAL_MS ?? 60 * 1000); // 1 minute
+const IDLE_TIMEOUT_MS = Number(process.env.WS_IDLE_TIMEOUT_MS ?? 30 * 60 * 1000); // 30 minutes - affects all WS connections including event stream
+const CLEANUP_INTERVAL_MS = Number(process.env.WS_CLEANUP_INTERVAL_MS ?? 60 * 1000);
 
 interface ExtendedWebSocket extends WS {
 	isAlive?: boolean;
