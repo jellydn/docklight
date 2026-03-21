@@ -10,14 +10,15 @@ import { logger } from "./logger.js";
 import { DokkuCommands } from "./dokku.js";
 import { isCommandAllowed } from "./allowlist.js";
 import { getClientIP } from "./ip-utils.js";
+import { subscribeToAppEvents } from "./app-events.js";
 
 const MAX_CONNECTIONS = Number(process.env.WS_MAX_CONNECTIONS ?? 50);
 const MAX_CONNECTIONS_PER_USER = Number(process.env.WS_MAX_CONNECTIONS_PER_USER ?? 5);
 const MAX_CONNECTIONS_PER_IP = Number(process.env.WS_MAX_CONNECTIONS_PER_IP ?? 10);
 const MAX_IP_BURST_RATE = Number(process.env.WS_MAX_IP_BURST_RATE ?? 30);
 const IP_BURST_WINDOW_MS = Number(process.env.WS_IP_BURST_WINDOW_MS ?? 60 * 1000); // 1 minute
-const IDLE_TIMEOUT_MS = Number(process.env.WS_IDLE_TIMEOUT_MS ?? 30 * 60 * 1000); // 30 minutes
-const CLEANUP_INTERVAL_MS = Number(process.env.WS_CLEANUP_INTERVAL_MS ?? 60 * 1000); // 1 minute
+const IDLE_TIMEOUT_MS = Number(process.env.WS_IDLE_TIMEOUT_MS ?? 30 * 60 * 1000); // 30 minutes - affects all WS connections including event stream
+const CLEANUP_INTERVAL_MS = Number(process.env.WS_CLEANUP_INTERVAL_MS ?? 60 * 1000);
 
 interface ExtendedWebSocket extends WS {
 	isAlive?: boolean;
@@ -30,6 +31,7 @@ interface ExtendedIncomingMessage extends http.IncomingMessage {
 	appName?: string;
 	userId?: number | string;
 	clientIP?: string;
+	isEventStream?: boolean;
 }
 
 function markActivity(ws: ExtendedWebSocket): void {
@@ -183,21 +185,28 @@ export function setupLogStreaming(server: http.Server) {
 
 	server.on("upgrade", (req: ExtendedIncomingMessage, socket: net.Socket, head: Buffer) => {
 		const pathname = new URL(req.url || "", `http://${req.headers.host}`).pathname;
-		const match = pathname.match(/^\/api\/apps\/([^/]+)\/logs\/stream$/);
+		const logMatch = pathname.match(/^\/api\/apps\/([^/]+)\/logs\/stream$/);
+		const eventsMatch = pathname === "/api/events/stream";
 
-		if (!match) {
+		if (!logMatch && !eventsMatch) {
 			socket.destroy();
 			return;
 		}
 
-		const appName = match[1];
+		if (logMatch) {
+			const appName = logMatch[1];
 
-		if (!isValidAppName(appName)) {
-			socket.destroy();
-			return;
+			if (!isValidAppName(appName)) {
+				socket.destroy();
+				return;
+			}
+
+			req.appName = appName;
 		}
 
-		req.appName = appName;
+		if (eventsMatch) {
+			req.isEventStream = true;
+		}
 
 		const clientIP = getClientIP(req) ?? "unknown";
 		req.clientIP = clientIP;
@@ -293,7 +302,9 @@ export function setupLogStreaming(server: http.Server) {
 
 	wss.on("connection", (ws: ExtendedWebSocket, req: ExtendedIncomingMessage) => {
 		const appName = req.appName;
-		if (!appName) {
+		const isEventStream = req.isEventStream === true;
+
+		if (!appName && !isEventStream) {
 			ws.close();
 			return;
 		}
@@ -331,11 +342,85 @@ export function setupLogStreaming(server: http.Server) {
 			markActivity(ws);
 		});
 
-		logger.info({ userId, active: wss.clients.size }, "WebSocket connection established");
+		logger.info(
+			{ userId, active: wss.clients.size, isEventStream },
+			"WebSocket connection established"
+		);
+
+		const handleClose = (logProcess?: ChildProcess | null): void => {
+			setImmediate(() => {
+				logger.info({ userId, active: wss.clients.size }, "WebSocket connection closed");
+			});
+			if (logProcess && !logProcess.killed) {
+				logProcess.kill();
+			}
+			if (userId) {
+				removeFromPerUserTracking(userId, ws, connectionsPerUser);
+			}
+			removeFromPerIPTracking(clientIP, ws, connectionsPerIP);
+		};
+
+		const handleError = (error: Error, logProcess?: ChildProcess | null): void => {
+			logger.error({ err: error, userId, clientIP, appName, isEventStream }, "WebSocket error");
+			if (logProcess && !logProcess.killed) {
+				logProcess.kill();
+			}
+			if (userId) {
+				removeFromPerUserTracking(userId, ws, connectionsPerUser);
+			}
+			removeFromPerIPTracking(clientIP, ws, connectionsPerIP);
+		};
+
+		if (isEventStream) {
+			const unsubscribe = subscribeToAppEvents((event): void => {
+				if (ws.readyState === ws.OPEN) {
+					markActivity(ws);
+					ws.send(JSON.stringify(event));
+				}
+			});
+
+			ws.on("close", (): void => {
+				unsubscribe();
+				handleClose();
+			});
+
+			ws.on("error", (error: Error): void => {
+				unsubscribe();
+				handleError(error);
+			});
+
+			return;
+		}
+
 		let lineCount = 100;
 		let logProcess: ChildProcess | null = null;
+		let initialMessageReceived = false;
 
-		ws.on("message", (data: Buffer) => {
+		const startLogProcess = (count: number): void => {
+			const dokkuCommand = DokkuCommands.logsFollow(appName as string, count);
+			if (!isCommandAllowed(dokkuCommand)) {
+				logger.error({ command: dokkuCommand }, "Rejected non-allowlisted log streaming command");
+				ws.close();
+				return;
+			}
+			const command = buildRuntimeCommand(dokkuCommand);
+			logProcess = spawn("sh", ["-lc", command]);
+
+			logProcess.stdout?.on("data", (data: Buffer) => sendLogLines(ws, data, false));
+
+			logProcess.stderr?.on("data", (data: Buffer) => sendLogLines(ws, data, true));
+
+			logProcess.on("error", (error: Error) => {
+				ws.send(JSON.stringify({ error: error.message }));
+				ws.close();
+			});
+
+			logProcess.on("close", () => {
+				ws.close();
+			});
+		};
+
+		ws.on("message", (data: Buffer): void => {
 			markActivity(ws);
 			try {
 				const message = JSON.parse(data.toString());
@@ -345,53 +430,29 @@ export function setupLogStreaming(server: http.Server) {
 			} catch (error) {
 				logger.error({ err: error }, "Error parsing WebSocket message");
 			}
-		});
 
-		const dokkuCommand = DokkuCommands.logsFollow(appName, lineCount);
-		if (!isCommandAllowed(dokkuCommand)) {
-			logger.error({ command: dokkuCommand }, "Rejected non-allowlisted log streaming command");
-			ws.close();
-			return;
-		}
-		const command = buildRuntimeCommand(dokkuCommand);
-		logProcess = spawn("sh", ["-lc", command]);
-
-		logProcess.stdout?.on("data", (data: Buffer) => sendLogLines(ws, data, false));
-
-		logProcess.stderr?.on("data", (data: Buffer) => sendLogLines(ws, data, true));
-
-		logProcess.on("error", (error: Error) => {
-			ws.send(JSON.stringify({ error: error.message }));
-			ws.close();
-		});
-
-		logProcess.on("close", () => {
-			ws.close();
-		});
-
-		ws.on("close", () => {
-			const logProcessRef = logProcess;
-			setImmediate(() => {
-				logger.info({ userId, active: wss.clients.size }, "WebSocket connection closed");
-			});
-			if (logProcessRef && !logProcessRef.killed) {
-				logProcessRef.kill();
-			}
-			if (userId) {
-				removeFromPerUserTracking(userId, ws, connectionsPerUser);
-			}
-			removeFromPerIPTracking(clientIP, ws, connectionsPerIP);
-		});
-
-		ws.on("error", (error: Error) => {
-			logger.error({ err: error }, "WebSocket error");
-			if (logProcess && !logProcess.killed) {
+			if (!initialMessageReceived) {
+				initialMessageReceived = true;
+				startLogProcess(lineCount);
+			} else if (logProcess) {
 				logProcess.kill();
+				startLogProcess(lineCount);
 			}
-			if (userId) {
-				removeFromPerUserTracking(userId, ws, connectionsPerUser);
+		});
+
+		setTimeout((): void => {
+			if (!initialMessageReceived) {
+				initialMessageReceived = true;
+				startLogProcess(lineCount);
 			}
-			removeFromPerIPTracking(clientIP, ws, connectionsPerIP);
+		}, 100);
+
+		ws.on("close", (): void => {
+			handleClose(logProcess);
+		});
+
+		ws.on("error", (error: Error): void => {
+			handleError(error, logProcess);
 		});
 	});
 }

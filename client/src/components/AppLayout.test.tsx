@@ -15,6 +15,10 @@ vi.mock("../lib/logger", () => ({
 	},
 }));
 
+vi.mock("@/hooks/use-app-events.js", () => ({
+	useAppEvents: vi.fn(),
+}));
+
 describe("AppLayout", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
