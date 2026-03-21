@@ -1,6 +1,7 @@
 import { type CommandResult, executeCommand } from "./executor.js";
 import { stripAnsi } from "./ansi.js";
 import { DokkuCommands } from "./dokku.js";
+import { logger } from "./logger.js";
 
 export interface App {
 	name: string;
@@ -142,8 +143,14 @@ export function parseStatus(stdout: string): "running" | "stopped" {
 	const lines = stdout.split("\n").map((line) => stripAnsi(line));
 	let sawProcessStatus = false;
 	let sawRunningProcess = false;
+	let sawAnyContent = false;
 
 	for (const line of lines) {
+		const trimmed = line.trim();
+		if (trimmed) {
+			sawAnyContent = true;
+		}
+
 		const stateMatch = line.match(/deployed state:\s*(running|stopped)/i);
 		if (stateMatch) {
 			const status = stateMatch[1].toLowerCase();
@@ -183,6 +190,10 @@ export function parseStatus(stdout: string): "running" | "stopped" {
 		return sawRunningProcess ? "running" : "stopped";
 	}
 
+	if (sawAnyContent) {
+		logger.warn({ stdout }, "parseStatus: no recognizable status format found, defaulting to stopped");
+	}
+
 	return "stopped";
 }
 
@@ -217,10 +228,13 @@ export function toISODateTime(value: string | undefined): string | undefined {
 export function parseDomains(stdout: string): string[] {
 	const lines = stdout.split("\n").map((line) => stripAnsi(line));
 
-	const appEnabled = lines.some((line) => /domains\s+app\s+enabled:\s*true/i.test(line));
+	const enabledLine = lines.find((line) => /domains\s+app\s+enabled:/i.test(line));
 
-	if (!appEnabled) {
-		return [];
+	if (enabledLine) {
+		const isEnabled = /domains\s+app\s+enabled:\s*true/i.test(enabledLine);
+		if (!isEnabled) {
+			return [];
+		}
 	}
 
 	const domains = new Set<string>();
@@ -238,6 +252,17 @@ export function parseDomains(stdout: string): string[] {
 
 		for (const value of values) {
 			domains.add(value);
+		}
+	}
+
+	if (domains.size === 0 && stdout.trim()) {
+		const hasDomainsContent =
+			/domains/i.test(stdout) || /vhost/i.test(stdout);
+		if (hasDomainsContent && !enabledLine) {
+			logger.warn(
+				{ stdout },
+				"parseDomains: domains content detected but no recognizable format found"
+			);
 		}
 	}
 
@@ -323,12 +348,12 @@ function parseCanScale(stdout: string): boolean {
 	return false;
 }
 
-function parseProcesses(stdout: string): Record<string, number> {
+export function parseProcesses(stdout: string): Record<string, number> {
 	const processes: Record<string, number> = {};
 	const lines = stdout.split("\n").map((line) => stripAnsi(line));
 
 	for (const line of lines) {
-		const processMatch = line.match(/process type scale: (.+)/);
+		const processMatch = line.match(/process type scale: (.+)/i);
 		if (processMatch) {
 			const procInfo = processMatch[1].trim();
 			const scales = procInfo.split(/\s+/);
@@ -340,11 +365,24 @@ function parseProcesses(stdout: string): Record<string, number> {
 			}
 		}
 
+		const psScaleMatch = line.match(/ps\s+scale\s+([a-z0-9-]+):\s*(\d+)/i);
+		if (psScaleMatch) {
+			const procType = psScaleMatch[1].toLowerCase();
+			const count = Number.parseInt(psScaleMatch[2], 10) || 0;
+			if (!(procType in processes)) {
+				processes[procType] = count;
+			}
+		}
+
 		const processStatusMatch = line.match(/status\s+([a-z0-9-]+)\s+\d+:\s*(running|stopped)/i);
 		if (processStatusMatch) {
 			const processType = processStatusMatch[1].toLowerCase();
 			processes[processType] = (processes[processType] || 0) + 1;
 		}
+	}
+
+	if (Object.keys(processes).length === 0 && stdout.trim()) {
+		logger.warn({ stdout }, "parseProcesses: no recognizable process format found");
 	}
 
 	return processes;

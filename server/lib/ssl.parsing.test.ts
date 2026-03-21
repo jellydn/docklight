@@ -305,3 +305,98 @@ otherapp 2025-01-15`;
 		expect(result?.expiryDate).toBe("2024-12-31");
 	});
 });
+
+describe("parseLetsencryptReport - multi-version fixtures", () => {
+	it("should parse Dokku 0.30.x letsencrypt:report output", () => {
+		const stdout = [
+			"=====> myapp letsencrypt information",
+			"       Letsencrypt active:            true",
+			"       Letsencrypt expiry:            2024-12-31",
+			"       Letsencrypt registered:        true",
+		].join("\n");
+		const result = parseLetsencryptReport(stdout);
+		expect(result?.active).toBe(true);
+		expect(result?.expiryDate).toBe("2024-12-31");
+		expect(result?.certProvider).toBe("letsencrypt");
+	});
+
+	it("should parse Dokku 0.31.x letsencrypt:report with enabled key", () => {
+		const stdout = [
+			"=====> myapp letsencrypt information",
+			"       Letsencrypt enabled:           true",
+			"       Letsencrypt expiry:            2025-06-15",
+		].join("\n");
+		const result = parseLetsencryptReport(stdout);
+		expect(result?.active).toBe(true);
+		expect(result?.expiryDate).toBe("2025-06-15");
+	});
+
+	it("should parse Dokku 0.34.x letsencrypt:report with not after key", () => {
+		const stdout = [
+			"=====> myapp letsencrypt information",
+			"       Letsencrypt active:            true",
+			"       Letsencrypt not after:         2025-03-20",
+		].join("\n");
+		const result = parseLetsencryptReport(stdout);
+		expect(result?.active).toBe(true);
+		expect(result?.expiryDate).toBe("2025-03-20");
+	});
+
+	it("should handle letsencrypt disabled state", () => {
+		const stdout = [
+			"=====> myapp letsencrypt information",
+			"       Letsencrypt active:            false",
+		].join("\n");
+		const result = parseLetsencryptReport(stdout);
+		expect(result?.active).toBe(false);
+	});
+});
+
+describe("parseCertsReport - multi-version fixtures", () => {
+	it("should parse Dokku 0.30.x certs:report with ssl enabled key", () => {
+		const stdout = [
+			"=====> myapp certs information",
+			"       SSL enabled:                   true",
+			"       Subject:                       CN=myapp.example.com",
+			"       Not after:                     2024-12-31",
+		].join("\n");
+		const result = parseCertsReport(stdout);
+		expect(result?.active).toBe(true);
+		expect(result?.expiryDate).toBe("2024-12-31");
+		expect(result?.certProvider).toBe("custom");
+	});
+
+	it("should parse Dokku 0.31.x certs:report with certificate enabled key", () => {
+		const stdout = [
+			"=====> myapp certs information",
+			"       Certificate enabled:           true",
+			"       Issuer:                        Let's Encrypt",
+			"       Not after:                     2025-06-15",
+		].join("\n");
+		const result = parseCertsReport(stdout);
+		expect(result?.active).toBe(true);
+		expect(result?.expiryDate).toBe("2025-06-15");
+	});
+
+	it("should infer active from cert evidence when no explicit enabled key", () => {
+		const stdout = [
+			"=====> myapp certs information",
+			"       Subject:                       CN=myapp.example.com",
+			"       Issuer:                        DigiCert Inc",
+			"       Not before:                    2024-01-01",
+			"       Not after:                     2024-12-31",
+		].join("\n");
+		const result = parseCertsReport(stdout);
+		expect(result?.active).toBe(true);
+		expect(result?.expiryDate).toBe("2024-12-31");
+	});
+
+	it("should return null for app without any certificate", () => {
+		const stdout = [
+			"=====> myapp certs information",
+			"       No SSL certificate configured",
+		].join("\n");
+		expect(parseCertsReport(stdout)).toBeNull();
+	});
+});
+
