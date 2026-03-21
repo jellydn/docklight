@@ -2,6 +2,7 @@ import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
 import { DokkuCommands } from "./dokku.js";
+import { logger } from "./logger.js";
 
 interface ValidationError {
 	error: string;
@@ -64,10 +65,12 @@ export async function getDomains(
 
 		const lines = result.stdout.split("\n").map((line) => stripAnsi(line));
 
-		const appEnabled = lines.some((line) => /domains\s+app\s+enabled:\s*true/i.test(line));
-
-		if (!appEnabled) {
-			return [];
+		const enabledLine = lines.find((line) => /domains\s+app\s+enabled:/i.test(line));
+		if (enabledLine) {
+			const isEnabled = /domains\s+app\s+enabled:\s*true/i.test(enabledLine);
+			if (!isEnabled) {
+				return [];
+			}
 		}
 
 		const domains = new Set<string>();
@@ -87,6 +90,16 @@ export async function getDomains(
 
 			for (const domain of domainList) {
 				domains.add(domain);
+			}
+		}
+
+		if (domains.size === 0 && result.stdout.trim() && !enabledLine) {
+			const hasDomainsContent = /domains|vhost/i.test(result.stdout);
+			if (hasDomainsContent) {
+				logger.warn(
+					{ stdout: result.stdout },
+					"getDomains: domain content detected but no recognizable format found"
+				);
 			}
 		}
 

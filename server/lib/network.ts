@@ -2,6 +2,7 @@ import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
 import { DokkuCommands } from "./dokku.js";
+import { logger } from "./logger.js";
 
 export interface NetworkReport {
 	"attach-post-create": string;
@@ -84,6 +85,14 @@ export async function getNetworkReport(
 					report[prop] = match[1]?.trim() ?? "";
 				}
 			}
+		}
+
+		const allEmpty = NETWORK_PROPERTIES.every((prop) => report[prop] === "");
+		if (allEmpty && result.stdout.trim()) {
+			logger.warn(
+				{ stdout: result.stdout },
+				"getNetworkReport: no network properties parsed from output"
+			);
 		}
 
 		return report;

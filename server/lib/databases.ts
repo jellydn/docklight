@@ -1,5 +1,6 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { DokkuCommands } from "./dokku.js";
+import { logger } from "./logger.js";
 
 export interface Database {
 	name: string;
@@ -12,7 +13,7 @@ export interface Database {
 const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"] as const;
 type SupportedPlugin = (typeof SUPPORTED_PLUGINS)[number];
 
-function parseInstalledPlugins(pluginListOutput: string): SupportedPlugin[] {
+export function parseInstalledPlugins(pluginListOutput: string): SupportedPlugin[] {
 	const installedPlugins = new Set<SupportedPlugin>();
 	const lines = pluginListOutput.split("\n").filter((line) => line.trim());
 
@@ -24,6 +25,13 @@ function parseInstalledPlugins(pluginListOutput: string): SupportedPlugin[] {
 				installedPlugins.add(plugin);
 			}
 		}
+	}
+
+	if (installedPlugins.size === 0 && pluginListOutput.trim()) {
+		logger.warn(
+			{ pluginListOutput },
+			"parseInstalledPlugins: no supported database plugins found in output"
+		);
 	}
 
 	return [...installedPlugins];
@@ -45,6 +53,42 @@ async function getInstalledPlugins(): Promise<
 	}
 
 	return { plugins: parseInstalledPlugins(pluginListResult.stdout) };
+}
+
+export function parseLinkedApps(output: string): string[] {
+	const lines = output.split("\n");
+	let collecting = false;
+	const apps: string[] = [];
+	for (const line of lines) {
+		const trimmedLine = line.trim();
+		if (!trimmedLine) continue;
+		const lowerLine = trimmedLine.toLowerCase();
+		if (lowerLine.includes("linked apps") || lowerLine.includes("links:")) {
+			const inlineMatch = trimmedLine.match(/(?:linked apps|Links):\s*(.+)/i);
+			if (inlineMatch) {
+				const appsStr = inlineMatch[1].trim().toLowerCase();
+				if (appsStr && appsStr !== "no linked apps" && appsStr !== "-") {
+					return appsStr.split(/[,\s]+/).filter(Boolean);
+				}
+				collecting = false;
+			} else {
+				collecting = true;
+			}
+			continue;
+		}
+		if (collecting) {
+			if (trimmedLine.startsWith("=====>")) break;
+			apps.push(trimmedLine);
+		}
+	}
+
+	const hasLinkedContent =
+		/linked\s+apps|links:/i.test(output) && apps.length === 0 && output.trim();
+	if (hasLinkedContent) {
+		logger.warn({ output }, "parseLinkedApps: linked apps content detected but result is empty");
+	}
+
+	return apps;
 }
 
 export async function getDatabases(): Promise<
@@ -80,35 +124,6 @@ export async function getDatabases(): Promise<
 						const infoReportResult = await executeCommand(DokkuCommands.dbInfo(plugin, dbName));
 
 						let linkedApps: string[] = [];
-
-						const parseLinkedApps = (output: string): string[] => {
-							const lines = output.split("\n");
-							let collecting = false;
-							const apps: string[] = [];
-							for (const line of lines) {
-								const trimmedLine = line.trim();
-								if (!trimmedLine) continue;
-								const lowerLine = trimmedLine.toLowerCase();
-								if (lowerLine.includes("linked apps") || lowerLine.includes("links:")) {
-									const inlineMatch = trimmedLine.match(/(?:linked apps|Links):\s*(.+)/i);
-									if (inlineMatch) {
-										const appsStr = inlineMatch[1].trim().toLowerCase();
-										if (appsStr && appsStr !== "no linked apps" && appsStr !== "-") {
-											return appsStr.split(/[,\s]+/).filter(Boolean);
-										}
-										collecting = false;
-									} else {
-										collecting = true;
-									}
-									continue;
-								}
-								if (collecting) {
-									if (trimmedLine.startsWith("=====>")) break;
-									apps.push(trimmedLine);
-								}
-							}
-							return apps;
-						};
 
 						if (linkReportResult.exitCode === 0) {
 							linkedApps = parseLinkedApps(linkReportResult.stdout);

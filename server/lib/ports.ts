@@ -2,6 +2,7 @@ import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
 import { DokkuCommands } from "./dokku.js";
+import { logger } from "./logger.js";
 
 export interface PortMapping {
 	scheme: string;
@@ -15,6 +16,47 @@ function createPortError(message: string): { error: string; command: string; exi
 		command: "",
 		exitCode: 400,
 	};
+}
+
+export function parsePortMappings(stdout: string): PortMapping[] {
+	const ports: PortMapping[] = [];
+	const lines = stdout.split("\n").map((line) => stripAnsi(line));
+
+	for (const line of lines) {
+		const mapMatch = line.match(/ports\s+map:\s+(.+)/i);
+		if (mapMatch) {
+			const mappings = mapMatch[1].trim().split(/\s+/);
+			for (const mapping of mappings) {
+				const match = mapping.match(/^(http|https|tcp):(\d+):(\d+)$/);
+				if (match) {
+					ports.push({
+						scheme: match[1],
+						hostPort: Number.parseInt(match[2], 10),
+						containerPort: Number.parseInt(match[3], 10),
+					});
+				}
+			}
+			continue;
+		}
+
+		const directMatch = line.trim().match(/^(http|https|tcp):(\d+):(\d+)$/);
+		if (directMatch) {
+			ports.push({
+				scheme: directMatch[1],
+				hostPort: Number.parseInt(directMatch[2], 10),
+				containerPort: Number.parseInt(directMatch[3], 10),
+			});
+		}
+	}
+
+	if (ports.length === 0 && stdout.trim()) {
+		const hasPortContent = /ports?|proxy/i.test(stdout);
+		if (hasPortContent) {
+			logger.warn({ stdout }, "parsePortMappings: port content detected but no mappings parsed");
+		}
+	}
+
+	return ports;
 }
 
 export function validatePort(port: number): string | null {
@@ -58,27 +100,7 @@ export async function getPorts(
 			};
 		}
 
-		const ports: PortMapping[] = [];
-		const lines = result.stdout.split("\n").map((line) => stripAnsi(line));
-
-		for (const line of lines) {
-			const mapMatch = line.match(/ports\s+map:\s+(.+)/i);
-			if (mapMatch) {
-				const mappings = mapMatch[1].trim().split(/\s+/);
-				for (const mapping of mappings) {
-					const match = mapping.match(/^(http|https|tcp):(\d+):(\d+)$/);
-					if (match) {
-						ports.push({
-							scheme: match[1],
-							hostPort: Number.parseInt(match[2], 10),
-							containerPort: Number.parseInt(match[3], 10),
-						});
-					}
-				}
-			}
-		}
-
-		return ports;
+		return parsePortMappings(result.stdout);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
