@@ -125,7 +125,8 @@ export function parseCertsReport(stdout: string): SSLStatus | null {
 	}
 
 	if (active === null && !hasCertEvidence) {
-		if (stdout.trim()) {
+		const isKnownNoCert = /no ssl certificate configured/i.test(stdout);
+		if (stdout.trim() && !isKnownNoCert) {
 			logger.warn(
 				{ stdout },
 				"parseCertsReport: no SSL certificate evidence or active status found in output"

@@ -148,4 +148,9 @@ describe("parseLinkedApps", () => {
 		const output = "Linked Apps: -";
 		expect(parseLinkedApps(output)).toEqual([]);
 	});
+
+	it("should handle mixed-case app names", () => {
+		const output = "main-db linked apps: MyApp, WorkerService";
+		expect(parseLinkedApps(output)).toEqual(["myapp", "workerservice"]);
+	});
 });

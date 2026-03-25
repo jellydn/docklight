@@ -67,8 +67,8 @@ export async function getDomains(
 
 		const enabledLine = lines.find((line) => /domains\s+app\s+enabled:/i.test(line));
 		if (enabledLine) {
-			const isEnabled = /domains\s+app\s+enabled:\s*true/i.test(enabledLine);
-			if (!isEnabled) {
+			const isExplicitlyFalse = /domains\s+app\s+enabled:\s*false/i.test(enabledLine);
+			if (isExplicitlyFalse) {
 				return [];
 			}
 		}
@@ -93,7 +93,7 @@ export async function getDomains(
 			}
 		}
 
-		if (domains.size === 0 && result.stdout.trim() && !enabledLine) {
+		if (domains.size === 0 && result.stdout.trim()) {
 			const hasDomainsContent = /domains|vhost/i.test(result.stdout);
 			if (hasDomainsContent) {
 				logger.warn(

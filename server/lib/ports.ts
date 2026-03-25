@@ -50,8 +50,8 @@ export function parsePortMappings(stdout: string): PortMapping[] {
 	}
 
 	if (ports.length === 0 && stdout.trim()) {
-		const hasPortContent = /ports?|proxy/i.test(stdout);
-		if (hasPortContent) {
+		const hasMappingPattern = /\d+\/(?:tcp|udp)|\d+\.\d+\.\d+\.\d+:\d+|->/.test(stdout);
+		if (hasMappingPattern) {
 			logger.warn({ stdout }, "parsePortMappings: port content detected but no mappings parsed");
 		}
 	}

@@ -78,7 +78,7 @@ export function parseLinkedApps(output: string): string[] {
 		}
 		if (collecting) {
 			if (trimmedLine.startsWith("=====>")) break;
-			apps.push(trimmedLine);
+			apps.push(trimmedLine.toLowerCase());
 		}
 	}
 

@@ -349,7 +349,8 @@ function parseCanScale(stdout: string): boolean {
 }
 
 export function parseProcesses(stdout: string): Record<string, number> {
-	const processes: Record<string, number> = {};
+	const explicitScales: Record<string, number> = {};
+	const statusCounts: Record<string, number> = {};
 	const lines = stdout.split("\n").map((line) => stripAnsi(line));
 
 	for (const line of lines) {
@@ -360,26 +361,28 @@ export function parseProcesses(stdout: string): Record<string, number> {
 			for (const scale of scales) {
 				const [procType, countStr] = scale.split("=");
 				if (procType) {
-					processes[procType] = Number.parseInt(countStr || "0", 10) || 0;
+					explicitScales[procType.toLowerCase()] = Number.parseInt(countStr || "0", 10) || 0;
 				}
 			}
+			continue;
 		}
 
 		const psScaleMatch = line.match(/ps\s+scale\s+([a-z0-9-]+):\s*(\d+)/i);
 		if (psScaleMatch) {
 			const procType = psScaleMatch[1].toLowerCase();
 			const count = Number.parseInt(psScaleMatch[2], 10) || 0;
-			if (!(procType in processes)) {
-				processes[procType] = count;
-			}
+			explicitScales[procType] = count;
+			continue;
 		}
 
 		const processStatusMatch = line.match(/status\s+([a-z0-9-]+)\s+\d+:\s*(running|stopped)/i);
 		if (processStatusMatch) {
 			const processType = processStatusMatch[1].toLowerCase();
-			processes[processType] = (processes[processType] || 0) + 1;
+			statusCounts[processType] = (statusCounts[processType] || 0) + 1;
 		}
 	}
+
+	const processes = { ...statusCounts, ...explicitScales };
 
 	if (Object.keys(processes).length === 0 && stdout.trim()) {
 		logger.warn({ stdout }, "parseProcesses: no recognizable process format found");
