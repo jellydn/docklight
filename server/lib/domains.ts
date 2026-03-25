@@ -93,7 +93,7 @@ export async function getDomains(
 			}
 		}
 
-		if (domains.size === 0 && result.stdout.trim()) {
+		if (domains.size === 0 && result.stdout.trim() && !enabledLine) {
 			const hasDomainsContent = /domains|vhost/i.test(result.stdout);
 			if (hasDomainsContent) {
 				logger.warn(
