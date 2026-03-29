@@ -372,7 +372,7 @@ export function Databases() {
 												>
 													<option value="">Select app</option>
 													{apps
-														.filter((app) => !db.linkedApps.includes(app.name))
+														.filter((app) => !db.linkedApps.includes(app.name.toLowerCase()))
 														.map((app) => (
 															<option key={app.name} value={app.name}>
 																{app.name}
