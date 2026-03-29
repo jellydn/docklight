@@ -6,6 +6,7 @@ import { apiFetch } from "../lib/api.js";
 import { useAuth } from "@/contexts/auth-context.js";
 import { queryKeys } from "../lib/query-keys.js";
 import { AppSchema, type Database, DatabaseSchema } from "../lib/schemas.js";
+import { ConfirmDialog } from "./AppDetail/Dialogs.js";
 
 const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"];
 
@@ -419,38 +420,26 @@ export function Databases() {
 			)}
 
 			{/* Unlink Confirmation Dialog */}
-			{showUnlinkDialog && (
-				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-					<div className="bg-white rounded p-6 max-w-md w-full">
-						<h2 className="text-lg font-semibold mb-4">Confirm Unlink</h2>
-						<p className="mb-6">
-							Are you sure you want to unlink <strong>{pendingUnlinkApp}</strong> from{" "}
-							<strong>{pendingUnlinkDb}</strong>?
-						</p>
-						<div className="flex justify-end space-x-2">
-							<button
-								onClick={() => {
-									if (unlinkSubmitting) return;
-									setShowUnlinkDialog(false);
-									setPendingUnlinkDb("");
-									setPendingUnlinkApp("");
-								}}
-								disabled={unlinkSubmitting}
-								className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
-							>
-								Cancel
-							</button>
-							<button
-								onClick={confirmUnlinkDatabase}
-								disabled={unlinkSubmitting}
-								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-							>
-								{unlinkSubmitting ? "Unlinking..." : "Unlink"}
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
+			<ConfirmDialog
+				visible={showUnlinkDialog}
+				title="Confirm Unlink"
+				onClose={() => {
+					if (unlinkSubmitting) return;
+					setShowUnlinkDialog(false);
+					setPendingUnlinkDb("");
+					setPendingUnlinkApp("");
+				}}
+				onConfirm={confirmUnlinkDatabase}
+				submitting={unlinkSubmitting}
+				submittingText="Unlinking..."
+				confirmText="Unlink"
+				isDestructive={true}
+			>
+				<p>
+					Are you sure you want to unlink <strong>{pendingUnlinkApp}</strong> from{" "}
+					<strong>{pendingUnlinkDb}</strong>?
+				</p>
+			</ConfirmDialog>
 
 			{/* Destroy Confirmation Dialog */}
 			{showDestroyDialog && (
