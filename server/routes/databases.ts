@@ -110,13 +110,28 @@ export function registerDatabaseRoutes(app: express.Application): void {
 
 	app.post("/api/databases/:name/link", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
-		const { plugin, app } = req.body;
+		const { plugin, app, alias } = req.body;
+
+		// Validate alias if provided (consistent with linkDatabase validation)
+		if (alias) {
+			const trimmedAlias = alias.trim();
+			const sanitizedAlias = trimmedAlias.replace(/[^a-zA-Z0-9_]/g, "");
+			if (sanitizedAlias !== trimmedAlias) {
+				res.status(400).json({
+					error:
+						"Alias contains invalid characters (only letters, numbers, and underscores allowed)",
+					command: "",
+					exitCode: 400,
+				});
+				return;
+			}
+		}
 
 		if (isSSERequest(req)) {
 			await streamAction(
 				req,
 				res,
-				DokkuCommands.dbLink(plugin, name, app),
+				DokkuCommands.dbLink(plugin, name, app, alias),
 				"database:link",
 				name,
 				60000
@@ -124,14 +139,16 @@ export function registerDatabaseRoutes(app: express.Application): void {
 			return;
 		}
 
-		const result = await linkDatabase(plugin, name, app);
+		const result = await linkDatabase(plugin, name, app, alias);
 
 		if (result.exitCode === 0) {
-			safeAuditLog(req, "database:link", name, { plugin, database: name, app });
+			safeAuditLog(req, "database:link", name, { plugin, database: name, app, alias });
 		}
 
 		clearPrefix("databases:");
-		res.json(result);
+		// Return proper HTTP status code based on exitCode
+		const statusCode = result.exitCode >= 400 ? result.exitCode : result.exitCode !== 0 ? 500 : 200;
+		res.status(statusCode).json(result);
 	});
 
 	app.post("/api/databases/:name/unlink", authMiddleware, requireOperator, async (req, res) => {

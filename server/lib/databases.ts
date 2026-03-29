@@ -236,7 +236,8 @@ export async function createDatabase(
 export async function linkDatabase(
 	plugin: string,
 	name: string,
-	app: string
+	app: string,
+	alias?: string
 ): Promise<CommandResult | { error: string; exitCode: number }> {
 	// Validate plugin
 	if (!SUPPORTED_PLUGINS.includes(plugin as (typeof SUPPORTED_PLUGINS)[number])) {
@@ -277,7 +278,21 @@ export async function linkDatabase(
 		};
 	}
 
-	const command = DokkuCommands.dbLink(plugin, sanitizedName, sanitizedApp);
+	if (alias) {
+		const trimmedAlias = alias.trim();
+		const sanitizedAlias = trimmedAlias.replace(/[^a-zA-Z0-9_]/g, "");
+		if (sanitizedAlias !== trimmedAlias) {
+			return {
+				error: "Alias contains invalid characters (only letters, numbers, and underscores allowed)",
+				command: "",
+				exitCode: 400,
+			};
+		}
+		// Use the trimmed alias in the command
+		alias = trimmedAlias;
+	}
+
+	const command = DokkuCommands.dbLink(plugin, sanitizedName, sanitizedApp, alias);
 
 	try {
 		return executeCommand(command);

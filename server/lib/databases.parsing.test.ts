@@ -3,21 +3,12 @@ import { parseInstalledPlugins, parseLinkedApps } from "./databases.js";
 
 describe("parseInstalledPlugins", () => {
 	it("should detect dokku-postgres from plugin list", () => {
-		const output = [
-			"00_dokku-standard",
-			"dokku-postgres",
-			"dokku-builder-dockerfile",
-		].join("\n");
+		const output = ["00_dokku-standard", "dokku-postgres", "dokku-builder-dockerfile"].join("\n");
 		expect(parseInstalledPlugins(output)).toEqual(["postgres"]);
 	});
 
 	it("should detect multiple plugins", () => {
-		const output = [
-			"00_dokku-standard",
-			"dokku-postgres",
-			"dokku-redis",
-			"dokku-mysql",
-		].join("\n");
+		const output = ["00_dokku-standard", "dokku-postgres", "dokku-redis", "dokku-mysql"].join("\n");
 		expect(parseInstalledPlugins(output)).toContain("postgres");
 		expect(parseInstalledPlugins(output)).toContain("redis");
 		expect(parseInstalledPlugins(output)).toContain("mysql");
@@ -40,11 +31,9 @@ describe("parseInstalledPlugins", () => {
 	});
 
 	it("should return empty array when no supported plugins found", () => {
-		const output = [
-			"00_dokku-standard",
-			"dokku-builder-dockerfile",
-			"dokku-letsencrypt",
-		].join("\n");
+		const output = ["00_dokku-standard", "dokku-builder-dockerfile", "dokku-letsencrypt"].join(
+			"\n"
+		);
 		expect(parseInstalledPlugins(output)).toEqual([]);
 	});
 
@@ -88,11 +77,7 @@ describe("parseInstalledPlugins", () => {
 
 describe("parseLinkedApps", () => {
 	it("should parse multi-line linked apps from Dokku 0.30.x links output", () => {
-		const output = [
-			"=====> main-db linked apps",
-			"api",
-			"worker",
-		].join("\n");
+		const output = ["=====> main-db linked apps", "api", "worker"].join("\n");
 		expect(parseLinkedApps(output)).toEqual(["api", "worker"]);
 	});
 
