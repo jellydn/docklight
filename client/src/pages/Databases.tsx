@@ -56,6 +56,7 @@ export function Databases() {
 	// Link database state
 	const [linkDbName, setLinkDbName] = useState("");
 	const [linkAppName, setLinkAppName] = useState("");
+	const [linkAlias, setLinkAlias] = useState("");
 
 	// Unlink database state
 	const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
@@ -98,11 +99,16 @@ export function Databases() {
 		if (!linkDbName || !linkAppName || linkSubmitting) return;
 
 		setLinkSubmitting(true);
+		const payload: Record<string, string> = { plugin: getDbPlugin(linkDbName), app: linkAppName };
+		if (linkAlias.trim()) {
+			payload.alias = linkAlias.trim();
+		}
 		await streamAction(`/databases/${encodeURIComponent(linkDbName)}/link`, "link database", {
-			body: JSON.stringify({ plugin: getDbPlugin(linkDbName), app: linkAppName }),
+			body: JSON.stringify(payload),
 			onSuccess: () => {
 				setLinkDbName("");
 				setLinkAppName("");
+				setLinkAlias("");
 				void queryClient.invalidateQueries({ queryKey: queryKeys.databases });
 				void queryClient.refetchQueries({ queryKey: queryKeys.databases });
 			},
@@ -372,6 +378,17 @@ export function Databases() {
 															</option>
 														))}
 												</select>
+												<input
+													type="text"
+													placeholder="Env alias (optional)"
+													value={linkDbName === db.name ? linkAlias : ""}
+													onChange={(e) => {
+														setLinkDbName(db.name);
+														setLinkAlias(e.target.value);
+													}}
+													className="border rounded px-3 py-2 text-sm w-40"
+													title="Custom environment variable name (e.g. BLUE_DATABASE). Appends _URL automatically."
+												/>
 												<button
 													onClick={handleLinkDatabase}
 													disabled={linkAppName === "" || linkDbName !== db.name || linkSubmitting}

@@ -292,6 +292,12 @@ describe("DokkuCommands", () => {
 			);
 		});
 
+		it("dbLink returns plugin link command with alias", () => {
+			expect(DokkuCommands.dbLink("postgres", "mydb", "my-app", "BLUE_DATABASE")).toBe(
+				"dokku postgres:link 'mydb' 'my-app' --alias 'BLUE_DATABASE'"
+			);
+		});
+
 		it("dbUnlink returns plugin unlink command", () => {
 			expect(DokkuCommands.dbUnlink("postgres", "mydb", "my-app")).toBe(
 				"dokku postgres:unlink 'mydb' 'my-app'"

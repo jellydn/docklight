@@ -392,11 +392,9 @@ describe("parseCertsReport - multi-version fixtures", () => {
 	});
 
 	it("should return null for app without any certificate", () => {
-		const stdout = [
-			"=====> myapp certs information",
-			"       No SSL certificate configured",
-		].join("\n");
+		const stdout = ["=====> myapp certs information", "       No SSL certificate configured"].join(
+			"\n"
+		);
 		expect(parseCertsReport(stdout)).toBeNull();
 	});
 });
-

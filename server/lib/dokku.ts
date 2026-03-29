@@ -95,7 +95,7 @@ export interface DokkuCommands {
 	dbLinks(plugin: string, name: string): string;
 	dbInfo(plugin: string, name: string): string;
 	dbCreate(plugin: string, name: string): string;
-	dbLink(plugin: string, name: string, app: string): string;
+	dbLink(plugin: string, name: string, app: string, alias?: string): string;
 	dbUnlink(plugin: string, name: string, app: string): string;
 	dbDestroy(plugin: string, name: string): string;
 
@@ -244,8 +244,8 @@ export const DokkuCommands: DokkuCommands = {
 	dbLinks: (plugin: string, name: string): string => `dokku ${plugin}:links ${shellQuote(name)}`,
 	dbInfo: (plugin: string, name: string): string => `dokku ${plugin}:info ${shellQuote(name)}`,
 	dbCreate: (plugin: string, name: string): string => `dokku ${plugin}:create ${shellQuote(name)}`,
-	dbLink: (plugin: string, name: string, app: string): string =>
-		`dokku ${plugin}:link ${shellQuote(name)} ${shellQuote(app)}`,
+	dbLink: (plugin: string, name: string, app: string, alias?: string): string =>
+		`dokku ${plugin}:link ${shellQuote(name)} ${shellQuote(app)}${alias ? ` --alias ${shellQuote(alias)}` : ""}`,
 	dbUnlink: (plugin: string, name: string, app: string): string =>
 		`dokku ${plugin}:unlink ${shellQuote(name)} ${shellQuote(app)}`,
 	dbDestroy: (plugin: string, name: string): string =>
