@@ -2,6 +2,7 @@ import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { stripAnsi } from "./ansi.js";
 import { DokkuCommands } from "./dokku.js";
+import { logger } from "./logger.js";
 
 const INVALID_NAME_ERROR = {
 	error: "Invalid app name",
@@ -78,6 +79,12 @@ export function parseLetsencryptReport(stdout: string): SSLStatus | null {
 	}
 
 	if (active === null) {
+		if (stdout.trim()) {
+			logger.warn(
+				{ stdout },
+				"parseLetsencryptReport: no recognizable active status found in output"
+			);
+		}
 		return null;
 	}
 
@@ -118,6 +125,13 @@ export function parseCertsReport(stdout: string): SSLStatus | null {
 	}
 
 	if (active === null && !hasCertEvidence) {
+		const isKnownNoCert = /no ssl certificate configured/i.test(stdout);
+		if (stdout.trim() && !isKnownNoCert) {
+			logger.warn(
+				{ stdout },
+				"parseCertsReport: no SSL certificate evidence or active status found in output"
+			);
+		}
 		return null;
 	}
 
