@@ -349,6 +349,81 @@ After step 6 the app is reachable at `https://hermes-hub.yourdomain.com` on bare
 
 > **Note:** The Docklight one-line installer handles all of this automatically when you pass `DOMAIN=…` plus `ENABLE_HTTPS=1 LETSENCRYPT_EMAIL=…`. The steps above are for apps deployed separately (any app, not just Docklight), or when you skipped those flags and want to add HTTPS after the fact.
 
+### `dokku git:sync` fails on a private GitHub repo
+
+When you click **Sync from Git** in Docklight (or run `dokku git:sync --build my-app https://github.com/owner/repo.git`) for a **private** repo, the clone fails with:
+
+```
+fatal: could not read Username for 'https://github.com': terminal prompts disabled
+```
+
+`git` on the Dokku host has no GitHub credentials and there's no TTY to prompt on. Three ways to fix it, in order of preference:
+
+#### Option A — Deploy key over SSH (recommended for one repo)
+
+```bash
+# On the Dokku server (as root)
+sudo -u dokku ssh-keygen -t ed25519 -N "" -f /home/dokku/.ssh/gh_e-ninja -C "dokku@e-ninja"
+sudo -u dokku tee -a /home/dokku/.ssh/config >/dev/null <<EOF
+
+Host github.com-e-ninja
+  HostName github.com
+  User git
+  IdentityFile /home/dokku/.ssh/gh_e-ninja
+  IdentitiesOnly yes
+EOF
+cat /home/dokku/.ssh/gh_e-ninja.pub
+# → copy the printed line
+```
+
+In **GitHub → repo → Settings → Deploy keys → Add deploy key**, paste the line. Read-only is enough.
+
+Then sync using the SSH-aliased host:
+
+```bash
+dokku git:sync --build e-ninja git@github.com-e-ninja:jellydn/e-ninja.git main
+```
+
+The alias (`github.com-e-ninja`) keeps each repo's deploy key isolated from the others.
+
+#### Option B — Personal access token in the URL
+
+Quick for a one-off, but the token ends up in Dokku logs and command history. Create a fine-grained PAT with `Contents: Read-only` for that repo, then:
+
+```bash
+dokku git:sync --build e-ninja \
+  https://oauth2:<TOKEN>@github.com/jellydn/e-ninja.git main
+```
+
+Rotate the token if you suspect leakage.
+
+#### Option C — Push from your laptop instead of `git:sync`
+
+If your laptop already has GitHub auth, skip server-side cloning entirely:
+
+```bash
+# laptop
+git clone git@github.com:jellydn/e-ninja.git
+cd e-ninja
+git remote add dokku dokku@<server-ip>:e-ninja
+git push dokku main
+```
+
+This is also the simplest way to deploy a branch other than `main` (`git push dokku feature-x:main`).
+
+### `dokku letsencrypt:*` says "not a dokku command"
+
+The plugin isn't installed yet. From the server as root:
+
+```bash
+dokku plugin:install https://github.com/dokku/dokku-letsencrypt.git
+dokku letsencrypt:set <app> email you@example.com
+dokku letsencrypt:enable <app>
+dokku letsencrypt:cron-job --add        # auto-renewal
+```
+
+If `letsencrypt:enable` then fails the HTTP-01 challenge, walk through the **"App URL shows a random `:NNNN` port"** section above — almost always either a missing port-80 mapping, missing DNS, or a firewall blocking inbound 80/443.
+
 ### "Could not resolve hostname"
 
 Use the IP address, not the hostname:
