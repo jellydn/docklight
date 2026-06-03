@@ -457,6 +457,40 @@ dokku letsencrypt:cron-job --add        # auto-renewal
 
 If `letsencrypt:enable` then fails the HTTP-01 challenge, walk through the **"App URL shows a random `:NNNN` port"** section above — almost always either a missing port-80 mapping, missing DNS, or a firewall blocking inbound 80/443.
 
+### Uploads fail with `413 Request Entity Too Large`
+
+Dokku's nginx proxy defaults to a **1 MB** request body cap. Any file upload past that fails before it ever reaches your app, with `413 Request Entity Too Large` in the response and a corresponding `client intended to send too large body` line in `dokku nginx:access-logs <app>`.
+
+You set the limit per app — pick the largest media type your app accepts:
+
+| Media | Typical app-side limit | nginx must allow at least |
+| ----- | ---------------------- | ------------------------- |
+| Images | 10 MB | 10 MB |
+| Audio | 10 MB | 10 MB |
+| Video | 50 MB | 50 MB |
+
+Set the proxy cap to the **largest** value (50 MB covers all three):
+
+```bash
+ssh root@<server-ip> bash <<'EOF'
+dokku nginx:set <app> client-max-body-size 50m
+dokku proxy:build-config <app>
+EOF
+```
+
+The setting writes to `/home/dokku/<app>/nginx.conf.d/upload.conf` (or the equivalent under `nginx-vhosts`) as `client_max_body_size 50M;` and survives redeploys.
+
+> **App-side limits still apply.** nginx only controls what reaches your container; per-type caps (images 10 MB, audio 10 MB, video 50 MB) are enforced by the app itself and should be tightened in app config, not in nginx. The nginx limit just needs to be ≥ the largest app-level cap so legitimate uploads aren't cut off before validation.
+
+Verify:
+
+```bash
+ssh root@<server-ip> dokku nginx:report <app> | grep -i 'client max body size'
+# Nginx client max body size:    50m
+```
+
+If you set it but uploads still fail at 1 MB, you forgot `dokku proxy:build-config <app>` (or there's a separate reverse proxy in front, e.g. Cloudflare's own 100 MB cap on the Free plan — check that too).
+
 ### "Could not resolve hostname"
 
 Use the IP address, not the hostname:
