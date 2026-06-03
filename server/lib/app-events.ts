@@ -20,7 +20,10 @@ export function broadcastAppEvent(event: AppEvent): void {
 		try {
 			listener(event);
 		} catch (err) {
-			logger.error({ err, eventType: event.type, appName: event.appName }, "Error in app event listener");
+			logger.error(
+				{ err, eventType: event.type, appName: event.appName },
+				"Error in app event listener"
+			);
 		}
 	}
 }

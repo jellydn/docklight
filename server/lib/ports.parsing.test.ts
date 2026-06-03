@@ -40,11 +40,7 @@ describe("parsePortMappings", () => {
 	});
 
 	it("should parse older Dokku proxy:ports line-per-mapping format", () => {
-		const stdout = [
-			"=====> my-app proxy ports",
-			"http:80:5000",
-			"https:443:5000",
-		].join("\n");
+		const stdout = ["=====> my-app proxy ports", "http:80:5000", "https:443:5000"].join("\n");
 		expect(parsePortMappings(stdout)).toEqual([
 			{ scheme: "http", hostPort: 80, containerPort: 5000 },
 			{ scheme: "https", hostPort: 443, containerPort: 5000 },
@@ -52,10 +48,7 @@ describe("parsePortMappings", () => {
 	});
 
 	it("should parse Dokku 0.30.x proxy:ports single port per line", () => {
-		const stdout = [
-			"=====> my-app proxy information",
-			"       http:3000:3000",
-		].join("\n");
+		const stdout = ["=====> my-app proxy information", "       http:3000:3000"].join("\n");
 		expect(parsePortMappings(stdout)).toEqual([
 			{ scheme: "http", hostPort: 3000, containerPort: 3000 },
 		]);

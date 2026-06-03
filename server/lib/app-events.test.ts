@@ -35,7 +35,11 @@ describe("app-events", () => {
 		const unsubscribe = subscribeToAppEvents(listener);
 		unsubscribe();
 
-		broadcastAppEvent({ type: "app:stop", appName: "my-app", timestamp: "2024-01-01T00:00:00.000Z" });
+		broadcastAppEvent({
+			type: "app:stop",
+			appName: "my-app",
+			timestamp: "2024-01-01T00:00:00.000Z",
+		});
 
 		expect(listener).not.toHaveBeenCalled();
 	});
@@ -68,7 +72,11 @@ describe("app-events", () => {
 
 		unsub1();
 
-		broadcastAppEvent({ type: "app:scale", appName: "my-app", timestamp: "2024-01-01T00:00:00.000Z" });
+		broadcastAppEvent({
+			type: "app:scale",
+			appName: "my-app",
+			timestamp: "2024-01-01T00:00:00.000Z",
+		});
 
 		expect(listener1).not.toHaveBeenCalled();
 		expect(listener2).toHaveBeenCalled();

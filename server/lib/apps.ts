@@ -191,7 +191,10 @@ export function parseStatus(stdout: string): "running" | "stopped" {
 	}
 
 	if (sawAnyContent) {
-		logger.warn({ stdout }, "parseStatus: no recognizable status format found, defaulting to stopped");
+		logger.warn(
+			{ stdout },
+			"parseStatus: no recognizable status format found, defaulting to stopped"
+		);
 	}
 
 	return "stopped";
@@ -256,8 +259,7 @@ export function parseDomains(stdout: string): string[] {
 	}
 
 	if (domains.size === 0 && stdout.trim()) {
-		const hasDomainsContent =
-			/domains/i.test(stdout) || /vhost/i.test(stdout);
+		const hasDomainsContent = /domains/i.test(stdout) || /vhost/i.test(stdout);
 		if (hasDomainsContent && !enabledLine) {
 			logger.warn(
 				{ stdout },

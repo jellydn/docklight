@@ -38,7 +38,16 @@ vi.mock("../lib/app-events.js", () => ({
 	broadcastAppEvent: vi.fn(),
 }));
 
-import { createApp, destroyApp, restartApp, stopApp, startApp, rebuildApp, scaleApp, unlockApp } from "../lib/apps.js";
+import {
+	createApp,
+	destroyApp,
+	restartApp,
+	stopApp,
+	startApp,
+	rebuildApp,
+	scaleApp,
+	unlockApp,
+} from "../lib/apps.js";
 import { broadcastAppEvent } from "../lib/app-events.js";
 import { registerAppRoutes } from "./apps.js";
 
