@@ -411,6 +411,39 @@ git push dokku main
 
 This is also the simplest way to deploy a branch other than `main` (`git push dokku feature-x:main`).
 
+### New apps get a `*.contaboserver.net` (or other provider) hostname instead of `*.sslip.io`
+
+Dokku assigns each app a default URL of `<app>.<global-vhost>` whenever you don't set a per-app domain. On most VPS providers (Contabo, Hetzner, OVH, etc.) the system hostname is something like `vmi3322923.contaboserver.net`, and Dokku picks that up as the global vhost during bootstrap. Result: new apps end up at `e-ninja.vmi3322923.contaboserver.net` — which doesn't resolve publicly and isn't where you actually want users to land.
+
+**Check the current global vhost:**
+
+```bash
+ssh root@<server-ip> dokku domains:report --global
+# Domains global vhosts:   vmi3322923.contaboserver.net
+```
+
+**Fix it once, for every future app**, by pointing the global vhost at `<ip>.sslip.io` (or your own DNS):
+
+```bash
+ssh root@<server-ip> "dokku domains:set-global 217.216.32.119.sslip.io"
+```
+
+Now any app you create afterwards will default to `<app>.217.216.32.119.sslip.io`.
+
+**For apps that already exist** with the bad hostname, replace their per-app domains:
+
+```bash
+ssh root@<server-ip> bash <<'EOF'
+dokku domains:clear e-ninja
+dokku domains:set   e-ninja e-ninja.217.216.32.119.sslip.io
+dokku proxy:build-config e-ninja
+EOF
+```
+
+(`domains:clear` removes the inherited Contabo entry; `domains:set` adds the new one and rebuilds the proxy.)
+
+> **Tip:** Pass `GLOBAL_DOMAIN=<value>` to the one-line installer to set this from the start. The default (`<ip>.sslip.io`) is applied automatically; pass `GLOBAL_DOMAIN=` (empty) to keep whatever Dokku auto-detected, or `GLOBAL_DOMAIN=apps.yourdomain.com` to use a real DNS zone you control.
+
 ### `dokku letsencrypt:*` says "not a dokku command"
 
 The plugin isn't installed yet. From the server as root:

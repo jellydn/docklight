@@ -24,6 +24,10 @@
 #   ADMIN_SSH_KEY_URL  URL of a public key to grant     (e.g. https://sshid.io/<user>
 #                      `git push dokku ...` access      or https://github.com/<user>.keys)
 #   ADMIN_SSH_KEY      Inline public key (one line)     (used if ADMIN_SSH_KEY_URL unset)
+#   GLOBAL_DOMAIN      Dokku global vhost; all new apps  (default: <ip>.sslip.io)
+#                      inherit "<app>.<GLOBAL_DOMAIN>".  Set to "" to keep what
+#                      Dokku auto-detected (often the provider's hostname, e.g.
+#                      vmi…contaboserver.net).
 
 set -euo pipefail
 
@@ -38,6 +42,10 @@ ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
 ADMIN_SSH_KEY_URL="${ADMIN_SSH_KEY_URL:-}"
 ADMIN_SSH_KEY="${ADMIN_SSH_KEY:-}"
+# GLOBAL_DOMAIN defaults to <ip>.sslip.io after IP detection; honor an explicit
+# empty value ("GLOBAL_DOMAIN=") to skip touching the global domain entirely.
+GLOBAL_DOMAIN_SET="${GLOBAL_DOMAIN+set}"
+GLOBAL_DOMAIN="${GLOBAL_DOMAIN-__AUTO__}"
 
 # ---------- helpers ----------
 log()  { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
@@ -94,10 +102,25 @@ else
   log "Dokku already installed: $(dokku version || echo unknown)"
 fi
 
-# Make sure the global domain is set so Dokku generates nice URLs
-if ! dokku domains:report --global 2>/dev/null | grep -q "Domains global vhosts:.*[a-z0-9]"; then
-  log "Setting Dokku global domain to ${SERVER_IP}.sslip.io"
-  dokku domains:set-global "${SERVER_IP}.sslip.io"
+# Make sure the global domain is set so EVERY app created on this server
+# (not just docklight) gets a usable default URL like "<app>.<ip>.sslip.io".
+# Without this, Dokku falls back to the system hostname — which on most
+# VPS providers is a non-routable name like "vmi…contaboserver.net".
+if [[ "${GLOBAL_DOMAIN}" == "__AUTO__" ]]; then
+  GLOBAL_DOMAIN="${SERVER_IP}.sslip.io"
+fi
+if [[ -n "${GLOBAL_DOMAIN}" ]]; then
+  CURRENT_GLOBAL="$(dokku domains:report --global 2>/dev/null \
+    | awk -F':' '/Domains global vhosts:/ {sub(/^[[:space:]]+/, "", $2); print $2; exit}' \
+    | xargs || true)"
+  if [[ "${CURRENT_GLOBAL}" != "${GLOBAL_DOMAIN}" ]]; then
+    log "Setting Dokku global domain to ${GLOBAL_DOMAIN} (was: ${CURRENT_GLOBAL:-<unset>})"
+    dokku domains:set-global "${GLOBAL_DOMAIN}"
+  else
+    log "Dokku global domain already ${GLOBAL_DOMAIN}"
+  fi
+elif [[ "${GLOBAL_DOMAIN_SET}" == "set" ]]; then
+  log "Skipping global domain (GLOBAL_DOMAIN explicitly empty)"
 fi
 
 # ---------- 2. create app ----------

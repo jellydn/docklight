@@ -92,7 +92,9 @@ The installer will:
 6. Create an initial admin user and print the password
 7. (Optional) Register your public key with Dokku so you can `git push dokku main` and `ssh dokku@<ip>` without a password
 
-Available env vars: `APP_NAME`, `DOMAIN`, `REPO_URL`, `BRANCH`, `DOKKU_VERSION`, `ENABLE_HTTPS`, `LETSENCRYPT_EMAIL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SSH_KEY_URL`, `ADMIN_SSH_KEY`.
+Available env vars: `APP_NAME`, `DOMAIN`, `REPO_URL`, `BRANCH`, `DOKKU_VERSION`, `ENABLE_HTTPS`, `LETSENCRYPT_EMAIL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SSH_KEY_URL`, `ADMIN_SSH_KEY`, `GLOBAL_DOMAIN`.
+
+> By default the installer sets Dokku's **global vhost** to `<ip>.sslip.io`, so any future app you create (Docklight or otherwise) gets a usable URL like `<app>.<ip>.sslip.io` out of the box — instead of inheriting the provider's system hostname (e.g. `*.contaboserver.net`). Override with `GLOBAL_DOMAIN=apps.yourdomain.com`, or pass `GLOBAL_DOMAIN=` (empty) to keep Dokku's auto-detected value.
 
 **Already installed without `ADMIN_SSH_KEY_URL`?** Add your key from your laptop:
 
