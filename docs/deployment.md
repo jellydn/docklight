@@ -2,6 +2,14 @@
 
 Step-by-step guide to deploy Docklight on your Dokku server.
 
+## TL;DR — One-line install on a fresh VPS
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/install.sh | sudo bash
+```
+
+This installs Dokku (if needed), creates the `docklight` app, wires up persistent storage and the container → host SSH bridge, deploys from this repo, and prints the generated admin password. See [`scripts/install.sh`](../scripts/install.sh) for env-var options (`DOMAIN`, `ENABLE_HTTPS`, `LETSENCRYPT_EMAIL`, …). The rest of this guide covers the manual flow.
+
 ## Prerequisites
 
 - A VPS with [Dokku](https://dokku.com/docs/getting-started/installation/) installed

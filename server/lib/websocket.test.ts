@@ -505,11 +505,7 @@ describe("event stream endpoint", () => {
 	it("should reject /api/events/stream with invalid token", () => {
 		vi.mocked(verifyToken).mockReturnValue(null);
 		const socket = makeSocket();
-		upgradeHandler(
-			makeReq("/api/events/stream", "session=bad-token"),
-			socket,
-			Buffer.alloc(0)
-		);
+		upgradeHandler(makeReq("/api/events/stream", "session=bad-token"), socket, Buffer.alloc(0));
 		expect((socket as unknown as { write: (d: string) => void }).write).toHaveBeenCalledWith(
 			"HTTP/1.1 401 Unauthorized\r\n\r\n"
 		);
@@ -525,7 +521,7 @@ describe("event stream endpoint", () => {
 	it("should send app event to connected WebSocket client", () => {
 		expect(mockWss.on).toHaveBeenCalledWith("connection", expect.any(Function));
 
-		const connectionHandler = mockWss.on.mock.calls.find(call => call[0] === "connection")?.[1];
+		const connectionHandler = mockWss.on.mock.calls.find((call) => call[0] === "connection")?.[1];
 
 		const mockWs = {
 			isAlive: true,
@@ -545,7 +541,9 @@ describe("event stream endpoint", () => {
 			configurable: true,
 		});
 
-		const mockReq = makeReq("/api/events/stream", "session=valid-token") as http.IncomingMessage & { isEventStream?: boolean };
+		const mockReq = makeReq("/api/events/stream", "session=valid-token") as http.IncomingMessage & {
+			isEventStream?: boolean;
+		};
 		mockReq.isEventStream = true;
 
 		connectionHandler(mockWs, mockReq);
@@ -553,7 +551,11 @@ describe("event stream endpoint", () => {
 		expect(vi.mocked(subscribeToAppEvents)).toHaveBeenCalled();
 		const capturedListener = vi.mocked(subscribeToAppEvents).mock.calls[0][0];
 
-		const testEvent = { type: "app:restart", appName: "my-app", timestamp: "2024-01-01T00:00:00.000Z" };
+		const testEvent = {
+			type: "app:restart",
+			appName: "my-app",
+			timestamp: "2024-01-01T00:00:00.000Z",
+		};
 		capturedListener(testEvent);
 
 		expect(mockWs.send).toHaveBeenCalledWith(JSON.stringify(testEvent));
