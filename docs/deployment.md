@@ -8,7 +8,39 @@ Step-by-step guide to deploy Docklight on your Dokku server.
 curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/install.sh | sudo bash
 ```
 
-This installs Dokku (if needed), creates the `docklight` app, wires up persistent storage and the container → host SSH bridge, deploys from this repo, and prints the generated admin password. See [`scripts/install.sh`](../scripts/install.sh) for env-var options (`DOMAIN`, `ENABLE_HTTPS`, `LETSENCRYPT_EMAIL`, …). The rest of this guide covers the manual flow.
+Full options (custom domain + HTTPS + pre-authorize your public key for `git push`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/install.sh \
+  | sudo DOMAIN=docklight.example.com \
+         ENABLE_HTTPS=1 LETSENCRYPT_EMAIL=you@example.com \
+         ADMIN_SSH_KEY_URL=https://sshid.io/your-handle \
+         bash
+```
+
+This installs Dokku (if needed), creates the `docklight` app, wires up persistent storage and the container → host SSH bridge, deploys from this repo, prints the generated admin password, and (when `ADMIN_SSH_KEY_URL`/`ADMIN_SSH_KEY` is set) registers your public key with Dokku. See [`scripts/install.sh`](../scripts/install.sh) for all env vars. The rest of this guide covers the manual flow.
+
+### Granting SSH access after install
+
+If you ran the installer without `ADMIN_SSH_KEY_URL`, `ssh dokku@<server-ip>` will prompt for a password. Register your key from your laptop:
+
+```bash
+# From sshid.io (or any URL that serves authorized_keys, e.g. https://github.com/<user>.keys)
+curl -fsSL https://sshid.io/your-handle \
+  | ssh root@<server-ip> "sudo -u dokku dokku ssh-keys:add admin"
+
+# Or from a local public key file
+cat ~/.ssh/id_ed25519.pub \
+  | ssh root@<server-ip> "sudo -u dokku dokku ssh-keys:add admin"
+```
+
+Verify:
+
+```bash
+ssh dokku@<server-ip>     # should print Dokku's help banner, no prompt
+```
+
+Then `git remote add dokku dokku@<server-ip>:docklight` and `git push dokku main` work without a password.
 
 ## Prerequisites
 

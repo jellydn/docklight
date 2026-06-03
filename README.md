@@ -38,11 +38,15 @@ Docklight is designed to run on the same VPS as Dokku.
 
 - Dashboard with app status, domains, last deploy, and server health.
 - App management: restart, rebuild, scale, config vars, and domains.
+- Real-time app status updates via WebSocket push notifications.
 - Live app logs over WebSocket.
+- Git integration: deploy apps from remote repositories.
+- Server settings configuration via UI.
 - Database management: list, create, link/unlink, destroy.
 - SSL management with Let's Encrypt.
-- Audit logs for command history and filtering.
+- Audit logs for command history, filtering, and export (JSON/CSV).
 - Command transparency: exact CLI command, exit code, stdout/stderr.
+- Enhanced health checks with Dokku connectivity and database status.
 - Simple auth with username/password and JWT session.
 
 ## 🧱 Tech Stack
@@ -68,11 +72,14 @@ On a fresh Ubuntu/Debian VPS, run as root:
 curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/install.sh | sudo bash
 ```
 
-With a custom domain and HTTPS:
+With a custom domain, HTTPS, and your public SSH key pre-registered for `git push` access:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/install.sh \
-  | sudo DOMAIN=docklight.example.com ENABLE_HTTPS=1 LETSENCRYPT_EMAIL=you@example.com bash
+  | sudo DOMAIN=docklight.example.com \
+         ENABLE_HTTPS=1 LETSENCRYPT_EMAIL=you@example.com \
+         ADMIN_SSH_KEY_URL=https://sshid.io/your-handle \
+         bash
 ```
 
 The installer will:
@@ -83,8 +90,21 @@ The installer will:
 4. Generate a `JWT_SECRET`
 5. Deploy Docklight from this repo
 6. Create an initial admin user and print the password
+7. (Optional) Register your public key with Dokku so you can `git push dokku main` and `ssh dokku@<ip>` without a password
 
-Available env vars: `APP_NAME`, `DOMAIN`, `REPO_URL`, `BRANCH`, `DOKKU_VERSION`, `ENABLE_HTTPS`, `LETSENCRYPT_EMAIL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`.
+Available env vars: `APP_NAME`, `DOMAIN`, `REPO_URL`, `BRANCH`, `DOKKU_VERSION`, `ENABLE_HTTPS`, `LETSENCRYPT_EMAIL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SSH_KEY_URL`, `ADMIN_SSH_KEY`.
+
+**Already installed without `ADMIN_SSH_KEY_URL`?** Add your key from your laptop:
+
+```bash
+# Using sshid.io (or github.com/<user>.keys)
+curl -fsSL https://sshid.io/your-handle \
+  | ssh root@<server-ip> "sudo -u dokku dokku ssh-keys:add admin"
+
+# Or from a local file
+cat ~/.ssh/id_ed25519.pub \
+  | ssh root@<server-ip> "sudo -u dokku dokku ssh-keys:add admin"
+```
 
 #### Manual deploy to existing Dokku
 
@@ -202,6 +222,7 @@ docklight/
 | Apps      | `apps:list`, `apps:create`, `apps:destroy`, `ps:report`, `ps:restart`, `ps:stop`, `ps:start`, `ps:rebuild`, `ps:scale`                        |
 | Config    | `config:show`, `config:set`, `config:unset`                                                                                                   |
 | Domains   | `domains:report`, `domains:add`, `domains:remove`                                                                                             |
+| Git       | `git:report`, `git:sync --build`                                                                                                              |
 | Logs      | `logs <app> -t -n <lines>`                                                                                                                    |
 | Databases | `plugin:list`, `<plugin>:list`, `<plugin>:links`, `<plugin>:create`, `<plugin>:link`, `<plugin>:unlink`, `<plugin>:destroy`                   |
 | Plugins   | `plugin:list`, `plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`                                                        |

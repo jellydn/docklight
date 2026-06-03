@@ -21,6 +21,9 @@
 #   LETSENCRYPT_EMAIL  Email for Let's Encrypt          (required if ENABLE_HTTPS=1)
 #   ADMIN_USERNAME Initial admin username               (default: admin)
 #   ADMIN_PASSWORD Initial admin password               (default: auto-generated)
+#   ADMIN_SSH_KEY_URL  URL of a public key to grant     (e.g. https://sshid.io/<user>
+#                      `git push dokku ...` access      or https://github.com/<user>.keys)
+#   ADMIN_SSH_KEY      Inline public key (one line)     (used if ADMIN_SSH_KEY_URL unset)
 
 set -euo pipefail
 
@@ -33,6 +36,8 @@ ENABLE_HTTPS="${ENABLE_HTTPS:-0}"
 LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-}"
 ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
+ADMIN_SSH_KEY_URL="${ADMIN_SSH_KEY_URL:-}"
+ADMIN_SSH_KEY="${ADMIN_SSH_KEY:-}"
 
 # ---------- helpers ----------
 log()  { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
@@ -119,6 +124,41 @@ fi
 # Note: the container does not need a known_hosts file. The server defaults
 # DOCKLIGHT_DOKKU_SSH_OPTS to "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 # (see server/lib/executor.ts), so host key verification is skipped inside the container.
+
+# ---------- 3b. register operator's public key with Dokku (optional) ----------
+# Lets you run `git push dokku main`, `ssh dokku@<ip> apps:list`, etc. from
+# your laptop without a password.
+ADMIN_KEY_REGISTERED=0
+ADMIN_KEY_CONTENT=""
+
+if [[ -n "${ADMIN_SSH_KEY_URL}" ]]; then
+  log "Fetching admin SSH key from ${ADMIN_SSH_KEY_URL}"
+  if ! ADMIN_KEY_CONTENT="$(curl -fsSL --max-time 10 "${ADMIN_SSH_KEY_URL}" 2>/dev/null)"; then
+    warn "Could not fetch ${ADMIN_SSH_KEY_URL} — skipping SSH key registration"
+    ADMIN_KEY_CONTENT=""
+  fi
+elif [[ -n "${ADMIN_SSH_KEY}" ]]; then
+  ADMIN_KEY_CONTENT="${ADMIN_SSH_KEY}"
+fi
+
+if [[ -n "${ADMIN_KEY_CONTENT}" ]]; then
+  # `dokku ssh-keys:add` reads from stdin and rejects exact duplicates,
+  # so loop over each non-empty, non-comment line independently.
+  i=0
+  while IFS= read -r line; do
+    [[ -z "${line// }" || "${line}" == \#* ]] && continue
+    i=$((i + 1))
+    key_name="${ADMIN_USERNAME}"
+    [[ "${i}" -gt 1 ]] && key_name="${ADMIN_USERNAME}-${i}"
+    if printf '%s\n' "${line}" | dokku ssh-keys:add "${key_name}" >/dev/null 2>&1; then
+      log "Registered SSH key '${key_name}' with Dokku"
+      ADMIN_KEY_REGISTERED=1
+    else
+      # Already exists or invalid — only warn on the first one
+      [[ "${i}" -eq 1 ]] && warn "Could not register SSH key '${key_name}' (may already exist)"
+    fi
+  done <<< "${ADMIN_KEY_CONTENT}"
+fi
 
 # ---------- 4. persistent storage ----------
 STORAGE_DIR="/var/lib/dokku/data/storage/${APP_NAME}"
@@ -230,6 +270,35 @@ EOF
 else
   echo "  Login with the admin credentials you provided."
   echo
+fi
+
+if [[ "${ADMIN_KEY_REGISTERED}" == "1" ]]; then
+  cat <<EOF
+  SSH access (no password needed):
+    ssh dokku@${SERVER_IP}                 # → Dokku command shell
+    git remote add dokku dokku@${SERVER_IP}:${APP_NAME}
+    git push dokku main                    # deploy from your laptop
+
+EOF
+else
+  cat <<EOF
+  ⚠️  No operator SSH key registered with Dokku yet.
+      \`ssh dokku@${SERVER_IP}\` will currently prompt for a password (no auth).
+
+      Pick ONE of the following, from your LAPTOP:
+
+      a) sshid.io / GitHub keys (recommended):
+         curl -fsSL https://sshid.io/<your-handle> | \\
+           ssh root@${SERVER_IP} "sudo -u dokku dokku ssh-keys:add admin"
+         # works with https://github.com/<user>.keys too
+
+      b) From your local public key file:
+         cat ~/.ssh/id_ed25519.pub | \\
+           ssh root@${SERVER_IP} "sudo -u dokku dokku ssh-keys:add admin"
+
+      Or re-run the installer with: ADMIN_SSH_KEY_URL=https://sshid.io/<handle>
+
+EOF
 fi
 
 cat <<EOF
