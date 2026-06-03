@@ -106,6 +106,8 @@ cat ~/.ssh/id_ed25519.pub \
   | ssh root@<server-ip> "sudo -u dokku dokku ssh-keys:add admin"
 ```
 
+> **Still getting `dokku@<host>'s password:` after adding a key?** Your local key probably doesn't match what was registered (common when `ADMIN_SSH_KEY_URL` published a key from another machine). See [docs/deployment.md → SSH still prompts for a password](docs/deployment.md#ssh-dokkuserver-still-prompts-for-a-password) for the 3-step debug + fix.
+
 #### Manual deploy to existing Dokku
 
 ```bash

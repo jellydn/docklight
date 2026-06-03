@@ -237,11 +237,65 @@ Dokku performs zero-downtime deploys by default.
 
 ## Troubleshooting
 
-Your SSH key isn't registered with Dokku:
+### `ssh dokku@<server>` still prompts for a password
+
+The `dokku` user only accepts public-key auth — there is no password to type. A prompt means none of the keys your SSH client offered matched what's in `dokku ssh-keys:list` on the server.
+
+**1. See which keys your client is actually offering:**
 
 ```bash
-cat ~/.ssh/id_rsa.pub | ssh root@<your-server-ip> dokku ssh-keys:add admin
+ssh -v dokku@<server-ip> 2>&1 | grep -E "Offering|Authentications"
 ```
+
+You'll get lines like:
+
+```
+debug1: Offering public key: /Users/you/.ssh/id_ed25519 ED25519 SHA256:wRdXPmfN…
+debug1: Authentications that can continue: publickey,password
+```
+
+**2. Check which keys the server trusts:**
+
+```bash
+ssh root@<server-ip> dokku ssh-keys:list
+```
+
+Each line starts with the SHA256 fingerprint:
+
+```
+SHA256:pJ2PhyLr… NAME="admin" SSHCOMMAND_ALLOWED_KEYS="…"
+```
+
+**3. If no `Offering …` fingerprint matches any registered fingerprint, register the key you actually have on this laptop:**
+
+```bash
+cat ~/.ssh/id_ed25519.pub \
+  | ssh root@<server-ip> "dokku ssh-keys:add admin-laptop"
+```
+
+(Use whichever public key file matches what `ssh -v` was offering. If you only have `id_rsa`, use `~/.ssh/id_rsa.pub`.)
+
+Then `ssh dokku@<server-ip>` should connect immediately and print the Dokku help banner.
+
+#### Common cause: `ADMIN_SSH_KEY_URL` published a key from another machine
+
+If you installed with `ADMIN_SSH_KEY_URL=https://sshid.io/<handle>` (or `github.com/<user>.keys`), the server now trusts whatever public keys that URL serves — which may have been uploaded from a different laptop. The private half isn't on this machine, so SSH falls back to password auth.
+
+Two clean ways to handle it:
+
+- **Add this laptop's key under its own name** (recommended — keeps multi-device access):
+  ```bash
+  cat ~/.ssh/id_ed25519.pub \
+    | ssh root@<server-ip> "dokku ssh-keys:add admin-$(hostname -s)"
+  ```
+- **Or re-publish to sshid.io / GitHub from this laptop**, then on the server:
+  ```bash
+  ssh root@<server-ip> "dokku ssh-keys:remove admin"
+  curl -fsSL https://sshid.io/<handle> \
+    | ssh root@<server-ip> "dokku ssh-keys:add admin"
+  ```
+
+> **Tip:** When you run `dokku ssh-keys:add <name>` directly on the server as `root`, it auto-runs under the `dokku` user. The output line `SHA256:xxxx…` is the **fingerprint of the key it just added** — not an error. Confirm with `dokku ssh-keys:list`.
 
 ### "Could not resolve hostname"
 
