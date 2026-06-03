@@ -47,7 +47,13 @@ require_root() {
 
 detect_ip() {
   local ip
+  # 1. External lookup (most reliable for the publicly-routable address)
   ip="$(curl -fsSL --max-time 5 https://api.ipify.org 2>/dev/null || true)"
+  # 2. Routable source address (avoids picking an RFC1918 interface)
+  if [[ -z "${ip}" ]] && command -v ip >/dev/null 2>&1; then
+    ip="$(ip route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}')"
+  fi
+  # 3. Last resort
   if [[ -z "${ip}" ]]; then
     ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
   fi
@@ -76,7 +82,7 @@ fi
 # ---------- 1. install Dokku ----------
 if ! command -v dokku >/dev/null 2>&1; then
   log "Installing Dokku ${DOKKU_VERSION} (this can take a few minutes)..."
-  wget -qO /tmp/bootstrap.sh "https://dokku.com/install/${DOKKU_VERSION}/bootstrap.sh"
+  curl -fsSL -o /tmp/bootstrap.sh "https://dokku.com/install/${DOKKU_VERSION}/bootstrap.sh"
   DOKKU_TAG="${DOKKU_VERSION}" bash /tmp/bootstrap.sh
   rm -f /tmp/bootstrap.sh
 else
@@ -104,17 +110,15 @@ KEY_PATH="${DOKKU_HOME}/.ssh/docklight"
 if [[ ! -f "${KEY_PATH}" ]]; then
   log "Generating dedicated SSH key for Docklight (${KEY_PATH})"
   sudo -u dokku mkdir -p "${DOKKU_HOME}/.ssh"
+  sudo -u dokku chmod 700 "${DOKKU_HOME}/.ssh"
   sudo -u dokku ssh-keygen -t ed25519 -N "" -f "${KEY_PATH}" -C "docklight@${SERVER_IP}"
   sudo -u dokku sh -c "cat '${KEY_PATH}.pub' >> '${DOKKU_HOME}/.ssh/authorized_keys'"
   sudo -u dokku chmod 600 "${DOKKU_HOME}/.ssh/authorized_keys"
 fi
 
-# Pre-populate known_hosts so the container won't fail on first SSH
-sudo -u dokku touch "${DOKKU_HOME}/.ssh/known_hosts"
-if ! sudo -u dokku grep -q "${SERVER_IP}" "${DOKKU_HOME}/.ssh/known_hosts" 2>/dev/null; then
-  log "Adding ${SERVER_IP} to dokku user known_hosts"
-  ssh-keyscan -H "${SERVER_IP}" 2>/dev/null | sudo -u dokku tee -a "${DOKKU_HOME}/.ssh/known_hosts" >/dev/null
-fi
+# Note: the container does not need a known_hosts file. The server defaults
+# DOCKLIGHT_DOKKU_SSH_OPTS to "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+# (see server/lib/executor.ts), so host key verification is skipped inside the container.
 
 # ---------- 4. persistent storage ----------
 STORAGE_DIR="/var/lib/dokku/data/storage/${APP_NAME}"
@@ -164,32 +168,43 @@ else
 fi
 
 log "Creating initial admin user '${ADMIN_USERNAME}'"
-if ! dokku enter "${APP_NAME}" web sh -c \
-      "node server/dist/createUser.js '${ADMIN_USERNAME}' '${ADMIN_PASSWORD}'" 2>&1; then
+# Use `dokku run` (transient container) so we don't depend on the web container
+# being up yet, and pass credentials as positional args to avoid shell injection.
+if ! dokku run "${APP_NAME}" \
+      node server/dist/createUser.js "${ADMIN_USERNAME}" "${ADMIN_PASSWORD}" 2>&1; then
   warn "Could not create admin user automatically — create one with:"
-  warn "  dokku enter ${APP_NAME} web sh -c 'node server/dist/createUser.js admin <password>'"
+  warn "  dokku run ${APP_NAME} node server/dist/createUser.js admin '<password>'"
   GENERATED_PW=0
 fi
 
 # ---------- 9. (optional) HTTPS ----------
+HTTPS_ENABLED=0
 if [[ "${ENABLE_HTTPS}" == "1" ]]; then
   if [[ -z "${LETSENCRYPT_EMAIL}" ]]; then
     warn "ENABLE_HTTPS=1 but LETSENCRYPT_EMAIL is not set — skipping SSL"
   else
     log "Installing dokku-letsencrypt plugin (if missing)"
     if ! dokku plugin:list | grep -q letsencrypt; then
-      dokku plugin:install https://github.com/dokku/dokku-letsencrypt.git
+      dokku plugin:install https://github.com/dokku/dokku-letsencrypt.git \
+        || warn "Could not install dokku-letsencrypt plugin"
     fi
-    dokku letsencrypt:set "${APP_NAME}" email "${LETSENCRYPT_EMAIL}"
-    log "Enabling HTTPS via Let's Encrypt"
-    dokku letsencrypt:enable "${APP_NAME}" || warn "Let's Encrypt failed — make sure DNS points to ${SERVER_IP}"
-    dokku letsencrypt:cron-job --add || true
+    if dokku plugin:list | grep -q letsencrypt; then
+      dokku letsencrypt:set "${APP_NAME}" email "${LETSENCRYPT_EMAIL}" \
+        || warn "Could not configure Let's Encrypt email"
+      log "Enabling HTTPS via Let's Encrypt"
+      if dokku letsencrypt:enable "${APP_NAME}"; then
+        HTTPS_ENABLED=1
+        dokku letsencrypt:cron-job --add || true
+      else
+        warn "Let's Encrypt failed — make sure DNS for ${DOMAIN} points to ${SERVER_IP}"
+      fi
+    fi
   fi
 fi
 
 # ---------- done ----------
 URL_SCHEME="http"
-[[ "${ENABLE_HTTPS}" == "1" ]] && URL_SCHEME="https"
+[[ "${HTTPS_ENABLED}" == "1" ]] && URL_SCHEME="https"
 
 cat <<EOF
 
@@ -224,8 +239,8 @@ cat <<EOF
     dokku enter ${APP_NAME} web sh         # shell into container
 
   Reset password:
-    dokku enter ${APP_NAME} web sh -c \\
-      "node server/dist/createUser.js ${ADMIN_USERNAME} <new-password>"
+    dokku run ${APP_NAME} \\
+      node server/dist/createUser.js ${ADMIN_USERNAME} '<new-password>'
 
 EOF
 
