@@ -297,6 +297,58 @@ Two clean ways to handle it:
 
 > **Tip:** When you run `dokku ssh-keys:add <name>` directly on the server as `root`, it auto-runs under the `dokku` user. The output line `SHA256:xxxx…` is the **fingerprint of the key it just added** — not an error. Confirm with `dokku ssh-keys:list`.
 
+### App URL shows a random `:NNNN` port and HTTPS won't enable
+
+After a successful deploy you may see Dokku print a URL like `http://hermes-hub.<server>.contaboserver.net:8008`, and `dokku letsencrypt:enable hermes-hub` fails with a challenge/validation error. This means two things:
+
+- Dokku didn't bind the app to port **80**, so it picked a random high port.
+- Let's Encrypt's HTTP-01 challenge needs to reach the app on port **80** on the domain you're certifying.
+
+**Worked example** — deploying [`jellydn/hermes-hub`](https://github.com/jellydn/hermes-hub) end-to-end with a domain and HTTPS:
+
+```bash
+# 1. Create the app (or use Docklight's "Create app" UI)
+ssh dokku@<server-ip> apps:create hermes-hub
+
+# 2. Push code from your laptop
+git remote add dokku dokku@<server-ip>:hermes-hub
+git push dokku main
+
+# At this point Dokku might announce something like:
+#   http://hermes-hub.<host>.contaboserver.net:8008
+
+# 3. Inspect the proxy port mapping
+ssh root@<server-ip> dokku proxy:ports hermes-hub
+# Example output:
+#   -----> Port mappings for hermes-hub
+#   scheme  host port  container port
+#   http    8008       3000
+
+# 4. Map the host side to port 80 (keep the container port from step 3)
+ssh root@<server-ip> "dokku proxy:ports-remove hermes-hub http:8008:3000"
+ssh root@<server-ip> "dokku proxy:ports-add    hermes-hub http:80:3000"
+
+# 5. Set the public domain (must resolve to <server-ip>)
+ssh root@<server-ip> "dokku domains:set hermes-hub hermes-hub.yourdomain.com"
+
+# 6. Now Let's Encrypt can complete the HTTP-01 challenge
+ssh root@<server-ip> "dokku plugin:install https://github.com/dokku/dokku-letsencrypt.git" 2>/dev/null || true
+ssh root@<server-ip> "dokku letsencrypt:set hermes-hub email you@example.com"
+ssh root@<server-ip> "dokku letsencrypt:enable hermes-hub"
+ssh root@<server-ip> "dokku letsencrypt:cron-job --add"
+```
+
+After step 6 the app is reachable at `https://hermes-hub.yourdomain.com` on bare 443, with HTTP→HTTPS redirect and auto-renewal enabled.
+
+**Checklist if it still fails:**
+
+- `dig +short hermes-hub.yourdomain.com` returns your server IP (DNS has propagated)
+- `curl -I http://hermes-hub.yourdomain.com` returns a Dokku-proxied response, not connection-refused
+- `ufw status` / cloud-provider firewall allows **80** and **443** inbound
+- The container actually listens on the port shown as "container port" — verify with `dokku logs hermes-hub` and the app's own startup message
+
+> **Note:** The Docklight one-line installer handles all of this automatically when you pass `DOMAIN=…` plus `ENABLE_HTTPS=1 LETSENCRYPT_EMAIL=…`. The steps above are for apps deployed separately (any app, not just Docklight), or when you skipped those flags and want to add HTTPS after the fact.
+
 ### "Could not resolve hostname"
 
 Use the IP address, not the hostname:
