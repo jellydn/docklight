@@ -8,7 +8,41 @@ Step-by-step guide to deploy Docklight on your Dokku server.
 curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/install.sh | sudo bash
 ```
 
-This installs Dokku (if needed), creates the `docklight` app, wires up persistent storage and the container → host SSH bridge, deploys from this repo, and prints the generated admin password. See [`scripts/install.sh`](../scripts/install.sh) for env-var options (`DOMAIN`, `ENABLE_HTTPS`, `LETSENCRYPT_EMAIL`, …). The rest of this guide covers the manual flow.
+Full options (custom domain + HTTPS + pre-authorize your public key for `git push`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/install.sh \
+  | sudo DOMAIN=docklight.example.com \
+         ENABLE_HTTPS=1 LETSENCRYPT_EMAIL=you@example.com \
+         ADMIN_SSH_KEY_URL=https://sshid.io/your-handle \
+         bash
+```
+
+This installs Dokku (if needed), creates the `docklight` app, wires up persistent storage and the container → host SSH bridge, deploys from this repo, prints the generated admin password, and (when `ADMIN_SSH_KEY_URL`/`ADMIN_SSH_KEY` is set) registers your public key with Dokku. See [`scripts/install.sh`](../scripts/install.sh) for all env vars. The rest of this guide covers the manual flow.
+
+### Granting SSH access after install
+
+If you ran the installer without `ADMIN_SSH_KEY_URL`, `ssh dokku@<server-ip>` will prompt for a password. Register your key from your laptop:
+
+```bash
+# From sshid.io (or any URL that serves authorized_keys, e.g. https://github.com/<user>.keys)
+curl -fsSL https://sshid.io/your-handle \
+  | ssh root@<server-ip> "sudo -u dokku dokku ssh-keys:add admin"
+
+# Or from a local public key file
+cat ~/.ssh/id_ed25519.pub \
+  | ssh root@<server-ip> "sudo -u dokku dokku ssh-keys:add admin"
+```
+
+> **If the URL returns more than one key** (sshid.io and `github.com/<user>.keys` often do), only the first one gets registered — `dokku ssh-keys:add` reads exactly one key per call. Either pipe each line in under its own name (`admin-laptop`, `admin-desktop`, …) or re-run the one-line installer with `ADMIN_SSH_KEY_URL=…`, which loops over every line and registers them as `admin`, `admin-2`, `admin-3`, ….
+
+Verify:
+
+```bash
+ssh dokku@<server-ip>     # should print Dokku's help banner, no prompt
+```
+
+Then `git remote add dokku dokku@<server-ip>:docklight` and `git push dokku main` work without a password.
 
 ## Prerequisites
 
@@ -205,11 +239,259 @@ Dokku performs zero-downtime deploys by default.
 
 ## Troubleshooting
 
-Your SSH key isn't registered with Dokku:
+### `ssh dokku@<server>` still prompts for a password
+
+The `dokku` user only accepts public-key auth — there is no password to type. A prompt means none of the keys your SSH client offered matched what's in `dokku ssh-keys:list` on the server.
+
+**1. See which keys your client is actually offering:**
 
 ```bash
-cat ~/.ssh/id_rsa.pub | ssh root@<your-server-ip> dokku ssh-keys:add admin
+ssh -v dokku@<server-ip> 2>&1 | grep -E "Offering|Authentications"
 ```
+
+You'll get lines like:
+
+```
+debug1: Offering public key: /Users/you/.ssh/id_ed25519 ED25519 SHA256:wRdXPmfN…
+debug1: Authentications that can continue: publickey,password
+```
+
+**2. Check which keys the server trusts:**
+
+```bash
+ssh root@<server-ip> dokku ssh-keys:list
+```
+
+Each line starts with the SHA256 fingerprint:
+
+```
+SHA256:pJ2PhyLr… NAME="admin" SSHCOMMAND_ALLOWED_KEYS="…"
+```
+
+**3. If no `Offering …` fingerprint matches any registered fingerprint, register the key you actually have on this laptop:**
+
+```bash
+cat ~/.ssh/id_ed25519.pub \
+  | ssh root@<server-ip> "dokku ssh-keys:add admin-laptop"
+```
+
+(Use whichever public key file matches what `ssh -v` was offering. If you only have `id_rsa`, use `~/.ssh/id_rsa.pub`.)
+
+Then `ssh dokku@<server-ip>` should connect immediately and print the Dokku help banner.
+
+#### Common cause: `ADMIN_SSH_KEY_URL` published a key from another machine
+
+If you installed with `ADMIN_SSH_KEY_URL=https://sshid.io/<handle>` (or `github.com/<user>.keys`), the server now trusts whatever public keys that URL serves — which may have been uploaded from a different laptop. The private half isn't on this machine, so SSH falls back to password auth.
+
+Two clean ways to handle it:
+
+- **Add this laptop's key under its own name** (recommended — keeps multi-device access):
+  ```bash
+  cat ~/.ssh/id_ed25519.pub \
+    | ssh root@<server-ip> "dokku ssh-keys:add admin-$(hostname -s)"
+  ```
+- **Or re-publish to sshid.io / GitHub from this laptop**, then on the server:
+  ```bash
+  ssh root@<server-ip> "dokku ssh-keys:remove admin"
+  curl -fsSL https://sshid.io/<handle> \
+    | ssh root@<server-ip> "dokku ssh-keys:add admin"
+  ```
+
+> **Tip:** When you run `dokku ssh-keys:add <name>` directly on the server as `root`, it auto-runs under the `dokku` user. The output line `SHA256:xxxx…` is the **fingerprint of the key it just added** — not an error. Confirm with `dokku ssh-keys:list`.
+
+### App URL shows a random `:NNNN` port and HTTPS won't enable
+
+After a successful deploy you may see Dokku print a URL like `http://hermes-hub.<server>.contaboserver.net:8008`, and `dokku letsencrypt:enable hermes-hub` fails with a challenge/validation error. This means two things:
+
+- Dokku didn't bind the app to port **80**, so it picked a random high port.
+- Let's Encrypt's HTTP-01 challenge needs to reach the app on port **80** on the domain you're certifying.
+
+**Worked example** — deploying [`jellydn/hermes-hub`](https://github.com/jellydn/hermes-hub) end-to-end with a domain and HTTPS:
+
+```bash
+# 1. Create the app (or use Docklight's "Create app" UI)
+ssh dokku@<server-ip> apps:create hermes-hub
+
+# 2. Push code from your laptop
+git remote add dokku dokku@<server-ip>:hermes-hub
+git push dokku main
+
+# At this point Dokku might announce something like:
+#   http://hermes-hub.<host>.contaboserver.net:8008
+
+# 3. Inspect the proxy port mapping
+ssh root@<server-ip> dokku proxy:ports hermes-hub
+# Example output:
+#   -----> Port mappings for hermes-hub
+#   scheme  host port  container port
+#   http    8008       3000
+
+# 4. Map the host side to port 80 (keep the container port from step 3)
+ssh root@<server-ip> "dokku proxy:ports-remove hermes-hub http:8008:3000"
+ssh root@<server-ip> "dokku proxy:ports-add    hermes-hub http:80:3000"
+
+# 5. Set the public domain (must resolve to <server-ip>)
+ssh root@<server-ip> "dokku domains:set hermes-hub hermes-hub.yourdomain.com"
+
+# 6. Now Let's Encrypt can complete the HTTP-01 challenge
+ssh root@<server-ip> "dokku plugin:install https://github.com/dokku/dokku-letsencrypt.git" 2>/dev/null || true
+ssh root@<server-ip> "dokku letsencrypt:set hermes-hub email you@example.com"
+ssh root@<server-ip> "dokku letsencrypt:enable hermes-hub"
+ssh root@<server-ip> "dokku letsencrypt:cron-job --add"
+```
+
+After step 6 the app is reachable at `https://hermes-hub.yourdomain.com` on bare 443, with HTTP→HTTPS redirect and auto-renewal enabled.
+
+**Checklist if it still fails:**
+
+- `dig +short hermes-hub.yourdomain.com` returns your server IP (DNS has propagated)
+- `curl -I http://hermes-hub.yourdomain.com` returns a Dokku-proxied response, not connection-refused
+- `ufw status` / cloud-provider firewall allows **80** and **443** inbound
+- The container actually listens on the port shown as "container port" — verify with `dokku logs hermes-hub` and the app's own startup message
+
+> **Note:** The Docklight one-line installer handles all of this automatically when you pass `DOMAIN=…` plus `ENABLE_HTTPS=1 LETSENCRYPT_EMAIL=…`. The steps above are for apps deployed separately (any app, not just Docklight), or when you skipped those flags and want to add HTTPS after the fact.
+
+### `dokku git:sync` fails on a private GitHub repo
+
+When you click **Sync from Git** in Docklight (or run `dokku git:sync --build my-app https://github.com/owner/repo.git`) for a **private** repo, the clone fails with:
+
+```
+fatal: could not read Username for 'https://github.com': terminal prompts disabled
+```
+
+`git` on the Dokku host has no GitHub credentials and there's no TTY to prompt on. Three ways to fix it, in order of preference:
+
+#### Option A — Deploy key over SSH (recommended for one repo)
+
+```bash
+# On the Dokku server (as root)
+sudo -u dokku ssh-keygen -t ed25519 -N "" -f /home/dokku/.ssh/gh_e-ninja -C "dokku@e-ninja"
+sudo -u dokku tee -a /home/dokku/.ssh/config >/dev/null <<EOF
+
+Host github.com-e-ninja
+  HostName github.com
+  User git
+  IdentityFile /home/dokku/.ssh/gh_e-ninja
+  IdentitiesOnly yes
+EOF
+cat /home/dokku/.ssh/gh_e-ninja.pub
+# → copy the printed line
+```
+
+In **GitHub → repo → Settings → Deploy keys → Add deploy key**, paste the line. Read-only is enough.
+
+Then sync using the SSH-aliased host:
+
+```bash
+dokku git:sync --build e-ninja git@github.com-e-ninja:jellydn/e-ninja.git main
+```
+
+The alias (`github.com-e-ninja`) keeps each repo's deploy key isolated from the others.
+
+#### Option B — Personal access token in the URL
+
+Quick for a one-off, but the token ends up in Dokku logs and command history. Create a fine-grained PAT with `Contents: Read-only` for that repo, then:
+
+```bash
+dokku git:sync --build e-ninja \
+  https://oauth2:<TOKEN>@github.com/jellydn/e-ninja.git main
+```
+
+Rotate the token if you suspect leakage.
+
+#### Option C — Push from your laptop instead of `git:sync`
+
+If your laptop already has GitHub auth, skip server-side cloning entirely:
+
+```bash
+# laptop
+git clone git@github.com:jellydn/e-ninja.git
+cd e-ninja
+git remote add dokku dokku@<server-ip>:e-ninja
+git push dokku main
+```
+
+This is also the simplest way to deploy a branch other than `main` (`git push dokku feature-x:main`).
+
+### New apps get a `*.contaboserver.net` (or other provider) hostname instead of `*.sslip.io`
+
+Dokku assigns each app a default URL of `<app>.<global-vhost>` whenever you don't set a per-app domain. On most VPS providers (Contabo, Hetzner, OVH, etc.) the system hostname is something like `vmi3322923.contaboserver.net`, and Dokku picks that up as the global vhost during bootstrap. Result: new apps end up at `e-ninja.vmi3322923.contaboserver.net` — which doesn't resolve publicly and isn't where you actually want users to land.
+
+**Check the current global vhost:**
+
+```bash
+ssh root@<server-ip> dokku domains:report --global
+# Domains global vhosts:   vmi3322923.contaboserver.net
+```
+
+**Fix it once, for every future app**, by pointing the global vhost at `<ip>.sslip.io` (or your own DNS):
+
+```bash
+ssh root@<server-ip> "dokku domains:set-global 217.216.32.119.sslip.io"
+```
+
+Now any app you create afterwards will default to `<app>.217.216.32.119.sslip.io`.
+
+**For apps that already exist** with the bad hostname, replace their per-app domains:
+
+```bash
+ssh root@<server-ip> bash <<'EOF'
+dokku domains:clear e-ninja
+dokku domains:set   e-ninja e-ninja.217.216.32.119.sslip.io
+dokku proxy:build-config e-ninja
+EOF
+```
+
+(`domains:clear` removes the inherited Contabo entry; `domains:set` adds the new one and rebuilds the proxy.)
+
+> **Tip:** Pass `GLOBAL_DOMAIN=<value>` to the one-line installer to set this from the start. The default (`<ip>.sslip.io`) is applied automatically; pass `GLOBAL_DOMAIN=` (empty) to keep whatever Dokku auto-detected, or `GLOBAL_DOMAIN=apps.yourdomain.com` to use a real DNS zone you control.
+
+### `dokku letsencrypt:*` says "not a dokku command"
+
+The plugin isn't installed yet. From the server as root:
+
+```bash
+dokku plugin:install https://github.com/dokku/dokku-letsencrypt.git
+dokku letsencrypt:set <app> email you@example.com
+dokku letsencrypt:enable <app>
+dokku letsencrypt:cron-job --add        # auto-renewal
+```
+
+If `letsencrypt:enable` then fails the HTTP-01 challenge, walk through the **"App URL shows a random `:NNNN` port"** section above — almost always either a missing port-80 mapping, missing DNS, or a firewall blocking inbound 80/443.
+
+### Uploads fail with `413 Request Entity Too Large`
+
+Dokku's nginx proxy defaults to a **1 MB** request body cap. Any file upload past that fails before it ever reaches your app, with `413 Request Entity Too Large` in the response and a corresponding `client intended to send too large body` line in `dokku nginx:access-logs <app>`.
+
+You set the limit per app — pick the largest media type your app accepts:
+
+| Media | Typical app-side limit | nginx must allow at least |
+| ----- | ---------------------- | ------------------------- |
+| Images | 10 MB | 10 MB |
+| Audio | 10 MB | 10 MB |
+| Video | 50 MB | 50 MB |
+
+Set the proxy cap to the **largest** value (50 MB covers all three):
+
+```bash
+ssh root@<server-ip> bash <<'EOF'
+dokku nginx:set <app> client-max-body-size 50m
+dokku proxy:build-config <app>
+EOF
+```
+
+The setting writes to `/home/dokku/<app>/nginx.conf.d/upload.conf` (or the equivalent under `nginx-vhosts`) as `client_max_body_size 50M;` and survives redeploys.
+
+> **App-side limits still apply.** nginx only controls what reaches your container; per-type caps (images 10 MB, audio 10 MB, video 50 MB) are enforced by the app itself and should be tightened in app config, not in nginx. The nginx limit just needs to be ≥ the largest app-level cap so legitimate uploads aren't cut off before validation.
+
+Verify:
+
+```bash
+ssh root@<server-ip> dokku nginx:report <app> | grep -i 'client max body size'
+# Nginx client max body size:    50m
+```
+
+If you set it but uploads still fail at 1 MB, you forgot `dokku proxy:build-config <app>` (or there's a separate reverse proxy in front, e.g. Cloudflare's own 100 MB cap on the Free plan — check that too).
 
 ### "Could not resolve hostname"
 
@@ -251,6 +533,123 @@ node server/dist/createUser.js <username> <new-password>
 ```
 
 This will update the password for the user. If the user doesn't exist, it will be created.
+
+## Add-on Services (Worked Example: RabbitMQ)
+
+Dokku ships a family of official service plugins (Postgres, Redis, MariaDB, MongoDB, **RabbitMQ**, …) that follow the same shape: install a plugin, create a service, link it to an app. Below is the end-to-end recipe using [`dokku-rabbitmq`](https://github.com/dokku/dokku-rabbitmq) as the example — the exact same flow applies to any other service plugin by swapping the plugin URL and the `rabbitmq:` namespace.
+
+### 1. Install the plugin (once per server, as root)
+
+```bash
+ssh root@<server-ip> "dokku plugin:install https://github.com/dokku/dokku-rabbitmq.git rabbitmq"
+```
+
+Verify:
+
+```bash
+ssh root@<server-ip> dokku plugin:list | grep rabbitmq
+# rabbitmq            1.x.x         enabled    dokku rabbitmq service plugin
+```
+
+### 2. Create a RabbitMQ service
+
+```bash
+# Default 3.x image; pin a version with --image-version 3.13
+ssh root@<server-ip> "dokku rabbitmq:create hermes-queue"
+```
+
+This:
+
+- Pulls the `rabbitmq:3-management` image (management UI included)
+- Stores data under `/var/lib/dokku/services/rabbitmq/hermes-queue/data` (persistent across container restarts and even plugin upgrades)
+- Generates a random user/password
+- Exposes AMQP on the **Dokku-internal** network only (not publicly reachable — good)
+
+Inspect:
+
+```bash
+ssh root@<server-ip> dokku rabbitmq:info hermes-queue
+#   Config dir:           /var/lib/dokku/services/rabbitmq/hermes-queue/config
+#   Data dir:             /var/lib/dokku/services/rabbitmq/hermes-queue/data
+#   Dsn:                  amqp://hermes-queue:<pass>@dokku-rabbitmq-hermes-queue:5672/hermes-queue
+#   Exposed ports:        -
+#   Id:                   <docker-id>
+#   Internal ip:          172.17.0.X
+#   Links:                -
+#   Service root:         /var/lib/dokku/services/rabbitmq/hermes-queue
+#   Status:               running
+#   Version:              rabbitmq:3-management
+```
+
+### 3. Link the service to your app
+
+Linking sets a config var (default name: `RABBITMQ_URL`) on the app and brings the service onto the app's Docker network so the hostname `dokku-rabbitmq-hermes-queue` resolves inside the container.
+
+```bash
+ssh root@<server-ip> "dokku rabbitmq:link hermes-queue hermes-hub"
+# -----> Setting config vars
+#        RABBITMQ_URL: amqp://hermes-queue:<pass>@dokku-rabbitmq-hermes-queue:5672/hermes-queue
+# -----> Restarting app hermes-hub
+```
+
+Your app code now reads `process.env.RABBITMQ_URL` (or the language equivalent) — no hostnames or credentials hard-coded.
+
+Need a different env var name (e.g. several queues, or matching an existing config key)?
+
+```bash
+ssh root@<server-ip> "dokku rabbitmq:link hermes-queue hermes-hub --alias QUEUE_URL"
+```
+
+### 4. (Optional) Expose the AMQP / management ports for off-server access
+
+By default RabbitMQ is reachable **only** from linked Dokku apps. If you want to connect from your laptop (e.g. with `rabbitmqadmin`, the management UI in a browser, or a CLI client), expose the ports:
+
+```bash
+# Map AMQP on 5672 and management UI on 15672 to high host ports
+ssh root@<server-ip> "dokku rabbitmq:expose hermes-queue 5672 15672"
+ssh root@<server-ip> dokku rabbitmq:info hermes-queue | grep -i exposed
+# Exposed ports:   container:5672 -> host:10049 container:15672 -> host:10050
+```
+
+Then browse to `http://<server-ip>:10050` (the management UI), or connect with `amqp://<user>:<pass>@<server-ip>:10049/<vhost>`.
+
+> **Lock these down.** The exposed ports skip Dokku's vhost routing and are reachable from anywhere. Either restrict in your VPS firewall (`ufw allow from <your-ip> to any port 10050`), or `dokku rabbitmq:unexpose hermes-queue` as soon as you're done.
+
+### 5. Common operations
+
+```bash
+# Backup the data dir (compressed tarball to stdout)
+ssh root@<server-ip> "dokku rabbitmq:export hermes-queue" > hermes-queue-$(date +%F).tgz
+
+# Restore
+cat hermes-queue-2026-06-01.tgz | ssh root@<server-ip> "dokku rabbitmq:import hermes-queue"
+
+# Upgrade the image (does an in-place container restart, data preserved)
+ssh root@<server-ip> "dokku rabbitmq:upgrade hermes-queue --image-version 3.13"
+
+# Unlink + destroy (irreversible — prompts for confirmation)
+ssh root@<server-ip> "dokku rabbitmq:unlink hermes-queue hermes-hub"
+ssh root@<server-ip> "dokku rabbitmq:destroy hermes-queue"
+```
+
+### 6. Gotchas
+
+- **Memory** — RabbitMQ defaults to refusing publishes when free RAM drops below ~40%. On a 2 GB VPS that can trip easily once the app, Docklight, Postgres, and Redis are all running. Tune with: `dokku rabbitmq:set hermes-queue memory-high-watermark 0.5` (50 % of total RAM) or, simpler, give the host more RAM.
+- **Persistent volumes survive `destroy`** — `dokku rabbitmq:destroy` removes the container and metadata, but the on-disk message store under `/var/lib/dokku/services/rabbitmq/<name>/data` may need manual cleanup if you want the space back.
+- **App must declare the queue** — Dokku gives you a connection string; it does **not** create exchanges/queues for you. That's your app's job at startup.
+- **Hostname-only inside the container** — use `dokku-rabbitmq-<service-name>` (or the linked env var), not `localhost`. Inside the container, `localhost` is the app itself.
+
+### Same pattern for other services
+
+| Plugin | Install URL | Default env var |
+| --- | --- | --- |
+| Postgres | `https://github.com/dokku/dokku-postgres.git` | `DATABASE_URL` |
+| Redis | `https://github.com/dokku/dokku-redis.git` | `REDIS_URL` |
+| MariaDB | `https://github.com/dokku/dokku-mariadb.git` | `DATABASE_URL` |
+| MongoDB | `https://github.com/dokku/dokku-mongo.git` | `MONGO_URL` |
+| RabbitMQ | `https://github.com/dokku/dokku-rabbitmq.git` | `RABBITMQ_URL` |
+
+The `create` / `link` / `expose` / `info` / `export` / `import` / `upgrade` / `destroy` subcommands work identically — substitute the service namespace (`postgres:create`, `redis:link`, etc.).
 
 ## Staging Environment (PR Preview)
 

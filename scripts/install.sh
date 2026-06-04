@@ -21,6 +21,13 @@
 #   LETSENCRYPT_EMAIL  Email for Let's Encrypt          (required if ENABLE_HTTPS=1)
 #   ADMIN_USERNAME Initial admin username               (default: admin)
 #   ADMIN_PASSWORD Initial admin password               (default: auto-generated)
+#   ADMIN_SSH_KEY_URL  URL of a public key to grant     (e.g. https://sshid.io/<user>
+#                      `git push dokku ...` access      or https://github.com/<user>.keys)
+#   ADMIN_SSH_KEY      Inline public key (one line)     (used if ADMIN_SSH_KEY_URL unset)
+#   GLOBAL_DOMAIN      Dokku global vhost; all new apps  (default: <ip>.sslip.io)
+#                      inherit "<app>.<GLOBAL_DOMAIN>".  Set to "" to keep what
+#                      Dokku auto-detected (often the provider's hostname, e.g.
+#                      vmi…contaboserver.net).
 
 set -euo pipefail
 
@@ -33,6 +40,12 @@ ENABLE_HTTPS="${ENABLE_HTTPS:-0}"
 LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-}"
 ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
+ADMIN_SSH_KEY_URL="${ADMIN_SSH_KEY_URL:-}"
+ADMIN_SSH_KEY="${ADMIN_SSH_KEY:-}"
+# GLOBAL_DOMAIN defaults to <ip>.sslip.io after IP detection; honor an explicit
+# empty value ("GLOBAL_DOMAIN=") to skip touching the global domain entirely.
+GLOBAL_DOMAIN_SET="${GLOBAL_DOMAIN+set}"
+GLOBAL_DOMAIN="${GLOBAL_DOMAIN-__AUTO__}"
 
 # ---------- helpers ----------
 log()  { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
@@ -89,10 +102,25 @@ else
   log "Dokku already installed: $(dokku version || echo unknown)"
 fi
 
-# Make sure the global domain is set so Dokku generates nice URLs
-if ! dokku domains:report --global 2>/dev/null | grep -q "Domains global vhosts:.*[a-z0-9]"; then
-  log "Setting Dokku global domain to ${SERVER_IP}.sslip.io"
-  dokku domains:set-global "${SERVER_IP}.sslip.io"
+# Make sure the global domain is set so EVERY app created on this server
+# (not just docklight) gets a usable default URL like "<app>.<ip>.sslip.io".
+# Without this, Dokku falls back to the system hostname — which on most
+# VPS providers is a non-routable name like "vmi…contaboserver.net".
+if [[ "${GLOBAL_DOMAIN}" == "__AUTO__" ]]; then
+  GLOBAL_DOMAIN="${SERVER_IP}.sslip.io"
+fi
+if [[ -n "${GLOBAL_DOMAIN}" ]]; then
+  CURRENT_GLOBAL="$(dokku domains:report --global 2>/dev/null \
+    | awk -F':' '/Domains global vhosts:/ {sub(/^[[:space:]]+/, "", $2); print $2; exit}' \
+    | xargs || true)"
+  if [[ "${CURRENT_GLOBAL}" != "${GLOBAL_DOMAIN}" ]]; then
+    log "Setting Dokku global domain to ${GLOBAL_DOMAIN} (was: ${CURRENT_GLOBAL:-<unset>})"
+    dokku domains:set-global "${GLOBAL_DOMAIN}"
+  else
+    log "Dokku global domain already ${GLOBAL_DOMAIN}"
+  fi
+elif [[ "${GLOBAL_DOMAIN_SET}" == "set" ]]; then
+  log "Skipping global domain (GLOBAL_DOMAIN explicitly empty)"
 fi
 
 # ---------- 2. create app ----------
@@ -119,6 +147,69 @@ fi
 # Note: the container does not need a known_hosts file. The server defaults
 # DOCKLIGHT_DOKKU_SSH_OPTS to "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 # (see server/lib/executor.ts), so host key verification is skipped inside the container.
+
+# ---------- 3b. register operator's public key with Dokku (optional) ----------
+# Lets you run `git push dokku main`, `ssh dokku@<ip> apps:list`, etc. from
+# your laptop without a password.
+ADMIN_KEY_REGISTERED=0
+ADMIN_KEY_CONTENT=""
+
+if [[ -n "${ADMIN_SSH_KEY_URL}" ]]; then
+  log "Fetching admin SSH key from ${ADMIN_SSH_KEY_URL}"
+  if ! ADMIN_KEY_CONTENT="$(curl -fsSL --max-time 10 "${ADMIN_SSH_KEY_URL}" 2>/dev/null)"; then
+    warn "Could not fetch ${ADMIN_SSH_KEY_URL} — skipping SSH key registration"
+    ADMIN_KEY_CONTENT=""
+  fi
+elif [[ -n "${ADMIN_SSH_KEY}" ]]; then
+  ADMIN_KEY_CONTENT="${ADMIN_SSH_KEY}"
+fi
+
+if [[ -n "${ADMIN_KEY_CONTENT}" ]]; then
+  # Normalize Windows line endings — sshid.io / GitHub keys are LF, but
+  # users sometimes paste from editors that inject CRLF.
+  ADMIN_KEY_CONTENT="${ADMIN_KEY_CONTENT//$'\r'/}"
+  # `dokku ssh-keys:add` reads from stdin and rejects exact duplicates,
+  # so loop over each non-empty, non-comment line independently.
+  i=0
+  admin_key_warned=0
+  # Matches the recognized SSH key type token followed by the base64 payload,
+  # tolerating authorized_keys entries that prefix options like
+  #   from="1.2.3.4" command="…" ssh-ed25519 AAAA…
+  # The payload is the first whitespace-separated chunk after the type token.
+  KEY_TYPE_RE='(^|[[:space:]])(ssh-(ed25519|rsa|dss)|ecdsa-sha2-nistp(256|384|521)|sk-ssh-ed25519@openssh\.com|sk-ecdsa-sha2-nistp256@openssh\.com)[[:space:]]+([^[:space:]]+)'
+  while IFS= read -r line; do
+    # Skip blank lines and comments (including those with leading whitespace).
+    [[ -z "${line//[[:space:]]/}" || "${line}" =~ ^[[:space:]]*# ]] && continue
+    i=$((i + 1))
+    key_name="${ADMIN_USERNAME}"
+    [[ "${i}" -gt 1 ]] && key_name="${ADMIN_USERNAME}-${i}"
+    # Extract the base64 key payload so we can de-dup against authorized_keys
+    # without re-calling `dokku ssh-keys:add` on every rerun.
+    if [[ "${line}" =~ ${KEY_TYPE_RE} ]]; then
+      key_body="${BASH_REMATCH[5]}"
+    else
+      # Fall back to the 2nd token for malformed-but-maybe-valid lines.
+      read -r -a key_parts <<< "${line}"
+      key_body="${key_parts[1]:-}"
+    fi
+    if [[ -n "${key_body}" ]] \
+       && sudo -u dokku grep -qF -- "${key_body}" "${DOKKU_HOME}/.ssh/authorized_keys" 2>/dev/null; then
+      log "SSH key '${key_name}' already registered with Dokku"
+      ADMIN_KEY_REGISTERED=1
+    elif printf '%s\n' "${line}" | dokku ssh-keys:add "${key_name}" >/dev/null 2>&1; then
+      log "Registered SSH key '${key_name}' with Dokku"
+      ADMIN_KEY_REGISTERED=1
+    else
+      # Real failure (malformed key, name collision under different bytes, …).
+      # Warn on the first FAILURE encountered — not just when i==1 — so a
+      # later bad key after earlier successes isn't silently dropped.
+      if [[ "${admin_key_warned}" -eq 0 ]]; then
+        warn "Could not register SSH key '${key_name}'"
+        admin_key_warned=1
+      fi
+    fi
+  done <<< "${ADMIN_KEY_CONTENT}"
+fi
 
 # ---------- 4. persistent storage ----------
 STORAGE_DIR="/var/lib/dokku/data/storage/${APP_NAME}"
@@ -230,6 +321,35 @@ EOF
 else
   echo "  Login with the admin credentials you provided."
   echo
+fi
+
+if [[ "${ADMIN_KEY_REGISTERED}" == "1" ]]; then
+  cat <<EOF
+  SSH access (no password needed):
+    ssh dokku@${SERVER_IP}                 # → Dokku command shell
+    git remote add dokku dokku@${SERVER_IP}:${APP_NAME}
+    git push dokku main                    # deploy from your laptop
+
+EOF
+else
+  cat <<EOF
+  ⚠️  No operator SSH key registered with Dokku yet.
+      \`ssh dokku@${SERVER_IP}\` will currently prompt for a password (no auth).
+
+      Pick ONE of the following, from your LAPTOP:
+
+      a) sshid.io / GitHub keys (recommended):
+         curl -fsSL https://sshid.io/<your-handle> | \\
+           ssh root@${SERVER_IP} "sudo -u dokku dokku ssh-keys:add admin"
+         # works with https://github.com/<user>.keys too
+
+      b) From your local public key file:
+         cat ~/.ssh/id_ed25519.pub | \\
+           ssh root@${SERVER_IP} "sudo -u dokku dokku ssh-keys:add admin"
+
+      Or re-run the installer with: ADMIN_SSH_KEY_URL=https://sshid.io/<handle>
+
+EOF
 fi
 
 cat <<EOF
