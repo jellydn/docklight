@@ -357,7 +357,7 @@ describe("databases", () => {
 				name: "queue",
 				plugin: "rabbitmq",
 				linkedApps: ["api", "worker"],
-				connectionInfo: "amqp://queue@localhost",
+				connectionInfo: "amqp://localhost/queue",
 			},
 		]);
 		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku rabbitmq:list");

@@ -143,7 +143,7 @@ export async function getDatabases(): Promise<
 						} else if (plugin === "mongo") {
 							connectionInfo = `mongodb://localhost`;
 						} else if (plugin === "rabbitmq") {
-							connectionInfo = `amqp://${dbName}@localhost`;
+							connectionInfo = `amqp://localhost/${dbName}`;
 						}
 
 						return { name: dbName, plugin, linkedApps, connectionInfo };

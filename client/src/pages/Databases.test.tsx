@@ -59,7 +59,7 @@ const mockDatabases: Database[] = [
 		name: "queue",
 		plugin: "rabbitmq",
 		linkedApps: ["api"],
-		connectionInfo: "amqp://queue@localhost",
+		connectionInfo: "amqp://localhost/queue",
 	},
 ];
 
