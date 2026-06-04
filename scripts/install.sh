@@ -165,20 +165,34 @@ elif [[ -n "${ADMIN_SSH_KEY}" ]]; then
 fi
 
 if [[ -n "${ADMIN_KEY_CONTENT}" ]]; then
+  # Normalize Windows line endings — sshid.io / GitHub keys are LF, but
+  # users sometimes paste from editors that inject CRLF.
+  ADMIN_KEY_CONTENT="${ADMIN_KEY_CONTENT//$'\r'/}"
   # `dokku ssh-keys:add` reads from stdin and rejects exact duplicates,
   # so loop over each non-empty, non-comment line independently.
   i=0
   while IFS= read -r line; do
-    [[ -z "${line// }" || "${line}" == \#* ]] && continue
+    # Skip blank lines and comments (including those with leading whitespace).
+    [[ -z "${line//[[:space:]]/}" || "${line}" =~ ^[[:space:]]*# ]] && continue
     i=$((i + 1))
     key_name="${ADMIN_USERNAME}"
     [[ "${i}" -gt 1 ]] && key_name="${ADMIN_USERNAME}-${i}"
-    if printf '%s\n' "${line}" | dokku ssh-keys:add "${key_name}" >/dev/null 2>&1; then
+    # The 2nd whitespace-separated field is the actual base64 key material.
+    # Check if it's already in authorized_keys so re-runs flip ADMIN_KEY_REGISTERED
+    # even when there's nothing new to add (idempotent path).
+    read -r -a key_parts <<< "${line}"
+    key_body="${key_parts[1]:-}"
+    if [[ -n "${key_body}" ]] \
+       && sudo -u dokku grep -qF -- "${key_body}" "${DOKKU_HOME}/.ssh/authorized_keys" 2>/dev/null; then
+      log "SSH key '${key_name}' already registered with Dokku"
+      ADMIN_KEY_REGISTERED=1
+    elif printf '%s\n' "${line}" | dokku ssh-keys:add "${key_name}" >/dev/null 2>&1; then
       log "Registered SSH key '${key_name}' with Dokku"
       ADMIN_KEY_REGISTERED=1
     else
-      # Already exists or invalid — only warn on the first one
-      [[ "${i}" -eq 1 ]] && warn "Could not register SSH key '${key_name}' (may already exist)"
+      # Real failure (malformed key, name collision under different bytes, …).
+      # Warn on the first one only to avoid spam when multiple keys fail.
+      [[ "${i}" -eq 1 ]] && warn "Could not register SSH key '${key_name}'"
     fi
   done <<< "${ADMIN_KEY_CONTENT}"
 fi

@@ -34,6 +34,8 @@ cat ~/.ssh/id_ed25519.pub \
   | ssh root@<server-ip> "sudo -u dokku dokku ssh-keys:add admin"
 ```
 
+> **If the URL returns more than one key** (sshid.io and `github.com/<user>.keys` often do), only the first one gets registered — `dokku ssh-keys:add` reads exactly one key per call. Either pipe each line in under its own name (`admin-laptop`, `admin-desktop`, …) or re-run the one-line installer with `ADMIN_SSH_KEY_URL=…`, which loops over every line and registers them as `admin`, `admin-2`, `admin-3`, ….
+
 Verify:
 
 ```bash
@@ -531,6 +533,123 @@ node server/dist/createUser.js <username> <new-password>
 ```
 
 This will update the password for the user. If the user doesn't exist, it will be created.
+
+## Add-on Services (Worked Example: RabbitMQ)
+
+Dokku ships a family of official service plugins (Postgres, Redis, MariaDB, MongoDB, **RabbitMQ**, …) that follow the same shape: install a plugin, create a service, link it to an app. Below is the end-to-end recipe using [`dokku-rabbitmq`](https://github.com/dokku/dokku-rabbitmq) as the example — the exact same flow applies to any other service plugin by swapping the plugin URL and the `rabbitmq:` namespace.
+
+### 1. Install the plugin (once per server, as root)
+
+```bash
+ssh root@<server-ip> "dokku plugin:install https://github.com/dokku/dokku-rabbitmq.git rabbitmq"
+```
+
+Verify:
+
+```bash
+ssh root@<server-ip> dokku plugin:list | grep rabbitmq
+# rabbitmq            1.x.x         enabled    dokku rabbitmq service plugin
+```
+
+### 2. Create a RabbitMQ service
+
+```bash
+# Default 3.x image; pin a version with --image-version 3.13
+ssh root@<server-ip> "dokku rabbitmq:create hermes-queue"
+```
+
+This:
+
+- Pulls the `rabbitmq:3-management` image (management UI included)
+- Stores data under `/var/lib/dokku/services/rabbitmq/hermes-queue/data` (persistent across container restarts and even plugin upgrades)
+- Generates a random user/password
+- Exposes AMQP on the **Dokku-internal** network only (not publicly reachable — good)
+
+Inspect:
+
+```bash
+ssh root@<server-ip> dokku rabbitmq:info hermes-queue
+#   Config dir:           /var/lib/dokku/services/rabbitmq/hermes-queue/config
+#   Data dir:             /var/lib/dokku/services/rabbitmq/hermes-queue/data
+#   Dsn:                  amqp://hermes-queue:<pass>@dokku-rabbitmq-hermes-queue:5672/hermes-queue
+#   Exposed ports:        -
+#   Id:                   <docker-id>
+#   Internal ip:          172.17.0.X
+#   Links:                -
+#   Service root:         /var/lib/dokku/services/rabbitmq/hermes-queue
+#   Status:               running
+#   Version:              rabbitmq:3-management
+```
+
+### 3. Link the service to your app
+
+Linking sets a config var (default name: `RABBITMQ_URL`) on the app and brings the service onto the app's Docker network so the hostname `dokku-rabbitmq-hermes-queue` resolves inside the container.
+
+```bash
+ssh root@<server-ip> "dokku rabbitmq:link hermes-queue hermes-hub"
+# -----> Setting config vars
+#        RABBITMQ_URL: amqp://hermes-queue:<pass>@dokku-rabbitmq-hermes-queue:5672/hermes-queue
+# -----> Restarting app hermes-hub
+```
+
+Your app code now reads `process.env.RABBITMQ_URL` (or the language equivalent) — no hostnames or credentials hard-coded.
+
+Need a different env var name (e.g. several queues, or matching an existing config key)?
+
+```bash
+ssh root@<server-ip> "dokku rabbitmq:link hermes-queue hermes-hub --alias QUEUE_URL"
+```
+
+### 4. (Optional) Expose the AMQP / management ports for off-server access
+
+By default RabbitMQ is reachable **only** from linked Dokku apps. If you want to connect from your laptop (e.g. with `rabbitmqadmin`, the management UI in a browser, or a CLI client), expose the ports:
+
+```bash
+# Map AMQP on 5672 and management UI on 15672 to high host ports
+ssh root@<server-ip> "dokku rabbitmq:expose hermes-queue 5672 15672"
+ssh root@<server-ip> dokku rabbitmq:info hermes-queue | grep -i exposed
+# Exposed ports:   container:5672 -> host:10049 container:15672 -> host:10050
+```
+
+Then browse to `http://<server-ip>:10050` (the management UI), or connect with `amqp://<user>:<pass>@<server-ip>:10049/<vhost>`.
+
+> **Lock these down.** The exposed ports skip Dokku's vhost routing and are reachable from anywhere. Either restrict in your VPS firewall (`ufw allow from <your-ip> to any port 10050`), or `dokku rabbitmq:unexpose hermes-queue` as soon as you're done.
+
+### 5. Common operations
+
+```bash
+# Backup the data dir (compressed tarball to stdout)
+ssh root@<server-ip> "dokku rabbitmq:export hermes-queue" > hermes-queue-$(date +%F).tgz
+
+# Restore
+cat hermes-queue-2026-06-01.tgz | ssh root@<server-ip> "dokku rabbitmq:import hermes-queue"
+
+# Upgrade the image (does an in-place container restart, data preserved)
+ssh root@<server-ip> "dokku rabbitmq:upgrade hermes-queue --image-version 3.13"
+
+# Unlink + destroy (irreversible — prompts for confirmation)
+ssh root@<server-ip> "dokku rabbitmq:unlink hermes-queue hermes-hub"
+ssh root@<server-ip> "dokku rabbitmq:destroy hermes-queue"
+```
+
+### 6. Gotchas
+
+- **Memory** — RabbitMQ defaults to refusing publishes when free RAM drops below ~40%. On a 2 GB VPS that can trip easily once the app, Docklight, Postgres, and Redis are all running. Tune with: `dokku rabbitmq:set hermes-queue memory-high-watermark 0.5` (50 % of total RAM) or, simpler, give the host more RAM.
+- **Persistent volumes survive `destroy`** — `dokku rabbitmq:destroy` removes the container and metadata, but the on-disk message store under `/var/lib/dokku/services/rabbitmq/<name>/data` may need manual cleanup if you want the space back.
+- **App must declare the queue** — Dokku gives you a connection string; it does **not** create exchanges/queues for you. That's your app's job at startup.
+- **Hostname-only inside the container** — use `dokku-rabbitmq-<service-name>` (or the linked env var), not `localhost`. Inside the container, `localhost` is the app itself.
+
+### Same pattern for other services
+
+| Plugin | Install URL | Default env var |
+| --- | --- | --- |
+| Postgres | `https://github.com/dokku/dokku-postgres.git` | `DATABASE_URL` |
+| Redis | `https://github.com/dokku/dokku-redis.git` | `REDIS_URL` |
+| MariaDB | `https://github.com/dokku/dokku-mariadb.git` | `DATABASE_URL` |
+| MongoDB | `https://github.com/dokku/dokku-mongo.git` | `MONGO_URL` |
+| RabbitMQ | `https://github.com/dokku/dokku-rabbitmq.git` | `RABBITMQ_URL` |
+
+The `create` / `link` / `expose` / `info` / `export` / `import` / `upgrade` / `destroy` subcommands work identically — substitute the service namespace (`postgres:create`, `redis:link`, etc.).
 
 ## Staging Environment (PR Preview)
 

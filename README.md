@@ -99,14 +99,16 @@ Available env vars: `APP_NAME`, `DOMAIN`, `REPO_URL`, `BRANCH`, `DOKKU_VERSION`,
 **Already installed without `ADMIN_SSH_KEY_URL`?** Add your key from your laptop:
 
 ```bash
-# Using sshid.io (or github.com/<user>.keys)
-curl -fsSL https://sshid.io/your-handle \
-  | ssh root@<server-ip> "sudo -u dokku dokku ssh-keys:add admin"
-
-# Or from a local file
+# Single key from a local file
 cat ~/.ssh/id_ed25519.pub \
   | ssh root@<server-ip> "sudo -u dokku dokku ssh-keys:add admin"
+
+# Single key from sshid.io / github.com/<user>.keys
+curl -fsSL https://sshid.io/your-handle \
+  | ssh root@<server-ip> "sudo -u dokku dokku ssh-keys:add admin"
 ```
+
+> **Multiple keys?** `dokku ssh-keys:add` accepts **one key per call**. If `https://sshid.io/<handle>` or `https://github.com/<user>.keys` returns several lines, pipe them in individually under distinct names (`admin-laptop`, `admin-desktop`, …), or — easier — re-run the installer with `ADMIN_SSH_KEY_URL=…`, which loops over every line and registers them as `admin`, `admin-2`, `admin-3`, ….
 
 > **Still getting `dokku@<host>'s password:` after adding a key?** Your local key probably doesn't match what was registered (common when `ADMIN_SSH_KEY_URL` published a key from another machine). See [docs/deployment.md → SSH still prompts for a password](docs/deployment.md#ssh-dokkuserver-still-prompts-for-a-password) for the 3-step debug + fix.
 
