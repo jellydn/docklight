@@ -9,6 +9,7 @@ interface ConfirmDialogProps {
 	onConfirm: () => void;
 	confirmDisabled?: boolean;
 	submitting?: boolean;
+	submittingText?: string;
 	confirmText?: string;
 	isDestructive?: boolean;
 	children: ReactNode;
@@ -21,6 +22,7 @@ export function ConfirmDialog({
 	onConfirm,
 	confirmDisabled = false,
 	submitting = false,
+	submittingText = "Processing...",
 	confirmText = "Confirm",
 	isDestructive = false,
 	children,
@@ -80,7 +82,7 @@ export function ConfirmDialog({
 						className={`px-4 py-2 ${buttonClass} disabled:bg-gray-300 disabled:cursor-not-allowed`}
 						type="button"
 					>
-						{submitting ? "Processing..." : confirmText}
+						{submitting ? submittingText : confirmText}
 					</button>
 				</div>
 			</div>
