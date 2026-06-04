@@ -171,17 +171,27 @@ if [[ -n "${ADMIN_KEY_CONTENT}" ]]; then
   # `dokku ssh-keys:add` reads from stdin and rejects exact duplicates,
   # so loop over each non-empty, non-comment line independently.
   i=0
+  admin_key_warned=0
+  # Matches the recognized SSH key type token followed by the base64 payload,
+  # tolerating authorized_keys entries that prefix options like
+  #   from="1.2.3.4" command="…" ssh-ed25519 AAAA…
+  # The payload is the first whitespace-separated chunk after the type token.
+  KEY_TYPE_RE='(^|[[:space:]])(ssh-(ed25519|rsa|dss)|ecdsa-sha2-nistp(256|384|521)|sk-ssh-ed25519@openssh\.com|sk-ecdsa-sha2-nistp256@openssh\.com)[[:space:]]+([^[:space:]]+)'
   while IFS= read -r line; do
     # Skip blank lines and comments (including those with leading whitespace).
     [[ -z "${line//[[:space:]]/}" || "${line}" =~ ^[[:space:]]*# ]] && continue
     i=$((i + 1))
     key_name="${ADMIN_USERNAME}"
     [[ "${i}" -gt 1 ]] && key_name="${ADMIN_USERNAME}-${i}"
-    # The 2nd whitespace-separated field is the actual base64 key material.
-    # Check if it's already in authorized_keys so re-runs flip ADMIN_KEY_REGISTERED
-    # even when there's nothing new to add (idempotent path).
-    read -r -a key_parts <<< "${line}"
-    key_body="${key_parts[1]:-}"
+    # Extract the base64 key payload so we can de-dup against authorized_keys
+    # without re-calling `dokku ssh-keys:add` on every rerun.
+    if [[ "${line}" =~ ${KEY_TYPE_RE} ]]; then
+      key_body="${BASH_REMATCH[5]}"
+    else
+      # Fall back to the 2nd token for malformed-but-maybe-valid lines.
+      read -r -a key_parts <<< "${line}"
+      key_body="${key_parts[1]:-}"
+    fi
     if [[ -n "${key_body}" ]] \
        && sudo -u dokku grep -qF -- "${key_body}" "${DOKKU_HOME}/.ssh/authorized_keys" 2>/dev/null; then
       log "SSH key '${key_name}' already registered with Dokku"
@@ -191,8 +201,12 @@ if [[ -n "${ADMIN_KEY_CONTENT}" ]]; then
       ADMIN_KEY_REGISTERED=1
     else
       # Real failure (malformed key, name collision under different bytes, …).
-      # Warn on the first one only to avoid spam when multiple keys fail.
-      [[ "${i}" -eq 1 ]] && warn "Could not register SSH key '${key_name}'"
+      # Warn on the first FAILURE encountered — not just when i==1 — so a
+      # later bad key after earlier successes isn't silently dropped.
+      if [[ "${admin_key_warned}" -eq 0 ]]; then
+        warn "Could not register SSH key '${key_name}'"
+        admin_key_warned=1
+      fi
     fi
   done <<< "${ADMIN_KEY_CONTENT}"
 fi
