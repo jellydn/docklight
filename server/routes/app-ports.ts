@@ -69,7 +69,11 @@ export function registerAppPortRoutes(app: express.Application): void {
 				dokkuCommand: DokkuCommands.portsAdd(name, schemeValue, hostPort, containerPortValue),
 				auditAction: "port:add",
 				appName: name,
-				auditDetails: { scheme: schemeValue, hostPort, containerPort: containerPortValue },
+				auditDetails: {
+					scheme: schemeValue,
+					hostPort,
+					containerPort: containerPortValue,
+				},
 			});
 			return;
 		}
@@ -115,7 +119,11 @@ export function registerAppPortRoutes(app: express.Application): void {
 				dokkuCommand: DokkuCommands.portsRemove(name, schemeValue, hostPort, containerPortValue),
 				auditAction: "port:remove",
 				appName: name,
-				auditDetails: { scheme: schemeValue, hostPort, containerPort: containerPortValue },
+				auditDetails: {
+					scheme: schemeValue,
+					hostPort,
+					containerPort: containerPortValue,
+				},
 			});
 			return;
 		}

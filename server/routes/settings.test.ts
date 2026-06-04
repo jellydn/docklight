@@ -88,7 +88,10 @@ describe("Settings routes", () => {
 
 		it("should return 400 when validation fails", async () => {
 			vi.mocked(validateSettings).mockReturnValue([
-				{ field: "logLevel", message: "Must be one of: fatal, error, warn, info, debug, trace" },
+				{
+					field: "logLevel",
+					message: "Must be one of: fatal, error, warn, info, debug, trace",
+				},
 			]);
 
 			const response = await request(app).put("/api/settings").send({ logLevel: "invalid" });

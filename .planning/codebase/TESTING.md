@@ -5,14 +5,17 @@
 ## Test Framework
 
 **Runner:**
+
 - Vitest 4.0.0 (both server and client)
 - Config: `server/vitest.config.ts`, `client/vitest.config.ts`
 
 **Assertion Library:**
+
 - Vitest built-in assertions (based on Chai)
 - @testing-library/jest-dom for DOM assertions (client)
 
 **Run Commands:**
+
 ```bash
 just test                         # Run all tests
 just server-test                  # Run server tests
@@ -26,15 +29,18 @@ cd client && bun run test:coverage  # Client coverage
 ## Test File Organization
 
 **Location:**
+
 - Co-located with source: `app.test.ts` next to `app.ts`
 - Server: `server/lib/*.test.ts`, `server/routes/*.test.ts`
 - Client: `client/src/pages/*.test.tsx`, `client/src/components/*.test.tsx`
 
 **Naming:**
+
 - Source: `<module>.ts` → Test: `<module>.test.ts`
 - Component: `<Component>.tsx` → Test: `<Component>.test.tsx`
 
 **Structure:**
+
 ```
 server/
   lib/
@@ -54,6 +60,7 @@ client/src/
 ## Test Structure
 
 **Suite Organization:**
+
 ```typescript
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -76,6 +83,7 @@ describe("functionName", () => {
 ```
 
 **Patterns:**
+
 - Setup: `beforeEach()` to reset mocks before each test
 - Arrange-Act-Assert structure for clarity
 - Descriptive test names: "should [do something] when [condition]"
@@ -85,6 +93,7 @@ describe("functionName", () => {
 **Framework:** Vitest (`vi`)
 
 **Patterns:**
+
 ```typescript
 // Mock a module
 vi.mock("./lib/executor.js", () => ({
@@ -109,20 +118,24 @@ beforeEach(() => {
 ```
 
 **What to Mock:**
+
 - External dependencies (SSH, file system, HTTP)
 - Module imports (`executeCommand`, database queries)
 
 **What NOT to Mock:**
+
 - Pure functions and utilities
 - Parsing logic
 
 ## Fixtures and Factories
 
 **Test Data:**
+
 - Inline in test files (no separate fixtures directory)
 - Mock data defined as constants or inline strings in each test
 
 **Location:**
+
 - Co-located with test files, defined inline
 
 ## Coverage
@@ -130,6 +143,7 @@ beforeEach(() => {
 **Requirements:** No enforced target, but good coverage maintained
 
 **View Coverage:**
+
 ```bash
 cd server && bun run test:coverage
 cd client && bun run test:coverage
@@ -140,15 +154,18 @@ cd client && bun run test:coverage
 ## Test Types
 
 **Unit Tests:**
+
 - Focus: Individual functions and modules
 - Scope: Pure functions, CLI output parsing, validation
 - Mock external dependencies
 
 **Integration Tests:**
+
 - Focus: API endpoints with Supertest (server)
 - Scope: HTTP request/response handling, authentication middleware
 
 **E2E Tests:**
+
 - Framework: Playwright
 - Location: `client/playwright.config.ts`
 - Commands: `just client-e2e`, `just client-e2e-ui`
@@ -157,6 +174,7 @@ cd client && bun run test:coverage
 ## Common Patterns
 
 **Async Testing:**
+
 ```typescript
 it("should handle async operations", async () => {
   const result = await asyncFunction();
@@ -165,6 +183,7 @@ it("should handle async operations", async () => {
 ```
 
 **Error Testing:**
+
 ```typescript
 it("should return error when command fails", async () => {
   mockExecuteCommand.mockResolvedValue({
@@ -182,6 +201,7 @@ it("should return error when command fails", async () => {
 ```
 
 **Component Testing (Client):**
+
 ```typescript
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
@@ -196,4 +216,4 @@ describe("MyComponent", () => {
 
 ---
 
-*Testing analysis: 2026-03-11*
+_Testing analysis: 2026-03-11_

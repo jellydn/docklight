@@ -40,7 +40,11 @@ function parseSshTarget(target: string): { host: string; username: string; port:
 			if (rest.startsWith(":")) {
 				port = parseInt(rest.slice(1), 10);
 			}
-			return { host, username, port: Number.isNaN(port) ? DEFAULT_SSH_PORT : port };
+			return {
+				host,
+				username,
+				port: Number.isNaN(port) ? DEFAULT_SSH_PORT : port,
+			};
 		}
 	}
 
@@ -95,7 +99,9 @@ export function registerSettingsRoutes(app: express.Application): void {
 
 		updateSettings(updates);
 
-		safeAuditLog(req, "settings:update", null, { fields: Object.keys(updates) });
+		safeAuditLog(req, "settings:update", null, {
+			fields: Object.keys(updates),
+		});
 
 		res.json(getSettings());
 	});
@@ -144,7 +150,10 @@ export function registerSettingsRoutes(app: express.Application): void {
 							stdout: "SSH connection successful",
 							stderr: "",
 						});
-						safeAuditLog(req, "settings:test-connection", null, { target, success: true });
+						safeAuditLog(req, "settings:test-connection", null, {
+							target,
+							success: true,
+						});
 					} else {
 						sse.sendError(result.stderr || "Command execution failed");
 						sse.sendResult({
@@ -153,7 +162,10 @@ export function registerSettingsRoutes(app: express.Application): void {
 							stdout: "",
 							stderr: result.stderr || "Command execution failed",
 						});
-						safeAuditLog(req, "settings:test-connection", null, { target, success: false });
+						safeAuditLog(req, "settings:test-connection", null, {
+							target,
+							success: false,
+						});
 					}
 				} catch (err) {
 					const errorMessage = err instanceof Error ? err.message : "Connection failed";
@@ -187,9 +199,10 @@ export function registerSettingsRoutes(app: express.Application): void {
 					if (result.code === 0 && result.stdout.trim() === "connection-ok") {
 						res.json({ success: true, message: "SSH connection successful" });
 					} else {
-						res
-							.status(400)
-							.json({ success: false, error: result.stderr || "Command execution failed" });
+						res.status(400).json({
+							success: false,
+							error: result.stderr || "Command execution failed",
+						});
 					}
 					safeAuditLog(req, "settings:test-connection", null, {
 						target,

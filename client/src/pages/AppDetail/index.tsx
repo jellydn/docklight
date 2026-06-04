@@ -92,7 +92,10 @@ export function AppDetail() {
 	const [pendingScaleChanges, setPendingScaleChanges] = useState<ScaleChange[]>([]);
 	const [scaleSubmitting, setScaleSubmitting] = useState(false);
 	const [scaleChanges, setScaleChanges] = useState<Record<string, number>>({});
-	const [copySuccess, setCopySuccess] = useState<{ remote: boolean; push: boolean }>({
+	const [copySuccess, setCopySuccess] = useState<{
+		remote: boolean;
+		push: boolean;
+	}>({
 		remote: false,
 		push: false,
 	});
@@ -933,7 +936,10 @@ export function AppDetail() {
 
 		await streamAction(`/apps/${encodeURIComponent(name)}/docker-options`, "docker-option:add", {
 			method: "POST",
-			body: JSON.stringify({ phase: newDockerOptionPhase, option: newDockerOption }),
+			body: JSON.stringify({
+				phase: newDockerOptionPhase,
+				option: newDockerOption,
+			}),
 			onSuccess: () => {
 				setNewDockerOption("");
 				void refetchDockerOptions();

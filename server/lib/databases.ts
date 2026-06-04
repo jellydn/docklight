@@ -10,7 +10,7 @@ export interface Database {
 }
 
 // List of supported database plugins
-const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"] as const;
+const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo", "rabbitmq"] as const;
 type SupportedPlugin = (typeof SUPPORTED_PLUGINS)[number];
 
 export function parseInstalledPlugins(pluginListOutput: string): SupportedPlugin[] {
@@ -142,6 +142,8 @@ export async function getDatabases(): Promise<
 							connectionInfo = `redis://localhost:6379`;
 						} else if (plugin === "mongo") {
 							connectionInfo = `mongodb://localhost`;
+						} else if (plugin === "rabbitmq") {
+							connectionInfo = `amqp://${dbName}@localhost`;
 						}
 
 						return { name: dbName, plugin, linkedApps, connectionInfo };

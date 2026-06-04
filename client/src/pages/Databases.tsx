@@ -7,20 +7,34 @@ import { useAuth } from "@/contexts/auth-context.js";
 import { queryKeys } from "../lib/query-keys.js";
 import { AppSchema, type Database, DatabaseSchema } from "../lib/schemas.js";
 
-const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo"];
+const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo", "rabbitmq"];
 
 const PLUGIN_INSTALL_COMMANDS = [
 	{
 		label: "Postgres",
 		command: "sudo dokku plugin:install https://github.com/dokku/dokku-postgres.git",
 	},
-	{ label: "Redis", command: "sudo dokku plugin:install https://github.com/dokku/dokku-redis.git" },
-	{ label: "MySQL", command: "sudo dokku plugin:install https://github.com/dokku/dokku-mysql.git" },
+	{
+		label: "Redis",
+		command: "sudo dokku plugin:install https://github.com/dokku/dokku-redis.git",
+	},
+	{
+		label: "MySQL",
+		command: "sudo dokku plugin:install https://github.com/dokku/dokku-mysql.git",
+	},
 	{
 		label: "MariaDB",
 		command: "sudo dokku plugin:install https://github.com/dokku/dokku-mariadb.git",
 	},
-	{ label: "Mongo", command: "sudo dokku plugin:install https://github.com/dokku/dokku-mongo.git" },
+	{
+		label: "Mongo",
+		command: "sudo dokku plugin:install https://github.com/dokku/dokku-mongo.git",
+	},
+	{
+		label: "RabbitMQ",
+		command:
+			"sudo dokku plugin:install https://github.com/dokku/dokku-rabbitmq.git --name rabbitmq",
+	},
 ] as const;
 
 export function Databases() {
@@ -99,7 +113,10 @@ export function Databases() {
 
 		setLinkSubmitting(true);
 		await streamAction(`/databases/${encodeURIComponent(linkDbName)}/link`, "link database", {
-			body: JSON.stringify({ plugin: getDbPlugin(linkDbName), app: linkAppName }),
+			body: JSON.stringify({
+				plugin: getDbPlugin(linkDbName),
+				app: linkAppName,
+			}),
 			onSuccess: () => {
 				setLinkDbName("");
 				setLinkAppName("");
@@ -134,7 +151,10 @@ export function Databases() {
 			`/databases/${encodeURIComponent(pendingUnlinkDb)}/unlink`,
 			"unlink database",
 			{
-				body: JSON.stringify({ plugin: getDbPlugin(pendingUnlinkDb), app: pendingUnlinkApp }),
+				body: JSON.stringify({
+					plugin: getDbPlugin(pendingUnlinkDb),
+					app: pendingUnlinkApp,
+				}),
 				onSuccess: () => {
 					closeUnlinkDialog();
 					void queryClient.invalidateQueries({ queryKey: queryKeys.databases });

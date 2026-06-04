@@ -110,7 +110,9 @@ describe("setupLogStreaming", () => {
 
 		server = new EventEmitter() as unknown as http.Server;
 		(
-			server as unknown as { on: (event: string, handler: (...args: unknown[]) => void) => void }
+			server as unknown as {
+				on: (event: string, handler: (...args: unknown[]) => void) => void;
+			}
 		).on = vi.fn((event: string, handler: (...args: unknown[]) => void) => {
 			if (event === "upgrade") {
 				upgradeHandler = handler as (
@@ -122,7 +124,10 @@ describe("setupLogStreaming", () => {
 		});
 
 		vi.mocked(isValidAppName).mockReturnValue(true);
-		vi.mocked(verifyToken).mockReturnValue({ authenticated: true, username: "admin" });
+		vi.mocked(verifyToken).mockReturnValue({
+			authenticated: true,
+			username: "admin",
+		});
 
 		setupLogStreaming(server);
 	});
@@ -251,7 +256,9 @@ describe("setupLogStreaming", () => {
 				headers: Record<string, string | string[]>;
 			};
 
-			req.socket = { remoteAddress: "203.0.113.1" } as net.Socket & { remoteAddress?: string };
+			req.socket = { remoteAddress: "203.0.113.1" } as net.Socket & {
+				remoteAddress?: string;
+			};
 			req.headers = req.headers ?? {};
 			req.headers["x-forwarded-for"] = "10.0.0.1";
 
@@ -271,7 +278,9 @@ describe("setupLogStreaming", () => {
 				headers: Record<string, string | string[]>;
 			};
 
-			req.socket = { remoteAddress: "203.0.113.2" } as net.Socket & { remoteAddress?: string };
+			req.socket = { remoteAddress: "203.0.113.2" } as net.Socket & {
+				remoteAddress?: string;
+			};
 			req.headers = req.headers ?? {};
 
 			upgradeHandler(req, socket, Buffer.alloc(0));
@@ -290,7 +299,9 @@ describe("setupLogStreaming", () => {
 				headers: Record<string, string | string[]>;
 			};
 
-			req.socket = { remoteAddress: "127.0.0.1" } as net.Socket & { remoteAddress?: string };
+			req.socket = { remoteAddress: "127.0.0.1" } as net.Socket & {
+				remoteAddress?: string;
+			};
 			req.headers = req.headers ?? {};
 			req.headers["x-forwarded-for"] = "192.168.1.100";
 
@@ -309,7 +320,9 @@ describe("setupLogStreaming", () => {
 				headers: Record<string, string | string[]>;
 			};
 
-			req.socket = { remoteAddress: "203.0.113.50" } as net.Socket & { remoteAddress?: string };
+			req.socket = { remoteAddress: "203.0.113.50" } as net.Socket & {
+				remoteAddress?: string;
+			};
 			req.headers = req.headers ?? {};
 			req.headers["x-forwarded-for"] = "10.0.0.1";
 
@@ -328,7 +341,9 @@ describe("setupLogStreaming", () => {
 				headers: Record<string, string | string[]>;
 			};
 
-			req.socket = { remoteAddress: "127.0.0.1" } as net.Socket & { remoteAddress?: string };
+			req.socket = { remoteAddress: "127.0.0.1" } as net.Socket & {
+				remoteAddress?: string;
+			};
 			req.headers = req.headers ?? {};
 			req.headers["x-forwarded-for"] = ["192.168.1.100, 10.0.0.1"];
 
@@ -359,11 +374,16 @@ describe("cleanup interval", () => {
 	it("should terminate connections that do not respond to ping", () => {
 		const server = new EventEmitter() as unknown as http.Server;
 		(
-			server as unknown as { on: (event: string, handler: (...args: unknown[]) => void) => void }
+			server as unknown as {
+				on: (event: string, handler: (...args: unknown[]) => void) => void;
+			}
 		).on = vi.fn();
 
 		vi.mocked(isValidAppName).mockReturnValue(true);
-		vi.mocked(verifyToken).mockReturnValue({ authenticated: true, username: "admin" });
+		vi.mocked(verifyToken).mockReturnValue({
+			authenticated: true,
+			username: "admin",
+		});
 
 		setupLogStreaming(server);
 
@@ -387,11 +407,16 @@ describe("cleanup interval", () => {
 	it("should terminate idle connections", () => {
 		const server = new EventEmitter() as unknown as http.Server;
 		(
-			server as unknown as { on: (event: string, handler: (...args: unknown[]) => void) => void }
+			server as unknown as {
+				on: (event: string, handler: (...args: unknown[]) => void) => void;
+			}
 		).on = vi.fn();
 
 		vi.mocked(isValidAppName).mockReturnValue(true);
-		vi.mocked(verifyToken).mockReturnValue({ authenticated: true, username: "admin" });
+		vi.mocked(verifyToken).mockReturnValue({
+			authenticated: true,
+			username: "admin",
+		});
 
 		setupLogStreaming(server);
 
@@ -421,11 +446,16 @@ describe("cleanup interval", () => {
 	it("should log metrics when connections are terminated", () => {
 		const server = new EventEmitter() as unknown as http.Server;
 		(
-			server as unknown as { on: (event: string, handler: (...args: unknown[]) => void) => void }
+			server as unknown as {
+				on: (event: string, handler: (...args: unknown[]) => void) => void;
+			}
 		).on = vi.fn();
 
 		vi.mocked(isValidAppName).mockReturnValue(true);
-		vi.mocked(verifyToken).mockReturnValue({ authenticated: true, username: "admin" });
+		vi.mocked(verifyToken).mockReturnValue({
+			authenticated: true,
+			username: "admin",
+		});
 
 		setupLogStreaming(server);
 
@@ -464,7 +494,9 @@ describe("event stream endpoint", () => {
 
 		server = new EventEmitter() as unknown as http.Server;
 		(
-			server as unknown as { on: (event: string, handler: (...args: unknown[]) => void) => void }
+			server as unknown as {
+				on: (event: string, handler: (...args: unknown[]) => void) => void;
+			}
 		).on = vi.fn((event: string, handler: (...args: unknown[]) => void) => {
 			if (event === "upgrade") {
 				upgradeHandler = handler as (
@@ -476,7 +508,10 @@ describe("event stream endpoint", () => {
 		});
 
 		vi.mocked(isValidAppName).mockReturnValue(true);
-		vi.mocked(verifyToken).mockReturnValue({ authenticated: true, username: "admin" });
+		vi.mocked(verifyToken).mockReturnValue({
+			authenticated: true,
+			username: "admin",
+		});
 
 		setupLogStreaming(server);
 	});

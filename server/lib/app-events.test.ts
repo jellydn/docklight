@@ -21,7 +21,11 @@ describe("app-events", () => {
 		const listener = vi.fn();
 		const unsubscribe = subscribeToAppEvents(listener);
 
-		const event = { type: "app:restart", appName: "my-app", timestamp: "2024-01-01T00:00:00.000Z" };
+		const event = {
+			type: "app:restart",
+			appName: "my-app",
+			timestamp: "2024-01-01T00:00:00.000Z",
+		};
 		broadcastAppEvent(event);
 
 		expect(listener).toHaveBeenCalledWith(event);
@@ -52,7 +56,11 @@ describe("app-events", () => {
 		const unsub1 = subscribeToAppEvents(listener1);
 		const unsub2 = subscribeToAppEvents(listener2);
 
-		const event = { type: "app:start", appName: "my-app", timestamp: "2024-01-01T00:00:00.000Z" };
+		const event = {
+			type: "app:start",
+			appName: "my-app",
+			timestamp: "2024-01-01T00:00:00.000Z",
+		};
 		broadcastAppEvent(event);
 
 		expect(listener1).toHaveBeenCalledWith(event);
@@ -94,13 +102,20 @@ describe("app-events", () => {
 		const failingUnsub = subscribeToAppEvents(failingListener);
 		const workingUnsub = subscribeToAppEvents(workingListener);
 
-		const event = { type: "app:restart", appName: "my-app", timestamp: "2024-01-01T00:00:00.000Z" };
+		const event = {
+			type: "app:restart",
+			appName: "my-app",
+			timestamp: "2024-01-01T00:00:00.000Z",
+		};
 		broadcastAppEvent(event);
 
 		expect(failingListener).toHaveBeenCalledWith(event);
 		expect(workingListener).toHaveBeenCalledWith(event);
 		expect(logger.error).toHaveBeenCalledWith(
-			expect.objectContaining({ eventType: event.type, appName: event.appName }),
+			expect.objectContaining({
+				eventType: event.type,
+				appName: event.appName,
+			}),
 			"Error in app event listener"
 		);
 

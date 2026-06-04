@@ -10,7 +10,11 @@ export interface PortMapping {
 	containerPort: number;
 }
 
-function createPortError(message: string): { error: string; command: string; exitCode: number } {
+function createPortError(message: string): {
+	error: string;
+	command: string;
+	exitCode: number;
+} {
 	return {
 		error: message,
 		command: "",
