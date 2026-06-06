@@ -47,6 +47,7 @@ export function AppDomains({
 									value={newDomain}
 									onChange={(e) => onDomainChange(e.target.value)}
 									className="flex-1 border rounded px-3 py-2"
+									aria-label="New domain name"
 								/>
 								<button
 									onClick={onAdd}

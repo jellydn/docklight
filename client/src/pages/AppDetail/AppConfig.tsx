@@ -57,6 +57,7 @@ export function AppConfig({
 									value={newKey}
 									onChange={(e) => onKeyChange(e.target.value)}
 									className="flex-1 border rounded px-3 py-2"
+									aria-label="Config variable key"
 								/>
 								<input
 									type="text"
@@ -64,6 +65,7 @@ export function AppConfig({
 									value={newValue}
 									onChange={(e) => onValueChange(e.target.value)}
 									className="flex-1 border rounded px-3 py-2"
+									aria-label="Config variable value"
 								/>
 								<button
 									onClick={onAdd}

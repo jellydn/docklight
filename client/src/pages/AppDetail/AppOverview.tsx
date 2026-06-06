@@ -116,6 +116,7 @@ export function AppOverview({
 													defaultValue={count}
 													onChange={(e) => onScaleChange(type, parseInt(e.target.value, 10), count)}
 													className="w-20 border rounded px-2 py-1"
+													aria-label={`Scale ${type}`}
 												/>
 											</div>
 										)}

@@ -107,6 +107,7 @@ export function AppBuildpacks({
 									value={newUrl}
 									onChange={(e) => onUrlChange(e.target.value)}
 									className="flex-1 border rounded px-3 py-2"
+									aria-label="Buildpack URL"
 								/>
 								<input
 									type="number"
@@ -115,6 +116,7 @@ export function AppBuildpacks({
 									onChange={(e) => onIndexChange(e.target.value)}
 									min="1"
 									className="w-32 border rounded px-3 py-2"
+									aria-label="Buildpack index"
 								/>
 								<button
 									onClick={onAdd}

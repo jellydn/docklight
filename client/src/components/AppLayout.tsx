@@ -54,6 +54,7 @@ export function AppLayout() {
 						<h1 className="text-xl font-bold">Docklight</h1>
 					</div>
 					<button
+						type="button"
 						onClick={closeSidebar}
 						className="md:hidden text-gray-400 hover:text-white"
 						aria-label="Close menu"
@@ -100,6 +101,7 @@ export function AppLayout() {
 						</Link>
 					)}
 					<button
+						type="button"
 						onClick={handleLogout}
 						className="w-full text-left px-4 py-2 hover:bg-gray-800 mt-4"
 					>
@@ -118,6 +120,7 @@ export function AppLayout() {
 				{/* Mobile top bar */}
 				<header className="md:hidden flex items-center px-4 py-3 bg-gray-900 text-white">
 					<button
+						type="button"
 						onClick={() => setSidebarOpen(true)}
 						className="text-gray-400 hover:text-white mr-3"
 						aria-label="Open menu"

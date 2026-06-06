@@ -110,6 +110,7 @@ export function AppDockerOptions({
 									value={newOption}
 									onChange={(e) => onOptionChange(e.target.value)}
 									className="flex-1 border rounded px-3 py-2 font-mono text-sm"
+									aria-label="Docker option"
 								/>
 								<button
 									onClick={onAdd}
