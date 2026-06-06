@@ -5,16 +5,60 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateAppDialog } from "@/components/CreateAppDialog.js";
+import { useToast } from "@/components/ToastProvider.js";
 import { apiFetch } from "../lib/api.js";
 import { useAuth } from "@/contexts/auth-context.js";
 import { formatDeployTime } from "@/lib/utils.js";
 import { queryKeys } from "../lib/query-keys.js";
-import { ServerHealthSchema, AppSchema, CommandHistorySchema } from "../lib/schemas.js";
+import {
+	ServerHealthSchema,
+	AppSchema,
+	CommandHistorySchema,
+	CommandResultSchema,
+	type ServerHealth,
+} from "../lib/schemas.js";
+
+type HealthStatus = ServerHealth["status"];
+
+function getStatusLabel(status: HealthStatus): string {
+	switch (status) {
+		case "ok":
+			return "OK";
+		case "warning":
+			return "Watch closely";
+		case "critical":
+			return "Warning";
+	}
+}
+
+function getStatusBannerClasses(status: HealthStatus): string {
+	switch (status) {
+		case "ok":
+			return "bg-green-50 border-green-200 text-green-800";
+		case "warning":
+			return "bg-yellow-50 border-yellow-200 text-yellow-800";
+		case "critical":
+			return "bg-red-50 border-red-200 text-red-800";
+	}
+}
+
+function getHealthBarColor(status: HealthStatus): string {
+	switch (status) {
+		case "ok":
+			return "bg-green-500";
+		case "warning":
+			return "bg-yellow-500";
+		case "critical":
+			return "bg-red-500";
+	}
+}
 
 export function Dashboard() {
 	const { canModify } = useAuth();
+	const { addToast } = useToast();
 	const queryClient = useQueryClient();
 	const [createAppOpen, setCreateAppOpen] = useState(false);
+	const [cleanupSubmitting, setCleanupSubmitting] = useState(false);
 
 	const { data: health, isLoading: healthLoading } = useQuery({
 		queryKey: queryKeys.health,
@@ -46,10 +90,27 @@ export function Dashboard() {
 		void queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
 	};
 
-	const getHealthColor = (value: number) => {
-		if (value < 60) return "bg-green-500";
-		if (value < 85) return "bg-yellow-500";
-		return "bg-red-500";
+	const handleCleanup = async () => {
+		if (
+			!confirm(
+				"Clean unused Dokku containers and images? This runs dokku cleanup and does not remove volumes."
+			)
+		) {
+			return;
+		}
+
+		setCleanupSubmitting(true);
+		try {
+			await apiFetch("/server/cleanup", CommandResultSchema, { method: "POST" });
+			addToast("success", "Cleanup completed");
+			void queryClient.invalidateQueries({ queryKey: queryKeys.health });
+			void queryClient.invalidateQueries({ queryKey: queryKeys.commands });
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : "Cleanup failed";
+			addToast("error", message);
+		} finally {
+			setCleanupSubmitting(false);
+		}
 	};
 
 	const getStatusBadge = (status: string) => {
@@ -74,14 +135,28 @@ export function Dashboard() {
 
 			{!isLoading && (
 				<>
-					{/* Server Health */}
 					<Card className="mb-6">
-						<CardHeader>
+						<CardHeader className="flex flex-row items-center justify-between space-y-0">
 							<CardTitle>Server Health</CardTitle>
+							{canModify && (
+								<Button
+									size="sm"
+									variant="outline"
+									onClick={handleCleanup}
+									disabled={cleanupSubmitting}
+								>
+									{cleanupSubmitting ? "Cleaning..." : "Clean unused"}
+								</Button>
+							)}
 						</CardHeader>
 						<CardContent>
 							{health && (
 								<div className="space-y-4">
+									<div
+										className={`rounded-md border px-4 py-3 text-sm font-medium ${getStatusBannerClasses(health.status)}`}
+									>
+										VPS status: {getStatusLabel(health.status)}
+									</div>
 									<div>
 										<div className="flex justify-between mb-1">
 											<span className="text-sm font-medium">CPU</span>
@@ -89,7 +164,7 @@ export function Dashboard() {
 										</div>
 										<div className="w-full bg-gray-200 rounded-full h-2">
 											<div
-												className={`h-2 rounded-full transition-all ${getHealthColor(health.cpu)}`}
+												className={`h-2 rounded-full transition-all ${getHealthBarColor(health.resources.cpu.status)}`}
 												style={{ width: `${health.cpu}%` }}
 											></div>
 										</div>
@@ -101,7 +176,7 @@ export function Dashboard() {
 										</div>
 										<div className="w-full bg-gray-200 rounded-full h-2">
 											<div
-												className={`h-2 rounded-full transition-all ${getHealthColor(health.memory)}`}
+												className={`h-2 rounded-full transition-all ${getHealthBarColor(health.resources.memory.status)}`}
 												style={{ width: `${health.memory}%` }}
 											></div>
 										</div>
@@ -113,7 +188,7 @@ export function Dashboard() {
 										</div>
 										<div className="w-full bg-gray-200 rounded-full h-2">
 											<div
-												className={`h-2 rounded-full transition-all ${getHealthColor(health.disk)}`}
+												className={`h-2 rounded-full transition-all ${getHealthBarColor(health.resources.disk.status)}`}
 												style={{ width: `${health.disk}%` }}
 											></div>
 										</div>
@@ -123,7 +198,6 @@ export function Dashboard() {
 						</CardContent>
 					</Card>
 
-					{/* Apps */}
 					<div className="bg-white rounded-lg shadow p-6 mb-6">
 						<div className="flex items-center justify-between mb-4">
 							<h2 className="text-lg font-semibold">Apps</h2>
@@ -175,7 +249,6 @@ export function Dashboard() {
 						)}
 					</div>
 
-					{/* Recent Activity */}
 					<div className="bg-white rounded-lg shadow p-6">
 						<h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
 						{(commands?.length ?? 0) === 0 ? (

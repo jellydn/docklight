@@ -28,11 +28,24 @@ export const ApiErrorSchema = z.object({
 
 export type ApiError = z.infer<typeof ApiErrorSchema>;
 
+const HealthStatusSchema = z.enum(["ok", "warning", "critical"]);
+
+const ResourceHealthSchema = z.object({
+	value: z.number(),
+	status: HealthStatusSchema,
+});
+
 // Server health schema
 export const ServerHealthSchema = z.object({
 	cpu: z.number(),
 	memory: z.number(),
 	disk: z.number(),
+	status: HealthStatusSchema,
+	resources: z.object({
+		cpu: ResourceHealthSchema,
+		memory: ResourceHealthSchema,
+		disk: ResourceHealthSchema,
+	}),
 });
 
 export type ServerHealth = z.infer<typeof ServerHealthSchema>;

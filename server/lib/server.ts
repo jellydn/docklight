@@ -1,9 +1,68 @@
-import { executeCommand } from "./executor.js";
+import { executeCommand, type CommandResult } from "./executor.js";
+
+export type HealthStatus = "ok" | "warning" | "critical";
+
+export interface ResourceHealth {
+	value: number;
+	status: HealthStatus;
+}
 
 export interface ServerHealth {
 	cpu: number;
 	memory: number;
 	disk: number;
+	status: HealthStatus;
+	resources: {
+		cpu: ResourceHealth;
+		memory: ResourceHealth;
+		disk: ResourceHealth;
+	};
+}
+
+export function getResourceStatus(value: number): HealthStatus {
+	if (value >= 90) {
+		return "critical";
+	}
+	if (value >= 70) {
+		return "warning";
+	}
+	return "ok";
+}
+
+export function getOverallStatus(statuses: HealthStatus[]): HealthStatus {
+	if (statuses.includes("critical")) {
+		return "critical";
+	}
+	if (statuses.includes("warning")) {
+		return "warning";
+	}
+	return "ok";
+}
+
+function clampPercent(value: number): number {
+	return Math.min(100, Math.max(0, value));
+}
+
+export function buildServerHealth(cpu: number, memory: number, disk: number): ServerHealth {
+	const clampedCpu = clampPercent(cpu);
+	const clampedMemory = clampPercent(memory);
+	const clampedDisk = clampPercent(disk);
+
+	const cpuStatus = getResourceStatus(clampedCpu);
+	const memoryStatus = getResourceStatus(clampedMemory);
+	const diskStatus = getResourceStatus(clampedDisk);
+
+	return {
+		cpu: clampedCpu,
+		memory: clampedMemory,
+		disk: clampedDisk,
+		status: getOverallStatus([cpuStatus, memoryStatus, diskStatus]),
+		resources: {
+			cpu: { value: clampedCpu, status: cpuStatus },
+			memory: { value: clampedMemory, status: memoryStatus },
+			disk: { value: clampedDisk, status: diskStatus },
+		},
+	};
 }
 
 export async function getServerHealth(): Promise<
@@ -14,7 +73,6 @@ export async function getServerHealth(): Promise<
 		let memory = 0;
 		let disk = 0;
 
-		// Parse CPU from /proc/stat
 		const cpuResult = await executeCommand(
 			"grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage}'"
 		);
@@ -22,7 +80,6 @@ export async function getServerHealth(): Promise<
 			cpu = parseFloat(cpuResult.stdout.trim()) || 0;
 		}
 
-		// Parse memory from free -m
 		const memResult = await executeCommand("free -m");
 		if (memResult.exitCode === 0) {
 			const lines = memResult.stdout.split("\n");
@@ -37,7 +94,6 @@ export async function getServerHealth(): Promise<
 			}
 		}
 
-		// Parse disk from df -h
 		const diskResult = await executeCommand("df -h / | awk 'NR==2 {print $5}'");
 		if (diskResult.exitCode === 0) {
 			const percentageStr = diskResult.stdout.trim();
@@ -47,11 +103,7 @@ export async function getServerHealth(): Promise<
 			}
 		}
 
-		return {
-			cpu: Math.min(100, Math.max(0, cpu)),
-			memory: Math.min(100, Math.max(0, memory)),
-			disk: Math.min(100, Math.max(0, disk)),
-		};
+		return buildServerHealth(cpu, memory, disk);
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
@@ -61,4 +113,8 @@ export async function getServerHealth(): Promise<
 			stderr: err.message || "",
 		};
 	}
+}
+
+export async function runServerCleanup(userId?: string): Promise<CommandResult> {
+	return executeCommand("dokku cleanup", 120000, { userId });
 }

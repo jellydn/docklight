@@ -64,6 +64,12 @@ test.describe("Login flow", () => {
       cpu: 10,
       memory: 20,
       disk: 30,
+      status: "ok",
+      resources: {
+        cpu: { value: 10, status: "ok" },
+        memory: { value: 20, status: "ok" },
+        disk: { value: 30, status: "ok" },
+      },
     });
     await mockJsonEndpoint(page, "**/api/apps", []);
     await mockJsonEndpoint(page, "**/api/commands*", []);
@@ -123,6 +129,12 @@ test.describe("Login flow", () => {
       cpu: 10,
       memory: 20,
       disk: 30,
+      status: "ok",
+      resources: {
+        cpu: { value: 10, status: "ok" },
+        memory: { value: 20, status: "ok" },
+        disk: { value: 30, status: "ok" },
+      },
     });
     await mockJsonEndpoint(page, "**/api/apps", []);
 
