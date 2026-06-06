@@ -40,7 +40,7 @@ export function handleCommandResult(res: express.Response, result: CommandResult
  */
 export function getUserId(req: express.Request): string | undefined {
 	const user = req.user as JWTPayload | undefined;
-	return user?.userId ? String(user.userId) : undefined;
+	return user?.userId !== undefined ? String(user.userId) : undefined;
 }
 
 export function getParam(params: unknown, key: string): string {

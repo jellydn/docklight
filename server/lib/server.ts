@@ -31,14 +31,10 @@ export function getResourceStatus(value: number): HealthStatus {
 	return "ok";
 }
 
+const OVERALL_STATUS_ORDER: HealthStatus[] = ["critical", "warning", "ok"];
+
 function getOverallStatus(statuses: HealthStatus[]): HealthStatus {
-	if (statuses.includes("critical")) {
-		return "critical";
-	}
-	if (statuses.includes("warning")) {
-		return "warning";
-	}
-	return "ok";
+	return OVERALL_STATUS_ORDER.find((status) => statuses.includes(status)) ?? "ok";
 }
 
 function clampPercent(value: number): number {

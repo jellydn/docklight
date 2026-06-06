@@ -27,16 +27,20 @@ export function registerServerRoutes(app: express.Application): void {
 		res.json(health);
 	});
 
-	app.post("/api/server/cleanup", authMiddleware, requireOperator, async (req, res) => {
-		const userId = getUserId(req);
-		const result = await executeCommand(DokkuCommands.cleanup(), CLEANUP_TIMEOUT_MS, { userId });
+	app.post("/api/server/cleanup", authMiddleware, requireOperator, async (req, res, next) => {
+		try {
+			const userId = getUserId(req);
+			const result = await executeCommand(DokkuCommands.cleanup(), CLEANUP_TIMEOUT_MS, { userId });
 
-		if (!handleCommandResult(res, result)) {
-			return;
+			if (!handleCommandResult(res, result)) {
+				return;
+			}
+
+			safeAuditLog(req, "server:cleanup", null);
+			del(HEALTH_CACHE_KEY);
+			res.json(result);
+		} catch (error) {
+			next(error);
 		}
-
-		safeAuditLog(req, "server:cleanup", null);
-		del(HEALTH_CACHE_KEY);
-		res.json(result);
 	});
 }
