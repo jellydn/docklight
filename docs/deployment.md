@@ -199,6 +199,22 @@ exit
 
 Now you can log in with the username and password you just created.
 
+## Server health monitoring
+
+The dashboard **Server Health** card shows live VPS resource usage for CPU, memory, and disk. Metrics refresh every 30 seconds.
+
+| Status   | Threshold | Dashboard label  |
+| -------- | --------- | ---------------- |
+| OK       | below 70% | OK               |
+| Warning  | 70–89%    | Watch closely    |
+| Critical | 90%+      | Warning          |
+
+The overall VPS status reflects the worst metric — if disk is at 95% but CPU is low, the banner shows critical.
+
+**Clean unused (operators and admins only):** click **Clean unused** on the Server Health card to run `dokku cleanup`. This removes dead containers and dangling images. It does **not** purge build caches (`repo:purge-cache`), run `repo:gc`, or execute `docker system prune`. Viewers can see health metrics but cannot trigger cleanup.
+
+If deploys fail with `no space left on device`, see [Disk full during deploy](#disk-full-during-deploy) for SSH-based recovery steps beyond what the dashboard button covers.
+
 ## Persistent Storage (Important)
 
 Docklight uses SQLite to store command history and user accounts. By default, the database path is controlled by the `DOCKLIGHT_DB_PATH` environment variable (defaults to `data/docklight.db` relative to the working directory). In the Docker container, this resolves to `/app/data/docklight.db`.
