@@ -524,6 +524,66 @@ Check Docker build logs during `git push`. Common causes:
 - npm install fails → check `package.json` for issues
 - TypeScript compilation fails → run `bun run typecheck` locally first
 
+### Disk full during deploy
+
+Symptoms during `git push dokku …:main` or a GitHub Actions staging deploy:
+
+- `no space left on device` in Docker build logs
+- Missing `/tmp/dokku-*` temp directories
+- `pushd /: not a git repository` cascading errors
+- `pre-receive hook declined`
+- `dokku repo:gc <app>` fails with `write error. Out of diskspace`
+
+The missing temp dirs and git errors are symptoms — the root cause is a full disk on the VPS.
+
+**1. Check free space:**
+
+```bash
+ssh dokku@<server-ip>  # or ssh root@<server-ip>
+df -h /
+docker system df
+```
+
+**2. Safe cleanup (dokku user or root):**
+
+```bash
+# Global: dead containers and dangling images
+dokku cleanup
+
+# Per app (repeat for each app on the server)
+dokku cleanup <app-name>
+dokku repo:purge-cache <app-name>
+dokku repo:gc <app-name>
+```
+
+**3. Clear stale deploy locks** (after failed deploys):
+
+```bash
+ssh root@<server-ip>
+rm -f /home/dokku/<app-name>/LOCK
+```
+
+**4. Aggressive cleanup (root only)** — use when step 2 is not enough:
+
+```bash
+docker builder prune -af
+docker system prune -af
+# Only if you accept volume removal risk:
+# docker system prune -af --volumes
+```
+
+**5. Redeploy** once `df -h` shows adequate free space:
+
+```bash
+git push dokku <your-branch>:main
+```
+
+A non-fast-forward rejection after cleanup is normal when the remote is ahead of your local branch — push the branch you intend to deploy, not necessarily local `main`.
+
+**From Docklight (operators/admins):** the dashboard **Clean unused** button runs `dokku cleanup` only. It does not purge build caches (`repo:purge-cache`), run `repo:gc`, or execute `docker system prune`. Those still require SSH.
+
+**Prevention on multi-app servers:** schedule weekly `dokku cleanup` and monthly `repo:purge-cache` + `repo:gc` across apps. Monitor disk via the Docklight dashboard health panel (warning at 70%, critical at 90%).
+
 ### Reset user password
 
 ```bash
