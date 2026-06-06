@@ -30,7 +30,6 @@ export function DeleteAppDialog({
 			submittingText="Deleting..."
 			confirmText="Delete App"
 			isDestructive
-			id="delete-dialog"
 		>
 			<p className="mb-4">
 				This action is <strong>irreversible</strong>. The app <strong>{appName}</strong> and all its
@@ -80,7 +79,6 @@ export function ScaleDialog({
 			submitting={submitting}
 			submittingText="Applying..."
 			confirmText="Confirm"
-			id="scale-dialog"
 		>
 			<p className="mb-3">
 				Apply these scaling changes for <strong>{appName}</strong>?

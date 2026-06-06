@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useId } from "react";
 import { useNativeDialog } from "@/hooks/use-native-dialog.js";
 import { X } from "lucide-react";
 
@@ -12,7 +13,6 @@ interface ConfirmDialogProps {
 	submittingText?: string;
 	confirmText?: string;
 	isDestructive?: boolean;
-	id?: string;
 	children: ReactNode;
 }
 
@@ -26,27 +26,25 @@ export function ConfirmDialog({
 	submittingText = "Processing...",
 	confirmText = "Confirm",
 	isDestructive = false,
-	id = "dialog-title",
 	children,
 }: ConfirmDialogProps) {
 	const dialogRef = useNativeDialog({ open: visible, onClose });
+	const titleId = useId();
 
 	const buttonClass = isDestructive
 		? "bg-red-600 text-white rounded hover:bg-red-700"
 		: "bg-blue-600 text-white rounded hover:bg-blue-700";
 
-	const labelledby = `${id}-heading`;
-
 	return (
 		<dialog
 			ref={dialogRef}
 			className="rounded p-0 max-w-md w-full bg-white backdrop:bg-black/50"
-			aria-labelledby={labelledby}
+			aria-labelledby={titleId}
 		>
 			<div className="p-6">
 				<div className="flex justify-between items-start mb-4">
 					<h2
-						id={labelledby}
+						id={titleId}
 						className={`text-lg font-semibold ${isDestructive ? "text-red-600" : ""}`}
 					>
 						{title}
