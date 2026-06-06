@@ -42,6 +42,7 @@ export function AuditFilters<T extends Record<string, string>>({
 									onFilterChange(field.name as keyof T, e.target.value as T[keyof T])
 								}
 								className="w-full border rounded px-3 py-2"
+								aria-label={field.label}
 							>
 								{field.options?.map((option) => (
 									<option key={option.value} value={option.value}>
@@ -59,6 +60,7 @@ export function AuditFilters<T extends Record<string, string>>({
 									onFilterChange(field.name as keyof T, e.target.value as T[keyof T])
 								}
 								className="w-full border rounded px-3 py-2"
+								aria-label={field.label}
 							/>
 						)}
 					</div>

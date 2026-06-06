@@ -75,6 +75,7 @@ export function AppNetwork({
 												onChange={(e) => onValueChange(e.target.value)}
 												placeholder="true/false or value"
 												className="border rounded px-3 py-1 text-sm"
+												aria-label={`Edit ${key}`}
 											/>
 											<button
 												onClick={() => onSave(key)}

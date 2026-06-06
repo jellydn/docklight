@@ -109,7 +109,7 @@ export function Audit() {
 		if (Object.keys(userFilters).length === 0) {
 			resetUserFilters(defaultUserFilters);
 		}
-	}, []);
+	}, [commandFilters, userFilters, resetCommandFilters, resetUserFilters]);
 
 	// Expanded rows for details
 	const [expandedCommandRows, setExpandedCommandRows] = useState<Set<number>>(new Set());

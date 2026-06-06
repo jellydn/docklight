@@ -63,6 +63,12 @@ export async function mockServerHealth(page: Page): Promise<void> {
     cpu: 45.5,
     memory: 62.3,
     disk: 78.9,
+    status: "warning",
+    resources: {
+      cpu: { value: 45.5, status: "ok" },
+      memory: { value: 62.3, status: "ok" },
+      disk: { value: 78.9, status: "warning" },
+    },
   });
 }
 

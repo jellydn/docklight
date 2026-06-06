@@ -33,7 +33,3 @@ export const SUPPORTED_PLUGINS = Object.keys(DATABASE_PLUGINS) as SupportedPlugi
 export function getPluginLabel(plugin: SupportedPlugin): string {
 	return DATABASE_PLUGINS[plugin].label;
 }
-
-export function getInstallCommand(plugin: SupportedPlugin): string {
-	return DATABASE_PLUGINS[plugin].installCommand;
-}

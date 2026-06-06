@@ -38,7 +38,8 @@ import { AppDockerOptions } from "./AppDockerOptions.js";
 import { AppNetwork } from "./AppNetwork.js";
 import { AppGit } from "./AppGit.js";
 import { AppChecks } from "./AppChecks.js";
-import { ConfirmDialog, DeleteAppDialog, ScaleDialog } from "./Dialogs.js";
+import { ConfirmDialog } from "../../components/ConfirmDialog.js";
+import { DeleteAppDialog, ScaleDialog } from "./Dialogs.js";
 import type { TabType } from "./types.js";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -332,22 +333,8 @@ export function AppDetail() {
 	const logsEndRef = useRef<HTMLPreElement>(null);
 
 	useEffect(() => {
-		if (activeTab === "logs" && name) {
-			connectWebSocket();
-		}
+		if (activeTab !== "logs" || !name) return;
 
-		return () => {
-			disconnectWebSocket();
-		};
-	}, [activeTab, name, lineCount]);
-
-	useEffect(() => {
-		if (autoScroll && logsEndRef.current) {
-			logsEndRef.current.scrollTop = logsEndRef.current.scrollHeight;
-		}
-	}, [logs, autoScroll]);
-
-	const connectWebSocket = () => {
 		const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 		const wsUrl = `${protocol}//${window.location.host}/api/apps/${name}/logs/stream`;
 
@@ -384,14 +371,18 @@ export function AppDetail() {
 		ws.onerror = () => {
 			setConnectionStatus("disconnected");
 		};
-	};
 
-	const disconnectWebSocket = () => {
-		if (wsRef.current) {
-			wsRef.current.close();
+		return () => {
+			ws.close();
 			wsRef.current = null;
+		};
+	}, [activeTab, name, lineCount]);
+
+	useEffect(() => {
+		if (autoScroll && logsEndRef.current) {
+			logsEndRef.current.scrollTop = logsEndRef.current.scrollHeight;
 		}
-	};
+	}, [logs, autoScroll]);
 
 	const handleAction = async (action: "restart" | "rebuild") => {
 		setPendingAction(action);
@@ -571,8 +562,8 @@ export function AppDetail() {
 		const gitRemoteCommand = `git remote add dokku dokku@${hostname}:${app.name}`;
 		try {
 			await navigator.clipboard.writeText(gitRemoteCommand);
-			setCopySuccess({ ...copySuccess, remote: true });
-			setTimeout(() => setCopySuccess({ ...copySuccess, remote: false }), 2000);
+			setCopySuccess((prev) => ({ ...prev, remote: true }));
+			setTimeout(() => setCopySuccess((prev) => ({ ...prev, remote: false })), 2000);
 		} catch {
 			// Fallback: user can manually copy
 		}
@@ -582,8 +573,8 @@ export function AppDetail() {
 		const gitPushCommand = "git push dokku main";
 		try {
 			await navigator.clipboard.writeText(gitPushCommand);
-			setCopySuccess({ ...copySuccess, push: true });
-			setTimeout(() => setCopySuccess({ ...copySuccess, push: false }), 2000);
+			setCopySuccess((prev) => ({ ...prev, push: true }));
+			setTimeout(() => setCopySuccess((prev) => ({ ...prev, push: false })), 2000);
 		} catch {
 			// Fallback: user can manually copy
 		}

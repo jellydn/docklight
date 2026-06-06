@@ -256,6 +256,7 @@ export function Databases() {
 							value={newDbPlugin}
 							onChange={(e) => setNewDbPlugin(e.target.value)}
 							className="border rounded px-3 py-2"
+							aria-label="Database plugin"
 						>
 							<option value="">Select plugin</option>
 							{SUPPORTED_PLUGINS.map((plugin) => (
@@ -270,8 +271,10 @@ export function Databases() {
 							value={newDbName}
 							onChange={(e) => setNewDbName(e.target.value)}
 							className="flex-1 border rounded px-3 py-2"
-						/>
+							aria-label="Database name"
+						/>{" "}
 						<button
+							type="button"
 							onClick={handleCreateDatabase}
 							disabled={!newDbPlugin || !newDbName || createDbSubmitting}
 							className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
@@ -321,6 +324,7 @@ export function Databases() {
 														<span>{app}</span>
 														{canModify && (
 															<button
+																type="button"
 																onClick={() => handleUnlinkDatabase(db.name, app)}
 																className="ml-4 text-red-600 hover:text-red-800 text-sm"
 																title="Unlink"
@@ -338,6 +342,7 @@ export function Databases() {
 									<div>
 										<strong className="text-gray-700">Connection Info:</strong>
 										<button
+											type="button"
 											onClick={() => toggleConnectionVisibility(db.name)}
 											className="font-mono text-sm cursor-pointer hover:text-blue-600 ml-2"
 										>
@@ -359,6 +364,7 @@ export function Databases() {
 														setLinkAppName(e.target.value);
 													}}
 													className="flex-1 border rounded px-3 py-2 text-sm"
+													aria-label="Link app selector"
 												>
 													<option value="">Select app</option>
 													{apps
@@ -370,6 +376,7 @@ export function Databases() {
 														))}
 												</select>
 												<button
+													type="button"
 													onClick={handleLinkDatabase}
 													disabled={linkAppName === "" || linkDbName !== db.name || linkSubmitting}
 													className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
@@ -384,6 +391,7 @@ export function Databases() {
 									{canModify && (
 										<div className="mt-4 pt-4 border-t">
 											<button
+												type="button"
 												onClick={() => handleDestroyDatabase(db.name)}
 												className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 text-sm"
 											>
@@ -409,6 +417,7 @@ export function Databases() {
 						</p>
 						<div className="flex justify-end space-x-2">
 							<button
+								type="button"
 								onClick={() => {
 									if (unlinkSubmitting) return;
 									setShowUnlinkDialog(false);
@@ -421,6 +430,7 @@ export function Databases() {
 								Cancel
 							</button>
 							<button
+								type="button"
 								onClick={confirmUnlinkDatabase}
 								disabled={unlinkSubmitting}
 								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
@@ -448,9 +458,11 @@ export function Databases() {
 							onChange={(e) => setConfirmDestroyName(e.target.value)}
 							placeholder={pendingDestroyDb}
 							className="w-full border rounded px-3 py-2 mb-4"
+							aria-label="Confirm database name"
 						/>
 						<div className="flex justify-end space-x-2">
 							<button
+								type="button"
 								onClick={() => {
 									if (destroySubmitting) return;
 									setShowDestroyDialog(false);
@@ -463,6 +475,7 @@ export function Databases() {
 								Cancel
 							</button>
 							<button
+								type="button"
 								onClick={confirmDestroyDatabase}
 								disabled={confirmDestroyName !== pendingDestroyDb || destroySubmitting}
 								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"

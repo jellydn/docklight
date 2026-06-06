@@ -72,7 +72,9 @@ export function AppPorts({
 											<th className="px-3 py-2 text-left text-sm font-medium text-gray-700">
 												Container Port
 											</th>
-											<th className="px-3 py-2" />
+											<th className="px-3 py-2">
+												<span className="sr-only">Actions</span>
+											</th>
 										</tr>
 									</thead>
 									<tbody className="divide-y divide-gray-200">
@@ -112,6 +114,7 @@ export function AppPorts({
 									value={newScheme}
 									onChange={(e) => onSchemeChange(e.target.value)}
 									className="border rounded px-3 py-2"
+									aria-label="Port scheme"
 								>
 									<option value="http">http</option>
 									<option value="https">https</option>
@@ -125,6 +128,7 @@ export function AppPorts({
 									min="1"
 									max="65535"
 									className="w-32 border rounded px-3 py-2"
+									aria-label="Host port"
 								/>
 								<input
 									type="number"
@@ -134,6 +138,7 @@ export function AppPorts({
 									min="1"
 									max="65535"
 									className="w-40 border rounded px-3 py-2"
+									aria-label="Container port"
 								/>
 								<button
 									onClick={onAdd}

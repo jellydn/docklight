@@ -19,7 +19,7 @@ export const CommandResultSchema = z.object({
 export type CommandResult = z.infer<typeof CommandResultSchema>;
 
 // API Error schema
-export const ApiErrorSchema = z.object({
+const ApiErrorSchema = z.object({
 	error: z.string(),
 	command: z.string().optional(),
 	exitCode: z.number().optional(),
@@ -28,11 +28,24 @@ export const ApiErrorSchema = z.object({
 
 export type ApiError = z.infer<typeof ApiErrorSchema>;
 
-// Server health schema
+const HealthStatusSchema = z.enum(["ok", "warning", "critical"]);
+
+const ResourceHealthSchema = z.object({
+	value: z.number(),
+	status: HealthStatusSchema,
+});
+
+// Server health schema. Top-level cpu/memory/disk mirror resources.*.value for backward compatibility.
 export const ServerHealthSchema = z.object({
 	cpu: z.number(),
 	memory: z.number(),
 	disk: z.number(),
+	status: HealthStatusSchema,
+	resources: z.object({
+		cpu: ResourceHealthSchema,
+		memory: ResourceHealthSchema,
+		disk: ResourceHealthSchema,
+	}),
 });
 
 export type ServerHealth = z.infer<typeof ServerHealthSchema>;
@@ -113,7 +126,7 @@ export const CreateAppResultSchema = z.object({
 export type CreateAppResult = z.infer<typeof CreateAppResultSchema>;
 
 // Port mapping schema
-export const PortMappingSchema = z.object({
+const PortMappingSchema = z.object({
 	scheme: z.string(),
 	hostPort: z.number(),
 	containerPort: z.number(),
@@ -137,7 +150,7 @@ export const ProxyReportSchema = z.object({
 export type ProxyReport = z.infer<typeof ProxyReportSchema>;
 
 // Buildpack schema
-export const BuildpackSchema = z.object({
+const BuildpackSchema = z.object({
 	index: z.number(),
 	url: z.string(),
 });
@@ -188,7 +201,7 @@ export const GitInfoSchema = z.object({
 export type GitInfo = z.infer<typeof GitInfoSchema>;
 
 // User role
-export const UserRoleSchema = z.enum(["admin", "operator", "viewer"]);
+const UserRoleSchema = z.enum(["admin", "operator", "viewer"]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 // User schema (safe, no password hash)
@@ -214,7 +227,7 @@ export const AuthMeSchema = z.object({
 });
 
 // User audit log schema
-export const UserAuditLogSchema = z.object({
+const UserAuditLogSchema = z.object({
 	id: z.number(),
 	userId: z.number().nullable(),
 	action: z.string(),

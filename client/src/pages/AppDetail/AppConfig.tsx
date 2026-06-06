@@ -57,6 +57,7 @@ export function AppConfig({
 									value={newKey}
 									onChange={(e) => onKeyChange(e.target.value)}
 									className="flex-1 border rounded px-3 py-2"
+									aria-label="Config variable key"
 								/>
 								<input
 									type="text"
@@ -64,6 +65,7 @@ export function AppConfig({
 									value={newValue}
 									onChange={(e) => onValueChange(e.target.value)}
 									className="flex-1 border rounded px-3 py-2"
+									aria-label="Config variable value"
 								/>
 								<button
 									onClick={onAdd}
@@ -84,7 +86,9 @@ export function AppConfig({
 									<tr>
 										<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Key</th>
 										<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Value</th>
-										<th className="px-4 py-2" />
+										<th className="px-4 py-2">
+											<span className="sr-only">Actions</span>
+										</th>
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-gray-200">

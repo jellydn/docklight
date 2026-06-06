@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -87,7 +87,7 @@ describe("AppDetail", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByText("test-app")).toBeInTheDocument();
+			expect(screen.getByRole("heading", { name: "test-app" })).toBeInTheDocument();
 			const runningBadges = screen.getAllByText("running");
 			expect(runningBadges.length).toBeGreaterThan(0);
 		});
@@ -241,7 +241,7 @@ describe("AppDetail", () => {
 
 		await waitFor(() => {
 			expect(screen.getByText("Danger Zone")).toBeInTheDocument();
-			expect(screen.getByText("Delete App")).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "Delete App" })).toBeInTheDocument();
 		});
 	});
 
@@ -258,20 +258,15 @@ describe("AppDetail", () => {
 		);
 
 		await waitFor(() => {
-			const deleteButtons = screen.getAllByText("Delete App");
-			expect(deleteButtons.length).toBeGreaterThan(0);
+			expect(screen.getByRole("button", { name: "Delete App" })).toBeInTheDocument();
 		});
 
-		const deleteButtons = screen.getAllByText("Delete App");
-		await user.click(deleteButtons[0]);
+		const deleteButton = screen.getByRole("button", { name: "Delete App" });
+		await user.click(deleteButton);
 
 		await waitFor(() => {
-			expect(
-				screen.getByRole("heading", {
-					name: "Delete App",
-				})
-			).toBeInTheDocument();
-			expect(screen.getByText(/and all its data will be permanently deleted/i)).toBeInTheDocument();
+			const dialog = screen.getByRole("dialog", { name: "Delete App" });
+			expect(dialog).toHaveAttribute("open");
 		});
 	});
 
@@ -414,17 +409,28 @@ describe("AppDetail", () => {
 
 		it("should disable scale form during scale operation", async () => {
 			const user = userEvent.setup();
-			let resolveAction: (value: any) => void;
-			const pendingPromise = new Promise((resolve) => {
-				resolveAction = resolve;
+			let resolveStream: (() => void) | undefined;
+
+			const mockStream = new ReadableStream({
+				start(controller) {
+					const progress = `data: ${JSON.stringify({ type: "progress", message: "Scaling..." })}\n\n`;
+					controller.enqueue(new TextEncoder().encode(progress));
+					resolveStream = () => {
+						const result = `data: ${JSON.stringify({ type: "result", command: "dokku ps:scale test-app web=2", exitCode: 0, stdout: "", stderr: "" })}\n\n`;
+						controller.enqueue(new TextEncoder().encode(result));
+						controller.close();
+					};
+				},
 			});
 
-			apiFetchMock.mockImplementation((endpoint: string, _schema?: any, options?: any) => {
-				if (endpoint.includes("/scale") && options?.method === "POST") {
-					return pendingPromise;
-				}
-				return Promise.resolve(mockAppDetail);
-			});
+			vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+				new Response(mockStream, {
+					status: 200,
+					headers: { "Content-Type": "text/event-stream" },
+				})
+			);
+
+			apiFetchMock.mockResolvedValue(mockAppDetail);
 
 			renderWithQueryClient(
 				<MemoryRouter initialEntries={["/apps/test-app"]}>
@@ -442,16 +448,16 @@ describe("AppDetail", () => {
 			await user.clear(countInputs[0]);
 			await user.type(countInputs[0], "2");
 			await user.click(screen.getByText("Apply Scaling"));
-			const confirmButton = screen.getByRole("button", { name: "Confirm" });
+			const scaleDialog = await screen.findByRole("dialog", { name: "Confirm Scale" });
+			const confirmButton = within(scaleDialog).getByRole("button", { name: "Confirm" });
 			await user.click(confirmButton);
 
 			await waitFor(() => {
 				expect(confirmButton).toBeDisabled();
 			});
 
-			// Cleanup: resolve pending state update inside act
 			await act(async () => {
-				resolveAction!({ exitCode: 0, stdout: "", stderr: "" });
+				resolveStream?.();
 				await Promise.resolve();
 			});
 		});

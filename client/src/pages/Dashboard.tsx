@@ -1,18 +1,25 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateAppDialog } from "@/components/CreateAppDialog.js";
+import { ServerHealthCard } from "@/components/ServerHealthCard.js";
+import { useToast } from "@/components/ToastProvider.js";
 import { apiFetch } from "../lib/api.js";
 import { useAuth } from "@/contexts/auth-context.js";
 import { formatDeployTime } from "@/lib/utils.js";
 import { queryKeys } from "../lib/query-keys.js";
-import { ServerHealthSchema, AppSchema, CommandHistorySchema } from "../lib/schemas.js";
+import {
+	ServerHealthSchema,
+	AppSchema,
+	CommandHistorySchema,
+	CommandResultSchema,
+} from "../lib/schemas.js";
 
 export function Dashboard() {
 	const { canModify } = useAuth();
+	const { addToast } = useToast();
 	const queryClient = useQueryClient();
 	const [createAppOpen, setCreateAppOpen] = useState(false);
 
@@ -34,6 +41,18 @@ export function Dashboard() {
 		refetchInterval: 30000,
 	});
 
+	const cleanupMutation = useMutation({
+		mutationFn: () => apiFetch("/server/cleanup", CommandResultSchema, { method: "POST" }),
+		onSuccess: () => {
+			addToast("success", "Cleanup completed");
+			void queryClient.invalidateQueries({ queryKey: queryKeys.health });
+			void queryClient.invalidateQueries({ queryKey: queryKeys.commands });
+		},
+		onError: (error: Error) => {
+			addToast("error", error.message || "Cleanup failed");
+		},
+	});
+
 	const isLoading = healthLoading || appsLoading || commandsLoading;
 
 	const handleRefresh = () => {
@@ -44,12 +63,6 @@ export function Dashboard() {
 
 	const handleAppCreated = () => {
 		void queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
-	};
-
-	const getHealthColor = (value: number) => {
-		if (value < 60) return "bg-green-500";
-		if (value < 85) return "bg-yellow-500";
-		return "bg-red-500";
 	};
 
 	const getStatusBadge = (status: string) => {
@@ -74,56 +87,15 @@ export function Dashboard() {
 
 			{!isLoading && (
 				<>
-					{/* Server Health */}
-					<Card className="mb-6">
-						<CardHeader>
-							<CardTitle>Server Health</CardTitle>
-						</CardHeader>
-						<CardContent>
-							{health && (
-								<div className="space-y-4">
-									<div>
-										<div className="flex justify-between mb-1">
-											<span className="text-sm font-medium">CPU</span>
-											<span className="text-sm text-gray-600">{health.cpu.toFixed(1)}%</span>
-										</div>
-										<div className="w-full bg-gray-200 rounded-full h-2">
-											<div
-												className={`h-2 rounded-full transition-all ${getHealthColor(health.cpu)}`}
-												style={{ width: `${health.cpu}%` }}
-											></div>
-										</div>
-									</div>
-									<div>
-										<div className="flex justify-between mb-1">
-											<span className="text-sm font-medium">Memory</span>
-											<span className="text-sm text-gray-600">{health.memory.toFixed(1)}%</span>
-										</div>
-										<div className="w-full bg-gray-200 rounded-full h-2">
-											<div
-												className={`h-2 rounded-full transition-all ${getHealthColor(health.memory)}`}
-												style={{ width: `${health.memory}%` }}
-											></div>
-										</div>
-									</div>
-									<div>
-										<div className="flex justify-between mb-1">
-											<span className="text-sm font-medium">Disk</span>
-											<span className="text-sm text-gray-600">{health.disk.toFixed(1)}%</span>
-										</div>
-										<div className="w-full bg-gray-200 rounded-full h-2">
-											<div
-												className={`h-2 rounded-full transition-all ${getHealthColor(health.disk)}`}
-												style={{ width: `${health.disk}%` }}
-											></div>
-										</div>
-									</div>
-								</div>
-							)}
-						</CardContent>
-					</Card>
+					{health && (
+						<ServerHealthCard
+							health={health}
+							canModify={canModify}
+							cleanupSubmitting={cleanupMutation.isPending}
+							onCleanupConfirm={() => cleanupMutation.mutate()}
+						/>
+					)}
 
-					{/* Apps */}
 					<div className="bg-white rounded-lg shadow p-6 mb-6">
 						<div className="flex items-center justify-between mb-4">
 							<h2 className="text-lg font-semibold">Apps</h2>
@@ -175,7 +147,6 @@ export function Dashboard() {
 						)}
 					</div>
 
-					{/* Recent Activity */}
 					<div className="bg-white rounded-lg shadow p-6">
 						<h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
 						{(commands?.length ?? 0) === 0 ? (
