@@ -44,7 +44,7 @@ function Button({
 	asChild = false,
 	ref,
 	...props
-}: ButtonProps & { ref?: React.Ref<HTMLButtonElement> }) {
+}: ButtonProps & { ref?: React.Ref<HTMLButtonElement> }): React.JSX.Element {
 	const Comp = asChild ? Slot : "button";
 	return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
 }
