@@ -63,21 +63,34 @@ interface ServerHealthCardProps {
 	health: ServerHealth;
 	canModify: boolean;
 	cleanupSubmitting: boolean;
+	purgeSubmitting: boolean;
 	onCleanupConfirm: () => void;
+	onPurgeConfirm: () => void;
 }
 
 export function ServerHealthCard({
 	health,
 	canModify,
 	cleanupSubmitting,
+	purgeSubmitting,
 	onCleanupConfirm,
+	onPurgeConfirm,
 }: ServerHealthCardProps) {
 	const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
+	const [purgeDialogOpen, setPurgeDialogOpen] = useState(false);
 	const statusPresentation = HEALTH_STATUS_PRESENTATION[health.status];
+	const showPurgeButton =
+		canModify &&
+		(health.resources.disk.status === "warning" || health.resources.disk.status === "critical");
 
 	const handleCleanupConfirm = () => {
 		onCleanupConfirm();
 		setCleanupDialogOpen(false);
+	};
+
+	const handlePurgeConfirm = () => {
+		onPurgeConfirm();
+		setPurgeDialogOpen(false);
 	};
 
 	return (
@@ -86,14 +99,26 @@ export function ServerHealthCard({
 				<CardHeader className="flex flex-row items-center justify-between space-y-0">
 					<CardTitle>Server Health</CardTitle>
 					{canModify && (
-						<Button
-							size="sm"
-							variant="outline"
-							onClick={() => setCleanupDialogOpen(true)}
-							disabled={cleanupSubmitting}
-						>
-							Clean unused
-						</Button>
+						<div className="flex gap-2">
+							<Button
+								size="sm"
+								variant="outline"
+								onClick={() => setCleanupDialogOpen(true)}
+								disabled={cleanupSubmitting || purgeSubmitting}
+							>
+								Clean unused
+							</Button>
+							{showPurgeButton && (
+								<Button
+									size="sm"
+									variant="outline"
+									onClick={() => setPurgeDialogOpen(true)}
+									disabled={cleanupSubmitting || purgeSubmitting}
+								>
+									Purge build caches
+								</Button>
+							)}
+						</div>
 					)}
 				</CardHeader>
 				<CardContent>
@@ -125,6 +150,20 @@ export function ServerHealthCard({
 				<p className="text-sm text-gray-600">
 					This runs <code className="font-mono">dokku cleanup</code> to remove unused containers and
 					images. Volumes are not removed.
+				</p>
+			</ConfirmDialog>
+
+			<ConfirmDialog
+				visible={purgeDialogOpen}
+				title="Purge build caches"
+				onClose={() => setPurgeDialogOpen(false)}
+				onConfirm={handlePurgeConfirm}
+				submitting={purgeSubmitting}
+			>
+				<p className="text-sm text-gray-600">
+					This runs <code className="font-mono">dokku repo:purge-cache</code> across all apps to
+					remove build caches. Volumes are not removed and{" "}
+					<code className="font-mono">repo:gc</code> is not run.
 				</p>
 			</ConfirmDialog>
 		</>

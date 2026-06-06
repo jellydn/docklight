@@ -67,6 +67,7 @@ describe("Server routes", () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		vi.mocked(executeCommand).mockReset();
 		vi.mocked(get).mockReturnValue(undefined);
 		app = createTestApp();
 	});
@@ -148,6 +149,166 @@ describe("Server routes", () => {
 				exitCode: 1,
 				stdout: "",
 				stderr: "cleanup failed",
+			});
+			expect(insertAuditLog).not.toHaveBeenCalled();
+			expect(del).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("POST /api/server/purge-cache", () => {
+		it("should purge all app caches for operators", async () => {
+			vi.mocked(executeCommand)
+				.mockResolvedValueOnce({
+					command: "dokku --quiet apps:list",
+					exitCode: 0,
+					stdout: "app-one\napp-two",
+					stderr: "",
+				})
+				.mockResolvedValueOnce({
+					command: "dokku repo:purge-cache app-one",
+					exitCode: 0,
+					stdout: "Purged app-one",
+					stderr: "",
+				})
+				.mockResolvedValueOnce({
+					command: "dokku repo:purge-cache app-two",
+					exitCode: 0,
+					stdout: "Purged app-two",
+					stderr: "",
+				});
+
+			const response = await request(app)
+				.post("/api/server/purge-cache")
+				.set("x-test-role", "operator");
+
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({
+				command: "dokku repo:purge-cache --all-apps",
+				exitCode: 0,
+				stdout: "Purged app-one\nPurged app-two",
+				stderr: "",
+				results: [
+					{
+						app: "app-one",
+						command: "dokku repo:purge-cache app-one",
+						exitCode: 0,
+						stdout: "Purged app-one",
+						stderr: "",
+					},
+					{
+						app: "app-two",
+						command: "dokku repo:purge-cache app-two",
+						exitCode: 0,
+						stdout: "Purged app-two",
+						stderr: "",
+					},
+				],
+			});
+			expect(executeCommand).toHaveBeenCalledTimes(3);
+			expect(executeCommand).toHaveBeenNthCalledWith(1, "dokku --quiet apps:list", 30000, {
+				userId: "1",
+			});
+			expect(executeCommand).toHaveBeenNthCalledWith(2, "dokku repo:purge-cache app-one", 120000, {
+				userId: "1",
+			});
+			expect(executeCommand).toHaveBeenNthCalledWith(3, "dokku repo:purge-cache app-two", 120000, {
+				userId: "1",
+			});
+			expect(insertAuditLog).toHaveBeenCalledWith(
+				1,
+				"server:purge-cache",
+				null,
+				null,
+				expect.any(String)
+			);
+			expect(del).toHaveBeenCalledWith("server:health");
+		});
+
+		it("should reject viewers", async () => {
+			const response = await request(app)
+				.post("/api/server/purge-cache")
+				.set("x-test-role", "viewer");
+
+			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ error: "Forbidden" });
+			expect(executeCommand).not.toHaveBeenCalled();
+		});
+
+		it("should return an error when app listing fails without running purge commands", async () => {
+			vi.mocked(executeCommand)
+				.mockResolvedValueOnce({
+					command: "dokku --quiet apps:list",
+					exitCode: 1,
+					stdout: "",
+					stderr: "quiet list failed",
+				})
+				.mockResolvedValueOnce({
+					command: "dokku apps:list",
+					exitCode: 1,
+					stdout: "",
+					stderr: "apps list failed",
+				});
+
+			const response = await request(app).post("/api/server/purge-cache");
+
+			expect(response.status).toBe(500);
+			expect(response.body).toEqual({
+				command: "dokku repo:purge-cache --all-apps",
+				exitCode: 1,
+				stdout: "",
+				stderr: "apps list failed",
+				results: [],
+			});
+			expect(executeCommand).toHaveBeenCalledTimes(2);
+			expect(insertAuditLog).not.toHaveBeenCalled();
+			expect(del).not.toHaveBeenCalled();
+		});
+
+		it("should return aggregate failure when one app purge fails", async () => {
+			vi.mocked(executeCommand)
+				.mockResolvedValueOnce({
+					command: "dokku --quiet apps:list",
+					exitCode: 0,
+					stdout: "app-one\napp-two",
+					stderr: "",
+				})
+				.mockResolvedValueOnce({
+					command: "dokku repo:purge-cache app-one",
+					exitCode: 0,
+					stdout: "Purged app-one",
+					stderr: "",
+				})
+				.mockResolvedValueOnce({
+					command: "dokku repo:purge-cache app-two",
+					exitCode: 1,
+					stdout: "",
+					stderr: "purge failed",
+				});
+
+			const response = await request(app).post("/api/server/purge-cache");
+
+			expect(response.status).toBe(500);
+			expect(response.body).toEqual({
+				command: "dokku repo:purge-cache --all-apps",
+				exitCode: 1,
+				stdout: "Purged app-one",
+				stderr: "purge failed",
+				results: [
+					{
+						app: "app-one",
+						command: "dokku repo:purge-cache app-one",
+						exitCode: 0,
+						stdout: "Purged app-one",
+						stderr: "",
+					},
+					{
+						app: "app-two",
+						command: "dokku repo:purge-cache app-two",
+						exitCode: 1,
+						stdout: "",
+						stderr: "purge failed",
+					},
+				],
 			});
 			expect(insertAuditLog).not.toHaveBeenCalled();
 			expect(del).not.toHaveBeenCalled();

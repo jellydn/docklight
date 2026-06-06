@@ -16,6 +16,7 @@ export interface DokkuCommands {
 
 	// Server maintenance
 	cleanup(): string;
+	repoPurgeCache(app: string): string;
 
 	// Apps
 	appsList(): string;
@@ -124,6 +125,7 @@ export const DokkuCommands: DokkuCommands = {
 
 	// Server maintenance
 	cleanup: (): string => "dokku cleanup",
+	repoPurgeCache: (app: string): string => `dokku repo:purge-cache ${app}`,
 
 	// Apps
 	appsList: (): string => "dokku apps:list",

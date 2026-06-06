@@ -15,6 +15,7 @@ import {
 	AppSchema,
 	CommandHistorySchema,
 	CommandResultSchema,
+	PurgeCacheResultSchema,
 } from "../lib/schemas.js";
 
 export function Dashboard() {
@@ -50,6 +51,18 @@ export function Dashboard() {
 		},
 		onError: (error: Error) => {
 			addToast("error", error.message || "Cleanup failed");
+		},
+	});
+
+	const purgeCacheMutation = useMutation({
+		mutationFn: () => apiFetch("/server/purge-cache", PurgeCacheResultSchema, { method: "POST" }),
+		onSuccess: () => {
+			addToast("success", "Build caches purged");
+			void queryClient.invalidateQueries({ queryKey: queryKeys.health });
+			void queryClient.invalidateQueries({ queryKey: queryKeys.commands });
+		},
+		onError: (error: Error) => {
+			addToast("error", error.message || "Build cache purge failed");
 		},
 	});
 
@@ -92,7 +105,9 @@ export function Dashboard() {
 							health={health}
 							canModify={canModify}
 							cleanupSubmitting={cleanupMutation.isPending}
+							purgeSubmitting={purgeCacheMutation.isPending}
 							onCleanupConfirm={() => cleanupMutation.mutate()}
+							onPurgeConfirm={() => purgeCacheMutation.mutate()}
 						/>
 					)}
 

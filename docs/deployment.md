@@ -211,9 +211,11 @@ The dashboard **Server Health** card shows live VPS resource usage for CPU, memo
 
 The overall VPS status reflects the worst metric — if disk is at 95% but CPU is low, the banner shows critical.
 
-**Clean unused (operators and admins only):** click **Clean unused** on the Server Health card to run `dokku cleanup`. This removes dead containers and dangling images. It does **not** purge build caches (`repo:purge-cache`), run `repo:gc`, or execute `docker system prune`. Viewers can see health metrics but cannot trigger cleanup.
+**Clean unused (operators and admins only):** click **Clean unused** on the Server Health card to run `dokku cleanup`. This removes dead containers and dangling images. It does **not** purge build caches, run `repo:gc`, or execute `docker system prune`.
 
-If deploys fail with `no space left on device`, see [Disk full during deploy](#disk-full-during-deploy) for SSH-based recovery steps beyond what the dashboard button covers.
+**Purge build caches (operators and admins only):** when disk status is **Watch closely** or **Warning** (70%+), a second button appears to run `dokku repo:purge-cache` across all apps. Use this as a second tier after **Clean unused** if disk pressure remains. It does **not** remove volumes or run `repo:gc`. Viewers can see health metrics but cannot trigger either action.
+
+If deploys fail with `no space left on device`, see [Disk full during deploy](#disk-full-during-deploy) for SSH-based recovery steps beyond what the dashboard buttons cover.
 
 ## Persistent Storage (Important)
 
@@ -596,7 +598,12 @@ git push dokku <your-branch>:main
 
 A non-fast-forward rejection after cleanup is normal when the remote is ahead of your local branch — push the branch you intend to deploy, not necessarily local `main`.
 
-**From Docklight (operators/admins):** the dashboard **Clean unused** button runs `dokku cleanup` only. It does not purge build caches (`repo:purge-cache`), run `repo:gc`, or execute `docker system prune`. Those still require SSH.
+**From Docklight (operators/admins):** use the dashboard in two tiers when disk is full:
+
+1. **Clean unused** — runs `dokku cleanup` (dead containers and dangling images).
+2. **Purge build caches** — appears when disk is at warning or critical; runs `dokku repo:purge-cache` across all apps.
+
+Neither button runs `repo:gc` or `docker system prune`. Run `repo:gc` manually over SSH if caches alone are not enough.
 
 **Prevention on multi-app servers:** schedule weekly `dokku cleanup` and monthly `repo:purge-cache` + `repo:gc` across apps. Monitor disk via the Docklight dashboard health panel (warning at 70%, critical at 90%).
 

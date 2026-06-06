@@ -18,6 +18,16 @@ export const CommandResultSchema = z.object({
 
 export type CommandResult = z.infer<typeof CommandResultSchema>;
 
+export const PurgeCacheResultSchema = CommandResultSchema.extend({
+	results: z.array(
+		CommandResultSchema.extend({
+			app: z.string(),
+		})
+	),
+});
+
+export type PurgeCacheResult = z.infer<typeof PurgeCacheResultSchema>;
+
 // API Error schema
 const ApiErrorSchema = z.object({
 	error: z.string(),

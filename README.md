@@ -37,7 +37,7 @@ Docklight is designed to run on the same VPS as Dokku.
 ## ✨ Features
 
 - Dashboard with app status, domains, last deploy, and VPS health (CPU, memory, disk) with warning/critical thresholds.
-- One-click `dokku cleanup` from the dashboard for operators and admins (removes unused containers and images, not volumes).
+- One-click server cleanup from the dashboard for operators and admins: **Clean unused** runs `dokku cleanup` (removes unused containers and images); **Purge build caches** runs `dokku repo:purge-cache` across all apps when disk is warning or critical (does not remove volumes or run `repo:gc`).
 - App management: restart, rebuild, scale, config vars, and domains.
 - Real-time app status updates via WebSocket push notifications.
 - Live app logs over WebSocket.
@@ -253,7 +253,7 @@ docklight/
 | Databases | `plugin:list`, `<plugin>:list`, `<plugin>:links`, `<plugin>:create`, `<plugin>:link`, `<plugin>:unlink`, `<plugin>:destroy`                   |
 | Plugins   | `plugin:list`, `plugin:install`, `plugin:enable`, `plugin:disable`, `plugin:uninstall`                                                        |
 | SSL       | `letsencrypt:report`, `letsencrypt:ls`, `certs:report`, `letsencrypt:set <app> email <email>`, `letsencrypt:enable`, `letsencrypt:auto-renew` |
-| Server    | `cleanup`                                                                                                                                     |
+| Server    | `cleanup`, `repo:purge-cache`                                                                                                                 |
 
 ## 🤝 Contributing
 
