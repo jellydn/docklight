@@ -310,8 +310,8 @@ describe("DokkuCommands", () => {
 			expect(DokkuCommands.cleanup()).toBe("dokku cleanup");
 		});
 
-		it("repoPurgeCache returns repo:purge-cache command with app name", () => {
-			expect(DokkuCommands.repoPurgeCache("my-app")).toBe("dokku repo:purge-cache my-app");
+		it("repoPurgeCache returns repo:purge-cache command with quoted app name", () => {
+			expect(DokkuCommands.repoPurgeCache("my-app")).toBe("dokku repo:purge-cache 'my-app'");
 		});
 	});
 

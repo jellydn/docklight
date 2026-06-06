@@ -13,6 +13,7 @@ import { executeCommand } from "./executor.js";
 import {
 	MAINTENANCE_TIMEOUT_MS,
 	PURGE_AGGREGATE_COMMAND,
+	PURGE_CACHE_TIMEOUT_MS,
 	purgeAllAppCaches,
 	runCleanup,
 } from "./server-maintenance.js";
@@ -52,7 +53,7 @@ describe("server-maintenance", () => {
 				names: ["app-one", "app-two"],
 			});
 			vi.mocked(executeCommand).mockImplementation(async (command: string) => {
-				if (command === "dokku repo:purge-cache app-one") {
+				if (command === "dokku repo:purge-cache 'app-one'") {
 					return {
 						command,
 						exitCode: 0,
@@ -78,14 +79,14 @@ describe("server-maintenance", () => {
 				results: [
 					{
 						app: "app-one",
-						command: "dokku repo:purge-cache app-one",
+						command: "dokku repo:purge-cache 'app-one'",
 						exitCode: 0,
 						stdout: "Purged app-one",
 						stderr: "",
 					},
 					{
 						app: "app-two",
-						command: "dokku repo:purge-cache app-two",
+						command: "dokku repo:purge-cache 'app-two'",
 						exitCode: 0,
 						stdout: "Purged app-two",
 						stderr: "",
@@ -93,6 +94,16 @@ describe("server-maintenance", () => {
 				],
 			});
 			expect(executeCommand).toHaveBeenCalledTimes(2);
+			expect(executeCommand).toHaveBeenCalledWith(
+				"dokku repo:purge-cache 'app-one'",
+				PURGE_CACHE_TIMEOUT_MS,
+				{ userId: "1" }
+			);
+			expect(executeCommand).toHaveBeenCalledWith(
+				"dokku repo:purge-cache 'app-two'",
+				PURGE_CACHE_TIMEOUT_MS,
+				{ userId: "1" }
+			);
 		});
 
 		it("should return an error when app listing fails", async () => {
@@ -124,7 +135,7 @@ describe("server-maintenance", () => {
 				names: ["app-one", "app-two"],
 			});
 			vi.mocked(executeCommand).mockImplementation(async (command: string) => {
-				if (command === "dokku repo:purge-cache app-two") {
+				if (command === "dokku repo:purge-cache 'app-two'") {
 					return {
 						command,
 						exitCode: 1,
@@ -150,14 +161,14 @@ describe("server-maintenance", () => {
 				results: [
 					{
 						app: "app-one",
-						command: "dokku repo:purge-cache app-one",
+						command: "dokku repo:purge-cache 'app-one'",
 						exitCode: 0,
 						stdout: "Purged app-one",
 						stderr: "",
 					},
 					{
 						app: "app-two",
-						command: "dokku repo:purge-cache app-two",
+						command: "dokku repo:purge-cache 'app-two'",
 						exitCode: 1,
 						stdout: "",
 						stderr: "purge failed",

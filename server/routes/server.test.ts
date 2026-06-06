@@ -165,14 +165,14 @@ describe("Server routes", () => {
 				results: [
 					{
 						app: "app-one",
-						command: "dokku repo:purge-cache app-one",
+						command: "dokku repo:purge-cache 'app-one'",
 						exitCode: 0,
 						stdout: "Purged app-one",
 						stderr: "",
 					},
 					{
 						app: "app-two",
-						command: "dokku repo:purge-cache app-two",
+						command: "dokku repo:purge-cache 'app-two'",
 						exitCode: 0,
 						stdout: "Purged app-two",
 						stderr: "",
@@ -231,14 +231,14 @@ describe("Server routes", () => {
 				results: [
 					{
 						app: "app-one",
-						command: "dokku repo:purge-cache app-one",
+						command: "dokku repo:purge-cache 'app-one'",
 						exitCode: 0,
 						stdout: "Purged app-one",
 						stderr: "",
 					},
 					{
 						app: "app-two",
-						command: "dokku repo:purge-cache app-two",
+						command: "dokku repo:purge-cache 'app-two'",
 						exitCode: 1,
 						stdout: "",
 						stderr: "purge failed",

@@ -3,6 +3,7 @@ import { type CommandResult, executeCommand } from "./executor.js";
 import { DokkuCommands } from "./dokku.js";
 
 export const MAINTENANCE_TIMEOUT_MS = 120000;
+export const PURGE_CACHE_TIMEOUT_MS = 30000;
 export const PURGE_AGGREGATE_COMMAND = "dokku repo:purge-cache --all-apps";
 
 export interface PurgeCacheResult extends CommandResult {
@@ -27,7 +28,7 @@ export async function purgeAllAppCaches(userId?: string): Promise<PurgeCacheResu
 
 	const results: Array<CommandResult & { app: string }> = [];
 	for (const app of listResult.names) {
-		const result = await executeCommand(DokkuCommands.repoPurgeCache(app), MAINTENANCE_TIMEOUT_MS, {
+		const result = await executeCommand(DokkuCommands.repoPurgeCache(app), PURGE_CACHE_TIMEOUT_MS, {
 			userId,
 		});
 		results.push({ ...result, app });
