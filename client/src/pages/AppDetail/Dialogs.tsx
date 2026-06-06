@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 import { X } from "lucide-react";
 
 export { ConfirmDialog } from "@/components/ConfirmDialog.js";
@@ -22,27 +22,40 @@ export function DeleteAppDialog({
 	onConfirmNameChange,
 	submitting,
 }: DeleteAppDialogProps) {
-	useEffect(() => {
-		const handleEsc = (e: KeyboardEvent) => {
-			if (e.key === "Escape") onClose();
-		};
-		if (visible) {
-			window.addEventListener("keydown", handleEsc);
-			return () => window.removeEventListener("keydown", handleEsc);
-		}
-	}, [visible, onClose]);
+	const dialogRef = useRef<HTMLDialogElement>(null);
+	const onCloseEvent = useEffectEvent(onClose);
 
-	if (!visible) return null;
+	useEffect(() => {
+		const dialog = dialogRef.current;
+		if (!dialog) return;
+
+		if (visible) {
+			dialog.showModal();
+		} else {
+			dialog.close();
+		}
+	}, [visible]);
+
+	useEffect(() => {
+		const dialog = dialogRef.current;
+		if (!dialog) return;
+
+		const handleCancel = () => onCloseEvent();
+		dialog.addEventListener("cancel", handleCancel);
+		return () => dialog.removeEventListener("cancel", handleCancel);
+	}, []);
 
 	return (
-		<div
-			className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-			role="dialog"
-			aria-modal="true"
+		<dialog
+			ref={dialogRef}
+			className="rounded p-0 max-w-md w-full bg-white backdrop:bg-black/50"
+			aria-labelledby="delete-dialog-title"
 		>
-			<div className="bg-white rounded p-6 max-w-md w-full">
+			<div className="p-6">
 				<div className="flex justify-between items-start mb-4">
-					<h2 className="text-lg font-semibold text-red-600">Delete App</h2>
+					<h2 id="delete-dialog-title" className="text-lg font-semibold text-red-600">
+						Delete App
+					</h2>
 					<button
 						onClick={onClose}
 						className="text-gray-500 hover:text-gray-700"
@@ -90,7 +103,7 @@ export function DeleteAppDialog({
 					</button>
 				</div>
 			</div>
-		</div>
+		</dialog>
 	);
 }
 
@@ -111,27 +124,40 @@ export function ScaleDialog({
 	onConfirm,
 	submitting,
 }: ScaleDialogProps) {
-	useEffect(() => {
-		const handleEsc = (e: KeyboardEvent) => {
-			if (e.key === "Escape") onClose();
-		};
-		if (visible) {
-			window.addEventListener("keydown", handleEsc);
-			return () => window.removeEventListener("keydown", handleEsc);
-		}
-	}, [visible, onClose]);
+	const dialogRef = useRef<HTMLDialogElement>(null);
+	const onCloseEvent = useEffectEvent(onClose);
 
-	if (!visible) return null;
+	useEffect(() => {
+		const dialog = dialogRef.current;
+		if (!dialog) return;
+
+		if (visible) {
+			dialog.showModal();
+		} else {
+			dialog.close();
+		}
+	}, [visible]);
+
+	useEffect(() => {
+		const dialog = dialogRef.current;
+		if (!dialog) return;
+
+		const handleCancel = () => onCloseEvent();
+		dialog.addEventListener("cancel", handleCancel);
+		return () => dialog.removeEventListener("cancel", handleCancel);
+	}, []);
 
 	return (
-		<div
-			className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-			role="dialog"
-			aria-modal="true"
+		<dialog
+			ref={dialogRef}
+			className="rounded p-0 max-w-md w-full bg-white backdrop:bg-black/50"
+			aria-labelledby="scale-dialog-title"
 		>
-			<div className="bg-white rounded p-6 max-w-md w-full">
+			<div className="p-6">
 				<div className="flex justify-between items-start mb-4">
-					<h2 className="text-lg font-semibold">Confirm Scale</h2>
+					<h2 id="scale-dialog-title" className="text-lg font-semibold">
+						Confirm Scale
+					</h2>
 					<button
 						onClick={onClose}
 						className="text-gray-500 hover:text-gray-700"
@@ -169,6 +195,6 @@ export function ScaleDialog({
 					</button>
 				</div>
 			</div>
-		</div>
+		</dialog>
 	);
 }

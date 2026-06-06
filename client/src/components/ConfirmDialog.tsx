@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 import { X } from "lucide-react";
 
 interface ConfirmDialogProps {
@@ -25,30 +25,40 @@ export function ConfirmDialog({
 	isDestructive = false,
 	children,
 }: ConfirmDialogProps) {
-	useEffect(() => {
-		const handleEsc = (e: KeyboardEvent) => {
-			if (e.key === "Escape") onClose();
-		};
-		if (visible) {
-			window.addEventListener("keydown", handleEsc);
-			return () => window.removeEventListener("keydown", handleEsc);
-		}
-	}, [visible, onClose]);
+	const dialogRef = useRef<HTMLDialogElement>(null);
+	const onCloseEvent = useEffectEvent(onClose);
 
-	if (!visible) return null;
+	useEffect(() => {
+		const dialog = dialogRef.current;
+		if (!dialog) return;
+
+		if (visible) {
+			dialog.showModal();
+		} else {
+			dialog.close();
+		}
+	}, [visible]);
+
+	useEffect(() => {
+		const dialog = dialogRef.current;
+		if (!dialog) return;
+
+		const handleCancel = () => onCloseEvent();
+		dialog.addEventListener("cancel", handleCancel);
+		return () => dialog.removeEventListener("cancel", handleCancel);
+	}, []);
 
 	const buttonClass = isDestructive
 		? "bg-red-600 text-white rounded hover:bg-red-700"
 		: "bg-blue-600 text-white rounded hover:bg-blue-700";
 
 	return (
-		<div
-			className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-			role="dialog"
-			aria-modal="true"
+		<dialog
+			ref={dialogRef}
+			className="rounded p-0 max-w-md w-full bg-white backdrop:bg-black/50"
 			aria-labelledby="dialog-title"
 		>
-			<div className="bg-white rounded p-6 max-w-md w-full">
+			<div className="p-6">
 				<div className="flex justify-between items-start mb-4">
 					<h2
 						id="dialog-title"
@@ -84,6 +94,6 @@ export function ConfirmDialog({
 					</button>
 				</div>
 			</div>
-		</div>
+		</dialog>
 	);
 }
