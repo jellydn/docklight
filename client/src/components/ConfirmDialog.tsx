@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useNativeDialog } from "@/hooks/use-native-dialog.js";
 import { X } from "lucide-react";
 
 interface ConfirmDialogProps {
@@ -9,8 +9,10 @@ interface ConfirmDialogProps {
 	onConfirm: () => void;
 	confirmDisabled?: boolean;
 	submitting?: boolean;
+	submittingText?: string;
 	confirmText?: string;
 	isDestructive?: boolean;
+	id?: string;
 	children: ReactNode;
 }
 
@@ -21,47 +23,30 @@ export function ConfirmDialog({
 	onConfirm,
 	confirmDisabled = false,
 	submitting = false,
+	submittingText = "Processing...",
 	confirmText = "Confirm",
 	isDestructive = false,
+	id = "dialog-title",
 	children,
 }: ConfirmDialogProps) {
-	const dialogRef = useRef<HTMLDialogElement>(null);
-	const onCloseEvent = useEffectEvent(onClose);
-
-	useEffect(() => {
-		const dialog = dialogRef.current;
-		if (!dialog) return;
-
-		if (visible) {
-			dialog.showModal();
-		} else {
-			dialog.close();
-		}
-	}, [visible]);
-
-	useEffect(() => {
-		const dialog = dialogRef.current;
-		if (!dialog) return;
-
-		const handleCancel = () => onCloseEvent();
-		dialog.addEventListener("cancel", handleCancel);
-		return () => dialog.removeEventListener("cancel", handleCancel);
-	}, []);
+	const dialogRef = useNativeDialog({ open: visible, onClose });
 
 	const buttonClass = isDestructive
 		? "bg-red-600 text-white rounded hover:bg-red-700"
 		: "bg-blue-600 text-white rounded hover:bg-blue-700";
 
+	const labelledby = `${id}-heading`;
+
 	return (
 		<dialog
 			ref={dialogRef}
 			className="rounded p-0 max-w-md w-full bg-white backdrop:bg-black/50"
-			aria-labelledby="dialog-title"
+			aria-labelledby={labelledby}
 		>
 			<div className="p-6">
 				<div className="flex justify-between items-start mb-4">
 					<h2
-						id="dialog-title"
+						id={labelledby}
 						className={`text-lg font-semibold ${isDestructive ? "text-red-600" : ""}`}
 					>
 						{title}
@@ -90,7 +75,7 @@ export function ConfirmDialog({
 						className={`px-4 py-2 ${buttonClass} disabled:bg-gray-300 disabled:cursor-not-allowed`}
 						type="button"
 					>
-						{submitting ? "Processing..." : confirmText}
+						{submitting ? submittingText : confirmText}
 					</button>
 				</div>
 			</div>
