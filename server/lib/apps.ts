@@ -40,49 +40,75 @@ function createValidationError(commandName: string): typeof INVALID_NAME_ERROR {
 	return { ...INVALID_NAME_ERROR, command: `${commandName}-validation` };
 }
 
-export async function getApps(
-	userId?: string
-): Promise<App[] | { error: string; command: string; exitCode: number; stderr: string }> {
+export type AppNamesListResult =
+	| { ok: true; names: string[] }
+	| { ok: false; error: CommandResult; unexpected?: boolean };
+
+export function parseAppNamesFromListOutput(stdout: string): string[] {
+	return stdout
+		.split("\n")
+		.map((line) => stripAnsi(line).trim())
+		.filter(isValidAppName);
+}
+
+export async function listAppNames(userId?: string): Promise<AppNamesListResult> {
 	const fallbackCommand = DokkuCommands.appsList();
+	const listCommands = [DokkuCommands.appsListQuiet(), DokkuCommands.appsList()];
+	let listResult: CommandResult | undefined;
 
 	try {
-		const listCommands = [DokkuCommands.appsListQuiet(), DokkuCommands.appsList()];
-		let listResult: CommandResult | undefined;
-
 		for (const command of listCommands) {
 			const result = await executeCommand(command, 30000, { userId });
 			if (result.exitCode === 0) {
-				return await fetchAppDetails(result.stdout, userId);
+				return { ok: true, names: parseAppNamesFromListOutput(result.stdout) };
 			}
 			listResult = result;
 		}
 
 		return {
-			error: "Failed to list apps",
-			command: listResult?.command || fallbackCommand,
-			exitCode: listResult?.exitCode || 1,
-			stderr: withRuntimeHint(
-				listResult?.command || fallbackCommand,
-				listResult?.stderr || UNKNOWN_ERROR
-			),
+			ok: false,
+			error: {
+				command: listResult?.command || fallbackCommand,
+				exitCode: listResult?.exitCode || 1,
+				stdout: "",
+				stderr: withRuntimeHint(
+					listResult?.command || fallbackCommand,
+					listResult?.stderr || UNKNOWN_ERROR
+				),
+			},
 		};
 	} catch (error: unknown) {
 		const err = error as { message?: string };
 		return {
-			error: err.message || UNKNOWN_ERROR,
-			command: fallbackCommand,
-			exitCode: 1,
-			stderr: err.message || "",
+			ok: false,
+			unexpected: true,
+			error: {
+				command: fallbackCommand,
+				exitCode: 1,
+				stdout: "",
+				stderr: err.message || "",
+			},
 		};
 	}
 }
 
-async function fetchAppDetails(stdout: string, userId?: string): Promise<App[]> {
-	const appNames = stdout
-		.split("\n")
-		.map((line) => stripAnsi(line).trim())
-		.filter(isValidAppName);
+export async function getApps(
+	userId?: string
+): Promise<App[] | { error: string; command: string; exitCode: number; stderr: string }> {
+	const listResult = await listAppNames(userId);
+	if (!listResult.ok) {
+		return {
+			error: listResult.unexpected ? listResult.error.stderr : "Failed to list apps",
+			command: listResult.error.command,
+			exitCode: listResult.error.exitCode,
+			stderr: listResult.error.stderr,
+		};
+	}
 
+	return fetchAppDetails(listResult.names, userId);
+}
+
+async function fetchAppDetails(appNames: string[], userId?: string): Promise<App[]> {
 	if (appNames.length === 0) {
 		return [];
 	}

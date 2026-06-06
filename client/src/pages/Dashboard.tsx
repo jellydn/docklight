@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { CreateAppDialog } from "@/components/CreateAppDialog.js";
 import { ServerHealthCard } from "@/components/ServerHealthCard.js";
-import { useToast } from "@/components/ToastProvider.js";
+import { useServerMaintenanceMutation } from "@/hooks/use-server-maintenance-mutation.js";
 import { apiFetch } from "../lib/api.js";
 import { useAuth } from "@/contexts/auth-context.js";
 import { formatDeployTime } from "@/lib/utils.js";
@@ -20,7 +20,6 @@ import {
 
 export function Dashboard() {
 	const { canModify } = useAuth();
-	const { addToast } = useToast();
 	const queryClient = useQueryClient();
 	const [createAppOpen, setCreateAppOpen] = useState(false);
 
@@ -42,29 +41,25 @@ export function Dashboard() {
 		refetchInterval: 30000,
 	});
 
-	const cleanupMutation = useMutation({
-		mutationFn: () => apiFetch("/server/cleanup", CommandResultSchema, { method: "POST" }),
-		onSuccess: () => {
-			addToast("success", "Cleanup completed");
-			void queryClient.invalidateQueries({ queryKey: queryKeys.health });
-			void queryClient.invalidateQueries({ queryKey: queryKeys.commands });
-		},
-		onError: (error: Error) => {
-			addToast("error", error.message || "Cleanup failed");
-		},
+	const cleanupMutation = useServerMaintenanceMutation({
+		endpoint: "/server/cleanup",
+		schema: CommandResultSchema,
+		successMessage: "Cleanup completed",
+		errorMessage: "Cleanup failed",
 	});
 
-	const purgeCacheMutation = useMutation({
-		mutationFn: () => apiFetch("/server/purge-cache", PurgeCacheResultSchema, { method: "POST" }),
-		onSuccess: () => {
-			addToast("success", "Build caches purged");
-			void queryClient.invalidateQueries({ queryKey: queryKeys.health });
-			void queryClient.invalidateQueries({ queryKey: queryKeys.commands });
-		},
-		onError: (error: Error) => {
-			addToast("error", error.message || "Build cache purge failed");
-		},
+	const purgeCacheMutation = useServerMaintenanceMutation({
+		endpoint: "/server/purge-cache",
+		schema: PurgeCacheResultSchema,
+		successMessage: "Build caches purged",
+		errorMessage: "Build cache purge failed",
 	});
+
+	const submittingAction = cleanupMutation.isPending
+		? "cleanup"
+		: purgeCacheMutation.isPending
+			? "purge"
+			: null;
 
 	const isLoading = healthLoading || appsLoading || commandsLoading;
 
@@ -104,10 +99,14 @@ export function Dashboard() {
 						<ServerHealthCard
 							health={health}
 							canModify={canModify}
-							cleanupSubmitting={cleanupMutation.isPending}
-							purgeSubmitting={purgeCacheMutation.isPending}
-							onCleanupConfirm={() => cleanupMutation.mutate()}
-							onPurgeConfirm={() => purgeCacheMutation.mutate()}
+							submittingAction={submittingAction}
+							onActionConfirm={(actionId) => {
+								if (actionId === "cleanup") {
+									cleanupMutation.mutate();
+									return;
+								}
+								purgeCacheMutation.mutate();
+							}}
 						/>
 					)}
 

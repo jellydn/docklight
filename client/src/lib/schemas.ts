@@ -39,6 +39,11 @@ const ApiErrorSchema = z.object({
 export type ApiError = z.infer<typeof ApiErrorSchema>;
 
 const HealthStatusSchema = z.enum(["ok", "warning", "critical"]);
+export type HealthStatus = z.infer<typeof HealthStatusSchema>;
+
+export function isDiskUnderPressure(status: HealthStatus): boolean {
+	return status === "warning" || status === "critical";
+}
 
 const ResourceHealthSchema = z.object({
 	value: z.number(),
