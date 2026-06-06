@@ -1,13 +1,42 @@
 import type express from "express";
 import { getServerHealth, type ServerHealth } from "../lib/server.js";
+import { purgeAllAppCaches, runCleanup } from "../lib/server-maintenance.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { del, get, set } from "../lib/cache.js";
-import { executeCommand } from "../lib/executor.js";
-import { DokkuCommands } from "../lib/dokku.js";
-import { getStatusCode, getUserId, handleCommandResult, safeAuditLog } from "./util.js";
+import {
+	getStatusCode,
+	getUserId,
+	handleCommandResult,
+	safeAuditLog,
+	type CommandResultLike,
+} from "./util.js";
 
 const HEALTH_CACHE_KEY = "server:health";
-const CLEANUP_TIMEOUT_MS = 120000;
+
+async function runServerMaintenanceAction(
+	req: express.Request,
+	res: express.Response,
+	next: express.NextFunction,
+	options: {
+		run: (userId: string | undefined) => Promise<CommandResultLike>;
+		auditAction: string;
+	}
+): Promise<void> {
+	try {
+		const userId = getUserId(req);
+		const result = await options.run(userId);
+
+		if (!handleCommandResult(res, result)) {
+			return;
+		}
+
+		safeAuditLog(req, options.auditAction, null);
+		del(HEALTH_CACHE_KEY);
+		res.json(result);
+	} catch (error) {
+		next(error);
+	}
+}
 
 export function registerServerRoutes(app: express.Application): void {
 	app.get("/api/server/health", authMiddleware, async (_req, res) => {
@@ -27,20 +56,17 @@ export function registerServerRoutes(app: express.Application): void {
 		res.json(health);
 	});
 
-	app.post("/api/server/cleanup", authMiddleware, requireOperator, async (req, res, next) => {
-		try {
-			const userId = getUserId(req);
-			const result = await executeCommand(DokkuCommands.cleanup(), CLEANUP_TIMEOUT_MS, { userId });
+	app.post("/api/server/cleanup", authMiddleware, requireOperator, (req, res, next) =>
+		runServerMaintenanceAction(req, res, next, {
+			run: runCleanup,
+			auditAction: "server:cleanup",
+		})
+	);
 
-			if (!handleCommandResult(res, result)) {
-				return;
-			}
-
-			safeAuditLog(req, "server:cleanup", null);
-			del(HEALTH_CACHE_KEY);
-			res.json(result);
-		} catch (error) {
-			next(error);
-		}
-	});
+	app.post("/api/server/purge-cache", authMiddleware, requireOperator, (req, res, next) =>
+		runServerMaintenanceAction(req, res, next, {
+			run: purgeAllAppCaches,
+			auditAction: "server:purge-cache",
+		})
+	);
 }

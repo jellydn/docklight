@@ -18,6 +18,16 @@ export const CommandResultSchema = z.object({
 
 export type CommandResult = z.infer<typeof CommandResultSchema>;
 
+export const PurgeCacheResultSchema = CommandResultSchema.extend({
+	results: z.array(
+		CommandResultSchema.extend({
+			app: z.string(),
+		})
+	),
+});
+
+export type PurgeCacheResult = z.infer<typeof PurgeCacheResultSchema>;
+
 // API Error schema
 const ApiErrorSchema = z.object({
 	error: z.string(),
@@ -29,6 +39,11 @@ const ApiErrorSchema = z.object({
 export type ApiError = z.infer<typeof ApiErrorSchema>;
 
 const HealthStatusSchema = z.enum(["ok", "warning", "critical"]);
+export type HealthStatus = z.infer<typeof HealthStatusSchema>;
+
+export function isDiskUnderPressure(status: HealthStatus): boolean {
+	return status === "warning" || status === "critical";
+}
 
 const ResourceHealthSchema = z.object({
 	value: z.number(),

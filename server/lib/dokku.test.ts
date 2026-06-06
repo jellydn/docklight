@@ -305,6 +305,16 @@ describe("DokkuCommands", () => {
 		});
 	});
 
+	describe("server maintenance", () => {
+		it("cleanup returns cleanup command", () => {
+			expect(DokkuCommands.cleanup()).toBe("dokku cleanup");
+		});
+
+		it("repoPurgeCache returns repo:purge-cache command with quoted app name", () => {
+			expect(DokkuCommands.repoPurgeCache("my-app")).toBe("dokku repo:purge-cache 'my-app'");
+		});
+	});
+
 	describe("logs", () => {
 		it("logsFollow returns logs command with tail and follow flags", () => {
 			expect(DokkuCommands.logsFollow("my-app", 100)).toBe("dokku logs 'my-app' -t -n 100");
