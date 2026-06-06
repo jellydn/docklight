@@ -6,36 +6,11 @@ import { apiFetch } from "../lib/api.js";
 import { useAuth } from "@/contexts/auth-context.js";
 import { queryKeys } from "../lib/query-keys.js";
 import { AppSchema, type Database, DatabaseSchema } from "../lib/schemas.js";
-
-const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo", "rabbitmq"];
-
-const PLUGIN_INSTALL_COMMANDS = [
-	{
-		label: "Postgres",
-		command: "sudo dokku plugin:install https://github.com/dokku/dokku-postgres.git",
-	},
-	{
-		label: "Redis",
-		command: "sudo dokku plugin:install https://github.com/dokku/dokku-redis.git",
-	},
-	{
-		label: "MySQL",
-		command: "sudo dokku plugin:install https://github.com/dokku/dokku-mysql.git",
-	},
-	{
-		label: "MariaDB",
-		command: "sudo dokku plugin:install https://github.com/dokku/dokku-mariadb.git",
-	},
-	{
-		label: "Mongo",
-		command: "sudo dokku plugin:install https://github.com/dokku/dokku-mongo.git",
-	},
-	{
-		label: "RabbitMQ",
-		command:
-			"sudo dokku plugin:install https://github.com/dokku/dokku-rabbitmq.git --name rabbitmq",
-	},
-] as const;
+import {
+	SUPPORTED_PLUGINS,
+	DATABASE_PLUGINS,
+	type SupportedPlugin,
+} from "../lib/database-plugins.js";
 
 export function Databases() {
 	const { canModify } = useAuth();
@@ -260,11 +235,11 @@ export function Databases() {
 						Run one of these commands on your Dokku server to install a database plugin:
 					</p>
 					<div className="space-y-2">
-						{PLUGIN_INSTALL_COMMANDS.map((plugin) => (
-							<div key={plugin.label} className="flex items-center gap-2">
-								<span className="text-sm font-medium w-20">{plugin.label}:</span>
+						{SUPPORTED_PLUGINS.map((plugin) => (
+							<div key={plugin} className="flex items-center gap-2">
+								<span className="text-sm font-medium w-20">{DATABASE_PLUGINS[plugin].label}:</span>
 								<code className="flex-1 bg-white border rounded px-3 py-1.5 text-sm font-mono select-all">
-									{plugin.command}
+									{DATABASE_PLUGINS[plugin].installCommand}
 								</code>
 							</div>
 						))}
@@ -308,8 +283,10 @@ export function Databases() {
 						<p className="mt-2 text-xs text-gray-500">
 							Ensure the plugin is installed on your Dokku server first via SSH:{" "}
 							<code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono select-all">
-								{PLUGIN_INSTALL_COMMANDS.find((p) => p.label.toLowerCase() === newDbPlugin)
-									?.command ?? `sudo dokku plugin:install <plugin-url>`}
+								{newDbPlugin
+									? (DATABASE_PLUGINS[newDbPlugin as SupportedPlugin]?.installCommand ??
+										`sudo dokku plugin:install <plugin-url>`)
+									: `sudo dokku plugin:install <plugin-url>`}
 							</code>
 						</p>
 					)}

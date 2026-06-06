@@ -1,6 +1,7 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { DokkuCommands } from "./dokku.js";
 import { logger } from "./logger.js";
+import { SUPPORTED_PLUGINS, type SupportedPlugin, getConnectionUrl } from "./database-plugins.js";
 
 export interface Database {
 	name: string;
@@ -8,10 +9,6 @@ export interface Database {
 	linkedApps: string[];
 	connectionInfo: string;
 }
-
-// List of supported database plugins
-const SUPPORTED_PLUGINS = ["postgres", "redis", "mysql", "mariadb", "mongo", "rabbitmq"] as const;
-type SupportedPlugin = (typeof SUPPORTED_PLUGINS)[number];
 
 export function parseInstalledPlugins(pluginListOutput: string): SupportedPlugin[] {
 	const installedPlugins = new Set<SupportedPlugin>();
@@ -133,18 +130,7 @@ export async function getDatabases(): Promise<
 							linkedApps = parseLinkedApps(infoReportResult.stdout);
 						}
 
-						let connectionInfo = "";
-						if (plugin === "postgres") {
-							connectionInfo = `postgresql://${dbName}@localhost`;
-						} else if (plugin === "mysql" || plugin === "mariadb") {
-							connectionInfo = `mysql://${dbName}@localhost`;
-						} else if (plugin === "redis") {
-							connectionInfo = `redis://localhost:6379`;
-						} else if (plugin === "mongo") {
-							connectionInfo = `mongodb://localhost`;
-						} else if (plugin === "rabbitmq") {
-							connectionInfo = `amqp://localhost/${dbName}`;
-						}
+						const connectionInfo = getConnectionUrl(plugin as SupportedPlugin, dbName);
 
 						return { name: dbName, plugin, linkedApps, connectionInfo };
 					})

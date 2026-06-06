@@ -32,11 +32,6 @@ describe("parseInstalledPlugins", () => {
 		expect(plugins).toContain("rabbitmq");
 	});
 
-	it("should detect dokku-rabbitmq from plugin list", () => {
-		const output = ["00_dokku-standard", "dokku-rabbitmq", "dokku-builder-dockerfile"].join("\n");
-		expect(parseInstalledPlugins(output)).toEqual(["rabbitmq"]);
-	});
-
 	it("should return empty array when no supported plugins found", () => {
 		const output = ["00_dokku-standard", "dokku-builder-dockerfile", "dokku-letsencrypt"].join(
 			"\n"
