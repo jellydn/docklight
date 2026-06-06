@@ -38,7 +38,8 @@ import { AppDockerOptions } from "./AppDockerOptions.js";
 import { AppNetwork } from "./AppNetwork.js";
 import { AppGit } from "./AppGit.js";
 import { AppChecks } from "./AppChecks.js";
-import { ConfirmDialog, DeleteAppDialog, ScaleDialog } from "./Dialogs.js";
+import { ConfirmDialog } from "../../components/ConfirmDialog.js";
+import { DeleteAppDialog, ScaleDialog } from "./Dialogs.js";
 import type { TabType } from "./types.js";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
