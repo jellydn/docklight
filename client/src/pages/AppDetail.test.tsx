@@ -448,10 +448,7 @@ describe("AppDetail", () => {
 			await user.clear(countInputs[0]);
 			await user.type(countInputs[0], "2");
 			await user.click(screen.getByText("Apply Scaling"));
-			const scaleDialog = document.querySelector(
-				'dialog[aria-labelledby="scale-dialog-heading"]'
-			) as HTMLDialogElement;
-			expect(scaleDialog).toBeInTheDocument();
+			const scaleDialog = await screen.findByRole("dialog", { name: "Confirm Scale" });
 			const confirmButton = within(scaleDialog).getByRole("button", { name: "Confirm" });
 			await user.click(confirmButton);
 
