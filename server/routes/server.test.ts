@@ -66,7 +66,8 @@ describe("Server routes", () => {
 	let app: ReturnType<typeof createTestApp>;
 
 	beforeEach(() => {
-		vi.clearAllMocks();
+		vi.resetAllMocks();
+		vi.mocked(get).mockReturnValue(undefined);
 		app = createTestApp();
 	});
 
