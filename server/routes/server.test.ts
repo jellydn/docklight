@@ -5,7 +5,10 @@ import type { UserRole } from "../lib/db.js";
 
 vi.mock("../lib/server.js", () => ({
 	getServerHealth: vi.fn(),
-	runServerCleanup: vi.fn(),
+}));
+
+vi.mock("../lib/executor.js", () => ({
+	executeCommand: vi.fn(),
 }));
 
 vi.mock("../lib/db.js", () => ({
@@ -35,8 +38,9 @@ vi.mock("../lib/auth.js", () => ({
 }));
 
 import { del, get, set } from "../lib/cache.js";
+import { executeCommand } from "../lib/executor.js";
 import { insertAuditLog } from "../lib/db.js";
-import { getServerHealth, runServerCleanup } from "../lib/server.js";
+import { getServerHealth } from "../lib/server.js";
 import { registerServerRoutes } from "./server.js";
 
 function createTestApp() {
@@ -90,7 +94,7 @@ describe("Server routes", () => {
 
 	describe("POST /api/server/cleanup", () => {
 		it("should run dokku cleanup for operators", async () => {
-			vi.mocked(runServerCleanup).mockResolvedValue({
+			vi.mocked(executeCommand).mockResolvedValue({
 				command: "dokku cleanup",
 				exitCode: 0,
 				stdout: "Cleanup complete",
@@ -108,7 +112,7 @@ describe("Server routes", () => {
 				stdout: "Cleanup complete",
 				stderr: "",
 			});
-			expect(runServerCleanup).toHaveBeenCalledWith("1");
+			expect(executeCommand).toHaveBeenCalledWith("dokku cleanup", 120000, { userId: "1" });
 			expect(insertAuditLog).toHaveBeenCalledWith(
 				1,
 				"server:cleanup",
@@ -124,11 +128,11 @@ describe("Server routes", () => {
 
 			expect(response.status).toBe(403);
 			expect(response.body).toEqual({ error: "Forbidden" });
-			expect(runServerCleanup).not.toHaveBeenCalled();
+			expect(executeCommand).not.toHaveBeenCalled();
 		});
 
 		it("should return command errors on failure", async () => {
-			vi.mocked(runServerCleanup).mockResolvedValue({
+			vi.mocked(executeCommand).mockResolvedValue({
 				command: "dokku cleanup",
 				exitCode: 1,
 				stdout: "",

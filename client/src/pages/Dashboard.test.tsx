@@ -118,7 +118,6 @@ describe("Dashboard", () => {
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
-		global.confirm = vi.fn(() => true) as unknown as typeof confirm;
 		mockAuthState.role = "admin";
 		mockAuthState.canModify = true;
 		mockAuthState.loading = false;
@@ -484,9 +483,9 @@ describe("Dashboard", () => {
 		const initialCommandsFetches = commandsFetchCount;
 
 		await user.click(screen.getByRole("button", { name: "Clean unused" }));
+		await user.click(screen.getByRole("button", { name: "Confirm" }));
 
 		await waitFor(() => {
-			expect(global.confirm).toHaveBeenCalled();
 			expect(apiFetchMock).toHaveBeenCalledWith(
 				"/server/cleanup",
 				expect.anything(),

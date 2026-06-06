@@ -14,6 +14,9 @@ export interface DokkuCommands {
 	// Version
 	version(): string;
 
+	// Server maintenance
+	cleanup(): string;
+
 	// Apps
 	appsList(): string;
 	appsListQuiet(): string;
@@ -118,6 +121,9 @@ export interface DokkuCommands {
 export const DokkuCommands: DokkuCommands = {
 	// Version
 	version: (): string => "dokku version",
+
+	// Server maintenance
+	cleanup: (): string => "dokku cleanup",
 
 	// Apps
 	appsList: (): string => "dokku apps:list",

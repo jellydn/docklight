@@ -1,4 +1,10 @@
-import { executeCommand, type CommandResult } from "./executor.js";
+import { executeCommand } from "./executor.js";
+
+export const HEALTH_WARNING_THRESHOLD = 70;
+export const HEALTH_CRITICAL_THRESHOLD = 90;
+
+const METRIC_KEYS = ["cpu", "memory", "disk"] as const;
+type MetricKey = (typeof METRIC_KEYS)[number];
 
 export type HealthStatus = "ok" | "warning" | "critical";
 
@@ -12,24 +18,20 @@ export interface ServerHealth {
 	memory: number;
 	disk: number;
 	status: HealthStatus;
-	resources: {
-		cpu: ResourceHealth;
-		memory: ResourceHealth;
-		disk: ResourceHealth;
-	};
+	resources: Record<MetricKey, ResourceHealth>;
 }
 
 export function getResourceStatus(value: number): HealthStatus {
-	if (value >= 90) {
+	if (value >= HEALTH_CRITICAL_THRESHOLD) {
 		return "critical";
 	}
-	if (value >= 70) {
+	if (value >= HEALTH_WARNING_THRESHOLD) {
 		return "warning";
 	}
 	return "ok";
 }
 
-export function getOverallStatus(statuses: HealthStatus[]): HealthStatus {
+function getOverallStatus(statuses: HealthStatus[]): HealthStatus {
 	if (statuses.includes("critical")) {
 		return "critical";
 	}
@@ -44,64 +46,65 @@ function clampPercent(value: number): number {
 }
 
 export function buildServerHealth(cpu: number, memory: number, disk: number): ServerHealth {
-	const clampedCpu = clampPercent(cpu);
-	const clampedMemory = clampPercent(memory);
-	const clampedDisk = clampPercent(disk);
+	const rawValues: Record<MetricKey, number> = { cpu, memory, disk };
+	const values = Object.fromEntries(
+		METRIC_KEYS.map((key) => [key, clampPercent(rawValues[key])])
+	) as Record<MetricKey, number>;
 
-	const cpuStatus = getResourceStatus(clampedCpu);
-	const memoryStatus = getResourceStatus(clampedMemory);
-	const diskStatus = getResourceStatus(clampedDisk);
+	const resources = Object.fromEntries(
+		METRIC_KEYS.map((key) => {
+			const value = values[key];
+			return [key, { value, status: getResourceStatus(value) }];
+		})
+	) as Record<MetricKey, ResourceHealth>;
 
 	return {
-		cpu: clampedCpu,
-		memory: clampedMemory,
-		disk: clampedDisk,
-		status: getOverallStatus([cpuStatus, memoryStatus, diskStatus]),
-		resources: {
-			cpu: { value: clampedCpu, status: cpuStatus },
-			memory: { value: clampedMemory, status: memoryStatus },
-			disk: { value: clampedDisk, status: diskStatus },
-		},
+		...values,
+		status: getOverallStatus(METRIC_KEYS.map((key) => resources[key].status)),
+		resources,
 	};
+}
+
+function parseCpuPercent(stdout: string): number {
+	return parseFloat(stdout.trim()) || 0;
+}
+
+function parseMemoryPercent(stdout: string): number {
+	const memLine = stdout.split("\n").find((line) => line.startsWith("Mem:"));
+	if (!memLine) {
+		return 0;
+	}
+
+	const parts = memLine.split(/\s+/);
+	if (parts.length < 3) {
+		return 0;
+	}
+
+	const total = parseFloat(parts[1]);
+	const used = parseFloat(parts[2]);
+	return total > 0 ? (used / total) * 100 : 0;
+}
+
+function parseDiskPercent(stdout: string): number {
+	const match = stdout.trim().match(/(\d+)/);
+	return match ? parseFloat(match[0]) || 0 : 0;
 }
 
 export async function getServerHealth(): Promise<
 	ServerHealth | { error: string; command: string; exitCode: number; stderr: string }
 > {
 	try {
-		let cpu = 0;
-		let memory = 0;
-		let disk = 0;
+		const [cpuResult, memResult, diskResult] = await Promise.all([
+			executeCommand(
+				"grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage}'"
+			),
+			executeCommand("free -m"),
+			executeCommand("df -h / | awk 'NR==2 {print $5}'"),
+		]);
 
-		const cpuResult = await executeCommand(
-			"grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage}'"
-		);
-		if (cpuResult.exitCode === 0) {
-			cpu = parseFloat(cpuResult.stdout.trim()) || 0;
-		}
-
-		const memResult = await executeCommand("free -m");
-		if (memResult.exitCode === 0) {
-			const lines = memResult.stdout.split("\n");
-			const memLine = lines.find((line) => line.startsWith("Mem:"));
-			if (memLine) {
-				const parts = memLine.split(/\s+/);
-				if (parts.length >= 3) {
-					const total = parseFloat(parts[1]);
-					const used = parseFloat(parts[2]);
-					memory = total > 0 ? (used / total) * 100 : 0;
-				}
-			}
-		}
-
-		const diskResult = await executeCommand("df -h / | awk 'NR==2 {print $5}'");
-		if (diskResult.exitCode === 0) {
-			const percentageStr = diskResult.stdout.trim();
-			const match = percentageStr.match(/(\d+)/);
-			if (match) {
-				disk = parseFloat(match[0]) || 0;
-			}
-		}
+		const cpu = cpuResult.exitCode === 0 ? parseCpuPercent(cpuResult.stdout) : 0;
+		const memory = memResult.exitCode === 0 ? parseMemoryPercent(memResult.stdout) : 0;
+		const disk = diskResult.exitCode === 0 ? parseDiskPercent(diskResult.stdout) : 0;
 
 		return buildServerHealth(cpu, memory, disk);
 	} catch (error: unknown) {
@@ -113,8 +116,4 @@ export async function getServerHealth(): Promise<
 			stderr: err.message || "",
 		};
 	}
-}
-
-export async function runServerCleanup(userId?: string): Promise<CommandResult> {
-	return executeCommand("dokku cleanup", 120000, { userId });
 }

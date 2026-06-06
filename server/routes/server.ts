@@ -1,16 +1,13 @@
 import type express from "express";
-import type { JWTPayload } from "../lib/auth.js";
-import { getServerHealth, runServerCleanup, type ServerHealth } from "../lib/server.js";
+import { getServerHealth, type ServerHealth } from "../lib/server.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { del, get, set } from "../lib/cache.js";
-import { handleCommandResult, safeAuditLog } from "./util.js";
+import { executeCommand } from "../lib/executor.js";
+import { DokkuCommands } from "../lib/dokku.js";
+import { getStatusCode, getUserId, handleCommandResult, safeAuditLog } from "./util.js";
 
 const HEALTH_CACHE_KEY = "server:health";
-
-function getUserId(req: express.Request): string | undefined {
-	const user = req.user as JWTPayload | undefined;
-	return user?.userId ? String(user.userId) : undefined;
-}
+const CLEANUP_TIMEOUT_MS = 120000;
 
 export function registerServerRoutes(app: express.Application): void {
 	app.get("/api/server/health", authMiddleware, async (_req, res) => {
@@ -22,9 +19,7 @@ export function registerServerRoutes(app: express.Application): void {
 
 		const health = await getServerHealth();
 		if ("error" in health) {
-			res
-				.status(health.exitCode >= 400 && health.exitCode < 600 ? health.exitCode : 500)
-				.json(health);
+			res.status(getStatusCode(health.exitCode)).json(health);
 			return;
 		}
 
@@ -34,7 +29,7 @@ export function registerServerRoutes(app: express.Application): void {
 
 	app.post("/api/server/cleanup", authMiddleware, requireOperator, async (req, res) => {
 		const userId = getUserId(req);
-		const result = await runServerCleanup(userId);
+		const result = await executeCommand(DokkuCommands.cleanup(), CLEANUP_TIMEOUT_MS, { userId });
 
 		if (!handleCommandResult(res, result)) {
 			return;

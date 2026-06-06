@@ -35,7 +35,7 @@ const ResourceHealthSchema = z.object({
 	status: HealthStatusSchema,
 });
 
-// Server health schema
+// Server health schema. Top-level cpu/memory/disk mirror resources.*.value for backward compatibility.
 export const ServerHealthSchema = z.object({
 	cpu: z.number(),
 	memory: z.number(),

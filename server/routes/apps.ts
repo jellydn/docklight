@@ -1,5 +1,4 @@
 import type express from "express";
-import type { JWTPayload } from "../lib/auth.js";
 import {
 	getAppDetail,
 	getApps,
@@ -19,13 +18,8 @@ import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { executeCommandStreaming } from "../lib/executor.js";
 import { DokkuCommands } from "../lib/dokku.js";
 import { isSSERequest, createSSEWriter } from "../lib/sse.js";
-import { getParam, safeAuditLog } from "./util.js";
+import { getParam, getUserId, safeAuditLog } from "./util.js";
 import { broadcastAppEvent } from "../lib/app-events.js";
-
-function getUserId(req: express.Request): string | undefined {
-	const user = req.user as JWTPayload | undefined;
-	return user?.userId ? String(user.userId) : undefined;
-}
 
 async function streamAction(
 	req: express.Request,
