@@ -296,7 +296,9 @@ export async function getAppDetail(
 	const psReportCommand = DokkuCommands.psReport(name);
 
 	try {
-		const psReportResult = await executeCommand(psReportCommand, 30000, { userId });
+		const psReportResult = await executeCommand(psReportCommand, 30000, {
+			userId,
+		});
 		const domainsReportResult = await executeCommand(DokkuCommands.domainsReport(name), 30000, {
 			userId,
 		});
@@ -401,7 +403,9 @@ export async function createApp(
 		return createValidationError("create-app");
 	}
 
-	const result = await executeCommand(DokkuCommands.appsCreate(name), 30000, { userId });
+	const result = await executeCommand(DokkuCommands.appsCreate(name), 30000, {
+		userId,
+	});
 	return result;
 }
 
@@ -423,7 +427,9 @@ export async function destroyApp(
 		};
 	}
 
-	const result = await executeCommand(DokkuCommands.appsDestroy(name), 30000, { userId });
+	const result = await executeCommand(DokkuCommands.appsDestroy(name), 30000, {
+		userId,
+	});
 	return result;
 }
 

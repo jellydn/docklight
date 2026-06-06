@@ -99,7 +99,10 @@ describe("Login", () => {
 				expect.any(Object),
 				expect.objectContaining({
 					method: "POST",
-					body: JSON.stringify({ username: "testuser", password: "correct-password" }),
+					body: JSON.stringify({
+						username: "testuser",
+						password: "correct-password",
+					}),
 				})
 			);
 		});

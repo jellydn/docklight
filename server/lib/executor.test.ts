@@ -34,7 +34,12 @@ vi.mock("node-ssh", () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 
-type MockExecResult = { stdout: string; stderr: string; code: number; signal: null };
+type MockExecResult = {
+	stdout: string;
+	stderr: string;
+	code: number;
+	signal: null;
+};
 
 function makeExecResult(stdout: string, stderr: string, code: number): MockExecResult {
 	return { stdout, stderr, code, signal: null };
@@ -77,7 +82,11 @@ describe("SSHPool", () => {
 	it("passes parsed host, username, and port to connect()", async () => {
 		await pool.getConnection("myuser@myhost:2222");
 		expect(mockSshInstance.connect).toHaveBeenCalledWith(
-			expect.objectContaining({ host: "myhost", username: "myuser", port: 2222 })
+			expect.objectContaining({
+				host: "myhost",
+				username: "myuser",
+				port: 2222,
+			})
 		);
 	});
 
@@ -89,28 +98,44 @@ describe("SSHPool", () => {
 	it("parses bracketed IPv6 without port", async () => {
 		await pool.getConnection("dokku@[2001:db8::1]");
 		expect(mockSshInstance.connect).toHaveBeenCalledWith(
-			expect.objectContaining({ host: "2001:db8::1", username: "dokku", port: 22 })
+			expect.objectContaining({
+				host: "2001:db8::1",
+				username: "dokku",
+				port: 22,
+			})
 		);
 	});
 
 	it("parses bracketed IPv6 with port", async () => {
 		await pool.getConnection("dokku@[2001:db8::1]:2222");
 		expect(mockSshInstance.connect).toHaveBeenCalledWith(
-			expect.objectContaining({ host: "2001:db8::1", username: "dokku", port: 2222 })
+			expect.objectContaining({
+				host: "2001:db8::1",
+				username: "dokku",
+				port: 2222,
+			})
 		);
 	});
 
 	it("parses ssh:// URL format", async () => {
 		await pool.getConnection("ssh://dokku@myhost:2222");
 		expect(mockSshInstance.connect).toHaveBeenCalledWith(
-			expect.objectContaining({ host: "myhost", username: "dokku", port: 2222 })
+			expect.objectContaining({
+				host: "myhost",
+				username: "dokku",
+				port: 2222,
+			})
 		);
 	});
 
 	it("parses ssh:// URL with IPv6 host", async () => {
 		await pool.getConnection("ssh://dokku@[2001:db8::1]:2222");
 		expect(mockSshInstance.connect).toHaveBeenCalledWith(
-			expect.objectContaining({ host: "2001:db8::1", username: "dokku", port: 2222 })
+			expect.objectContaining({
+				host: "2001:db8::1",
+				username: "dokku",
+				port: 2222,
+			})
 		);
 	});
 

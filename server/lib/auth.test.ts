@@ -170,7 +170,12 @@ describe("requireRole", () => {
 
 	it("should allow matching role", () => {
 		const req = {
-			user: { authenticated: true, userId: 1, username: "alice", role: "admin" },
+			user: {
+				authenticated: true,
+				userId: 1,
+				username: "alice",
+				role: "admin",
+			},
 		} as unknown as Request;
 		const res = {
 			status: vi.fn().mockReturnThis(),

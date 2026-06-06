@@ -328,4 +328,65 @@ describe("databases", () => {
 			stderr: "permission denied",
 		});
 	});
+
+	it("getDatabases should return RabbitMQ databases with AMQP connection info", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku plugin:list",
+				exitCode: 0,
+				stdout: "dokku-rabbitmq",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku rabbitmq:list",
+				exitCode: 0,
+				stdout: "queue",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku rabbitmq:links 'queue'",
+				exitCode: 0,
+				stdout: "=====> queue linked apps\napi\nworker",
+				stderr: "",
+			});
+
+		const result = await getDatabases();
+
+		expect(result).toEqual([
+			{
+				name: "queue",
+				plugin: "rabbitmq",
+				linkedApps: ["api", "worker"],
+				connectionInfo: "amqp://localhost/queue",
+			},
+		]);
+		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku rabbitmq:list");
+		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku rabbitmq:links 'queue'");
+	});
+
+	it("createDatabase should accept rabbitmq plugin when installed", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku plugin:list",
+				exitCode: 0,
+				stdout: "dokku-rabbitmq",
+				stderr: "",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku rabbitmq:create 'queue'",
+				exitCode: 0,
+				stdout: "Creating RabbitMQ service...",
+				stderr: "",
+			});
+
+		const result = await createDatabase("rabbitmq", "queue");
+
+		expect(result).toEqual({
+			command: "dokku rabbitmq:create 'queue'",
+			exitCode: 0,
+			stdout: "Creating RabbitMQ service...",
+			stderr: "",
+		});
+		expect(mockExecuteCommand).toHaveBeenCalledWith("dokku rabbitmq:create 'queue'");
+	});
 });

@@ -57,7 +57,11 @@ describe("useAppEvents", () => {
 		renderHook(() => useAppEvents(), { wrapper: makeWrapper(queryClient) });
 
 		lastMockWs?.onmessage?.({
-			data: JSON.stringify({ type: "app:create", appName: "my-app", timestamp: "" }),
+			data: JSON.stringify({
+				type: "app:create",
+				appName: "my-app",
+				timestamp: "",
+			}),
 		});
 
 		expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
@@ -69,7 +73,11 @@ describe("useAppEvents", () => {
 		renderHook(() => useAppEvents(), { wrapper: makeWrapper(queryClient) });
 
 		lastMockWs?.onmessage?.({
-			data: JSON.stringify({ type: "app:destroy", appName: "my-app", timestamp: "" }),
+			data: JSON.stringify({
+				type: "app:destroy",
+				appName: "my-app",
+				timestamp: "",
+			}),
 		});
 
 		expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
@@ -81,7 +89,11 @@ describe("useAppEvents", () => {
 		renderHook(() => useAppEvents(), { wrapper: makeWrapper(queryClient) });
 
 		lastMockWs?.onmessage?.({
-			data: JSON.stringify({ type: "app:restart", appName: "my-app", timestamp: "" }),
+			data: JSON.stringify({
+				type: "app:restart",
+				appName: "my-app",
+				timestamp: "",
+			}),
 		});
 
 		expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
@@ -117,7 +129,11 @@ describe("useAppEvents", () => {
 		renderHook(() => useAppEvents(), { wrapper: makeWrapper(queryClient) });
 
 		lastMockWs?.onmessage?.({
-			data: JSON.stringify({ type: "other:event", appName: "my-app", timestamp: "" }),
+			data: JSON.stringify({
+				type: "other:event",
+				appName: "my-app",
+				timestamp: "",
+			}),
 		});
 
 		expect(queryClient.invalidateQueries).not.toHaveBeenCalled();

@@ -25,18 +25,27 @@ export function useAppEvents() {
 
 			ws.onmessage = (event) => {
 				try {
-					const data = JSON.parse(event.data as string) as { type?: string; appName?: string };
+					const data = JSON.parse(event.data as string) as {
+						type?: string;
+						appName?: string;
+					};
 					const { type, appName } = data;
 
 					if (!type?.startsWith("app:")) return;
 
 					if (type === "app:create" || type === "app:destroy") {
-						void queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
+						void queryClient.invalidateQueries({
+							queryKey: queryKeys.apps.all,
+						});
 					} else if (!appName) {
 						return;
 					} else {
-						void queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
-						void queryClient.invalidateQueries({ queryKey: queryKeys.apps.detail(appName) });
+						void queryClient.invalidateQueries({
+							queryKey: queryKeys.apps.all,
+						});
+						void queryClient.invalidateQueries({
+							queryKey: queryKeys.apps.detail(appName),
+						});
 					}
 				} catch {
 					// ignore parse errors

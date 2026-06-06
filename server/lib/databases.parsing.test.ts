@@ -21,6 +21,7 @@ describe("parseInstalledPlugins", () => {
 			"dokku-mysql",
 			"dokku-mariadb",
 			"dokku-mongo",
+			"dokku-rabbitmq",
 		].join("\n");
 		const plugins = parseInstalledPlugins(output);
 		expect(plugins).toContain("postgres");
@@ -28,6 +29,7 @@ describe("parseInstalledPlugins", () => {
 		expect(plugins).toContain("mysql");
 		expect(plugins).toContain("mariadb");
 		expect(plugins).toContain("mongo");
+		expect(plugins).toContain("rabbitmq");
 	});
 
 	it("should return empty array when no supported plugins found", () => {

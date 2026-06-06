@@ -102,7 +102,11 @@ export function Users() {
 	const handleCreate = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setCreateError("");
-		createUserMutation.mutate({ username: newUsername, password: newPassword, role: newRole });
+		createUserMutation.mutate({
+			username: newUsername,
+			password: newPassword,
+			role: newRole,
+		});
 	};
 
 	const handleEditSave = async (id: number) => {

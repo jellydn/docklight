@@ -119,7 +119,10 @@ export function Settings(): JSX.Element {
 									type="text"
 									value={form.dokkuSshTarget}
 									onChange={(e) =>
-										handleFieldChange((f) => ({ ...f, dokkuSshTarget: e.target.value }))
+										handleFieldChange((f) => ({
+											...f,
+											dokkuSshTarget: e.target.value,
+										}))
 									}
 									className="w-full px-3 py-2 border rounded-md text-sm font-mono"
 									placeholder="dokku@your-server-ip"
@@ -138,7 +141,10 @@ export function Settings(): JSX.Element {
 									type="text"
 									value={form.dokkuSshKeyPath}
 									onChange={(e) =>
-										handleFieldChange((f) => ({ ...f, dokkuSshKeyPath: e.target.value }))
+										handleFieldChange((f) => ({
+											...f,
+											dokkuSshKeyPath: e.target.value,
+										}))
 									}
 									className="w-full px-3 py-2 border rounded-md text-sm font-mono"
 									placeholder="/app/.ssh/id_ed25519"

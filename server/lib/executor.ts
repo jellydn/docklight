@@ -119,7 +119,11 @@ function parseTarget(target: string): ParsedSshTarget | null {
 	if (colonIndex >= 0) {
 		const parsedPort = Number(hostPart.slice(colonIndex + 1));
 		if (isValidPort(parsedPort)) {
-			return { host: hostPart.slice(0, colonIndex), username, port: parsedPort };
+			return {
+				host: hostPart.slice(0, colonIndex),
+				username,
+				port: parsedPort,
+			};
 		}
 	}
 	return { host: hostPart, username, port: DEFAULT_SSH_PORT };
@@ -212,7 +216,10 @@ async function execCommandWithTimeout(
 	conn: NodeSSH,
 	command: string,
 	timeout: number,
-	options?: { onStdout?: (chunk: Buffer) => void; onStderr?: (chunk: Buffer) => void }
+	options?: {
+		onStdout?: (chunk: Buffer) => void;
+		onStderr?: (chunk: Buffer) => void;
+	}
 ): Promise<{ stdout: string; stderr: string; code: number | null }> {
 	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 	const timeoutPromise = new Promise<never>((_, reject) => {
@@ -376,7 +383,10 @@ async function executeViaPoolStreaming(
 			const isChannelError = /channel open failure|open failed|unable to exec/i.test(errMessage);
 			if (isChannelError) {
 				sshPool.closeConnection(target);
-				onProgress({ type: "progress", message: "Reconnecting SSH channel..." });
+				onProgress({
+					type: "progress",
+					message: "Reconnecting SSH channel...",
+				});
 				const freshSsh = await sshPool.getConnection(target, keyPath);
 				execResult = await execCommandWithTimeout(freshSsh, command, timeout, {
 					onStdout: (chunk: Buffer) => {
@@ -389,7 +399,11 @@ async function executeViaPoolStreaming(
 					onStderr: (chunk: Buffer) => {
 						for (const line of chunk.toString().split("\n")) {
 							if (line.trim()) {
-								onProgress({ type: "output", message: line.trim(), error: true });
+								onProgress({
+									type: "output",
+									message: line.trim(),
+									error: true,
+								});
 							}
 						}
 					},
@@ -502,14 +516,29 @@ export async function executeCommandStreaming(
 
 		child.on("close", (code) => {
 			if (code === 255 && stdout.trim().length > 0 && isSshWarningOnly(stderr)) {
-				finish({ command, exitCode: 0, stdout: stdout.trim(), stderr: stderr.trim() });
+				finish({
+					command,
+					exitCode: 0,
+					stdout: stdout.trim(),
+					stderr: stderr.trim(),
+				});
 				return;
 			}
-			finish({ command, exitCode: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() });
+			finish({
+				command,
+				exitCode: code ?? 1,
+				stdout: stdout.trim(),
+				stderr: stderr.trim(),
+			});
 		});
 
 		child.on("error", (error: Error) => {
-			finish({ command, exitCode: 1, stdout: stdout.trim(), stderr: error.message });
+			finish({
+				command,
+				exitCode: 1,
+				stdout: stdout.trim(),
+				stderr: error.message,
+			});
 		});
 	});
 }
@@ -557,7 +586,12 @@ export async function executeCommand(
 		maybeSaveCommand(result, options?.skipHistory);
 		return result;
 	} catch (error: unknown) {
-		const err = error as { code?: number; stdout?: string; stderr?: string; message?: string };
+		const err = error as {
+			code?: number;
+			stdout?: string;
+			stderr?: string;
+			message?: string;
+		};
 		const stderr = err.stderr || err.message || "";
 
 		if (

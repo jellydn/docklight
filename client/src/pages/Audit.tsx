@@ -368,7 +368,12 @@ export function Audit() {
 								type: "text",
 								placeholder: "Filter by user ID...",
 							},
-							{ name: "action", label: "Action", type: "text", placeholder: "Filter by action..." },
+							{
+								name: "action",
+								label: "Action",
+								type: "text",
+								placeholder: "Filter by action...",
+							},
 						]}
 						filters={userFilters}
 						onFilterChange={setUserFilter}

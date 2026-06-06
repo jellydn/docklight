@@ -127,7 +127,11 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const result = await linkDatabase(plugin, name, app);
 
 		if (result.exitCode === 0) {
-			safeAuditLog(req, "database:link", name, { plugin, database: name, app });
+			safeAuditLog(req, "database:link", name, {
+				plugin,
+				database: name,
+				app,
+			});
 		}
 
 		clearPrefix("databases:");
@@ -153,7 +157,11 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const result = await unlinkDatabase(plugin, name, app);
 
 		if (result.exitCode === 0) {
-			safeAuditLog(req, "database:unlink", name, { plugin, database: name, app });
+			safeAuditLog(req, "database:unlink", name, {
+				plugin,
+				database: name,
+				app,
+			});
 		}
 
 		clearPrefix("databases:");

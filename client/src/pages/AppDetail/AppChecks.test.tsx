@@ -172,7 +172,9 @@ describe("AppChecks", () => {
 		it("should be disabled during disabling operation", () => {
 			render(<AppChecks {...defaultProps} checksReport={mockChecksReport} disabling={true} />);
 
-			const disableButton = screen.getByRole("button", { name: "Disabling..." });
+			const disableButton = screen.getByRole("button", {
+				name: "Disabling...",
+			});
 			expect(disableButton).toBeDisabled();
 		});
 	});

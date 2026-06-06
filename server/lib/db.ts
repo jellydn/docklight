@@ -317,7 +317,10 @@ export function demoteAdminWithGuard(
 	return { success: true };
 }
 
-export function deleteUserWithAdminGuard(id: number): { success: boolean; error?: string } {
+export function deleteUserWithAdminGuard(id: number): {
+	success: boolean;
+	error?: string;
+} {
 	const db = getDb();
 
 	const user = db.prepare("SELECT role FROM users WHERE id = ?").get(id) as UserRoleRow | undefined;
@@ -450,17 +453,26 @@ export function exportBackup(): BackupData {
 
 const VALID_ROLES: UserRole[] = ["admin", "operator", "viewer"];
 
-export function importBackup(backup: BackupData): { success: boolean; error?: string } {
+export function importBackup(backup: BackupData): {
+	success: boolean;
+	error?: string;
+} {
 	if (!backup || backup.version !== "1.0" || !Array.isArray(backup.users)) {
 		return { success: false, error: "Invalid backup format" };
 	}
 
 	for (const user of backup.users) {
 		if (!user.username || typeof user.username !== "string") {
-			return { success: false, error: "Invalid user: username must be a non-empty string" };
+			return {
+				success: false,
+				error: "Invalid user: username must be a non-empty string",
+			};
 		}
 		if (!user.password_hash || typeof user.password_hash !== "string") {
-			return { success: false, error: "Invalid user: password_hash must be a non-empty string" };
+			return {
+				success: false,
+				error: "Invalid user: password_hash must be a non-empty string",
+			};
 		}
 		if (!VALID_ROLES.includes(user.role)) {
 			return {
@@ -472,7 +484,10 @@ export function importBackup(backup: BackupData): { success: boolean; error?: st
 
 	const hasAdmin = backup.users.some((u) => u.role === "admin");
 	if (!hasAdmin) {
-		return { success: false, error: "Backup must contain at least one admin user" };
+		return {
+			success: false,
+			error: "Backup must contain at least one admin user",
+		};
 	}
 
 	const db = getDb();
@@ -498,7 +513,9 @@ export function deleteOldAuditLogs(olderThanDays: number): number {
 	const stmt = getDb().prepare(
 		"DELETE FROM audit_log WHERE datetime(createdAt) <= datetime('now', ?)"
 	);
-	const result = stmt.run(`-${olderThanDays} days`) as unknown as { changes: number };
+	const result = stmt.run(`-${olderThanDays} days`) as unknown as {
+		changes: number;
+	};
 	return result.changes;
 }
 
@@ -506,7 +523,9 @@ export function deleteOldCommandHistory(olderThanDays: number): number {
 	const stmt = getDb().prepare(
 		"DELETE FROM command_history WHERE datetime(createdAt) <= datetime('now', ?)"
 	);
-	const result = stmt.run(`-${olderThanDays} days`) as unknown as { changes: number };
+	const result = stmt.run(`-${olderThanDays} days`) as unknown as {
+		changes: number;
+	};
 	return result.changes;
 }
 
