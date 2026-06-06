@@ -271,6 +271,7 @@ export function Databases() {
 							value={newDbName}
 							onChange={(e) => setNewDbName(e.target.value)}
 							className="flex-1 border rounded px-3 py-2"
+							aria-label="Database name"
 						/>{" "}
 						<button
 							type="button"
@@ -457,6 +458,7 @@ export function Databases() {
 							onChange={(e) => setConfirmDestroyName(e.target.value)}
 							placeholder={pendingDestroyDb}
 							className="w-full border rounded px-3 py-2 mb-4"
+							aria-label="Confirm database name"
 						/>
 						<div className="flex justify-end space-x-2">
 							<button

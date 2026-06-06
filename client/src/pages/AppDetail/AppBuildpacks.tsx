@@ -53,7 +53,9 @@ export function AppBuildpacks({
 										<tr>
 											<th className="px-3 py-2 text-left text-sm font-medium text-gray-700">#</th>
 											<th className="px-3 py-2 text-left text-sm font-medium text-gray-700">URL</th>
-											<th className="px-3 py-2" />
+											<th className="px-3 py-2">
+												<span className="sr-only">Actions</span>
+											</th>
 										</tr>
 									</thead>
 									<tbody className="divide-y divide-gray-200">

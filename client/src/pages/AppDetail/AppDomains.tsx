@@ -66,7 +66,9 @@ export function AppDomains({
 							<thead>
 								<tr>
 									<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Domain</th>
-									<th className="px-4 py-2" />
+									<th className="px-4 py-2">
+										<span className="sr-only">Actions</span>
+									</th>
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-gray-200">
