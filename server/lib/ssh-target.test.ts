@@ -12,6 +12,11 @@ describe("parseSshTarget", () => {
 		expect(result).toEqual({ host: "host", username: "dokku", port: 2222 });
 	});
 
+	it("parses unbracketed IPv6 without port", () => {
+		const result = parseSshTarget("dokku@2001:db8::1");
+		expect(result).toEqual({ host: "2001:db8::1", username: "dokku", port: 22 });
+	});
+
 	it("parses bracketed IPv6 without port", () => {
 		const result = parseSshTarget("dokku@[2001:db8::1]");
 		expect(result).toEqual({ host: "2001:db8::1", username: "dokku", port: 22 });
@@ -59,6 +64,10 @@ describe("parseSshTarget", () => {
 
 	it("rejects input with @ at start", () => {
 		expect(parseSshTarget("@host")).toBeNull();
+	});
+
+	it("rejects input with empty host part", () => {
+		expect(parseSshTarget("dokku@")).toBeNull();
 	});
 
 	it("trims whitespace", () => {

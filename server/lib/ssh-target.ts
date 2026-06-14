@@ -31,6 +31,7 @@ export function parseSshTarget(target: string): ParsedSshTarget | null {
 	if (atIndex <= 0) return null;
 	const username = input.slice(0, atIndex);
 	const hostPart = input.slice(atIndex + 1);
+	if (!hostPart) return null;
 
 	if (hostPart.startsWith("[")) {
 		const closeBracket = hostPart.indexOf("]");
@@ -47,6 +48,11 @@ export function parseSshTarget(target: string): ParsedSshTarget | null {
 			}
 		}
 		return null;
+	}
+
+	const colons = hostPart.split(":").length - 1;
+	if (colons > 1) {
+		return { host: hostPart, username, port: DEFAULT_SSH_PORT };
 	}
 
 	const colonIndex = hostPart.indexOf(":");
