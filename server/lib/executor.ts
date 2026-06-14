@@ -6,17 +6,11 @@ import { saveCommand } from "./db.js";
 import { logger } from "./logger.js";
 import { commandRateLimiter } from "./rate-limiter.js";
 import { retryWithBackoff } from "./retry.js";
+import { getEffectiveDokkuSshConfig } from "./server-config.js";
 import { shellQuote } from "./shell.js";
+import { parseSshTarget } from "./ssh-target.js";
 
 const execAsync = promisify(exec);
-
-const DEFAULT_SSH_PORT = 22;
-
-type ParsedSshTarget = { host: string; username: string; port: number };
-
-function isValidPort(port: number): boolean {
-	return Number.isInteger(port) && port > 0 && port <= 65535;
-}
 
 export interface CommandResult {
 	command: string;
@@ -53,7 +47,7 @@ function createErrorResult(
 }
 
 function getSshTarget(): string | undefined {
-	return process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim();
+	return getEffectiveDokkuSshConfig().target;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -70,63 +64,6 @@ function isSshWarningOnly(stderr: string): boolean {
 		lines.length > 0 &&
 		lines.every((l) => /^Warning: Permanently added .+ to the list of known hosts/i.test(l))
 	);
-}
-
-function parseTarget(target: string): ParsedSshTarget | null {
-	const input = target.trim();
-
-	// Handle ssh:// URL format
-	if (input.startsWith("ssh://")) {
-		try {
-			const url = new URL(input);
-			const username = url.username;
-			// URL.hostname keeps brackets for IPv6 (e.g. "[::1]"), so strip them
-			const hostname = url.hostname;
-			const host = hostname.startsWith("[") ? hostname.slice(1, -1) : hostname;
-			const port = url.port ? Number(url.port) : DEFAULT_SSH_PORT;
-			if (!host || !username) return null;
-			return { host, username, port };
-		} catch {
-			return null;
-		}
-	}
-
-	const atIndex = input.indexOf("@");
-	if (atIndex <= 0) return null;
-	const username = input.slice(0, atIndex);
-	const hostPart = input.slice(atIndex + 1);
-
-	// Handle bracketed IPv6: user@[::1] or user@[::1]:2222
-	if (hostPart.startsWith("[")) {
-		const closeBracket = hostPart.indexOf("]");
-		if (closeBracket === -1) return null;
-		const host = hostPart.slice(1, closeBracket);
-		const afterBracket = hostPart.slice(closeBracket + 1);
-		if (afterBracket === "") {
-			return { host, username, port: DEFAULT_SSH_PORT };
-		}
-		if (afterBracket.startsWith(":")) {
-			const parsedPort = Number(afterBracket.slice(1));
-			if (isValidPort(parsedPort)) {
-				return { host, username, port: parsedPort };
-			}
-		}
-		return null;
-	}
-
-	// Handle regular "host" or "host:port"
-	const colonIndex = hostPart.indexOf(":");
-	if (colonIndex >= 0) {
-		const parsedPort = Number(hostPart.slice(colonIndex + 1));
-		if (isValidPort(parsedPort)) {
-			return {
-				host: hostPart.slice(0, colonIndex),
-				username,
-				port: parsedPort,
-			};
-		}
-	}
-	return { host: hostPart, username, port: DEFAULT_SSH_PORT };
 }
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
@@ -151,7 +88,7 @@ export class SSHPool {
 			return pendingConn;
 		}
 
-		const parsed = parseTarget(target);
+		const parsed = parseSshTarget(target);
 		if (!parsed) {
 			throw new Error(`Invalid SSH target: ${target}`);
 		}
@@ -257,7 +194,7 @@ async function executeViaPool(
 	timeout: number,
 	options?: ExecuteCommandOptions
 ): Promise<CommandResult> {
-	const keyPath = process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim() || undefined;
+	const keyPath = getEffectiveDokkuSshConfig().keyPath;
 
 	logger.debug({ target, command }, "executeViaPool debug");
 
@@ -330,7 +267,7 @@ async function executeViaPoolStreaming(
 	onProgress: ProgressCallback,
 	options?: ExecuteCommandOptions
 ): Promise<CommandResult> {
-	const keyPath = process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim() || undefined;
+	const keyPath = getEffectiveDokkuSshConfig().keyPath;
 
 	onProgress({ type: "progress", message: "Connecting to SSH..." });
 

@@ -96,6 +96,10 @@ ssh root@<your-server-ip> dokku config:set docklight JWT_SECRET="$(openssl rand 
 Docklight runs inside a container, so `dokku` is not available as a local binary there.
 Configure Docklight to execute Dokku commands via SSH back to the host.
 
+> **Important:** The SSH bridge target must be an address the container can reach.
+> The server's public IP may not work from inside a Docker container on some VPS providers.
+> Prefer the Docker bridge gateway (e.g., `172.17.0.1`) or an explicit known-good host IP.
+
 ```bash
 ssh root@<your-server-ip>
 
@@ -108,9 +112,15 @@ sudo -u dokku sh -c 'cat /home/dokku/.ssh/docklight.pub >> /home/dokku/.ssh/auth
 # Mount private key into Docklight container
 dokku storage:mount docklight /home/dokku/.ssh/docklight:/app/.ssh/id_ed25519
 
+# Determine the container-reachable host IP.
+# The Docker bridge gateway is usually 172.17.0.1 — verify with:
+#   docker network inspect bridge | grep Gateway
+# Or use: ip -4 addr show docker0
+BRIDGE_HOST="172.17.0.1"
+
 # Configure Docklight to use SSH for Dokku commands
 dokku config:set docklight \
-  DOCKLIGHT_DOKKU_SSH_TARGET=dokku@<your-server-ip> \
+  DOCKLIGHT_DOKKU_SSH_TARGET=dokku@${BRIDGE_HOST} \
   DOCKLIGHT_DOKKU_SSH_KEY_PATH=/app/.ssh/id_ed25519
 ```
 
@@ -203,11 +213,11 @@ Now you can log in with the username and password you just created.
 
 The dashboard **Server Health** card shows live VPS resource usage for CPU, memory, and disk. Metrics refresh every 30 seconds.
 
-| Status   | Threshold | Dashboard label  |
-| -------- | --------- | ---------------- |
-| OK       | below 70% | OK               |
-| Warning  | 70–89%    | Watch closely    |
-| Critical | 90%+      | Warning          |
+| Status   | Threshold | Dashboard label |
+| -------- | --------- | --------------- |
+| OK       | below 70% | OK              |
+| Warning  | 70–89%    | Watch closely   |
+| Critical | 90%+      | Warning         |
 
 The overall VPS status reflects the worst metric — if disk is at 95% but CPU is low, the banner shows critical.
 
@@ -483,11 +493,11 @@ Dokku's nginx proxy defaults to a **1 MB** request body cap. Any file upload pas
 
 You set the limit per app — pick the largest media type your app accepts:
 
-| Media | Typical app-side limit | nginx must allow at least |
-| ----- | ---------------------- | ------------------------- |
-| Images | 10 MB | 10 MB |
-| Audio | 10 MB | 10 MB |
-| Video | 50 MB | 50 MB |
+| Media  | Typical app-side limit | nginx must allow at least |
+| ------ | ---------------------- | ------------------------- |
+| Images | 10 MB                  | 10 MB                     |
+| Audio  | 10 MB                  | 10 MB                     |
+| Video  | 50 MB                  | 50 MB                     |
 
 Set the proxy cap to the **largest** value (50 MB covers all three):
 
@@ -534,6 +544,40 @@ Common issues:
 - `dokku: not found` in dashboard → configure Step 2.5 (Dokku SSH access)
 - Port conflict → Dokku handles port mapping automatically, no manual config needed
 - Can't log in → Make sure you've created an admin user via `dokku enter docklight web sh` and `node server/dist/createUser.js admin your-password-here`
+
+### SSH commands hang or time out after ~60 seconds
+
+Every Dokku action in the dashboard runs over SSH from the container to the host. If `DOCKLIGHT_DOKKU_SSH_TARGET` points at an address the container cannot reach, commands hang until the SSH timeout (typically 60s) and then fail.
+
+Common symptoms:
+
+- All Dokku commands in the dashboard take exactly ~60 seconds and return timeout errors
+- `dokku: not found` or `SSH connection failed` in the UI
+- The app logs show repeated connection timeout messages
+
+**Diagnosis:**
+
+```bash
+# Check the current bridge target
+ssh root@<your-server-ip> dokku config:get docklight DOCKLIGHT_DOKKU_SSH_TARGET
+
+# Test reachability from inside the container
+dokku enter docklight web sh
+ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no dokku@<bridge-target-host> echo ok
+```
+
+**Common cause:** Re-running the installer overwrote a working target with the server's public IP, which is unreachable from the container on some VPS providers (see [jellydn/docklight#129](https://github.com/jellydn/docklight/issues/129)).
+
+**Fix:** Set the bridge target to a container-reachable address:
+
+```bash
+# Docker bridge gateway (usually works)
+ssh root@<your-server-ip> dokku config:set docklight \
+  DOCKLIGHT_DOKKU_SSH_TARGET=dokku@172.17.0.1
+
+# Or find the gateway:
+ssh root@<your-server-ip> docker network inspect bridge | grep Gateway
+```
 
 ### Build fails
 
@@ -724,13 +768,13 @@ ssh root@<server-ip> "dokku rabbitmq:destroy hermes-queue"
 
 ### Same pattern for other services
 
-| Plugin | Install URL | Default env var |
-| --- | --- | --- |
-| Postgres | `https://github.com/dokku/dokku-postgres.git` | `DATABASE_URL` |
-| Redis | `https://github.com/dokku/dokku-redis.git` | `REDIS_URL` |
-| MariaDB | `https://github.com/dokku/dokku-mariadb.git` | `DATABASE_URL` |
-| MongoDB | `https://github.com/dokku/dokku-mongo.git` | `MONGO_URL` |
-| RabbitMQ | `https://github.com/dokku/dokku-rabbitmq.git` | `RABBITMQ_URL` |
+| Plugin   | Install URL                                   | Default env var |
+| -------- | --------------------------------------------- | --------------- |
+| Postgres | `https://github.com/dokku/dokku-postgres.git` | `DATABASE_URL`  |
+| Redis    | `https://github.com/dokku/dokku-redis.git`    | `REDIS_URL`     |
+| MariaDB  | `https://github.com/dokku/dokku-mariadb.git`  | `DATABASE_URL`  |
+| MongoDB  | `https://github.com/dokku/dokku-mongo.git`    | `MONGO_URL`     |
+| RabbitMQ | `https://github.com/dokku/dokku-rabbitmq.git` | `RABBITMQ_URL`  |
 
 The `create` / `link` / `expose` / `info` / `export` / `import` / `upgrade` / `destroy` subcommands work identically — substitute the service namespace (`postgres:create`, `redis:link`, etc.).
 

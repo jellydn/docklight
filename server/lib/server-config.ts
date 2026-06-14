@@ -84,6 +84,17 @@ export function validateSettings(input: Partial<ServerSettings>): SettingsValida
 	return errors;
 }
 
+export function getEffectiveDokkuSshConfig(): {
+	target: string | undefined;
+	keyPath: string | undefined;
+} {
+	const settings = getSettings();
+	return {
+		target: settings.dokkuSshTarget.trim() || undefined,
+		keyPath: settings.dokkuSshKeyPath.trim() || undefined,
+	};
+}
+
 export function updateSettings(updates: Partial<ServerSettings>): void {
 	const existing = readSettingsFile();
 	const merged: Partial<ServerSettings> = { ...existing };

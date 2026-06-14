@@ -5,58 +5,8 @@ import { adminRateLimiter } from "../lib/rate-limiter.js";
 import { logger } from "../lib/logger.js";
 import { isSSERequest, createSSEWriter } from "../lib/sse.js";
 import { getSettings, updateSettings, validateSettings } from "../lib/server-config.js";
+import { parseSshTarget } from "../lib/ssh-target.js";
 import { safeAuditLog } from "./util.js";
-
-const DEFAULT_SSH_PORT = 22;
-
-function parseSshTarget(target: string): { host: string; username: string; port: number } | null {
-	const input = target.trim();
-
-	if (input.startsWith("ssh://")) {
-		try {
-			const url = new URL(input);
-			const username = url.username;
-			const hostname = url.hostname;
-			const host = hostname.startsWith("[") ? hostname.slice(1, -1) : hostname;
-			const port = url.port ? Number(url.port) : DEFAULT_SSH_PORT;
-			if (!host || !username) return null;
-			return { host, username, port };
-		} catch {
-			return null;
-		}
-	}
-
-	if (!target.includes("@")) return null;
-	const atIndex = target.indexOf("@");
-	const username = target.slice(0, atIndex);
-	let host = target.slice(atIndex + 1);
-	let port = DEFAULT_SSH_PORT;
-
-	if (host.startsWith("[")) {
-		const bracketEnd = host.indexOf("]");
-		if (bracketEnd > 0) {
-			host = host.slice(1, bracketEnd);
-			const rest = target.slice(atIndex + 1 + bracketEnd + 1);
-			if (rest.startsWith(":")) {
-				port = parseInt(rest.slice(1), 10);
-			}
-			return {
-				host,
-				username,
-				port: Number.isNaN(port) ? DEFAULT_SSH_PORT : port,
-			};
-		}
-	}
-
-	if (host.includes(":")) {
-		const colonIndex = host.lastIndexOf(":");
-		const portStr = host.slice(colonIndex + 1);
-		port = parseInt(portStr, 10);
-		host = host.slice(0, colonIndex);
-	}
-
-	return { host, username, port: Number.isNaN(port) ? DEFAULT_SSH_PORT : port };
-}
 
 export function registerSettingsRoutes(app: express.Application): void {
 	app.get("/api/settings", adminRateLimiter, authMiddleware, requireAdmin, (_req, res) => {
