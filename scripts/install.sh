@@ -97,7 +97,7 @@ detect_container_reachable_host() {
 	local host=""
 
 	# 1. Docker bridge gateway (most reliable for container-to-host on standard installs)
-	if command -v docker >/dev/null 2>&1; then
+	if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
 		host="$(docker network inspect bridge 2>/dev/null |
 			grep -m1 '"Gateway"' |
 			sed 's/.*: *"//;s/".*//' ||
@@ -145,17 +145,25 @@ install_auto_update_timer() {
 
 	log "Installing auto-update timer (${schedule})"
 
+	# Escape values to prevent shell injection in generated script
+	local safe_app_name safe_repo_url safe_branch safe_storage_dir safe_keep_backups
+	safe_app_name="$(printf '%q' "${app_name}")"
+	safe_repo_url="$(printf '%q' "${repo_url}")"
+	safe_branch="$(printf '%q' "${branch}")"
+	safe_storage_dir="$(printf '%q' "${storage_dir}")"
+	safe_keep_backups="$(printf '%q' "${keep_backups}")"
+
 	cat >"${update_script}" <<UPDATER_EOF
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_NAME="${app_name}"
-REPO_URL="${repo_url}"
-BRANCH="${branch}"
-STORAGE_DIR="${storage_dir}"
+APP_NAME=${safe_app_name}
+REPO_URL=${safe_repo_url}
+BRANCH=${safe_branch}
+STORAGE_DIR=${safe_storage_dir}
 BACKUP_DIR="\${STORAGE_DIR}/update-backups"
 LOCK_FILE="/var/lock/\${APP_NAME}-update.lock"
-KEEP_BACKUPS="${keep_backups}"
+KEEP_BACKUPS=${safe_keep_backups}
 
 exec 9>"\${LOCK_FILE}"
 flock -n 9 || { echo "Another \${APP_NAME} update is already running"; exit 0; }
@@ -166,17 +174,27 @@ if ! dokku apps:exists "\${APP_NAME}" >/dev/null 2>&1; then
 fi
 
 mkdir -p "\${BACKUP_DIR}"
-if [[ -f "\${STORAGE_DIR}/docklight.db" ]]; then
-  cp "\${STORAGE_DIR}/docklight.db" "\${BACKUP_DIR}/docklight-\$(date -u +%Y%m%dT%H%M%SZ).db"
-  echo "Backed up database to \${BACKUP_DIR}"
+
+# Get actual DB path from app config (default: /app/data/docklight.db)
+CONTAINER_DB_PATH="\$(dokku config:get "\${APP_NAME}" DOCKLIGHT_DB_PATH 2>/dev/null || echo '/app/data/docklight.db')"
+# Convert container path to host storage path
+HOST_DB_PATH="\${STORAGE_DIR}/\${CONTAINER_DB_PATH#/app/data/}"
+
+if [[ -f "\${HOST_DB_PATH}" ]]; then
+  cp "\${HOST_DB_PATH}" "\${BACKUP_DIR}/docklight-\$(date -u +%Y%m%dT%H%M%SZ).db"
+  echo "Backed up database from \${HOST_DB_PATH} to \${BACKUP_DIR}"
+else
+  echo "Database file not found at \${HOST_DB_PATH} — skipping backup"
 fi
 
 dokku git:sync --build "\${APP_NAME}" "\${REPO_URL}" "\${BRANCH}"
 echo "Updated \${APP_NAME} from \${REPO_URL} (branch: \${BRANCH})"
 
-# Prune old backups
-find "\${BACKUP_DIR}" -name 'docklight-*.db' -type f | sort -r | tail -n +\$((KEEP_BACKUPS + 1)) | xargs -r rm -f
-echo "Pruned old backups (keeping \${KEEP_BACKUPS})"
+# Prune old backups (null-delimited for filename safety)
+if [[ -d "\${BACKUP_DIR}" ]]; then
+  find "\${BACKUP_DIR}" -name 'docklight-*.db' -type f -print0 | sort -rz | tail -zn +\$((KEEP_BACKUPS + 1)) | xargs -0r rm -f
+  echo "Pruned old backups (keeping \${KEEP_BACKUPS})"
+fi
 UPDATER_EOF
 
 	chmod 0700 "${update_script}"
@@ -416,6 +434,15 @@ dokku git:sync --build "${APP_NAME}" "${REPO_URL}" "${BRANCH}"
 
 # ---------- 7b. (optional) auto-update timer ----------
 if [[ "${ENABLE_AUTO_UPDATE}" == "1" ]]; then
+	if [[ -z "${AUTO_UPDATE_SCHEDULE}" ]]; then
+		err "AUTO_UPDATE_SCHEDULE cannot be empty when auto-update is enabled"
+	fi
+	if ! [[ "${AUTO_UPDATE_KEEP_BACKUPS}" =~ ^[1-9][0-9]*$ ]]; then
+		err "AUTO_UPDATE_KEEP_BACKUPS must be a positive integer, got: ${AUTO_UPDATE_KEEP_BACKUPS}"
+	fi
+	if [[ -z "${AUTO_UPDATE_REPO_URL}" ]]; then
+		err "AUTO_UPDATE_REPO_URL cannot be empty when auto-update is enabled"
+	fi
 	sanitized_url="$(sanitize_url "${AUTO_UPDATE_REPO_URL}")"
 	log "Enabling auto-update: repo=${sanitized_url} branch=${AUTO_UPDATE_BRANCH} schedule=${AUTO_UPDATE_SCHEDULE}"
 	install_auto_update_timer \

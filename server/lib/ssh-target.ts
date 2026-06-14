@@ -21,6 +21,7 @@ export function parseSshTarget(target: string): ParsedSshTarget | null {
 			const host = hostname.startsWith("[") ? hostname.slice(1, -1) : hostname;
 			const port = url.port ? Number(url.port) : DEFAULT_SSH_PORT;
 			if (!host || !username) return null;
+			if (url.port && !isValidPort(port)) return null;
 			return { host, username, port };
 		} catch {
 			return null;

@@ -62,7 +62,7 @@ export function getSettings(): ServerSettings {
 			fileKeyPath || process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim() || DEFAULTS.dokkuSshKeyPath,
 		logLevel:
 			typeof fileSettings.logLevel === "string"
-				? fileSettings.logLevel
+				? fileSettings.logLevel.trim()
 				: (process.env.LOG_LEVEL ?? DEFAULTS.logLevel),
 	};
 }
