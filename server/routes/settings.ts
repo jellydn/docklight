@@ -3,59 +3,44 @@ import { NodeSSH } from "node-ssh";
 import { authMiddleware, requireAdmin } from "../lib/auth.js";
 import { adminRateLimiter } from "../lib/rate-limiter.js";
 import { logger } from "../lib/logger.js";
+import type { ParsedSshTarget } from "../lib/ssh-target.js";
 import { isSSERequest, createSSEWriter } from "../lib/sse.js";
 import { getSettings, updateSettings, validateSettings } from "../lib/server-config.js";
+import { parseSshTarget } from "../lib/ssh-target.js";
 import { safeAuditLog } from "./util.js";
 
-const DEFAULT_SSH_PORT = 22;
+interface SshTestResult {
+	success: boolean;
+	stdout: string;
+	stderr: string;
+	exitCode: number;
+}
 
-function parseSshTarget(target: string): { host: string; username: string; port: number } | null {
-	const input = target.trim();
+async function testSshConnection(
+	parsed: ParsedSshTarget,
+	keyPath?: string
+): Promise<SshTestResult> {
+	const ssh = new NodeSSH();
+	try {
+		await ssh.connect({
+			host: parsed.host,
+			port: parsed.port,
+			username: parsed.username,
+			privateKeyPath: keyPath || undefined,
+			readyTimeout: 15000,
+		});
+		const result = await ssh.execCommand("echo 'connection-ok'");
 
-	if (input.startsWith("ssh://")) {
-		try {
-			const url = new URL(input);
-			const username = url.username;
-			const hostname = url.hostname;
-			const host = hostname.startsWith("[") ? hostname.slice(1, -1) : hostname;
-			const port = url.port ? Number(url.port) : DEFAULT_SSH_PORT;
-			if (!host || !username) return null;
-			return { host, username, port };
-		} catch {
-			return null;
-		}
+		const ok = result.code === 0 && result.stdout.trim() === "connection-ok";
+		return {
+			success: ok,
+			stdout: ok ? "SSH connection successful" : "",
+			stderr: ok ? "" : result.stderr || "Command execution failed",
+			exitCode: result.code ?? 1,
+		};
+	} finally {
+		ssh.dispose();
 	}
-
-	if (!target.includes("@")) return null;
-	const atIndex = target.indexOf("@");
-	const username = target.slice(0, atIndex);
-	let host = target.slice(atIndex + 1);
-	let port = DEFAULT_SSH_PORT;
-
-	if (host.startsWith("[")) {
-		const bracketEnd = host.indexOf("]");
-		if (bracketEnd > 0) {
-			host = host.slice(1, bracketEnd);
-			const rest = target.slice(atIndex + 1 + bracketEnd + 1);
-			if (rest.startsWith(":")) {
-				port = parseInt(rest.slice(1), 10);
-			}
-			return {
-				host,
-				username,
-				port: Number.isNaN(port) ? DEFAULT_SSH_PORT : port,
-			};
-		}
-	}
-
-	if (host.includes(":")) {
-		const colonIndex = host.lastIndexOf(":");
-		const portStr = host.slice(colonIndex + 1);
-		port = parseInt(portStr, 10);
-		host = host.slice(0, colonIndex);
-	}
-
-	return { host, username, port: Number.isNaN(port) ? DEFAULT_SSH_PORT : port };
 }
 
 export function registerSettingsRoutes(app: express.Application): void {
@@ -127,97 +112,47 @@ export function registerSettingsRoutes(app: express.Application): void {
 				return;
 			}
 
-			if (isSSERequest(req)) {
-				const sse = createSSEWriter(res);
-				try {
+			const sse = isSSERequest(req) ? createSSEWriter(res) : null;
+
+			try {
+				if (sse) {
 					sse.sendProgress("Connecting to SSH...");
-					const ssh = new NodeSSH();
-					await ssh.connect({
-						host: parsed.host,
-						port: parsed.port,
-						username: parsed.username,
-						privateKeyPath: keyPath || undefined,
-						readyTimeout: 15000,
-					});
-					sse.sendProgress("Testing command execution...");
-					const result = await ssh.execCommand("echo 'connection-ok'");
-					ssh.dispose();
-
-					if (result.code === 0 && result.stdout.trim() === "connection-ok") {
-						sse.sendResult({
-							command: "ssh test",
-							exitCode: 0,
-							stdout: "SSH connection successful",
-							stderr: "",
-						});
-						safeAuditLog(req, "settings:test-connection", null, {
-							target,
-							success: true,
-						});
+					const result = await testSshConnection(parsed, keyPath);
+					if (result.success) {
+						sse.sendResult({ command: "ssh test", exitCode: 0, stdout: result.stdout, stderr: "" });
 					} else {
-						sse.sendError(result.stderr || "Command execution failed");
+						sse.sendError(result.stderr);
 						sse.sendResult({
 							command: "ssh test",
-							exitCode: result.code || 1,
+							exitCode: result.exitCode,
 							stdout: "",
-							stderr: result.stderr || "Command execution failed",
-						});
-						safeAuditLog(req, "settings:test-connection", null, {
-							target,
-							success: false,
+							stderr: result.stderr,
 						});
 					}
-				} catch (err) {
-					const errorMessage = err instanceof Error ? err.message : "Connection failed";
-					logger.error({ err, target }, "SSH connection test failed");
-					sse.sendError(errorMessage);
-					sse.sendResult({
-						command: "ssh test",
-						exitCode: 1,
-						stdout: "",
-						stderr: errorMessage,
-					});
-					safeAuditLog(req, "settings:test-connection", null, {
-						target,
-						success: false,
-						error: errorMessage,
-					});
-				}
-			} else {
-				try {
-					const ssh = new NodeSSH();
-					await ssh.connect({
-						host: parsed.host,
-						port: parsed.port,
-						username: parsed.username,
-						privateKeyPath: keyPath || undefined,
-						readyTimeout: 15000,
-					});
-					const result = await ssh.execCommand("echo 'connection-ok'");
-					ssh.dispose();
-
-					if (result.code === 0 && result.stdout.trim() === "connection-ok") {
-						res.json({ success: true, message: "SSH connection successful" });
+					safeAuditLog(req, "settings:test-connection", null, { target, success: result.success });
+				} else {
+					const result = await testSshConnection(parsed, keyPath);
+					if (result.success) {
+						res.json({ success: true, message: result.stdout });
 					} else {
-						res.status(400).json({
-							success: false,
-							error: result.stderr || "Command execution failed",
-						});
+						res.status(400).json({ success: false, error: result.stderr });
 					}
-					safeAuditLog(req, "settings:test-connection", null, {
-						target,
-						success: result.code === 0,
-					});
-				} catch (err) {
-					const errorMessage = err instanceof Error ? err.message : "Connection failed";
-					logger.error({ err, target }, "SSH connection test failed");
-					res.status(400).json({ success: false, error: errorMessage });
-					safeAuditLog(req, "settings:test-connection", null, {
-						target,
-						success: false,
-						error: errorMessage,
-					});
+					safeAuditLog(req, "settings:test-connection", null, { target, success: result.success });
 				}
+			} catch (err) {
+				const errorMessage = err instanceof Error ? err.message : "Connection failed";
+				logger.error({ err, target }, "SSH connection test failed");
+				if (sse) {
+					sse.sendError(errorMessage);
+					sse.sendResult({ command: "ssh test", exitCode: 1, stdout: "", stderr: errorMessage });
+				} else {
+					res.status(400).json({ success: false, error: errorMessage });
+				}
+				safeAuditLog(req, "settings:test-connection", null, {
+					target,
+					success: false,
+					error: errorMessage,
+				});
 			}
 		}
 	);

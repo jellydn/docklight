@@ -187,38 +187,43 @@ just build
 
 ## 🔧 Environment Variables
 
-| Variable                            | Required                       | Description                                                            |
-| ----------------------------------- | ------------------------------ | ---------------------------------------------------------------------- |
-| `JWT_SECRET`                        | Yes (in production)            | JWT signing secret                                                     |
-| `DOCKLIGHT_DOKKU_SSH_TARGET`        | No (recommended in production) | SSH target for Dokku commands, for example `dokku@<server-ip>`         |
-| `DOCKLIGHT_DOKKU_SSH_KEY_PATH`      | No                             | Private key path inside container                                      |
-| `DOCKLIGHT_DOKKU_SSH_OPTS`          | No                             | Extra SSH options                                                      |
-| `PORT`                              | No                             | Server port (default `3001`)                                           |
-| `DOCKLIGHT_RATE_LIMIT_WINDOW_MS`    | No                             | Rate limit window in ms (default `900000` = 15 min)                    |
-| `DOCKLIGHT_AUTH_MAX_REQUESTS`       | No                             | Max auth login requests per window (default `5`, dev: `1000`)          |
-| `DOCKLIGHT_AUTH_CHECK_MAX_REQUESTS` | No                             | Max auth check requests per window (default `300`, dev: `10000`)       |
-| `DOCKLIGHT_COMMAND_WINDOW_MS`       | No                             | Command rate limit window in ms (default `60000` = 1 min)              |
-| `DOCKLIGHT_COMMAND_MAX_REQUESTS`    | No                             | Max command executions per window per user (default `30`, dev: `1000`) |
-| `DOCKLIGHT_ADMIN_MAX_REQUESTS`      | No                             | Max admin API requests per window (default `30`, dev: `1000`)          |
+| Variable                            | Required                       | Description                                                                                                   |
+| ----------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `JWT_SECRET`                        | Yes (in production)            | JWT signing secret                                                                                            |
+| `DOCKLIGHT_DOKKU_SSH_TARGET`        | No (recommended in production) | Container-reachable Dokku SSH target (e.g. `dokku@172.17.0.1`); the public IP may not work from inside Docker |
+| `DOCKLIGHT_DOKKU_SSH_KEY_PATH`      | No                             | Private key path inside container                                                                             |
+| `DOCKLIGHT_DOKKU_SSH_OPTS`          | No                             | Extra SSH options                                                                                             |
+| `PORT`                              | No                             | Server port (default `3001`)                                                                                  |
+| `DOCKLIGHT_RATE_LIMIT_WINDOW_MS`    | No                             | Rate limit window in ms (default `900000` = 15 min)                                                           |
+| `DOCKLIGHT_AUTH_MAX_REQUESTS`       | No                             | Max auth login requests per window (default `5`, dev: `1000`)                                                 |
+| `DOCKLIGHT_AUTH_CHECK_MAX_REQUESTS` | No                             | Max auth check requests per window (default `300`, dev: `10000`)                                              |
+| `DOCKLIGHT_COMMAND_WINDOW_MS`       | No                             | Command rate limit window in ms (default `60000` = 1 min)                                                     |
+| `DOCKLIGHT_COMMAND_MAX_REQUESTS`    | No                             | Max command executions per window per user (default `30`, dev: `1000`)                                        |
+| `DOCKLIGHT_ADMIN_MAX_REQUESTS`      | No                             | Max admin API requests per window (default `30`, dev: `1000`)                                                 |
 
 ### One-line installer env vars
 
 These are only used by `scripts/install.sh` (the one-line install):
 
-| Variable            | Required            | Description                                                                  |
-| ------------------- | ------------------- | ---------------------------------------------------------------------------- |
-| `APP_NAME`          | No                  | Dokku app name (default `docklight`)                                         |
-| `DOMAIN`            | No                  | Custom domain (default `<ip>.sslip.io`)                                      |
-| `REPO_URL`          | No                  | Git repo to deploy (default this repo)                                       |
-| `BRANCH`            | No                  | Branch to deploy (default `main`)                                            |
-| `DOKKU_VERSION`     | No                  | Dokku version to install (default `v0.35.20`)                                |
-| `ENABLE_HTTPS`      | No                  | Run Let's Encrypt after deploy (`1`/`0`, default `0`)                        |
-| `LETSENCRYPT_EMAIL` | If `ENABLE_HTTPS=1` | Email for Let's Encrypt                                                      |
-| `ADMIN_USERNAME`    | No                  | Initial admin username (default `admin`)                                     |
-| `ADMIN_PASSWORD`    | No                  | Initial admin password (default auto-generated)                              |
-| `ADMIN_SSH_KEY_URL` | No                  | URL returning operator's SSH public key (e.g. `https://sshid.io/<handle>`)   |
-| `ADMIN_SSH_KEY`     | No                  | Inline SSH public key content (alternative to URL)                           |
-| `GLOBAL_DOMAIN`     | No                  | Override Dokku global vhost (default `<ip>.sslip.io`, empty to keep current) |
+| Variable                   | Required            | Description                                                                  |
+| -------------------------- | ------------------- | ---------------------------------------------------------------------------- |
+| `APP_NAME`                 | No                  | Dokku app name (default `docklight`)                                         |
+| `DOMAIN`                   | No                  | Custom domain (default `<ip>.sslip.io`)                                      |
+| `REPO_URL`                 | No                  | Git repo to deploy (default this repo)                                       |
+| `BRANCH`                   | No                  | Branch to deploy (default `main`)                                            |
+| `DOKKU_VERSION`            | No                  | Dokku version to install (default `v0.35.20`)                                |
+| `ENABLE_HTTPS`             | No                  | Run Let's Encrypt after deploy (`1`/`0`, default `0`)                        |
+| `LETSENCRYPT_EMAIL`        | If `ENABLE_HTTPS=1` | Email for Let's Encrypt                                                      |
+| `ADMIN_USERNAME`           | No                  | Initial admin username (default `admin`)                                     |
+| `ADMIN_PASSWORD`           | No                  | Initial admin password (default auto-generated)                              |
+| `ADMIN_SSH_KEY_URL`        | No                  | URL returning operator's SSH public key (e.g. `https://sshid.io/<handle>`)   |
+| `ADMIN_SSH_KEY`            | No                  | Inline SSH public key content (alternative to URL)                           |
+| `GLOBAL_DOMAIN`            | No                  | Override Dokku global vhost (default `<ip>.sslip.io`, empty to keep current) |
+| `ENABLE_AUTO_UPDATE`       | No                  | Install a systemd timer for automatic updates (`1`/`0`, default `0`)         |
+| `AUTO_UPDATE_SCHEDULE`     | No                  | systemd `OnCalendar` value (default `daily`)                                 |
+| `AUTO_UPDATE_REPO_URL`     | No                  | Git repo for auto-update (default `REPO_URL`)                                |
+| `AUTO_UPDATE_BRANCH`       | No                  | Branch for auto-update (default `BRANCH`)                                    |
+| `AUTO_UPDATE_KEEP_BACKUPS` | No                  | Number of DB backups to keep (default `5`)                                   |
 
 ## 🔒 Security Notes
 

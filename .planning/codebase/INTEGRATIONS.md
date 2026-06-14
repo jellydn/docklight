@@ -86,7 +86,7 @@
 
 **Optional env vars:**
 
-- `DOCKLIGHT_DOKKU_SSH_TARGET` - SSH target for remote Dokku
+- `DOCKLIGHT_DOKKU_SSH_TARGET` - Container-reachable Dokku SSH target (e.g. `dokku@172.17.0.1`)
 - `DOCKLIGHT_DOKKU_SSH_KEY_PATH` - Path to SSH private key
 - `DOCKLIGHT_DOKKU_SSH_OPTS` - Additional SSH options
 - `PORT` - Server port (default 3001)
