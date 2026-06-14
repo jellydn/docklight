@@ -101,12 +101,7 @@ detect_container_reachable_host() {
 			true)"
 	fi
 
-	# 3. Route/source-address detection (works when host networking is available)
-	if [[ -z "${host}" ]] && command -v ip >/dev/null 2>&1; then
-		host="$(ip route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}')"
-	fi
-
-	# 4. Last resort: use SERVER_IP (may be unreachable from container on some VPS)
+	# 3. Last resort: use SERVER_IP (may be unreachable from container on some VPS)
 	if [[ -z "${host}" ]]; then
 		host="${SERVER_IP}"
 		warn "Could not detect container-reachable host; using public IP ${host}"

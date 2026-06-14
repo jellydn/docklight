@@ -6,7 +6,7 @@ import { saveCommand } from "./db.js";
 import { logger } from "./logger.js";
 import { commandRateLimiter } from "./rate-limiter.js";
 import { retryWithBackoff } from "./retry.js";
-import { getEffectiveDokkuSshConfig } from "./server-config.js";
+import { getSettings } from "./server-config.js";
 import { shellQuote } from "./shell.js";
 import { parseSshTarget } from "./ssh-target.js";
 
@@ -47,7 +47,7 @@ function createErrorResult(
 }
 
 function getSshTarget(): string | undefined {
-	return getEffectiveDokkuSshConfig().target;
+	return getSettings().dokkuSshTarget || undefined;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -188,15 +188,18 @@ export function buildRuntimeCommand(command: string): string {
 	return `ssh ${sshOptions} ${keyOption} ${shellQuote(target)} ${shellQuote(command)}`.trim();
 }
 
-async function executeViaPool(
+async function executeViaSshPool(
 	command: string,
 	target: string,
 	timeout: number,
-	options?: ExecuteCommandOptions
+	options?: ExecuteCommandOptions,
+	execOptions?: { onStdout?: (chunk: Buffer) => void; onStderr?: (chunk: Buffer) => void },
+	onProgress?: ProgressCallback
 ): Promise<CommandResult> {
-	const keyPath = getEffectiveDokkuSshConfig().keyPath;
+	const keyPath = getSettings().dokkuSshKeyPath || undefined;
 
-	logger.debug({ target, command }, "executeViaPool debug");
+	logger.debug({ target, command }, "executeViaSshPool debug");
+	onProgress?.({ type: "progress", message: "Connecting to SSH..." });
 
 	let ssh: NodeSSH;
 	try {
@@ -206,6 +209,7 @@ async function executeViaPool(
 					return await sshPool.getConnection(target, keyPath);
 				} catch (error) {
 					sshPool.closeConnection(target);
+					onProgress?.({ type: "progress", message: "Reconnecting to SSH..." });
 					throw error;
 				}
 			},
@@ -220,17 +224,20 @@ async function executeViaPool(
 		);
 	}
 
+	onProgress?.({ type: "progress", message: `Running ${command}...` });
+
 	let execResult: { stdout: string; stderr: string; code: number | null };
 	try {
 		try {
-			execResult = await execCommandWithTimeout(ssh, command, timeout);
+			execResult = await execCommandWithTimeout(ssh, command, timeout, execOptions);
 		} catch (error) {
 			const errMessage = getErrorMessage(error);
 			const isChannelError = /channel open failure|open failed|unable to exec/i.test(errMessage);
 			if (isChannelError) {
 				sshPool.closeConnection(target);
+				onProgress?.({ type: "progress", message: "Reconnecting SSH channel..." });
 				const freshSsh = await sshPool.getConnection(target, keyPath);
-				execResult = await execCommandWithTimeout(freshSsh, command, timeout);
+				execResult = await execCommandWithTimeout(freshSsh, command, timeout, execOptions);
 			} else {
 				throw error;
 			}
@@ -254,11 +261,39 @@ async function executeViaPool(
 	return result;
 }
 
+async function executeViaPool(
+	command: string,
+	target: string,
+	timeout: number,
+	options?: ExecuteCommandOptions
+): Promise<CommandResult> {
+	return executeViaSshPool(command, target, timeout, options);
+}
+
 export type ProgressCallback = (event: {
 	type: "progress" | "output";
 	message: string;
 	error?: boolean;
 }) => void;
+
+function makeStreamingExecOptions(onProgress: ProgressCallback) {
+	return {
+		onStdout: (chunk: Buffer) => {
+			for (const line of chunk.toString().split("\n")) {
+				if (line.trim()) {
+					onProgress({ type: "output", message: line.trim() });
+				}
+			}
+		},
+		onStderr: (chunk: Buffer) => {
+			for (const line of chunk.toString().split("\n")) {
+				if (line.trim()) {
+					onProgress({ type: "output", message: line.trim(), error: true });
+				}
+			}
+		},
+	};
+}
 
 async function executeViaPoolStreaming(
 	command: string,
@@ -267,105 +302,14 @@ async function executeViaPoolStreaming(
 	onProgress: ProgressCallback,
 	options?: ExecuteCommandOptions
 ): Promise<CommandResult> {
-	const keyPath = getEffectiveDokkuSshConfig().keyPath;
-
-	onProgress({ type: "progress", message: "Connecting to SSH..." });
-
-	let ssh: NodeSSH;
-	try {
-		ssh = await retryWithBackoff(
-			async () => {
-				try {
-					return await sshPool.getConnection(target, keyPath);
-				} catch (error) {
-					sshPool.closeConnection(target);
-					onProgress({ type: "progress", message: "Reconnecting to SSH..." });
-					throw error;
-				}
-			},
-			{ maxRetries: 2, baseDelay: 100 }
-		);
-	} catch (connError) {
-		return createErrorResult(
-			command,
-			`SSH connection failed after retries: ${getErrorMessage(connError)}`,
-			1,
-			options?.skipHistory
-		);
-	}
-
-	onProgress({ type: "progress", message: `Running ${command}...` });
-
-	let execResult: { stdout: string; stderr: string; code: number | null };
-	try {
-		try {
-			execResult = await execCommandWithTimeout(ssh, command, timeout, {
-				onStdout: (chunk: Buffer) => {
-					for (const line of chunk.toString().split("\n")) {
-						if (line.trim()) {
-							onProgress({ type: "output", message: line.trim() });
-						}
-					}
-				},
-				onStderr: (chunk: Buffer) => {
-					for (const line of chunk.toString().split("\n")) {
-						if (line.trim()) {
-							onProgress({ type: "output", message: line.trim(), error: true });
-						}
-					}
-				},
-			});
-		} catch (error) {
-			const errMessage = getErrorMessage(error);
-			const isChannelError = /channel open failure|open failed|unable to exec/i.test(errMessage);
-			if (isChannelError) {
-				sshPool.closeConnection(target);
-				onProgress({
-					type: "progress",
-					message: "Reconnecting SSH channel...",
-				});
-				const freshSsh = await sshPool.getConnection(target, keyPath);
-				execResult = await execCommandWithTimeout(freshSsh, command, timeout, {
-					onStdout: (chunk: Buffer) => {
-						for (const line of chunk.toString().split("\n")) {
-							if (line.trim()) {
-								onProgress({ type: "output", message: line.trim() });
-							}
-						}
-					},
-					onStderr: (chunk: Buffer) => {
-						for (const line of chunk.toString().split("\n")) {
-							if (line.trim()) {
-								onProgress({
-									type: "output",
-									message: line.trim(),
-									error: true,
-								});
-							}
-						}
-					},
-				});
-			} else {
-				throw error;
-			}
-		}
-	} catch (execError) {
-		return createErrorResult(
-			command,
-			`SSH command execution failed: ${getErrorMessage(execError)}`,
-			1,
-			options?.skipHistory
-		);
-	}
-
-	const result: CommandResult = {
+	return executeViaSshPool(
 		command,
-		exitCode: execResult.code ?? 1,
-		stdout: execResult.stdout.trim(),
-		stderr: execResult.stderr.trim(),
-	};
-	maybeSaveCommand(result, options?.skipHistory);
-	return result;
+		target,
+		timeout,
+		options,
+		makeStreamingExecOptions(onProgress),
+		onProgress
+	);
 }
 
 export async function executeCommandStreaming(

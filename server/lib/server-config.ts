@@ -53,12 +53,12 @@ export function getSettings(): ServerSettings {
 	const fileSettings = readSettingsFile();
 	return {
 		dokkuSshTarget:
-			fileSettings.dokkuSshTarget ??
-			process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim() ??
+			fileSettings.dokkuSshTarget?.trim() ||
+			process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim() ||
 			DEFAULTS.dokkuSshTarget,
 		dokkuSshKeyPath:
-			fileSettings.dokkuSshKeyPath ??
-			process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim() ??
+			fileSettings.dokkuSshKeyPath?.trim() ||
+			process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim() ||
 			DEFAULTS.dokkuSshKeyPath,
 		logLevel: fileSettings.logLevel ?? process.env.LOG_LEVEL ?? DEFAULTS.logLevel,
 	};
@@ -82,17 +82,6 @@ export function validateSettings(input: Partial<ServerSettings>): SettingsValida
 	}
 
 	return errors;
-}
-
-export function getEffectiveDokkuSshConfig(): {
-	target: string | undefined;
-	keyPath: string | undefined;
-} {
-	const settings = getSettings();
-	return {
-		target: settings.dokkuSshTarget.trim() || undefined,
-		keyPath: settings.dokkuSshKeyPath.trim() || undefined,
-	};
 }
 
 export function updateSettings(updates: Partial<ServerSettings>): void {

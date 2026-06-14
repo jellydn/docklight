@@ -27,7 +27,9 @@ vi.mock("fs", async () => {
 
 const mockFs = vi.mocked(fs);
 
-describe("getEffectiveDokkuSshConfig", () => {
+import { getSettings } from "./server-config.js";
+
+describe("getSettings", () => {
 	const OLD_ENV = process.env;
 
 	beforeEach(() => {
@@ -43,26 +45,24 @@ describe("getEffectiveDokkuSshConfig", () => {
 		process.env = OLD_ENV;
 	});
 
-	it("returns env values when no settings file exists", async () => {
+	it("returns env values when no settings file exists", () => {
 		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = "dokku@envhost";
 		process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH = "/env/key";
 
-		const { getEffectiveDokkuSshConfig } = await import("./server-config.js");
-		const config = getEffectiveDokkuSshConfig();
+		const settings = getSettings();
 
-		expect(config.target).toBe("dokku@envhost");
-		expect(config.keyPath).toBe("/env/key");
+		expect(settings.dokkuSshTarget).toBe("dokku@envhost");
+		expect(settings.dokkuSshKeyPath).toBe("/env/key");
 	});
 
-	it("returns undefined when no env and no settings file", async () => {
-		const { getEffectiveDokkuSshConfig } = await import("./server-config.js");
-		const config = getEffectiveDokkuSshConfig();
+	it("returns empty string defaults when no env and no settings file", () => {
+		const settings = getSettings();
 
-		expect(config.target).toBeUndefined();
-		expect(config.keyPath).toBeUndefined();
+		expect(settings.dokkuSshTarget).toBe("");
+		expect(settings.dokkuSshKeyPath).toBe("");
 	});
 
-	it("prefers file settings over env values", async () => {
+	it("prefers file settings over env values", () => {
 		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = "dokku@envhost";
 		process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH = "/env/key";
 
@@ -74,14 +74,15 @@ describe("getEffectiveDokkuSshConfig", () => {
 			})
 		);
 
-		const { getEffectiveDokkuSshConfig } = await import("./server-config.js");
-		const config = getEffectiveDokkuSshConfig();
+		const settings = getSettings();
 
-		expect(config.target).toBe("dokku@filehost");
-		expect(config.keyPath).toBe("/file/key");
+		expect(settings.dokkuSshTarget).toBe("dokku@filehost");
+		expect(settings.dokkuSshKeyPath).toBe("/file/key");
 	});
 
-	it("returns undefined for empty string values", async () => {
+	it("falls back to env for empty file values", () => {
+		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = "dokku@envhost";
+
 		mockFs.existsSync.mockReturnValue(true);
 		mockFs.readFileSync.mockReturnValue(
 			JSON.stringify({
@@ -90,21 +91,33 @@ describe("getEffectiveDokkuSshConfig", () => {
 			})
 		);
 
-		const { getEffectiveDokkuSshConfig } = await import("./server-config.js");
-		const config = getEffectiveDokkuSshConfig();
+		const settings = getSettings();
 
-		expect(config.target).toBeUndefined();
-		expect(config.keyPath).toBeUndefined();
+		expect(settings.dokkuSshTarget).toBe("dokku@envhost");
 	});
 
-	it("trims whitespace from values", async () => {
+	it("trims whitespace from file and env values", () => {
 		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = "  dokku@host  ";
 		process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH = "  /path/key  ";
 
-		const { getEffectiveDokkuSshConfig } = await import("./server-config.js");
-		const config = getEffectiveDokkuSshConfig();
+		const settings = getSettings();
 
-		expect(config.target).toBe("dokku@host");
-		expect(config.keyPath).toBe("/path/key");
+		expect(settings.dokkuSshTarget).toBe("dokku@host");
+		expect(settings.dokkuSshKeyPath).toBe("/path/key");
+	});
+
+	it("trims file values", () => {
+		mockFs.existsSync.mockReturnValue(true);
+		mockFs.readFileSync.mockReturnValue(
+			JSON.stringify({
+				dokkuSshTarget: "  dokku@filehost  ",
+				dokkuSshKeyPath: "  /file/key  ",
+			})
+		);
+
+		const settings = getSettings();
+
+		expect(settings.dokkuSshTarget).toBe("dokku@filehost");
+		expect(settings.dokkuSshKeyPath).toBe("/file/key");
 	});
 });
