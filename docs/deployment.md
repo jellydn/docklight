@@ -812,9 +812,11 @@ Go to **GitHub repo → Settings → Secrets and variables → Actions** and add
 ssh dokku@<your-server-ip> apps:create docklight-staging
 
 # Copy config from production (adjust values as needed)
+# Use a container-reachable host for the SSH bridge (not the public IP)
+BRIDGE_HOST="172.17.0.1"
 ssh dokku@<your-server-ip> config:set docklight-staging \
   DOCKLIGHT_DOKKU_SSH_KEY_PATH='/app/.ssh/id_ed25519' \
-  DOCKLIGHT_DOKKU_SSH_TARGET='dokku@<your-server-ip>' \
+  DOCKLIGHT_DOKKU_SSH_TARGET="dokku@${BRIDGE_HOST}" \
   JWT_SECRET='staging-secret'
 
 # Mount the SSH key (same as production setup)

@@ -205,7 +205,7 @@ describe("API Routes", () => {
 Server (.env or environment):
 
 - `JWT_SECRET` - Required for JWT signing
-- `DOCKLIGHT_DOKKU_SSH_TARGET` - SSH target (e.g., "dokku@server-ip")
+- `DOCKLIGHT_DOKKU_SSH_TARGET` - Container-reachable Dokku SSH target (e.g., "dokku@172.17.0.1")
 - `DOCKLIGHT_DOKKU_SSH_KEY_PATH` - Path to SSH private key
 - `LOG_LEVEL` - Logging level (default: "info")
 - `DOCKLIGHT_DB_PATH` - SQLite database path (default: `data/docklight.db`)
