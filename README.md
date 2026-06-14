@@ -205,20 +205,25 @@ just build
 
 These are only used by `scripts/install.sh` (the one-line install):
 
-| Variable            | Required            | Description                                                                  |
-| ------------------- | ------------------- | ---------------------------------------------------------------------------- |
-| `APP_NAME`          | No                  | Dokku app name (default `docklight`)                                         |
-| `DOMAIN`            | No                  | Custom domain (default `<ip>.sslip.io`)                                      |
-| `REPO_URL`          | No                  | Git repo to deploy (default this repo)                                       |
-| `BRANCH`            | No                  | Branch to deploy (default `main`)                                            |
-| `DOKKU_VERSION`     | No                  | Dokku version to install (default `v0.35.20`)                                |
-| `ENABLE_HTTPS`      | No                  | Run Let's Encrypt after deploy (`1`/`0`, default `0`)                        |
-| `LETSENCRYPT_EMAIL` | If `ENABLE_HTTPS=1` | Email for Let's Encrypt                                                      |
-| `ADMIN_USERNAME`    | No                  | Initial admin username (default `admin`)                                     |
-| `ADMIN_PASSWORD`    | No                  | Initial admin password (default auto-generated)                              |
-| `ADMIN_SSH_KEY_URL` | No                  | URL returning operator's SSH public key (e.g. `https://sshid.io/<handle>`)   |
-| `ADMIN_SSH_KEY`     | No                  | Inline SSH public key content (alternative to URL)                           |
-| `GLOBAL_DOMAIN`     | No                  | Override Dokku global vhost (default `<ip>.sslip.io`, empty to keep current) |
+| Variable                   | Required            | Description                                                                  |
+| -------------------------- | ------------------- | ---------------------------------------------------------------------------- |
+| `APP_NAME`                 | No                  | Dokku app name (default `docklight`)                                         |
+| `DOMAIN`                   | No                  | Custom domain (default `<ip>.sslip.io`)                                      |
+| `REPO_URL`                 | No                  | Git repo to deploy (default this repo)                                       |
+| `BRANCH`                   | No                  | Branch to deploy (default `main`)                                            |
+| `DOKKU_VERSION`            | No                  | Dokku version to install (default `v0.35.20`)                                |
+| `ENABLE_HTTPS`             | No                  | Run Let's Encrypt after deploy (`1`/`0`, default `0`)                        |
+| `LETSENCRYPT_EMAIL`        | If `ENABLE_HTTPS=1` | Email for Let's Encrypt                                                      |
+| `ADMIN_USERNAME`           | No                  | Initial admin username (default `admin`)                                     |
+| `ADMIN_PASSWORD`           | No                  | Initial admin password (default auto-generated)                              |
+| `ADMIN_SSH_KEY_URL`        | No                  | URL returning operator's SSH public key (e.g. `https://sshid.io/<handle>`)   |
+| `ADMIN_SSH_KEY`            | No                  | Inline SSH public key content (alternative to URL)                           |
+| `GLOBAL_DOMAIN`            | No                  | Override Dokku global vhost (default `<ip>.sslip.io`, empty to keep current) |
+| `ENABLE_AUTO_UPDATE`       | No                  | Install a systemd timer for automatic updates (`1`/`0`, default `0`)         |
+| `AUTO_UPDATE_SCHEDULE`     | No                  | systemd `OnCalendar` value (default `daily`)                                 |
+| `AUTO_UPDATE_REPO_URL`     | No                  | Git repo for auto-update (default `REPO_URL`)                                |
+| `AUTO_UPDATE_BRANCH`       | No                  | Branch for auto-update (default `BRANCH`)                                    |
+| `AUTO_UPDATE_KEEP_BACKUPS` | No                  | Number of DB backups to keep (default `5`)                                   |
 
 ## 🔒 Security Notes
 

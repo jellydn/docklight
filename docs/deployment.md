@@ -265,6 +265,48 @@ git push dokku main
 
 Dokku performs zero-downtime deploys by default.
 
+### Automatic updates (opt-in)
+
+The installer can set up a systemd timer that pulls and deploys new commits on a schedule. This is disabled by default.
+
+**Enable at install time:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/install.sh \
+  | sudo ENABLE_AUTO_UPDATE=1 AUTO_UPDATE_SCHEDULE=daily bash
+```
+
+**Enable on an already-installed VPS** by rerunning the installer with `ENABLE_AUTO_UPDATE=1`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/install.sh \
+  | sudo ENABLE_AUTO_UPDATE=1 bash
+```
+
+**Check status:**
+
+```bash
+systemctl status docklight-update.timer
+journalctl -u docklight-update.service -n 100 --no-pager
+```
+
+**Run manually:**
+
+```bash
+sudo systemctl start docklight-update.service
+```
+
+**How it works:**
+
+- A systemd timer runs `dokku git:sync --build` on the configured repo/branch.
+- Before each update, the SQLite database is backed up (default: keep 5 backups).
+- Updates use `flock` to prevent overlapping runs.
+- The timer, service, and update script are app-name-scoped (e.g. `docklight-update.timer`).
+
+**Security tradeoff:** tracking a branch means trusting that branch for unattended deploys. Keep SSH/root fallback access. Consider pinning to a controlled fork or branch if the upstream repo is not trusted for automatic deployment.
+
+**Private repos:** the Dokku host needs deploy credentials (SSH deploy key or credentialed URL) before `git:sync` can work. Credentialed URLs stored in systemd unit files are sensitive — prefer SSH deploy keys.
+
 ## Troubleshooting
 
 ### `ssh dokku@<server>` still prompts for a password

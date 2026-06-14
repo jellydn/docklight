@@ -33,6 +33,11 @@
 #                      address (Docker bridge gateway, then route fallback).
 #                      If the value already includes "user@", it is used as-is;
 #                      otherwise "dokku@" is prepended.
+#   ENABLE_AUTO_UPDATE      Install a systemd timer to update Docklight (1/0, default: 0)
+#   AUTO_UPDATE_SCHEDULE    systemd OnCalendar value (default: daily)
+#   AUTO_UPDATE_REPO_URL    Repo used by auto-update (default: REPO_URL)
+#   AUTO_UPDATE_BRANCH      Branch used by auto-update (default: BRANCH)
+#   AUTO_UPDATE_KEEP_BACKUPS Number of DB backups to keep (default: 5)
 
 set -euo pipefail
 
@@ -52,6 +57,11 @@ ADMIN_SSH_KEY="${ADMIN_SSH_KEY:-}"
 GLOBAL_DOMAIN_SET="${GLOBAL_DOMAIN+set}"
 GLOBAL_DOMAIN="${GLOBAL_DOMAIN-__AUTO__}"
 DOKKU_SSH_TARGET="${DOKKU_SSH_TARGET:-}"
+ENABLE_AUTO_UPDATE="${ENABLE_AUTO_UPDATE:-0}"
+AUTO_UPDATE_SCHEDULE="${AUTO_UPDATE_SCHEDULE:-daily}"
+AUTO_UPDATE_REPO_URL="${AUTO_UPDATE_REPO_URL:-${REPO_URL}}"
+AUTO_UPDATE_BRANCH="${AUTO_UPDATE_BRANCH:-${BRANCH}}"
+AUTO_UPDATE_KEEP_BACKUPS="${AUTO_UPDATE_KEEP_BACKUPS:-5}"
 
 # ---------- helpers ----------
 log() { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
@@ -109,6 +119,95 @@ detect_container_reachable_host() {
 	fi
 
 	printf '%s' "${host}"
+}
+
+sanitize_url() {
+	# Redact credentials from URLs for safe logging (e.g. https://user:token@host -> https://[REDACTED]@host)
+	printf '%s' "$1" | sed -E 's#(https?://)[^@/]+@#\1[REDACTED]@#'
+}
+
+install_auto_update_timer() {
+	local app_name="$1"
+	local repo_url="$2"
+	local branch="$3"
+	local keep_backups="$4"
+	local schedule="$5"
+
+	if ! command -v systemctl >/dev/null 2>&1; then
+		warn "systemctl not found — skipping auto-update timer setup"
+		return 0
+	fi
+
+	local update_script="/usr/local/bin/${app_name}-update"
+	local service_file="/etc/systemd/system/${app_name}-update.service"
+	local timer_file="/etc/systemd/system/${app_name}-update.timer"
+	local storage_dir="/var/lib/dokku/data/storage/${app_name}"
+
+	log "Installing auto-update timer (${schedule})"
+
+	cat >"${update_script}" <<UPDATER_EOF
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_NAME="${app_name}"
+REPO_URL="${repo_url}"
+BRANCH="${branch}"
+STORAGE_DIR="${storage_dir}"
+BACKUP_DIR="\${STORAGE_DIR}/update-backups"
+LOCK_FILE="/var/lock/\${APP_NAME}-update.lock"
+KEEP_BACKUPS="${keep_backups}"
+
+exec 9>"\${LOCK_FILE}"
+flock -n 9 || { echo "Another \${APP_NAME} update is already running"; exit 0; }
+
+if ! dokku apps:exists "\${APP_NAME}" >/dev/null 2>&1; then
+  echo "App \${APP_NAME} does not exist — skipping update"
+  exit 0
+fi
+
+mkdir -p "\${BACKUP_DIR}"
+if [[ -f "\${STORAGE_DIR}/docklight.db" ]]; then
+  cp "\${STORAGE_DIR}/docklight.db" "\${BACKUP_DIR}/docklight-\$(date -u +%Y%m%dT%H%M%SZ).db"
+  echo "Backed up database to \${BACKUP_DIR}"
+fi
+
+dokku git:sync --build "\${APP_NAME}" "\${REPO_URL}" "\${BRANCH}"
+echo "Updated \${APP_NAME} from \${REPO_URL} (branch: \${BRANCH})"
+
+# Prune old backups
+find "\${BACKUP_DIR}" -name 'docklight-*.db' -type f | sort -r | tail -n +\$((KEEP_BACKUPS + 1)) | xargs -r rm -f
+echo "Pruned old backups (keeping \${KEEP_BACKUPS})"
+UPDATER_EOF
+
+	chmod 0755 "${update_script}"
+
+	cat >"${service_file}" <<SERVICE_EOF
+[Unit]
+Description=Docklight auto-update for ${app_name}
+After=network.target dokku.service
+
+[Service]
+Type=oneshot
+ExecStart=${update_script}
+StandardOutput=journal
+StandardError=journal
+SERVICE_EOF
+
+	cat >"${timer_file}" <<TIMER_EOF
+[Unit]
+Description=Auto-update timer for ${app_name}
+
+[Timer]
+OnCalendar=${schedule}
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+TIMER_EOF
+
+	systemctl daemon-reload
+	systemctl enable --now "${app_name}-update.timer"
+	log "Auto-update timer enabled: ${app_name}-update.timer (${schedule})"
 }
 
 # ---------- preflight ----------
@@ -308,6 +407,18 @@ dokku domains:set "${APP_NAME}" "${DOMAIN}"
 # ---------- 7. deploy ----------
 log "Deploying ${APP_NAME} from ${REPO_URL} (branch: ${BRANCH})"
 dokku git:sync --build "${APP_NAME}" "${REPO_URL}" "${BRANCH}"
+
+# ---------- 7b. (optional) auto-update timer ----------
+if [[ "${ENABLE_AUTO_UPDATE}" == "1" ]]; then
+	sanitized_url="$(sanitize_url "${AUTO_UPDATE_REPO_URL}")"
+	log "Enabling auto-update: repo=${sanitized_url} branch=${AUTO_UPDATE_BRANCH} schedule=${AUTO_UPDATE_SCHEDULE}"
+	install_auto_update_timer \
+		"${APP_NAME}" \
+		"${AUTO_UPDATE_REPO_URL}" \
+		"${AUTO_UPDATE_BRANCH}" \
+		"${AUTO_UPDATE_KEEP_BACKUPS}" \
+		"${AUTO_UPDATE_SCHEDULE}"
+fi
 
 # ---------- 8. initial admin user ----------
 if [[ -z "${ADMIN_PASSWORD}" ]]; then
