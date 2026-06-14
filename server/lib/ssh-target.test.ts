@@ -106,4 +106,12 @@ describe("parseSshTarget", () => {
 	it("rejects user@[] with empty bracketed host", () => {
 		expect(parseSshTarget("dokku@[]")).toBeNull();
 	});
+
+	it("rejects ssh:// URL with port > 65535", () => {
+		expect(parseSshTarget("ssh://dokku@host:99999")).toBeNull();
+	});
+
+	it("rejects ssh:// URL with port zero", () => {
+		expect(parseSshTarget("ssh://dokku@host:0")).toBeNull();
+	});
 });
