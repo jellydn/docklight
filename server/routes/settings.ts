@@ -21,23 +21,26 @@ async function testSshConnection(
 	keyPath?: string
 ): Promise<SshTestResult> {
 	const ssh = new NodeSSH();
-	await ssh.connect({
-		host: parsed.host,
-		port: parsed.port,
-		username: parsed.username,
-		privateKeyPath: keyPath || undefined,
-		readyTimeout: 15000,
-	});
-	const result = await ssh.execCommand("echo 'connection-ok'");
-	ssh.dispose();
+	try {
+		await ssh.connect({
+			host: parsed.host,
+			port: parsed.port,
+			username: parsed.username,
+			privateKeyPath: keyPath || undefined,
+			readyTimeout: 15000,
+		});
+		const result = await ssh.execCommand("echo 'connection-ok'");
 
-	const ok = result.code === 0 && result.stdout.trim() === "connection-ok";
-	return {
-		success: ok,
-		stdout: ok ? "SSH connection successful" : "",
-		stderr: ok ? "" : result.stderr || "Command execution failed",
-		exitCode: result.code ?? 1,
-	};
+		const ok = result.code === 0 && result.stdout.trim() === "connection-ok";
+		return {
+			success: ok,
+			stdout: ok ? "SSH connection successful" : "",
+			stderr: ok ? "" : result.stderr || "Command execution failed",
+			exitCode: result.code ?? 1,
+		};
+	} finally {
+		ssh.dispose();
+	}
 }
 
 export function registerSettingsRoutes(app: express.Application): void {
@@ -109,9 +112,10 @@ export function registerSettingsRoutes(app: express.Application): void {
 				return;
 			}
 
+			const sse = isSSERequest(req) ? createSSEWriter(res) : null;
+
 			try {
-				if (isSSERequest(req)) {
-					const sse = createSSEWriter(res);
+				if (sse) {
 					sse.sendProgress("Connecting to SSH...");
 					const result = await testSshConnection(parsed, keyPath);
 					if (result.success) {
@@ -138,8 +142,7 @@ export function registerSettingsRoutes(app: express.Application): void {
 			} catch (err) {
 				const errorMessage = err instanceof Error ? err.message : "Connection failed";
 				logger.error({ err, target }, "SSH connection test failed");
-				if (isSSERequest(req)) {
-					const sse = createSSEWriter(res);
+				if (sse) {
 					sse.sendError(errorMessage);
 					sse.sendResult({ command: "ssh test", exitCode: 1, stdout: "", stderr: errorMessage });
 				} else {

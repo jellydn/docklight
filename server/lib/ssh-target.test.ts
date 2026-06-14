@@ -98,4 +98,12 @@ describe("parseSshTarget", () => {
 	it("rejects ssh:// URL with empty username", () => {
 		expect(parseSshTarget("ssh://@myhost:2222")).toBeNull();
 	});
+
+	it("rejects user@:port with empty host", () => {
+		expect(parseSshTarget("dokku@:2222")).toBeNull();
+	});
+
+	it("rejects user@[] with empty bracketed host", () => {
+		expect(parseSshTarget("dokku@[]")).toBeNull();
+	});
 });

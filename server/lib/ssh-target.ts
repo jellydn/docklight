@@ -37,6 +37,7 @@ export function parseSshTarget(target: string): ParsedSshTarget | null {
 		const closeBracket = hostPart.indexOf("]");
 		if (closeBracket === -1) return null;
 		const host = hostPart.slice(1, closeBracket);
+		if (!host) return null;
 		const afterBracket = hostPart.slice(closeBracket + 1);
 		if (afterBracket === "") {
 			return { host, username, port: DEFAULT_SSH_PORT };
@@ -57,10 +58,12 @@ export function parseSshTarget(target: string): ParsedSshTarget | null {
 
 	const colonIndex = hostPart.indexOf(":");
 	if (colonIndex >= 0) {
+		const host = hostPart.slice(0, colonIndex);
+		if (!host) return null;
 		const parsedPort = Number(hostPart.slice(colonIndex + 1));
 		if (isValidPort(parsedPort)) {
 			return {
-				host: hostPart.slice(0, colonIndex),
+				host,
 				username,
 				port: parsedPort,
 			};

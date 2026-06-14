@@ -51,16 +51,19 @@ function writeSettingsFile(settings: Partial<ServerSettings>): void {
 
 export function getSettings(): ServerSettings {
 	const fileSettings = readSettingsFile();
+	const fileTarget =
+		typeof fileSettings.dokkuSshTarget === "string" ? fileSettings.dokkuSshTarget.trim() : "";
+	const fileKeyPath =
+		typeof fileSettings.dokkuSshKeyPath === "string" ? fileSettings.dokkuSshKeyPath.trim() : "";
 	return {
 		dokkuSshTarget:
-			fileSettings.dokkuSshTarget?.trim() ||
-			process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim() ||
-			DEFAULTS.dokkuSshTarget,
+			fileTarget || process.env.DOCKLIGHT_DOKKU_SSH_TARGET?.trim() || DEFAULTS.dokkuSshTarget,
 		dokkuSshKeyPath:
-			fileSettings.dokkuSshKeyPath?.trim() ||
-			process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim() ||
-			DEFAULTS.dokkuSshKeyPath,
-		logLevel: fileSettings.logLevel ?? process.env.LOG_LEVEL ?? DEFAULTS.logLevel,
+			fileKeyPath || process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim() || DEFAULTS.dokkuSshKeyPath,
+		logLevel:
+			typeof fileSettings.logLevel === "string"
+				? fileSettings.logLevel
+				: (process.env.LOG_LEVEL ?? DEFAULTS.logLevel),
 	};
 }
 

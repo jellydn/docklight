@@ -120,4 +120,21 @@ describe("getSettings", () => {
 		expect(settings.dokkuSshTarget).toBe("dokku@filehost");
 		expect(settings.dokkuSshKeyPath).toBe("/file/key");
 	});
+
+	it("falls back to env for non-string file values", () => {
+		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = "dokku@envhost";
+
+		mockFs.existsSync.mockReturnValue(true);
+		mockFs.readFileSync.mockReturnValue(
+			JSON.stringify({
+				dokkuSshTarget: 123,
+				dokkuSshKeyPath: true,
+			})
+		);
+
+		const settings = getSettings();
+
+		expect(settings.dokkuSshTarget).toBe("dokku@envhost");
+		expect(settings.dokkuSshKeyPath).toBe("");
+	});
 });
