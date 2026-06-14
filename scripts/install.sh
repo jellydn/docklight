@@ -179,7 +179,13 @@ find "\${BACKUP_DIR}" -name 'docklight-*.db' -type f | sort -r | tail -n +\$((KE
 echo "Pruned old backups (keeping \${KEEP_BACKUPS})"
 UPDATER_EOF
 
-	chmod 0755 "${update_script}"
+	chmod 0700 "${update_script}"
+
+	# Warn if repo URL contains credentials (sensitive in generated script)
+	if [[ "${repo_url}" =~ ://[^@/]+@ ]]; then
+		warn "Auto-update repo URL contains credentials — the generated script at ${update_script} stores them"
+		warn "Consider using an SSH deploy key instead of a credentialed HTTPS URL"
+	fi
 
 	cat >"${service_file}" <<SERVICE_EOF
 [Unit]

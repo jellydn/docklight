@@ -180,7 +180,8 @@ export function buildRuntimeCommand(command: string): string {
 		return command;
 	}
 
-	const keyPath = process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH?.trim();
+	const settings = getSettings();
+	const keyPath = settings.dokkuSshKeyPath || undefined;
 	const sshOptions =
 		process.env.DOCKLIGHT_DOKKU_SSH_OPTS?.trim() ||
 		"-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10";

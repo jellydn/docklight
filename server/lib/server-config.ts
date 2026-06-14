@@ -104,10 +104,18 @@ export function updateSettings(updates: Partial<ServerSettings>): void {
 	writeSettingsFile(merged);
 
 	if (updates.dokkuSshTarget !== undefined) {
-		process.env.DOCKLIGHT_DOKKU_SSH_TARGET = updates.dokkuSshTarget;
+		if (updates.dokkuSshTarget) {
+			process.env.DOCKLIGHT_DOKKU_SSH_TARGET = updates.dokkuSshTarget;
+		} else {
+			delete process.env.DOCKLIGHT_DOKKU_SSH_TARGET;
+		}
 	}
 	if (updates.dokkuSshKeyPath !== undefined) {
-		process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH = updates.dokkuSshKeyPath;
+		if (updates.dokkuSshKeyPath) {
+			process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH = updates.dokkuSshKeyPath;
+		} else {
+			delete process.env.DOCKLIGHT_DOKKU_SSH_KEY_PATH;
+		}
 	}
 	if (updates.logLevel !== undefined) {
 		process.env.LOG_LEVEL = updates.logLevel;
