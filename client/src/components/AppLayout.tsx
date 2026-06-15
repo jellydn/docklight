@@ -33,6 +33,31 @@ const adminNavItems = [
 	{ to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
+interface SidebarLinkProps {
+	to: string;
+	label: string;
+	icon: React.ComponentType<{ className?: string }>;
+	active: boolean;
+	onClick: () => void;
+}
+
+function SidebarLink({ to, label, icon: Icon, active, onClick }: SidebarLinkProps) {
+	return (
+		<Link
+			to={to}
+			onClick={onClick}
+			className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+				active
+					? "bg-white/20 text-white"
+					: "text-primary-foreground/60 hover:bg-primary-foreground/10 hover:text-primary-foreground"
+			}`}
+		>
+			<Icon className="h-4 w-4" />
+			{label}
+		</Link>
+	);
+}
+
 export function AppLayout() {
 	const navigate = useNavigate();
 	const location = useLocation();
@@ -59,7 +84,7 @@ export function AppLayout() {
 	const isActive = (path: string): boolean =>
 		location.pathname === path || location.pathname.startsWith(path + "/");
 
-	const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-card border-r border-border text-card-foreground transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:z-auto md:pointer-events-auto ${
+	const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-primary text-primary-foreground transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:z-auto md:pointer-events-auto ${
 		sidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
 	}`;
 
@@ -77,67 +102,55 @@ export function AppLayout() {
 
 			{/* Sidebar */}
 			<aside className={`${sidebarClasses} flex flex-col`}>
-				<div className="flex items-center justify-between p-4 border-b border-border">
+				<div className="flex items-center justify-between p-4 border-b border-primary-foreground/10">
 					<div className="flex items-center gap-2">
 						<img src="/logo.svg" alt="Docklight logo" className="h-6 w-6" />
-						<h1 className="text-xl font-bold">Docklight</h1>
+						<h1 className="text-xl font-bold text-primary-foreground">Docklight</h1>
 					</div>
 					<button
 						type="button"
 						onClick={closeSidebar}
-						className="md:hidden text-muted-foreground hover:text-foreground"
+						className="md:hidden text-primary-foreground/60 hover:text-primary-foreground"
 						aria-label="Close menu"
 					>
 						<X className="h-5 w-5" />
 					</button>
 				</div>
 				<nav className="mt-4 flex-1 px-2 space-y-1">
-					{navItems.map(({ to, label, icon: Icon }) => (
-						<Link
+					{navItems.map(({ to, label, icon }) => (
+						<SidebarLink
 							key={to}
 							to={to}
+							label={label}
+							icon={icon}
+							active={isActive(to)}
 							onClick={closeSidebar}
-							className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-								isActive(to)
-									? "bg-accent text-foreground"
-									: "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-							}`}
-						>
-							<Icon className="h-4 w-4" />
-							{label}
-						</Link>
+						/>
 					))}
 					{role === "admin" &&
-						adminNavItems.map(({ to, label, icon: Icon }) => (
-							<Link
+						adminNavItems.map(({ to, label, icon }) => (
+							<SidebarLink
 								key={to}
 								to={to}
+								label={label}
+								icon={icon}
+								active={isActive(to)}
 								onClick={closeSidebar}
-								className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-									isActive(to)
-										? "bg-accent text-foreground"
-										: "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-								}`}
-							>
-								<Icon className="h-4 w-4" />
-								{label}
-							</Link>
+							/>
 						))}
 					<button
 						type="button"
 						onClick={handleLogout}
-						className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors w-full mt-4"
+						className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-primary-foreground/60 hover:bg-primary-foreground/10 hover:text-primary-foreground transition-colors w-full mt-4"
 					>
 						<LogOut className="h-4 w-4" />
 						Logout
 					</button>
 				</nav>
 				{username && (
-					<div className="mt-auto border-t border-border p-4">
-						<p className="text-sm font-medium truncate">{username}</p>
-						{role && (
-							<p className="text-xs text-muted-foreground capitalize">{role}</p>
-						)}
+					<div className="mt-auto border-t border-primary-foreground/10 p-4">
+						<p className="text-sm font-medium text-primary-foreground truncate">{username}</p>
+						{role && <p className="text-xs text-primary-foreground/60 capitalize">{role}</p>}
 					</div>
 				)}
 			</aside>
