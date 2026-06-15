@@ -127,6 +127,24 @@ git push dokku main
 
 Full guide: [docs/deployment.md](docs/deployment.md)
 
+### Uninstall
+
+To completely remove Docklight, Dokku, and all associated data from a VPS, run as root:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/uninstall.sh | sudo bash
+```
+
+The script stops the Docklight app, removes the auto-update timer (if any), destroys the Dokku app, purges Dokku and herokuish packages, removes `/home/dokku`, `/var/lib/dokku`, and `/var/log/dokku`, and deletes the `dokku` user.
+
+**WARNING:** This is destructive — it removes all apps, databases, SSL certs, and configs. Interactive confirmation is required unless `CONFIRM=1` is set.
+
+| Variable        | Description                             | Default     |
+| --------------- | --------------------------------------- | ----------- |
+| `APP_NAME`      | Dokku app name to destroy               | `docklight` |
+| `REMOVE_DOCKER` | Also purge Docker (`1`/`0`)             | `0`         |
+| `CONFIRM`       | Skip interactive confirmation (`1`/`0`) | `0`         |
+
 #### From Source (Local Development)
 
 ```bash
