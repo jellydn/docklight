@@ -35,29 +35,29 @@ export function AppOverview({
 	};
 
 	return (
-		<div className="bg-white rounded-lg shadow p-6">
+		<div className="bg-card rounded-lg border border-border p-6">
 			<h2 className="text-lg font-semibold mb-4">Overview</h2>
 			<div className="space-y-4">
 				<div>
-					<strong className="text-gray-700">Status:</strong> {getStatusBadge()}
+					<strong className="text-foreground">Status:</strong> {getStatusBadge()}
 				</div>
 				<div>
-					<strong className="text-gray-700">Git Remote:</strong>{" "}
-					<code className="bg-gray-100 px-2 py-1 rounded text-sm">{app.gitRemote || "-"}</code>
+					<strong className="text-foreground">Git Remote:</strong>{" "}
+					<code className="bg-muted px-2 py-1 rounded text-sm">{app.gitRemote || "-"}</code>
 				</div>
-				<div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-					<p className="text-sm font-medium mb-3 text-gray-900">Manual Deployment</p>
+				<div className="mt-4 p-4 bg-muted/50 rounded-lg border">
+					<p className="text-sm font-medium mb-3 text-foreground">Manual Deployment</p>
 					<div className="space-y-3 text-sm">
 						<div>
-							<p className="text-gray-600 mb-1">1. Add the Dokku remote:</p>
+							<p className="text-muted-foreground mb-1">1. Add the Dokku remote:</p>
 							<div className="flex items-center gap-2">
-								<code className="flex-1 bg-white px-3 py-2 rounded border text-xs break-all font-mono">
+								<code className="flex-1 bg-card px-3 py-2 rounded border text-xs break-all font-mono">
 									git remote add dokku dokku@{hostname}:{app.name}
 								</code>
 								<button
 									type="button"
 									onClick={onCopyRemote}
-									className="text-blue-600 hover:text-blue-800 text-xs whitespace-nowrap px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+									className="text-primary hover:text-primary text-xs whitespace-nowrap px-2 py-1 rounded hover:bg-primary/10 transition-colors"
 									title="Copy to clipboard"
 								>
 									{copySuccess.remote ? "Copied!" : "Copy"}
@@ -65,15 +65,15 @@ export function AppOverview({
 							</div>
 						</div>
 						<div>
-							<p className="text-gray-600 mb-1">2. Push your code:</p>
+							<p className="text-muted-foreground mb-1">2. Push your code:</p>
 							<div className="flex items-center gap-2">
-								<code className="flex-1 bg-white px-3 py-2 rounded border text-xs font-mono">
+								<code className="flex-1 bg-card px-3 py-2 rounded border text-xs font-mono">
 									git push dokku main
 								</code>
 								<button
 									type="button"
 									onClick={onCopyPush}
-									className="text-blue-600 hover:text-blue-800 text-xs whitespace-nowrap px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+									className="text-primary hover:text-primary text-xs whitespace-nowrap px-2 py-1 rounded hover:bg-primary/10 transition-colors"
 									title="Copy to clipboard"
 								>
 									{copySuccess.push ? "Copied!" : "Copy"}
@@ -83,7 +83,7 @@ export function AppOverview({
 					</div>
 				</div>
 				<div>
-					<strong className="text-gray-700">Domains:</strong>
+					<strong className="text-foreground">Domains:</strong>
 					{app.domains.length > 0 ? (
 						<ul className="list-disc list-inside ml-4">
 							{app.domains.map((domain) => (
@@ -91,11 +91,11 @@ export function AppOverview({
 							))}
 						</ul>
 					) : (
-						<span className="text-gray-400">No domains</span>
+						<span className="text-muted-foreground/60">No domains</span>
 					)}
 				</div>
 				<div>
-					<strong className="text-gray-700">Processes:</strong>
+					<strong className="text-foreground">Processes:</strong>
 					{Object.keys(app.processes).length > 0 ? (
 						<div className="mt-4">
 							<div className="space-y-3">
@@ -103,12 +103,12 @@ export function AppOverview({
 									<div key={type} className="flex items-center space-x-4">
 										<div className="w-32 font-medium">{type}</div>
 										<div className="flex items-center space-x-2">
-											<span className="text-gray-600">Current:</span>
+											<span className="text-muted-foreground">Current:</span>
 											<span className="font-mono">{count}</span>
 										</div>
 										{canModify && app.canScale && (
 											<div className="flex items-center space-x-2">
-												<span className="text-gray-600">Scale to:</span>
+												<span className="text-muted-foreground">Scale to:</span>
 												<input
 													type="number"
 													min="0"
@@ -136,7 +136,7 @@ export function AppOverview({
 							)}
 						</div>
 					) : (
-						<span className="text-gray-400">No processes running</span>
+						<span className="text-muted-foreground/60">No processes running</span>
 					)}
 				</div>
 
@@ -150,7 +150,7 @@ export function AppOverview({
 							</p>
 							<button
 								onClick={onDeleteApp}
-								className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+								className="bg-destructive text-destructive-foreground px-4 py-2 rounded hover:bg-destructive/90"
 								type="button"
 							>
 								Delete App

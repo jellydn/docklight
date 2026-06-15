@@ -17,7 +17,7 @@ export function Plugins() {
 	if (isLoading) {
 		return (
 			<div className="flex justify-center items-center py-12">
-				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
 			</div>
 		);
 	}
@@ -34,23 +34,23 @@ export function Plugins() {
 		<div>
 			<h1 className="text-2xl font-bold mb-6">Plugins</h1>
 
-			<div className="bg-white rounded-lg shadow p-6">
+			<div className="bg-card rounded-lg border border-border p-6">
 				<h2 className="text-lg font-semibold mb-4">Installed Plugins</h2>
 				{(plugins ?? []).length === 0 ? (
 					<div>
-						<p className="text-gray-500 mb-4">No plugins found</p>
-						<div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+						<p className="text-muted-foreground mb-4">No plugins found</p>
+						<div className="bg-muted/50 border border-border rounded-lg p-4">
 							<h3 className="font-semibold mb-2">How to install plugins</h3>
-							<p className="text-sm text-gray-700 mb-2">
+							<p className="text-sm text-foreground mb-2">
 								To install a Dokku plugin, run the following command on your server:
 							</p>
-							<code className="block bg-white border rounded px-3 py-1.5 text-sm font-mono select-all">
+							<code className="block bg-card border border-border rounded-md px-3 py-1.5 text-sm font-mono select-all">
 								sudo dokku plugin:install &lt;repository-url&gt;
 							</code>
-							<p className="text-sm text-gray-700 mt-2">
+							<p className="text-sm text-foreground mt-2">
 								For example, to install the Postgres plugin:
 							</p>
-							<code className="block bg-white border rounded px-3 py-1.5 text-sm font-mono select-all mt-1">
+							<code className="block bg-card border border-border rounded-md px-3 py-1.5 text-sm font-mono select-all mt-1">
 								sudo dokku plugin:install https://github.com/dokku/dokku-postgres.git
 							</code>
 						</div>
@@ -60,11 +60,11 @@ export function Plugins() {
 						{(plugins ?? []).map((plugin) => (
 							<div
 								key={plugin.name}
-								className="border rounded p-4 flex items-center justify-between gap-4"
+								className="border border-border rounded-md p-4 flex items-center justify-between gap-4"
 							>
 								<div>
 									<div className="font-medium">{plugin.name}</div>
-									<div className="text-sm text-gray-600">
+									<div className="text-sm text-muted-foreground">
 										Status: {plugin.enabled ? "Enabled" : "Disabled"}
 										{plugin.version ? ` • v${plugin.version}` : ""}
 									</div>

@@ -31,12 +31,12 @@ export function AppDeployment({
 	onSave,
 }: AppDeploymentProps) {
 	return (
-		<div className="bg-white rounded-lg shadow p-6">
+		<div className="bg-card rounded-lg border border-border p-6">
 			<h2 className="text-lg font-semibold mb-4">Deployment Settings</h2>
 
 			{loading ? (
 				<div className="flex justify-center py-8">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
 				</div>
 			) : error ? (
 				<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -45,7 +45,7 @@ export function AppDeployment({
 			) : (
 				<div className="space-y-4">
 					<div>
-						<label htmlFor="deploy-branch" className="block text-sm font-medium text-gray-700 mb-1">
+						<label htmlFor="deploy-branch" className="block text-sm font-medium text-foreground mb-1">
 							Deploy Branch
 						</label>
 						<input
@@ -56,11 +56,11 @@ export function AppDeployment({
 							placeholder="main"
 							className="w-full max-w-md border rounded px-3 py-2"
 						/>
-						<p className="mt-1 text-sm text-gray-500">The branch to deploy (default: main)</p>
+						<p className="mt-1 text-sm text-muted-foreground">The branch to deploy (default: main)</p>
 					</div>
 
 					<div>
-						<label htmlFor="build-dir" className="block text-sm font-medium text-gray-700 mb-1">
+						<label htmlFor="build-dir" className="block text-sm font-medium text-foreground mb-1">
 							Build Directory
 						</label>
 						<input
@@ -71,13 +71,13 @@ export function AppDeployment({
 							placeholder="e.g., apps/api"
 							className="w-full max-w-md border rounded px-3 py-2"
 						/>
-						<p className="mt-1 text-sm text-gray-500">
+						<p className="mt-1 text-sm text-muted-foreground">
 							Set a subdirectory to deploy from when using a monorepo
 						</p>
 					</div>
 
 					<div>
-						<label htmlFor="builder" className="block text-sm font-medium text-gray-700 mb-1">
+						<label htmlFor="builder" className="block text-sm font-medium text-foreground mb-1">
 							Builder
 						</label>
 						<select
@@ -91,7 +91,7 @@ export function AppDeployment({
 							<option value="dockerfile">Dockerfile</option>
 							<option value="pack">Cloud Native Buildpacks (pack)</option>
 						</select>
-						<p className="mt-1 text-sm text-gray-500">The build strategy to use for this app</p>
+						<p className="mt-1 text-sm text-muted-foreground">The build strategy to use for this app</p>
 					</div>
 
 					{canModify && (
@@ -99,7 +99,7 @@ export function AppDeployment({
 							<button
 								onClick={onSave}
 								disabled={submitting}
-								className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+								className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 								type="button"
 							>
 								{submitting ? "Saving..." : "Save Settings"}

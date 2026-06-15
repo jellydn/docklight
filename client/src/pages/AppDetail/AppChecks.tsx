@@ -77,12 +77,12 @@ export function AppChecks({
 
 	return (
 		<div className="space-y-6">
-			<div className="bg-white rounded-lg shadow p-6">
+			<div className="bg-card rounded-lg border border-border p-6">
 				<h2 className="text-lg font-semibold mb-4">Zero-Downtime Checks</h2>
 
 				{loading ? (
 					<div className="flex justify-center py-8">
-						<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+						<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
 					</div>
 				) : error ? (
 					<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -94,13 +94,13 @@ export function AppChecks({
 			</div>
 
 			{canModify && (
-				<div className="bg-white rounded-lg shadow p-6">
+				<div className="bg-card rounded-lg border border-border p-6">
 					<h2 className="text-lg font-semibold mb-4">Manage Checks</h2>
 					<div className="space-y-4">
-						<div className="flex items-start gap-4 pb-4 border-b border-gray-100">
+						<div className="flex items-start gap-4 pb-4 border-b border-border">
 							<div className="flex-1">
-								<p className="text-sm font-medium text-gray-900">Deploy Checks</p>
-								<p className="text-sm text-gray-500">
+								<p className="text-sm font-medium text-foreground">Deploy Checks</p>
+								<p className="text-sm text-muted-foreground">
 									{isEnabled
 										? "Checks are enabled. Dokku waits for the app to respond before completing deploys."
 										: "Checks are disabled. Old containers stop before new ones start, risking downtime."}
@@ -111,7 +111,7 @@ export function AppChecks({
 									type="button"
 									onClick={onDisable}
 									disabled={disabling}
-									className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+									className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
 								>
 									{disabling ? "Disabling..." : "Disable"}
 								</button>
@@ -120,17 +120,17 @@ export function AppChecks({
 									type="button"
 									onClick={onEnable}
 									disabled={enabling}
-									className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+									className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
 								>
 									{enabling ? "Enabling..." : "Enable"}
 								</button>
 							)}
 						</div>
 
-						<div className="flex items-start gap-4 pb-4 border-b border-gray-100">
+						<div className="flex items-start gap-4 pb-4 border-b border-border">
 							<div className="flex-1">
-								<p className="text-sm font-medium text-gray-900">Skip Checks</p>
-								<p className="text-sm text-gray-500">
+								<p className="text-sm font-medium text-foreground">Skip Checks</p>
+								<p className="text-sm text-muted-foreground">
 									Skip the default wait period and custom checks for the next deploy.
 								</p>
 							</div>
@@ -138,7 +138,7 @@ export function AppChecks({
 								type="button"
 								onClick={onSkip}
 								disabled={skipping || isSkipAll}
-								className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+								className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
 							>
 								{skipping ? "Skipping..." : "Skip"}
 							</button>
@@ -146,8 +146,8 @@ export function AppChecks({
 
 						<div className="flex items-start gap-4">
 							<div className="flex-1">
-								<p className="text-sm font-medium text-gray-900">Run Checks</p>
-								<p className="text-sm text-gray-500">
+								<p className="text-sm font-medium text-foreground">Run Checks</p>
+								<p className="text-sm text-muted-foreground">
 									Manually run health checks against the live app containers.
 								</p>
 							</div>
@@ -155,7 +155,7 @@ export function AppChecks({
 								type="button"
 								onClick={onRun}
 								disabled={running}
-								className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+								className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
 							>
 								{running ? "Running..." : "Run"}
 							</button>

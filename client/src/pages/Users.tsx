@@ -14,7 +14,7 @@ const getRoleBadge = (role: UserRole) => {
 	const colors: Record<UserRole, string> = {
 		admin: "bg-purple-100 text-purple-800",
 		operator: "bg-blue-100 text-blue-800",
-		viewer: "bg-gray-100 text-gray-800",
+		viewer: "bg-muted text-foreground",
 	};
 	return (
 		<span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${colors[role]}`}>
@@ -136,7 +136,7 @@ export function Users() {
 			<h1 className="text-2xl font-bold mb-6">User Management</h1>
 
 			{/* Create user form */}
-			<div className="bg-white rounded-lg shadow p-6 mb-6">
+			<div className="bg-card rounded-lg border border-border p-6 mb-6">
 				<h2 className="text-lg font-semibold mb-4">Add User</h2>
 				<form onSubmit={handleCreate} className="flex flex-col gap-3">
 					<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -149,7 +149,7 @@ export function Users() {
 								type="text"
 								value={newUsername}
 								onChange={(e) => setNewUsername(e.target.value)}
-								className="w-full px-3 py-2 border rounded-md text-sm"
+								className="w-full px-3 py-2 border border-border rounded-md text-sm"
 								required
 								autoComplete="off"
 							/>
@@ -163,7 +163,7 @@ export function Users() {
 								type="password"
 								value={newPassword}
 								onChange={(e) => setNewPassword(e.target.value)}
-								className="w-full px-3 py-2 border rounded-md text-sm"
+								className="w-full px-3 py-2 border border-border rounded-md text-sm"
 								required
 								autoComplete="new-password"
 							/>
@@ -176,7 +176,7 @@ export function Users() {
 								id="new-role"
 								value={newRole}
 								onChange={(e) => setNewRole(e.target.value as UserRole)}
-								className="w-full px-3 py-2 border rounded-md text-sm"
+								className="w-full px-3 py-2 border border-border rounded-md text-sm"
 							>
 								{ROLES.map((r) => (
 									<option key={r} value={r}>
@@ -190,7 +190,7 @@ export function Users() {
 					<div>
 						<button
 							type="submit"
-							className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+							className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm"
 						>
 							Add User
 						</button>
@@ -199,25 +199,25 @@ export function Users() {
 			</div>
 
 			{/* Users list */}
-			<div className="bg-white rounded-lg shadow overflow-hidden">
+			<div className="bg-card rounded-lg border border-border overflow-hidden">
 				<h2 className="text-lg font-semibold p-6 pb-0">Users</h2>
 				{errorMessage && <p className="text-red-600 text-sm px-6 py-2">{errorMessage}</p>}
 				{isLoading ? (
-					<p className="p-6 text-gray-500">Loading…</p>
+					<p className="p-6 text-muted-foreground">Loading…</p>
 				) : (
 					<div className="overflow-x-auto">
 						<table className="min-w-full text-sm mt-4">
-							<thead className="bg-gray-50 text-left">
+							<thead className="bg-muted/50 text-left">
 								<tr>
-									<th className="px-6 py-3 font-medium text-gray-500">Username</th>
-									<th className="px-6 py-3 font-medium text-gray-500">Role</th>
-									<th className="px-6 py-3 font-medium text-gray-500 hidden sm:table-cell">
+									<th className="px-6 py-3 font-medium text-muted-foreground">Username</th>
+									<th className="px-6 py-3 font-medium text-muted-foreground">Role</th>
+									<th className="px-6 py-3 font-medium text-muted-foreground hidden sm:table-cell">
 										Created
 									</th>
-									<th className="px-6 py-3 font-medium text-gray-500">Actions</th>
+									<th className="px-6 py-3 font-medium text-muted-foreground">Actions</th>
 								</tr>
 							</thead>
-							<tbody className="divide-y divide-gray-100">
+							<tbody className="divide-y divide-border">
 								{userList.map((user) => (
 									<tr key={user.id}>
 										<td className="px-6 py-3 font-medium">{user.username}</td>
@@ -226,7 +226,7 @@ export function Users() {
 												<select
 													value={editRole}
 													onChange={(e) => setEditRole(e.target.value as UserRole)}
-													className="border rounded px-2 py-1"
+													className="border border-border rounded-md px-2 py-1"
 												>
 													{ROLES.map((r) => (
 														<option key={r} value={r}>
@@ -238,7 +238,7 @@ export function Users() {
 												getRoleBadge(user.role)
 											)}
 										</td>
-										<td className="px-6 py-3 text-gray-500 whitespace-nowrap hidden sm:table-cell">
+										<td className="px-6 py-3 text-muted-foreground whitespace-nowrap hidden sm:table-cell">
 											{new Date(user.createdAt).toLocaleDateString()}
 										</td>
 										<td className="px-6 py-3 whitespace-nowrap">
@@ -250,21 +250,21 @@ export function Users() {
 														aria-label={`New password for ${user.username}`}
 														value={editPassword}
 														onChange={(e) => setEditPassword(e.target.value)}
-														className="border rounded px-2 py-1 text-xs w-40"
+														className="border border-border rounded-md px-2 py-1 text-xs w-40"
 														autoComplete="new-password"
 													/>
 													{editError && <span className="text-red-600 text-xs">{editError}</span>}
 													<button
 														type="button"
 														onClick={() => handleEditSave(user.id)}
-														className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+														className="px-3 py-1 bg-green-600 text-white rounded-md text-xs hover:bg-green-700"
 													>
 														Save
 													</button>
 													<button
 														type="button"
 														onClick={() => setEditId(null)}
-														className="px-3 py-1 bg-gray-200 rounded text-xs hover:bg-gray-300"
+														className="px-3 py-1 bg-muted rounded-md text-xs hover:bg-accent"
 													>
 														Cancel
 													</button>
@@ -274,7 +274,7 @@ export function Users() {
 													<button
 														type="button"
 														onClick={() => startEdit(user)}
-														className="px-3 py-1 bg-gray-100 rounded text-xs hover:bg-gray-200"
+														className="px-3 py-1 bg-muted rounded-md text-xs hover:bg-accent"
 													>
 														Edit
 													</button>
@@ -292,7 +292,7 @@ export function Users() {
 								))}
 								{userList.length === 0 && (
 									<tr>
-										<td colSpan={4} className="px-6 py-4 text-center text-gray-400">
+										<td colSpan={4} className="px-6 py-4 text-center text-muted-foreground/60">
 											No users yet
 										</td>
 									</tr>

@@ -46,15 +46,15 @@ export function Login() {
 
 	if (isLoading) {
 		return (
-			<div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-				<div className="text-gray-500">Loading…</div>
+			<div className="min-h-screen flex items-center justify-center bg-background px-4">
+				<div className="text-muted-foreground">Loading…</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-			<div className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
+		<div className="min-h-screen flex items-center justify-center bg-background px-4">
+			<div className="bg-card p-8 rounded-lg border border-border w-full max-w-sm">
 				<div className="flex justify-center mb-4">
 					<img src="/logo.svg" alt="Docklight logo" className="h-12 w-12" />
 				</div>
@@ -69,7 +69,7 @@ export function Login() {
 							type="text"
 							value={username}
 							onChange={(e) => setUsername(e.target.value)}
-							className="w-full px-3 py-2 border rounded-md"
+							className="w-full px-3 py-2 border border-border rounded-md"
 							required
 							autoComplete="username"
 						/>
@@ -83,15 +83,15 @@ export function Login() {
 							type="password"
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
-							className="w-full px-3 py-2 border rounded-md"
+							className="w-full px-3 py-2 border border-border rounded-md"
 							required
 							autoComplete="current-password"
 						/>
 					</div>
-					{error && <div className="text-red-600 text-sm">{error}</div>}
+					{error && <div className="text-destructive text-sm">{error}</div>}
 					<button
 						type="submit"
-						className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700"
+						className="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90"
 					>
 						Login
 					</button>

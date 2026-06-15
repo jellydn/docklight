@@ -24,7 +24,7 @@ export function AppLogs({
 	const getConnectionStatusBadge = () => {
 		const colors = {
 			connected: "bg-green-100 text-green-800",
-			disconnected: "bg-gray-100 text-gray-800",
+			disconnected: "bg-muted text-foreground",
 			reconnecting: "bg-yellow-100 text-yellow-800",
 		};
 		return (
@@ -35,7 +35,7 @@ export function AppLogs({
 	};
 
 	return (
-		<div className="bg-white rounded-lg shadow p-6">
+		<div className="bg-card rounded-lg border border-border p-6">
 			<div className="flex flex-wrap gap-3 justify-between items-center mb-4">
 				<h2 className="text-lg font-semibold">Logs</h2>
 				<div className="flex flex-wrap items-center gap-3">
@@ -51,7 +51,7 @@ export function AppLogs({
 					</select>
 					<button
 						onClick={onAutoScrollToggle}
-						className="px-3 py-1 border rounded hover:bg-gray-100"
+						className="px-3 py-1 border rounded hover:bg-accent"
 						type="button"
 					>
 						{autoScroll ? "Auto-scroll: ON" : "Auto-scroll: OFF"}

@@ -74,8 +74,23 @@ export function Dashboard() {
 	};
 
 	const getStatusBadge = (status: string) => {
-		const color = status === "running" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
-		return <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>{status}</span>;
+		const color =
+			status === "running"
+				? "bg-green-500/10 text-green-500"
+				: "bg-red-500/10 text-red-500";
+		return (
+			<span
+				className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}
+			>
+				{status === "running" && (
+					<span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-500" />
+				)}
+				{status !== "running" && (
+					<span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
+				)}
+				{status}
+			</span>
+		);
 	};
 
 	return (
@@ -89,7 +104,7 @@ export function Dashboard() {
 
 			{isLoading && (
 				<div className="flex justify-center items-center py-12">
-					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+					<div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
 				</div>
 			)}
 
@@ -110,7 +125,7 @@ export function Dashboard() {
 						/>
 					)}
 
-					<div className="bg-white rounded-lg shadow p-6 mb-6">
+					<div className="bg-card rounded-lg border border-border p-6 mb-6">
 						<div className="flex items-center justify-between mb-4">
 							<h2 className="text-lg font-semibold">Apps</h2>
 							{canModify && (
@@ -120,39 +135,59 @@ export function Dashboard() {
 							)}
 						</div>
 						{(apps?.length ?? 0) === 0 ? (
-							<p className="text-gray-500">No apps found</p>
+							<p className="text-muted-foreground text-sm py-8 text-center">
+								No apps found
+							</p>
 						) : (
 							<div className="overflow-x-auto">
 								<table className="min-w-full">
 									<thead>
-										<tr className="border-b">
-											<th className="text-left py-2 px-4">Name</th>
-											<th className="text-left py-2 px-4">Status</th>
-											<th className="text-left py-2 px-4">Domains</th>
-											<th className="text-left py-2 px-4">Last Deploy</th>
+										<tr className="border-b border-border">
+											<th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+												Name
+											</th>
+											<th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+												Status
+											</th>
+											<th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+												Domains
+											</th>
+											<th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+												Last Deploy
+											</th>
 										</tr>
 									</thead>
 									<tbody>
 										{(apps ?? []).map((app) => (
-											<tr key={app.name} className="border-b">
-												<td className="py-2 px-4">
-													<Link to={`/apps/${app.name}`} className="text-blue-600 hover:underline">
+											<tr
+												key={app.name}
+												className="border-b border-border last:border-0 hover:bg-accent/50 transition-colors"
+											>
+												<td className="py-3 px-4">
+													<Link
+														to={`/apps/${app.name}`}
+														className="text-primary hover:underline font-medium"
+													>
 														{app.name}
 													</Link>
 												</td>
-												<td className="py-2 px-4">{getStatusBadge(app.status)}</td>
-												<td className="py-2 px-4">
+												<td className="py-3 px-4">
+													{getStatusBadge(app.status)}
+												</td>
+												<td className="py-3 px-4 text-sm text-muted-foreground">
 													{app.domains.length > 0 ? (
-														<ul className="list-disc list-inside">
+														<ul className="space-y-0.5">
 															{app.domains.map((domain) => (
 																<li key={domain}>{domain}</li>
 															))}
 														</ul>
 													) : (
-														<span className="text-gray-400">-</span>
+														<span className="text-muted-foreground/50">-</span>
 													)}
 												</td>
-												<td className="py-2 px-4">{formatDeployTime(app.lastDeployTime)}</td>
+												<td className="py-3 px-4 text-sm text-muted-foreground">
+													{formatDeployTime(app.lastDeployTime)}
+												</td>
 											</tr>
 										))}
 									</tbody>
@@ -161,16 +196,20 @@ export function Dashboard() {
 						)}
 					</div>
 
-					<div className="bg-white rounded-lg shadow p-6">
+					<div className="bg-card rounded-lg border border-border p-6">
 						<h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
 						{(commands?.length ?? 0) === 0 ? (
-							<p className="text-gray-500">No recent activity</p>
+							<p className="text-muted-foreground text-sm py-8 text-center">
+								No recent activity
+							</p>
 						) : (
-							<div className="space-y-2">
+							<div className="space-y-3">
 								{(commands ?? []).map((cmd) => (
 									<div key={cmd.id} className="text-sm">
-										<div className="font-mono bg-gray-100 p-2 rounded">{cmd.command}</div>
-										<div className="text-gray-500 text-xs mt-1">
+										<div className="font-mono bg-muted p-3 rounded-md text-sm">
+											{cmd.command}
+										</div>
+										<div className="text-muted-foreground text-xs mt-1.5">
 											{new Date(cmd.createdAt).toLocaleString()}
 										</div>
 									</div>

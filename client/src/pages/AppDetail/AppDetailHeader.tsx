@@ -42,14 +42,14 @@ export function AppDetailHeader({
 					)}
 					<button
 						onClick={onRestart}
-						className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+						className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90"
 						type="button"
 					>
 						Restart
 					</button>
 					<button
 						onClick={onRebuild}
-						className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+						className="bg-secondary text-secondary-foreground px-4 py-2 rounded hover:bg-secondary/80"
 						type="button"
 					>
 						Rebuild
