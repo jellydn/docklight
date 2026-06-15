@@ -40,10 +40,12 @@ if [[ "${CONFIRM}" != "1" ]]; then
 	cat <<WARN
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  DESTRUCTIVE OPERATION — This will remove everything:
-    - Dokku, all apps, databases, SSL certs
-    - Docker containers, images, volumes
-    - /home/dokku, /var/lib/dokku, /var/log/dokku
+  DESTRUCTIVE OPERATION — This will remove:
+    - Dokku: all apps, databases, SSL certs, packages, config
+    - Docker images/containers created by Dokku (not Docker itself)
+    - /home/dokku, /var/lib/dokku, /var/log/dokku, /etc/dokku
+
+  Docker engine and your other containers will be left untouched.
   Type "yes" to continue or Ctrl+C to abort.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
