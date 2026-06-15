@@ -32,26 +32,26 @@ export function ConfirmDialog({
 	const titleId = useId();
 
 	const buttonClass = isDestructive
-		? "bg-red-600 text-white rounded hover:bg-red-700"
-		: "bg-blue-600 text-white rounded hover:bg-blue-700";
+		? "bg-destructive text-destructive-foreground rounded hover:bg-destructive/90"
+		: "bg-tertiary text-tertiary-foreground rounded hover:bg-tertiary/90";
 
 	return (
 		<dialog
 			ref={dialogRef}
-			className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded border bg-white p-0 shadow-lg backdrop:bg-black/50"
+			className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded border bg-card p-0 border border-border backdrop:bg-foreground/50"
 			aria-labelledby={titleId}
 		>
 			<div className="p-6">
 				<div className="flex justify-between items-start mb-4">
 					<h2
 						id={titleId}
-						className={`text-lg font-semibold ${isDestructive ? "text-red-600" : ""}`}
+						className={`text-lg font-semibold ${isDestructive ? "text-destructive" : ""}`}
 					>
 						{title}
 					</h2>
 					<button
 						onClick={onClose}
-						className="text-gray-500 hover:text-gray-700"
+						className="text-muted-foreground hover:text-foreground"
 						type="button"
 						aria-label="Close dialog"
 					>
@@ -62,7 +62,7 @@ export function ConfirmDialog({
 				<div className="flex justify-end space-x-2">
 					<button
 						onClick={onClose}
-						className="px-4 py-2 border rounded hover:bg-gray-100"
+						className="px-4 py-2 border rounded hover:bg-accent"
 						type="button"
 					>
 						Cancel
@@ -70,7 +70,7 @@ export function ConfirmDialog({
 					<button
 						onClick={onConfirm}
 						disabled={confirmDisabled || submitting}
-						className={`px-4 py-2 ${buttonClass} disabled:bg-gray-300 disabled:cursor-not-allowed`}
+						className={`px-4 py-2 ${buttonClass} disabled:opacity-50 disabled:cursor-not-allowed`}
 						type="button"
 					>
 						{submitting ? submittingText : confirmText}

@@ -38,7 +38,7 @@ export function Apps() {
 
 			{isLoading && (
 				<div className="flex justify-center items-center py-12">
-					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tertiary"></div>
 				</div>
 			)}
 
@@ -49,10 +49,10 @@ export function Apps() {
 			)}
 
 			{!isLoading && !error && (
-				<div className="bg-white rounded-lg shadow">
+				<div className="bg-card rounded-lg border border-border">
 					{(apps?.length ?? 0) === 0 ? (
 						<div className="text-center py-12">
-							<p className="text-gray-500 mb-4">No apps found</p>
+							<p className="text-muted-foreground mb-4">No apps found</p>
 							{canModify && (
 								<Button onClick={() => setCreateAppOpen(true)}>Create your first app</Button>
 							)}
@@ -61,28 +61,28 @@ export function Apps() {
 						<div className="overflow-x-auto">
 							<table className="min-w-full">
 								<thead>
-									<tr className="border-b bg-gray-50">
-										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
+									<tr className="border-b border-border bg-muted/50">
+										<th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">
 											Name
 										</th>
-										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
+										<th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">
 											Status
 										</th>
-										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
+										<th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">
 											Domains
 										</th>
-										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
+										<th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">
 											Last Deploy
 										</th>
 									</tr>
 								</thead>
 								<tbody>
 									{apps?.map((app) => (
-										<tr key={app.name} className="border-b hover:bg-gray-50">
+										<tr key={app.name} className="border-b border-border hover:bg-accent">
 											<td className="py-3 px-4">
 												<Link
 													to={`/apps/${app.name}`}
-													className="text-blue-600 hover:underline font-medium"
+													className="text-primary hover:underline font-medium"
 												>
 													{app.name}
 												</Link>
@@ -98,10 +98,10 @@ export function Apps() {
 														))}
 													</ul>
 												) : (
-													<span className="text-gray-400">-</span>
+													<span className="text-muted-foreground/60">-</span>
 												)}
 											</td>
-											<td className="py-3 px-4 text-sm text-gray-600">
+											<td className="py-3 px-4 text-sm text-muted-foreground">
 												{formatDeployTime(app.lastDeployTime)}
 											</td>
 										</tr>

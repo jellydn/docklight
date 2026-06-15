@@ -42,12 +42,12 @@ export function AppPorts({
 	onDisableProxy,
 }: AppPortsProps) {
 	return (
-		<div className="bg-white rounded-lg shadow p-6">
+		<div className="bg-card rounded-lg border border-border p-6">
 			<h2 className="text-lg font-semibold mb-4">Ports & Proxy</h2>
 
 			{loading ? (
 				<div className="flex justify-center py-8">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tertiary" />
 				</div>
 			) : error ? (
 				<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -56,20 +56,20 @@ export function AppPorts({
 			) : (
 				<div className="space-y-6">
 					<div>
-						<h3 className="text-sm font-medium text-gray-700 mb-3">Port Mappings</h3>
+						<h3 className="text-sm font-medium text-foreground mb-3">Port Mappings</h3>
 
 						{ports.length > 0 ? (
 							<div className="overflow-x-auto mb-4">
-								<table className="min-w-full divide-y divide-gray-200">
+								<table className="min-w-full divide-y divide-border">
 									<thead>
 										<tr>
-											<th className="px-3 py-2 text-left text-sm font-medium text-gray-700">
+											<th className="px-3 py-2 text-left text-sm font-medium text-foreground">
 												Scheme
 											</th>
-											<th className="px-3 py-2 text-left text-sm font-medium text-gray-700">
+											<th className="px-3 py-2 text-left text-sm font-medium text-foreground">
 												Host Port
 											</th>
-											<th className="px-3 py-2 text-left text-sm font-medium text-gray-700">
+											<th className="px-3 py-2 text-left text-sm font-medium text-foreground">
 												Container Port
 											</th>
 											<th className="px-3 py-2">
@@ -77,13 +77,11 @@ export function AppPorts({
 											</th>
 										</tr>
 									</thead>
-									<tbody className="divide-y divide-gray-200">
+									<tbody className="divide-y divide-border">
 										{ports.map((port) => (
 											<tr key={`${port.scheme}-${port.hostPort}-${port.containerPort}`}>
 												<td className="px-3 py-2">
-													<code className="bg-gray-100 px-2 py-1 rounded text-sm">
-														{port.scheme}
-													</code>
+													<code className="bg-muted px-2 py-1 rounded text-sm">{port.scheme}</code>
 												</td>
 												<td className="px-3 py-2">{port.hostPort}</td>
 												<td className="px-3 py-2">{port.containerPort}</td>
@@ -105,7 +103,7 @@ export function AppPorts({
 								</table>
 							</div>
 						) : (
-							<p className="text-gray-500 mb-4">No port mappings configured.</p>
+							<p className="text-muted-foreground mb-4">No port mappings configured.</p>
 						)}
 
 						{canModify && (
@@ -143,7 +141,7 @@ export function AppPorts({
 								<button
 									onClick={onAdd}
 									disabled={!newHostPort || !newContainerPort || submitting}
-									className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+									className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 									type="button"
 								>
 									Add Port
@@ -162,21 +160,23 @@ export function AppPorts({
 						)}
 
 						<div className="pt-4 border-t">
-							<h3 className="text-sm font-medium text-gray-700 mb-3">Proxy</h3>
-							<div className="flex items-center justify-between p-4 bg-gray-50 rounded">
+							<h3 className="text-sm font-medium text-foreground mb-3">Proxy</h3>
+							<div className="flex items-center justify-between p-4 bg-muted/50 rounded">
 								<div>
-									<strong className="text-gray-700">Status:</strong>{" "}
+									<strong className="text-foreground">Status:</strong>{" "}
 									{proxyReport?.enabled ? (
 										<span className="ml-2 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
 											Enabled
 										</span>
 									) : (
-										<span className="ml-2 px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+										<span className="ml-2 px-3 py-1 rounded-full text-sm font-medium bg-muted text-foreground">
 											Disabled
 										</span>
 									)}
 									{proxyReport?.type && (
-										<span className="ml-4 text-sm text-gray-500">Type: {proxyReport.type}</span>
+										<span className="ml-4 text-sm text-muted-foreground">
+											Type: {proxyReport.type}
+										</span>
 									)}
 								</div>
 								{canModify && (
@@ -185,7 +185,7 @@ export function AppPorts({
 											<button
 												onClick={onDisableProxy}
 												disabled={proxySubmitting}
-												className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+												className="bg-destructive text-destructive-foreground px-4 py-2 rounded hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
 												type="button"
 											>
 												Disable
@@ -194,7 +194,7 @@ export function AppPorts({
 											<button
 												onClick={onEnableProxy}
 												disabled={proxySubmitting}
-												className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+												className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 												type="button"
 											>
 												Enable

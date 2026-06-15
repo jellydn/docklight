@@ -101,12 +101,12 @@ export function Settings(): JSX.Element {
 			)}
 
 			{isLoading ? (
-				<p className="text-gray-500">Loading…</p>
+				<p className="text-muted-foreground">Loading…</p>
 			) : (
 				<form onSubmit={handleSubmit}>
-					<div className="bg-white rounded-lg shadow p-6 mb-6">
+					<div className="bg-card rounded-lg border border-border p-6 mb-6">
 						<h2 className="text-lg font-semibold mb-4">Dokku SSH Connection</h2>
-						<p className="text-sm text-gray-500 mb-4">
+						<p className="text-sm text-muted-foreground mb-4">
 							Settings saved here take effect immediately without a server restart.
 						</p>
 						<div className="flex flex-col gap-4">
@@ -124,11 +124,11 @@ export function Settings(): JSX.Element {
 											dokkuSshTarget: e.target.value,
 										}))
 									}
-									className="w-full px-3 py-2 border rounded-md text-sm font-mono"
+									className="w-full px-3 py-2 border border-border rounded-md text-sm font-mono"
 									placeholder="dokku@your-server-ip"
 									autoComplete="off"
 								/>
-								<p className="text-xs text-gray-400 mt-1">
+								<p className="text-xs text-muted-foreground/60 mt-1">
 									Format: user@host or user@host:port (e.g. dokku@192.168.1.1)
 								</p>
 							</div>
@@ -146,11 +146,11 @@ export function Settings(): JSX.Element {
 											dokkuSshKeyPath: e.target.value,
 										}))
 									}
-									className="w-full px-3 py-2 border rounded-md text-sm font-mono"
+									className="w-full px-3 py-2 border border-border rounded-md text-sm font-mono"
 									placeholder="/app/.ssh/id_ed25519"
 									autoComplete="off"
 								/>
-								<p className="text-xs text-gray-400 mt-1">
+								<p className="text-xs text-muted-foreground/60 mt-1">
 									Absolute path to the SSH private key file on the server
 								</p>
 							</div>
@@ -159,7 +159,7 @@ export function Settings(): JSX.Element {
 									type="button"
 									onClick={handleTestConnection}
 									disabled={!form.dokkuSshTarget || testingConnection}
-									className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+									className="px-4 py-2 bg-muted text-foreground rounded-md hover:bg-accent text-sm disabled:opacity-50 disabled:cursor-not-allowed"
 								>
 									{testingConnection ? "Testing..." : "Test Connection"}
 								</button>
@@ -167,7 +167,7 @@ export function Settings(): JSX.Element {
 						</div>
 					</div>
 
-					<div className="bg-white rounded-lg shadow p-6 mb-6">
+					<div className="bg-card rounded-lg border border-border p-6 mb-6">
 						<h2 className="text-lg font-semibold mb-4">Logging</h2>
 						<div>
 							<label htmlFor="log-level" className="block text-sm font-medium mb-1">
@@ -182,7 +182,7 @@ export function Settings(): JSX.Element {
 										logLevel: e.target.value as ServerSettings["logLevel"],
 									}))
 								}
-								className="w-full sm:w-48 px-3 py-2 border rounded-md text-sm"
+								className="w-full sm:w-48 px-3 py-2 border border-border rounded-md text-sm"
 							>
 								{LOG_LEVELS.map((level) => (
 									<option key={level} value={level}>
@@ -201,7 +201,7 @@ export function Settings(): JSX.Element {
 					<button
 						type="submit"
 						disabled={updateMutation.isPending}
-						className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm disabled:opacity-50"
+						className="px-4 py-2 bg-tertiary text-tertiary-foreground rounded-md hover:bg-tertiary/90 text-sm disabled:opacity-50"
 					>
 						{updateMutation.isPending ? "Saving…" : "Save Settings"}
 					</button>

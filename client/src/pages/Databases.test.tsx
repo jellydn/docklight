@@ -462,7 +462,9 @@ describe("Databases", () => {
 				expect(screen.getByText("redis-cache")).toBeInTheDocument();
 			});
 
-			const redisSection = screen.getByText("redis-cache").closest(".border.rounded.p-4.mb-4");
+			const redisSection = screen
+				.getByText("redis-cache")
+				.closest(".border.border-border.rounded-md.p-4.mb-4");
 			expect(redisSection).toBeInTheDocument();
 			if (!redisSection) return;
 			const redisSectionEl = redisSection as HTMLElement;
@@ -517,7 +519,7 @@ describe("Databases", () => {
 				expect(screen.getByText("Confirm Unlink")).toBeInTheDocument();
 			});
 
-			const unlinkDialog = screen.getByText("Confirm Unlink").closest(".bg-white");
+			const unlinkDialog = screen.getByText("Confirm Unlink").closest(".bg-card");
 			expect(unlinkDialog).toBeInTheDocument();
 			if (!unlinkDialog) return;
 			const unlinkDialogEl = unlinkDialog as HTMLElement;

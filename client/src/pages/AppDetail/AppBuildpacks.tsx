@@ -32,12 +32,12 @@ export function AppBuildpacks({
 	onClearAll,
 }: AppBuildpacksProps) {
 	return (
-		<div className="bg-white rounded-lg shadow p-6">
+		<div className="bg-card rounded-lg border border-border p-6">
 			<h2 className="text-lg font-semibold mb-4">Buildpacks</h2>
 
 			{loading ? (
 				<div className="flex justify-center py-8">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tertiary" />
 				</div>
 			) : error ? (
 				<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -48,22 +48,24 @@ export function AppBuildpacks({
 					{buildpacks.length > 0 ? (
 						<>
 							<div className="overflow-x-auto mb-4">
-								<table className="min-w-full divide-y divide-gray-200">
+								<table className="min-w-full divide-y divide-border">
 									<thead>
 										<tr>
-											<th className="px-3 py-2 text-left text-sm font-medium text-gray-700">#</th>
-											<th className="px-3 py-2 text-left text-sm font-medium text-gray-700">URL</th>
+											<th className="px-3 py-2 text-left text-sm font-medium text-foreground">#</th>
+											<th className="px-3 py-2 text-left text-sm font-medium text-foreground">
+												URL
+											</th>
 											<th className="px-3 py-2">
 												<span className="sr-only">Actions</span>
 											</th>
 										</tr>
 									</thead>
-									<tbody className="divide-y divide-gray-200">
+									<tbody className="divide-y divide-border">
 										{buildpacks.map((buildpack) => (
 											<tr key={buildpack.url}>
-												<td className="px-3 py-2 text-gray-600">{buildpack.index}</td>
+												<td className="px-3 py-2 text-muted-foreground">{buildpack.index}</td>
 												<td className="px-3 py-2">
-													<code className="bg-gray-100 px-2 py-1 rounded text-sm">
+													<code className="bg-muted px-2 py-1 rounded text-sm">
 														{buildpack.url}
 													</code>
 												</td>
@@ -96,12 +98,12 @@ export function AppBuildpacks({
 							)}
 						</>
 					) : (
-						<p className="text-gray-500">Auto-detected (no custom buildpacks set)</p>
+						<p className="text-muted-foreground">Auto-detected (no custom buildpacks set)</p>
 					)}
 
 					{canModify && (
 						<div className="pt-4 border-t">
-							<h3 className="text-sm font-medium text-gray-700 mb-3">Add Buildpack</h3>
+							<h3 className="text-sm font-medium text-foreground mb-3">Add Buildpack</h3>
 							<div className="flex flex-col sm:flex-row gap-2 mb-2">
 								<input
 									type="text"
@@ -123,7 +125,7 @@ export function AppBuildpacks({
 								<button
 									onClick={onAdd}
 									disabled={!newUrl || submitting}
-									className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+									className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 									type="button"
 								>
 									Add

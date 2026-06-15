@@ -208,7 +208,7 @@ export function Databases() {
 	if (isLoading) {
 		return (
 			<div className="flex justify-center items-center py-12">
-				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tertiary"></div>
 			</div>
 		);
 	}
@@ -229,16 +229,16 @@ export function Databases() {
 
 			{/* Install Plugin Guide */}
 			{databases.length === 0 && (
-				<div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+				<div className="bg-muted/50 border border-border rounded-lg p-6 mb-6">
 					<h2 className="text-lg font-semibold mb-2">Install a Database Plugin</h2>
-					<p className="text-sm text-gray-700 mb-3">
+					<p className="text-sm text-foreground mb-3">
 						Run one of these commands on your Dokku server to install a database plugin:
 					</p>
 					<div className="space-y-2">
 						{SUPPORTED_PLUGINS.map((plugin) => (
 							<div key={plugin} className="flex items-center gap-2">
 								<span className="text-sm font-medium w-20">{DATABASE_PLUGINS[plugin].label}:</span>
-								<code className="flex-1 bg-white border rounded px-3 py-1.5 text-sm font-mono select-all">
+								<code className="flex-1 bg-card border border-border rounded-md px-3 py-1.5 text-sm font-mono select-all">
 									{DATABASE_PLUGINS[plugin].installCommand}
 								</code>
 							</div>
@@ -249,13 +249,13 @@ export function Databases() {
 
 			{/* Create Database Form */}
 			{canModify && (
-				<div className="bg-white rounded-lg shadow p-6 mb-6">
+				<div className="bg-card rounded-lg border border-border p-6 mb-6">
 					<h2 className="text-lg font-semibold mb-4">Create New Database</h2>
 					<div className="flex flex-col sm:flex-row gap-2">
 						<select
 							value={newDbPlugin}
 							onChange={(e) => setNewDbPlugin(e.target.value)}
-							className="border rounded px-3 py-2"
+							className="border border-border rounded-md px-3 py-2"
 							aria-label="Database plugin"
 						>
 							<option value="">Select plugin</option>
@@ -270,22 +270,22 @@ export function Databases() {
 							placeholder="Database name"
 							value={newDbName}
 							onChange={(e) => setNewDbName(e.target.value)}
-							className="flex-1 border rounded px-3 py-2"
+							className="flex-1 border border-border rounded-md px-3 py-2"
 							aria-label="Database name"
 						/>{" "}
 						<button
 							type="button"
 							onClick={handleCreateDatabase}
 							disabled={!newDbPlugin || !newDbName || createDbSubmitting}
-							className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+							className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded-md hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 						>
 							Create
 						</button>
 					</div>
 					{newDbPlugin && (
-						<p className="mt-2 text-xs text-gray-500">
+						<p className="mt-2 text-xs text-muted-foreground">
 							Ensure the plugin is installed on your Dokku server first via SSH:{" "}
-							<code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono select-all">
+							<code className="bg-muted px-1.5 py-0.5 rounded font-mono select-all">
 								{newDbPlugin
 									? (DATABASE_PLUGINS[newDbPlugin as SupportedPlugin]?.installCommand ??
 										`sudo dokku plugin:install <plugin-url>`)
@@ -298,25 +298,25 @@ export function Databases() {
 
 			{/* Databases by Plugin */}
 			{Object.keys(groupedDatabases).length === 0 ? (
-				<div className="bg-white rounded-lg shadow p-6">
-					<p className="text-gray-500">No databases found</p>
+				<div className="bg-card rounded-lg border border-border p-6">
+					<p className="text-muted-foreground">No databases found</p>
 				</div>
 			) : (
 				Object.entries(groupedDatabases).map(([plugin, dbs]) => (
-					<div key={plugin} className="bg-white rounded-lg shadow p-6 mb-6">
+					<div key={plugin} className="bg-card rounded-lg border border-border p-6 mb-6">
 						<h2 className="text-lg font-semibold mb-4 capitalize">{plugin} Databases</h2>
 						{dbs.map((db) => (
-							<div key={db.name} className="border rounded p-4 mb-4">
+							<div key={db.name} className="border border-border rounded-md p-4 mb-4">
 								<div className="space-y-2">
 									<div>
-										<strong className="text-gray-700">Name:</strong>{" "}
-										<code className="bg-gray-100 px-2 py-1 rounded text-sm">{db.name}</code>
+										<strong className="text-foreground">Name:</strong>{" "}
+										<code className="bg-muted px-2 py-1 rounded text-sm">{db.name}</code>
 									</div>
 									<div>
-										<strong className="text-gray-700">Plugin:</strong> {db.plugin}
+										<strong className="text-foreground">Plugin:</strong> {db.plugin}
 									</div>
 									<div>
-										<strong className="text-gray-700">Linked Apps:</strong>
+										<strong className="text-foreground">Linked Apps:</strong>
 										{db.linkedApps.length > 0 ? (
 											<ul className="list-disc list-inside ml-4 mt-1">
 												{db.linkedApps.map((app) => (
@@ -336,15 +336,15 @@ export function Databases() {
 												))}
 											</ul>
 										) : (
-											<span className="text-gray-400">No linked apps</span>
+											<span className="text-muted-foreground/60">No linked apps</span>
 										)}
 									</div>
 									<div>
-										<strong className="text-gray-700">Connection Info:</strong>
+										<strong className="text-foreground">Connection Info:</strong>
 										<button
 											type="button"
 											onClick={() => toggleConnectionVisibility(db.name)}
-											className="font-mono text-sm cursor-pointer hover:text-blue-600 ml-2"
+											className="font-mono text-sm cursor-pointer hover:text-tertiary ml-2"
 										>
 											{visibleConnections.has(db.name) ? db.connectionInfo : "••••••••••••"}
 										</button>
@@ -352,9 +352,9 @@ export function Databases() {
 
 									{/* Link App Form */}
 									{canModify && apps.length > 0 && (
-										<div className="mt-4 pt-4 border-t">
+										<div className="mt-4 pt-4 border-t border-border">
 											<div className="flex flex-col sm:flex-row gap-2">
-												<span className="text-sm font-medium text-gray-700 self-center">
+												<span className="text-sm font-medium text-foreground self-center">
 													Link App:
 												</span>
 												<select
@@ -363,7 +363,7 @@ export function Databases() {
 														setLinkDbName(db.name);
 														setLinkAppName(e.target.value);
 													}}
-													className="flex-1 border rounded px-3 py-2 text-sm"
+													className="flex-1 border border-border rounded-md px-3 py-2 text-sm"
 													aria-label="Link app selector"
 												>
 													<option value="">Select app</option>
@@ -379,7 +379,7 @@ export function Databases() {
 													type="button"
 													onClick={handleLinkDatabase}
 													disabled={linkAppName === "" || linkDbName !== db.name || linkSubmitting}
-													className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+													className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded-md hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
 												>
 													Link
 												</button>
@@ -389,11 +389,11 @@ export function Databases() {
 
 									{/* Destroy Database Button */}
 									{canModify && (
-										<div className="mt-4 pt-4 border-t">
+										<div className="mt-4 pt-4 border-t border-border">
 											<button
 												type="button"
 												onClick={() => handleDestroyDatabase(db.name)}
-												className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 text-sm"
+												className="bg-destructive text-destructive-foreground px-4 py-2 rounded-md hover:bg-destructive/90 text-sm"
 											>
 												Destroy Database
 											</button>
@@ -408,8 +408,8 @@ export function Databases() {
 
 			{/* Unlink Confirmation Dialog */}
 			{showUnlinkDialog && (
-				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-					<div className="bg-white rounded p-6 max-w-md w-full">
+				<div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+					<div className="bg-card rounded-lg border border-border p-6 max-w-md w-full">
 						<h2 className="text-lg font-semibold mb-4">Confirm Unlink</h2>
 						<p className="mb-6">
 							Are you sure you want to unlink <strong>{pendingUnlinkApp}</strong> from{" "}
@@ -425,7 +425,7 @@ export function Databases() {
 									setPendingUnlinkApp("");
 								}}
 								disabled={unlinkSubmitting}
-								className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
+								className="px-4 py-2 border border-border rounded-md hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								Cancel
 							</button>
@@ -433,7 +433,7 @@ export function Databases() {
 								type="button"
 								onClick={confirmUnlinkDatabase}
 								disabled={unlinkSubmitting}
-								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+								className="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								{unlinkSubmitting ? "Unlinking..." : "Unlink"}
 							</button>
@@ -444,20 +444,20 @@ export function Databases() {
 
 			{/* Destroy Confirmation Dialog */}
 			{showDestroyDialog && (
-				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-					<div className="bg-white rounded p-6 max-w-md w-full">
+				<div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+					<div className="bg-card rounded-lg border border-border p-6 max-w-md w-full">
 						<h2 className="text-lg font-semibold mb-4">Confirm Destroy</h2>
 						<p className="mb-2">
 							This action cannot be undone. Are you sure you want to destroy database{" "}
 							<strong>{pendingDestroyDb}</strong>?
 						</p>
-						<p className="mb-4 text-sm text-gray-600">Type the database name to confirm:</p>
+						<p className="mb-4 text-sm text-muted-foreground">Type the database name to confirm:</p>
 						<input
 							type="text"
 							value={confirmDestroyName}
 							onChange={(e) => setConfirmDestroyName(e.target.value)}
 							placeholder={pendingDestroyDb}
-							className="w-full border rounded px-3 py-2 mb-4"
+							className="w-full border border-border rounded-md px-3 py-2 mb-4"
 							aria-label="Confirm database name"
 						/>
 						<div className="flex justify-end space-x-2">
@@ -470,7 +470,7 @@ export function Databases() {
 									setConfirmDestroyName("");
 								}}
 								disabled={destroySubmitting}
-								className="px-4 py-2 border rounded hover:bg-gray-100 disabled:bg-gray-100 disabled:cursor-not-allowed"
+								className="px-4 py-2 border border-border rounded-md hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								Cancel
 							</button>
@@ -478,7 +478,7 @@ export function Databases() {
 								type="button"
 								onClick={confirmDestroyDatabase}
 								disabled={confirmDestroyName !== pendingDestroyDb || destroySubmitting}
-								className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+								className="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								{destroySubmitting ? "Destroying..." : "Destroy"}
 							</button>

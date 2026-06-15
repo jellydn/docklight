@@ -39,12 +39,12 @@ export function AppNetwork({
 	onValueChange,
 }: AppNetworkProps) {
 	return (
-		<div className="bg-white rounded-lg shadow p-6">
+		<div className="bg-card rounded-lg border border-border p-6">
 			<h2 className="text-lg font-semibold mb-4">Network</h2>
 
 			{loading ? (
 				<div className="flex justify-center py-8">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tertiary" />
 				</div>
 			) : error ? (
 				<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -52,7 +52,7 @@ export function AppNetwork({
 				</div>
 			) : (
 				<div className="space-y-4">
-					<p className="text-sm text-gray-500 mb-4">
+					<p className="text-sm text-muted-foreground mb-4">
 						{canModify
 							? "Configure network properties for this app. Click a value to edit, or use the clear button to remove a setting."
 							: "Network properties for this app."}
@@ -66,7 +66,7 @@ export function AppNetwork({
 						return (
 							<div key={key} className="flex items-center justify-between py-2 border-b">
 								<div className="flex-1">
-									<span className="font-medium text-gray-700">{key}</span>
+									<span className="font-medium text-foreground">{key}</span>
 									{isEditing && canModify ? (
 										<div className="flex items-center gap-2 mt-2">
 											<input
@@ -80,7 +80,7 @@ export function AppNetwork({
 											<button
 												onClick={() => onSave(key)}
 												disabled={submitting}
-												className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 disabled:bg-gray-300"
+												className="bg-tertiary text-tertiary-foreground px-3 py-1 rounded text-sm hover:bg-tertiary/90 disabled:opacity-50"
 												type="button"
 											>
 												Save
@@ -88,7 +88,7 @@ export function AppNetwork({
 											<button
 												onClick={onCancelEdit}
 												disabled={submitting}
-												className="text-gray-600 px-3 py-1 rounded text-sm hover:bg-gray-100"
+												className="text-muted-foreground px-3 py-1 rounded text-sm hover:bg-accent"
 												type="button"
 											>
 												Cancel
@@ -97,14 +97,14 @@ export function AppNetwork({
 									) : (
 										<div className="flex items-center gap-2 mt-1">
 											{isNotSet ? (
-												<span className="text-gray-400 italic">not set</span>
+												<span className="text-muted-foreground/60 italic">not set</span>
 											) : (
-												<span className="text-gray-800 font-mono text-sm">{value}</span>
+												<span className="text-foreground font-mono text-sm">{value}</span>
 											)}
 											{canModify && (
 												<button
 													onClick={() => onStartEdit(key, value)}
-													className="text-blue-600 hover:text-blue-800 text-sm"
+													className="text-primary hover:text-primary text-sm"
 													type="button"
 												>
 													{isNotSet ? "Set" : "Edit"}

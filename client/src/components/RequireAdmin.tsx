@@ -12,7 +12,7 @@ export function RequireAdmin({ children }: RequireAdminProps): JSX.Element {
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
-				<div className="text-gray-500">Loading…</div>
+				<div className="text-muted-foreground">Loading…</div>
 			</div>
 		);
 	}

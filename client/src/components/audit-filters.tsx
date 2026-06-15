@@ -26,12 +26,12 @@ export function AuditFilters<T extends Record<string, string>>({
 	pluralLabel = "logs",
 }: AuditFiltersProps<T>) {
 	return (
-		<div className="bg-white rounded-lg shadow p-6 mb-6">
+		<div className="bg-card rounded-lg border border-border p-6 mb-6">
 			<h2 className="text-lg font-semibold mb-4">Filters</h2>
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
 				{fields.map((field) => (
 					<div key={field.name}>
-						<label htmlFor={field.name} className="block text-sm font-medium text-gray-700 mb-1">
+						<label htmlFor={field.name} className="block text-sm font-medium text-foreground mb-1">
 							{field.label}
 						</label>
 						{field.type === "select" ? (
@@ -69,12 +69,12 @@ export function AuditFilters<T extends Record<string, string>>({
 			<div className="flex items-center gap-2">
 				<button
 					onClick={onReset}
-					className="px-4 py-2 border rounded hover:bg-gray-100"
+					className="px-4 py-2 border rounded hover:bg-accent"
 					type="button"
 				>
 					Reset Filters
 				</button>
-				<span className="text-sm text-gray-600">
+				<span className="text-sm text-muted-foreground">
 					{total} {total === 1 ? singularLabel : pluralLabel} found
 				</span>
 			</div>

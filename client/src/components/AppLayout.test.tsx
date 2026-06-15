@@ -96,74 +96,35 @@ describe("AppLayout", () => {
 	});
 
 	describe("isActive (active route highlighting)", () => {
-		it("should apply bg-accent class to the Dashboard link when on /dashboard", () => {
+		const activeClass = "bg-white/20";
+
+		it.each([
+			["/dashboard", /Dashboard/],
+			["/apps", /^Apps$/],
+			["/apps/my-app", /^Apps$/],
+			["/audit", /Audit Logs/],
+			["/databases", /Databases/],
+		])("should highlight the %s nav link", (route, namePattern) => {
+			render(
+				<MemoryRouter initialEntries={[route]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			const link = screen.getByRole("link", { name: namePattern });
+			expect(link.className).toContain(activeClass);
+		});
+
+		it.each([
+			[/^Apps$/, "bg-white/20 text-white"],
+			[/Audit Logs/, "bg-white/20 text-white"],
+		])("%s should not have active styling when on /dashboard", (namePattern, notClass) => {
 			render(
 				<MemoryRouter initialEntries={["/dashboard"]}>
 					<AppLayout />
 				</MemoryRouter>
 			);
-			const dashboardLink = screen.getByRole("link", { name: /Dashboard/ });
-			expect(dashboardLink.className).toContain("bg-accent");
-		});
-
-		it("should not apply bg-accent class to non-active links", () => {
-			render(
-				<MemoryRouter initialEntries={["/dashboard"]}>
-					<AppLayout />
-				</MemoryRouter>
-			);
-			const appsLink = screen.getByRole("link", { name: /^Apps$/ });
-			expect(appsLink.className).not.toContain("bg-accent text-foreground");
-		});
-
-		it("should apply bg-accent to Apps link when on /apps", () => {
-			render(
-				<MemoryRouter initialEntries={["/apps"]}>
-					<AppLayout />
-				</MemoryRouter>
-			);
-			const appsLink = screen.getByRole("link", { name: /^Apps$/ });
-			expect(appsLink.className).toContain("bg-accent");
-		});
-
-		it("should apply bg-accent to Apps link when on a sub-path like /apps/my-app", () => {
-			render(
-				<MemoryRouter initialEntries={["/apps/my-app"]}>
-					<AppLayout />
-				</MemoryRouter>
-			);
-			const appsLink = screen.getByRole("link", { name: /^Apps$/ });
-			expect(appsLink.className).toContain("bg-accent");
-		});
-
-		it("should apply bg-accent to Audit Logs link when on /audit", () => {
-			render(
-				<MemoryRouter initialEntries={["/audit"]}>
-					<AppLayout />
-				</MemoryRouter>
-			);
-			const auditLink = screen.getByRole("link", { name: /Audit Logs/ });
-			expect(auditLink.className).toContain("bg-accent");
-		});
-
-		it("should not apply bg-accent to Audit Logs link when on /dashboard", () => {
-			render(
-				<MemoryRouter initialEntries={["/dashboard"]}>
-					<AppLayout />
-				</MemoryRouter>
-			);
-			const auditLink = screen.getByRole("link", { name: /Audit Logs/ });
-			expect(auditLink.className).not.toContain("bg-accent text-foreground");
-		});
-
-		it("should apply bg-accent to Databases link when on /databases", () => {
-			render(
-				<MemoryRouter initialEntries={["/databases"]}>
-					<AppLayout />
-				</MemoryRouter>
-			);
-			const dbLink = screen.getByRole("link", { name: /Databases/ });
-			expect(dbLink.className).toContain("bg-accent");
+			const link = screen.getByRole("link", { name: namePattern });
+			expect(link.className).not.toContain(notClass);
 		});
 	});
 
@@ -209,26 +170,18 @@ describe("AppLayout", () => {
 			expect(screen.queryByRole("link", { name: /Users/ })).not.toBeInTheDocument();
 		});
 
-		it("should apply bg-accent to Users link when on /users and role is admin", () => {
+		it.each([
+			["/users", /Users/],
+			["/settings", /^Settings$/],
+		])("should apply bg-white/20 to %s link when role is admin", (route, namePattern) => {
 			mockRole = "admin";
 			render(
-				<MemoryRouter initialEntries={["/users"]}>
+				<MemoryRouter initialEntries={[route]}>
 					<AppLayout />
 				</MemoryRouter>
 			);
-			const usersLink = screen.getByRole("link", { name: /Users/ });
-			expect(usersLink.className).toContain("bg-accent");
-		});
-
-		it("should apply bg-accent to Settings link when on /settings and role is admin", () => {
-			mockRole = "admin";
-			render(
-				<MemoryRouter initialEntries={["/settings"]}>
-					<AppLayout />
-				</MemoryRouter>
-			);
-			const settingsLink = screen.getByRole("link", { name: /^Settings$/ });
-			expect(settingsLink.className).toContain("bg-accent");
+			const link = screen.getByRole("link", { name: namePattern });
+			expect(link.className).toContain("bg-white/20");
 		});
 	});
 
@@ -279,7 +232,7 @@ describe("AppLayout", () => {
 			expect(roleEl.className).toContain("capitalize");
 		});
 
-		it("role text should use text-muted-foreground class (not text-gray-400)", () => {
+		it("role text should use text-primary-foreground/60 class (not text-gray-400)", () => {
 			mockUsername = "alice";
 			mockRole = "admin";
 			render(
@@ -288,20 +241,20 @@ describe("AppLayout", () => {
 				</MemoryRouter>
 			);
 			const roleEl = screen.getByText("admin");
-			expect(roleEl.className).toContain("text-muted-foreground");
+			expect(roleEl.className).toContain("text-primary-foreground/60");
 			expect(roleEl.className).not.toContain("text-gray-400");
 		});
 	});
 
 	describe("sidebar CSS classes", () => {
-		it("should use bg-card for sidebar background (not bg-gray-900)", () => {
+		it("should use bg-primary for sidebar background (not bg-gray-900)", () => {
 			render(
 				<MemoryRouter initialEntries={["/dashboard"]}>
 					<AppLayout />
 				</MemoryRouter>
 			);
 			const sidebar = screen.getByRole("complementary");
-			expect(sidebar.className).toContain("bg-card");
+			expect(sidebar.className).toContain("bg-primary");
 			expect(sidebar.className).not.toContain("bg-gray-900");
 		});
 

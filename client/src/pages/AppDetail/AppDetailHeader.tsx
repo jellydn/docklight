@@ -25,7 +25,7 @@ export function AppDetailHeader({
 					{status === "running" && (
 						<button
 							onClick={onStop}
-							className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700"
+							className="bg-warning text-white px-4 py-2 rounded hover:bg-warning/90"
 							type="button"
 						>
 							Stop
@@ -34,7 +34,7 @@ export function AppDetailHeader({
 					{status === "stopped" && (
 						<button
 							onClick={onStart}
-							className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+							className="bg-success text-white px-4 py-2 rounded hover:bg-success/90"
 							type="button"
 						>
 							Start
@@ -42,14 +42,14 @@ export function AppDetailHeader({
 					)}
 					<button
 						onClick={onRestart}
-						className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+						className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90"
 						type="button"
 					>
 						Restart
 					</button>
 					<button
 						onClick={onRebuild}
-						className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+						className="bg-secondary text-secondary-foreground px-4 py-2 rounded hover:bg-secondary/80"
 						type="button"
 					>
 						Rebuild

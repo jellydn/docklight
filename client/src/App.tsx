@@ -106,8 +106,8 @@ function App() {
 					closeButton
 					toastOptions={{
 						classNames: {
-							toast: "!border-gray-200 !bg-white !text-gray-900",
-							description: "!text-gray-600",
+							toast: "border-border! bg-card! text-foreground!",
+							description: "text-muted-foreground!",
 						},
 					}}
 				/>

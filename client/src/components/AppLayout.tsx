@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { apiFetch } from "../lib/api.js";
 import { logger } from "../lib/logger.js";
@@ -7,9 +7,60 @@ import { queryClient } from "../lib/query-client.js";
 import { queryKeys } from "../lib/query-keys.js";
 import { useAuth } from "@/contexts/auth-context.js";
 import { useAppEvents } from "@/hooks/use-app-events.js";
+import {
+	LayoutDashboard,
+	AppWindow,
+	Database,
+	Puzzle,
+	ScrollText,
+	Users,
+	Settings,
+	LogOut,
+	Menu,
+	X,
+} from "lucide-react";
+
+const navItems = [
+	{ to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+	{ to: "/apps", label: "Apps", icon: AppWindow },
+	{ to: "/databases", label: "Databases", icon: Database },
+	{ to: "/plugins", label: "Plugins", icon: Puzzle },
+	{ to: "/audit", label: "Audit Logs", icon: ScrollText },
+] as const;
+
+const adminNavItems = [
+	{ to: "/users", label: "Users", icon: Users },
+	{ to: "/settings", label: "Settings", icon: Settings },
+] as const;
+
+interface SidebarLinkProps {
+	to: string;
+	label: string;
+	icon: React.ComponentType<{ className?: string }>;
+	active: boolean;
+	onClick: () => void;
+}
+
+function SidebarLink({ to, label, icon: Icon, active, onClick }: SidebarLinkProps) {
+	return (
+		<Link
+			to={to}
+			onClick={onClick}
+			className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+				active
+					? "bg-white/20 text-white"
+					: "text-primary-foreground/60 hover:bg-primary-foreground/10 hover:text-primary-foreground"
+			}`}
+		>
+			<Icon className="h-4 w-4" />
+			{label}
+		</Link>
+	);
+}
 
 export function AppLayout() {
 	const navigate = useNavigate();
+	const location = useLocation();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const { role, username } = useAuth();
 
@@ -30,17 +81,20 @@ export function AppLayout() {
 
 	const closeSidebar = () => setSidebarOpen(false);
 
-	const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:z-auto md:pointer-events-auto ${
+	const isActive = (path: string): boolean =>
+		location.pathname === path || location.pathname.startsWith(path + "/");
+
+	const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-primary text-primary-foreground transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:z-auto md:pointer-events-auto ${
 		sidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
 	}`;
 
 	return (
-		<div className="flex min-h-screen bg-gray-100">
+		<div className="flex min-h-screen bg-background">
 			{/* Mobile overlay */}
 			{sidebarOpen && (
 				<button
 					type="button"
-					className="fixed inset-0 z-20 bg-black bg-opacity-50 md:hidden"
+					className="fixed inset-0 z-20 bg-black/50 backdrop-blur-sm md:hidden"
 					onClick={closeSidebar}
 					aria-label="Close menu"
 				/>
@@ -48,92 +102,79 @@ export function AppLayout() {
 
 			{/* Sidebar */}
 			<aside className={`${sidebarClasses} flex flex-col`}>
-				<div className="flex items-center justify-between p-4">
+				<div className="flex items-center justify-between p-4 border-b border-primary-foreground/10">
 					<div className="flex items-center gap-2">
 						<img src="/logo.svg" alt="Docklight logo" className="h-6 w-6" />
-						<h1 className="text-xl font-bold">Docklight</h1>
+						<h1 className="text-xl font-bold text-primary-foreground">Docklight</h1>
 					</div>
 					<button
 						type="button"
 						onClick={closeSidebar}
-						className="md:hidden text-gray-400 hover:text-white"
+						className="md:hidden text-primary-foreground/60 hover:text-primary-foreground"
 						aria-label="Close menu"
 					>
-						✕
+						<X className="h-5 w-5" />
 					</button>
 				</div>
-				<nav className="mt-4">
-					<Link
-						to="/dashboard"
-						className="block px-4 py-2 hover:bg-gray-800"
-						onClick={closeSidebar}
-					>
-						Dashboard
-					</Link>
-					<Link to="/apps" className="block px-4 py-2 hover:bg-gray-800" onClick={closeSidebar}>
-						Apps
-					</Link>
-					<Link
-						to="/databases"
-						className="block px-4 py-2 hover:bg-gray-800"
-						onClick={closeSidebar}
-					>
-						Databases
-					</Link>
-					<Link to="/plugins" className="block px-4 py-2 hover:bg-gray-800" onClick={closeSidebar}>
-						Plugins
-					</Link>
-					<Link to="/audit" className="block px-4 py-2 hover:bg-gray-800" onClick={closeSidebar}>
-						Audit Logs
-					</Link>
-					{role === "admin" && (
-						<Link to="/users" className="block px-4 py-2 hover:bg-gray-800" onClick={closeSidebar}>
-							Users
-						</Link>
-					)}
-					{role === "admin" && (
-						<Link
-							to="/settings"
-							className="block px-4 py-2 hover:bg-gray-800"
+				<nav className="mt-4 flex-1 px-2 space-y-1">
+					{navItems.map(({ to, label, icon }) => (
+						<SidebarLink
+							key={to}
+							to={to}
+							label={label}
+							icon={icon}
+							active={isActive(to)}
 							onClick={closeSidebar}
-						>
-							Settings
-						</Link>
-					)}
+						/>
+					))}
+					{role === "admin" &&
+						adminNavItems.map(({ to, label, icon }) => (
+							<SidebarLink
+								key={to}
+								to={to}
+								label={label}
+								icon={icon}
+								active={isActive(to)}
+								onClick={closeSidebar}
+							/>
+						))}
 					<button
 						type="button"
 						onClick={handleLogout}
-						className="w-full text-left px-4 py-2 hover:bg-gray-800 mt-4"
+						className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-primary-foreground/60 hover:bg-primary-foreground/10 hover:text-primary-foreground transition-colors w-full mt-4"
 					>
+						<LogOut className="h-4 w-4" />
 						Logout
 					</button>
 				</nav>
 				{username && (
-					<div className="mt-auto border-t border-gray-700 p-4">
-						<p className="text-sm font-medium truncate">{username}</p>
-						{role && <p className="text-xs text-gray-400 capitalize">{role}</p>}
+					<div className="mt-auto border-t border-primary-foreground/10 p-4">
+						<p className="text-sm font-medium text-primary-foreground truncate">{username}</p>
+						{role && <p className="text-xs text-primary-foreground/60 capitalize">{role}</p>}
 					</div>
 				)}
 			</aside>
 
 			<div className="flex flex-col flex-1 min-w-0">
 				{/* Mobile top bar */}
-				<header className="md:hidden flex items-center px-4 py-3 bg-gray-900 text-white">
-					<button
-						type="button"
-						onClick={() => setSidebarOpen(true)}
-						className="text-gray-400 hover:text-white mr-3"
-						aria-label="Open menu"
-					>
-						☰
-					</button>
-					<div className="flex items-center gap-2">
-						<img src="/logo.svg" alt="Docklight logo" className="h-6 w-6" />
-						<h1 className="text-lg font-bold">Docklight</h1>
+				<header className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-card">
+					<div className="flex items-center gap-3">
+						<button
+							type="button"
+							onClick={() => setSidebarOpen(true)}
+							className="text-muted-foreground hover:text-foreground"
+							aria-label="Open menu"
+						>
+							<Menu className="h-5 w-5" />
+						</button>
+						<div className="flex items-center gap-2">
+							<img src="/logo.svg" alt="Docklight logo" className="h-6 w-6" />
+							<h1 className="text-lg font-bold">Docklight</h1>
+						</div>
 					</div>
 				</header>
 
-				<main className="flex-1 p-4 md:p-6">
+				<main className="flex-1 p-4 md:p-6 lg:p-8">
 					<Outlet />
 				</main>
 			</div>

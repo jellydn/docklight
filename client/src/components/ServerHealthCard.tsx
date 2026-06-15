@@ -48,7 +48,7 @@ const MAINTENANCE_ACTIONS: ReadonlyArray<{
 		label: "Clean unused",
 		title: "Clean unused Dokku resources",
 		description: (
-			<p className="text-sm text-gray-600">
+			<p className="text-sm text-muted-foreground">
 				This runs <code className="font-mono">dokku cleanup</code> to remove unused containers and
 				images. Volumes are not removed.
 			</p>
@@ -60,7 +60,7 @@ const MAINTENANCE_ACTIONS: ReadonlyArray<{
 		label: "Purge build caches",
 		title: "Purge build caches",
 		description: (
-			<p className="text-sm text-gray-600">
+			<p className="text-sm text-muted-foreground">
 				This runs <code className="font-mono">dokku repo:purge-cache</code> across all apps to
 				remove build caches. Volumes are not removed and <code className="font-mono">repo:gc</code>{" "}
 				is not run.
@@ -83,9 +83,9 @@ function HealthMetricBar({ label, value, status }: HealthMetricBarProps) {
 		<div>
 			<div className="flex justify-between mb-1">
 				<span className="text-sm font-medium">{label}</span>
-				<span className="text-sm text-gray-600">{value.toFixed(1)}%</span>
+				<span className="text-sm text-muted-foreground">{value.toFixed(1)}%</span>
 			</div>
-			<div className="w-full bg-gray-200 rounded-full h-2">
+			<div className="w-full bg-muted rounded-full h-2">
 				<div
 					className={`h-2 rounded-full transition-all ${presentation.bar}`}
 					style={{ width: `${value}%` }}

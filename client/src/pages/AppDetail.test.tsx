@@ -186,7 +186,7 @@ describe("AppDetail", () => {
 		await waitFor(() => {
 			const confirmHeading = screen.getByText("Confirm Action");
 			expect(confirmHeading).toBeInTheDocument();
-			expect(confirmHeading.closest(".bg-white")).toHaveTextContent(
+			expect(confirmHeading.closest(".bg-card")).toHaveTextContent(
 				"Are you sure you want to restart test-app?"
 			);
 		});
