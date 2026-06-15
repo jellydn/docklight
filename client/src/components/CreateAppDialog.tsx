@@ -261,7 +261,7 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 										git remote add dokku dokku@{hostname}:{createdAppName}
 										<button
 											type="button"
-											className="ml-2 text-blue-500 hover:underline"
+											className="ml-2 text-tertiary hover:underline"
 											onClick={handleCopyRemote}
 											title="Copy to clipboard"
 										>

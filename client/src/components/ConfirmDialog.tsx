@@ -33,7 +33,7 @@ export function ConfirmDialog({
 
 	const buttonClass = isDestructive
 		? "bg-destructive text-destructive-foreground rounded hover:bg-destructive/90"
-		: "bg-primary text-primary-foreground rounded hover:bg-primary/90";
+		: "bg-tertiary text-tertiary-foreground rounded hover:bg-tertiary/90";
 
 	return (
 		<dialog

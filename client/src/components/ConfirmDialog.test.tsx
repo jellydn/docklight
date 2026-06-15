@@ -126,10 +126,10 @@ describe("ConfirmDialog", () => {
 			expect(confirmButton.className).toContain("bg-destructive");
 		});
 
-		it("should use primary button styling when isDestructive is false", () => {
+		it("should use tertiary button styling when isDestructive is false", () => {
 			render(<ConfirmDialog {...defaultProps} isDestructive={false} />);
 			const confirmButton = screen.getByRole("button", { name: "Confirm" });
-			expect(confirmButton.className).toContain("bg-primary");
+			expect(confirmButton.className).toContain("bg-tertiary");
 		});
 	});
 
