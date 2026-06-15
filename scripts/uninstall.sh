@@ -44,7 +44,7 @@ if [[ "${CONFIRM}" != "1" ]]; then
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   DESTRUCTIVE OPERATION — This will remove everything:
     - Dokku, all apps, databases, SSL certs
-    - Docker containers, images, volumes${REMOVE_DOCKER:+ (Docker will also be purged)}
+    - Docker containers, images, volumes$([[ "${REMOVE_DOCKER}" == "1" ]] && printf ' (Docker will also be purged)')
     - /home/dokku, /var/lib/dokku, /var/log/dokku
   Type "yes" to continue or Ctrl+C to abort.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
