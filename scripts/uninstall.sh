@@ -48,7 +48,7 @@ if [[ "${CONFIRM}" != "1" ]]; then
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 WARN
-	read -r -p "Continue? [yes/NO]: " REPLY
+	read -r -p "Continue? [yes/NO]: " REPLY < /dev/tty
 	if [[ "${REPLY}" != "yes" ]]; then
 		log "Aborted."
 		exit 0
@@ -94,6 +94,7 @@ log "Removing Dokku data directories..."
 rm -rf /home/dokku
 rm -rf /var/lib/dokku
 rm -rf /var/log/dokku
+rm -rf /etc/dokku
 
 # ---------- 7. Remove dokku user and group ----------
 log "Removing dokku user and group..."
