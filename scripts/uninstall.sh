@@ -89,6 +89,15 @@ fi
 # ---------- 5. Uninstall Dokku & herokuish packages ----------
 log "Purging dokku and herokuish packages..."
 apt-get purge -y dokku herokuish 2>/dev/null || true
+
+# Mark Docker packages as manually installed so autoremove doesn't nuke them.
+# Dokku installs Docker as a dependency; without this, purging Dokku would
+# cause autoremove to remove Docker too.
+if command -v apt-mark >/dev/null 2>&1; then
+	dpkg -l 2>/dev/null \
+		| awk '/^ii/ && $2 ~ /^(docker|containerd\.io)/ {print $2}' \
+		| xargs -r apt-mark manual 2>/dev/null || true
+fi
 apt-get autoremove -y 2>/dev/null || true
 
 # ---------- 6. Remove Dokku data directories ----------
