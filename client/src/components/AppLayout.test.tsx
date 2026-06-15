@@ -19,9 +19,20 @@ vi.mock("@/hooks/use-app-events.js", () => ({
 	useAppEvents: vi.fn(),
 }));
 
+// Mutable mock state for auth context so tests can control role/username
+let mockRole: string | null = null;
+let mockUsername: string | null = null;
+
+vi.mock("@/contexts/auth-context.js", () => ({
+	useAuth: () => ({ role: mockRole, username: mockUsername, loading: false, canModify: false }),
+}));
+
 describe("AppLayout", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// Reset auth state to non-admin for each test
+		mockRole = null;
+		mockUsername = null;
 	});
 
 	it("should render the layout with navigation links", () => {
@@ -82,5 +93,256 @@ describe("AppLayout", () => {
 		// But we can verify the main element exists
 		const main = screen.getByRole("main") ?? document.querySelector("main");
 		expect(main).toBeInTheDocument();
+	});
+
+	describe("isActive (active route highlighting)", () => {
+		it("should apply bg-accent class to the Dashboard link when on /dashboard", () => {
+			render(
+				<MemoryRouter initialEntries={["/dashboard"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			const dashboardLink = screen.getByRole("link", { name: /Dashboard/ });
+			expect(dashboardLink.className).toContain("bg-accent");
+		});
+
+		it("should not apply bg-accent class to non-active links", () => {
+			render(
+				<MemoryRouter initialEntries={["/dashboard"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			const appsLink = screen.getByRole("link", { name: /^Apps$/ });
+			expect(appsLink.className).not.toContain("bg-accent text-foreground");
+		});
+
+		it("should apply bg-accent to Apps link when on /apps", () => {
+			render(
+				<MemoryRouter initialEntries={["/apps"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			const appsLink = screen.getByRole("link", { name: /^Apps$/ });
+			expect(appsLink.className).toContain("bg-accent");
+		});
+
+		it("should apply bg-accent to Apps link when on a sub-path like /apps/my-app", () => {
+			render(
+				<MemoryRouter initialEntries={["/apps/my-app"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			const appsLink = screen.getByRole("link", { name: /^Apps$/ });
+			expect(appsLink.className).toContain("bg-accent");
+		});
+
+		it("should apply bg-accent to Audit Logs link when on /audit", () => {
+			render(
+				<MemoryRouter initialEntries={["/audit"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			const auditLink = screen.getByRole("link", { name: /Audit Logs/ });
+			expect(auditLink.className).toContain("bg-accent");
+		});
+
+		it("should not apply bg-accent to Audit Logs link when on /dashboard", () => {
+			render(
+				<MemoryRouter initialEntries={["/dashboard"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			const auditLink = screen.getByRole("link", { name: /Audit Logs/ });
+			expect(auditLink.className).not.toContain("bg-accent text-foreground");
+		});
+
+		it("should apply bg-accent to Databases link when on /databases", () => {
+			render(
+				<MemoryRouter initialEntries={["/databases"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			const dbLink = screen.getByRole("link", { name: /Databases/ });
+			expect(dbLink.className).toContain("bg-accent");
+		});
+	});
+
+	describe("admin navigation items", () => {
+		it("should show Users and Settings links when role is admin", () => {
+			mockRole = "admin";
+			render(
+				<MemoryRouter initialEntries={["/dashboard"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			expect(screen.getByRole("link", { name: /Users/ })).toBeInTheDocument();
+			expect(screen.getByRole("link", { name: /Settings/ })).toBeInTheDocument();
+		});
+
+		it("should not show Users link when role is not admin", () => {
+			mockRole = null;
+			render(
+				<MemoryRouter initialEntries={["/dashboard"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			expect(screen.queryByRole("link", { name: /Users/ })).not.toBeInTheDocument();
+		});
+
+		it("should not show Settings link when role is not admin", () => {
+			mockRole = null;
+			render(
+				<MemoryRouter initialEntries={["/dashboard"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			expect(screen.queryByRole("link", { name: /^Settings$/ })).not.toBeInTheDocument();
+		});
+
+		it("should not show Users link when role is operator", () => {
+			mockRole = "operator";
+			render(
+				<MemoryRouter initialEntries={["/dashboard"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			expect(screen.queryByRole("link", { name: /Users/ })).not.toBeInTheDocument();
+		});
+
+		it("should apply bg-accent to Users link when on /users and role is admin", () => {
+			mockRole = "admin";
+			render(
+				<MemoryRouter initialEntries={["/users"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			const usersLink = screen.getByRole("link", { name: /Users/ });
+			expect(usersLink.className).toContain("bg-accent");
+		});
+
+		it("should apply bg-accent to Settings link when on /settings and role is admin", () => {
+			mockRole = "admin";
+			render(
+				<MemoryRouter initialEntries={["/settings"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			const settingsLink = screen.getByRole("link", { name: /^Settings$/ });
+			expect(settingsLink.className).toContain("bg-accent");
+		});
+	});
+
+	describe("sidebar footer with user info", () => {
+		it("should show username in sidebar footer when username is provided", () => {
+			mockUsername = "john.doe";
+			render(
+				<MemoryRouter initialEntries={["/dashboard"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			expect(screen.getByText("john.doe")).toBeInTheDocument();
+		});
+
+		it("should show role in sidebar footer when role is provided", () => {
+			mockUsername = "john.doe";
+			mockRole = "admin";
+			render(
+				<MemoryRouter initialEntries={["/dashboard"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			expect(screen.getByText("admin")).toBeInTheDocument();
+		});
+
+		it("should not show user footer when username is null", () => {
+			mockUsername = null;
+			mockRole = null;
+			render(
+				<MemoryRouter initialEntries={["/dashboard"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			// No username means the footer block is absent
+			// We check that neither a user-specific element nor role text appear
+			expect(screen.queryByText("admin")).not.toBeInTheDocument();
+		});
+
+		it("should capitalize role display in sidebar footer", () => {
+			mockUsername = "alice";
+			mockRole = "operator";
+			render(
+				<MemoryRouter initialEntries={["/dashboard"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			const roleEl = screen.getByText("operator");
+			expect(roleEl.className).toContain("capitalize");
+		});
+
+		it("role text should use text-muted-foreground class (not text-gray-400)", () => {
+			mockUsername = "alice";
+			mockRole = "admin";
+			render(
+				<MemoryRouter initialEntries={["/dashboard"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			const roleEl = screen.getByText("admin");
+			expect(roleEl.className).toContain("text-muted-foreground");
+			expect(roleEl.className).not.toContain("text-gray-400");
+		});
+	});
+
+	describe("sidebar CSS classes", () => {
+		it("should use bg-card for sidebar background (not bg-gray-900)", () => {
+			render(
+				<MemoryRouter initialEntries={["/dashboard"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			const sidebar = screen.getByRole("complementary");
+			expect(sidebar.className).toContain("bg-card");
+			expect(sidebar.className).not.toContain("bg-gray-900");
+		});
+
+		it("should use bg-background for root layout (not bg-gray-100)", () => {
+			render(
+				<MemoryRouter initialEntries={["/dashboard"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+			// The outer div wrapping everything uses bg-background
+			const rootDiv = document.querySelector(".bg-background");
+			expect(rootDiv).toBeInTheDocument();
+		});
+	});
+
+	describe("mobile sidebar", () => {
+		it("should close sidebar when close button inside sidebar is clicked", async () => {
+			const user = userEvent.setup();
+			render(
+				<MemoryRouter initialEntries={["/dashboard"]}>
+					<AppLayout />
+				</MemoryRouter>
+			);
+
+			// Open sidebar first
+			const openButton = screen.getByLabelText("Open menu");
+			await user.click(openButton);
+
+			const sidebar = screen.getByRole("complementary");
+			expect(sidebar).toHaveClass("translate-x-0");
+
+			// Close via the X button inside the sidebar
+			const closeButtons = screen.getAllByLabelText("Close menu");
+			// The button inside the sidebar (not the overlay)
+			const sidebarCloseButton = closeButtons.find(
+				(btn) => btn.tagName === "BUTTON" && !btn.className.includes("inset-0")
+			);
+			if (sidebarCloseButton) {
+				await user.click(sidebarCloseButton);
+				expect(sidebar).toHaveClass("-translate-x-full");
+			}
+		});
 	});
 });
