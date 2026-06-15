@@ -108,28 +108,28 @@ describe("ConfirmDialog", () => {
 	});
 
 	describe("destructive mode", () => {
-		it("should apply red color to title when isDestructive is true", () => {
+		it("should apply destructive color to title when isDestructive is true", () => {
 			render(<ConfirmDialog {...defaultProps} isDestructive={true} title="Delete App" />);
 			const title = screen.getByText("Delete App");
-			expect(title.className).toContain("text-red-600");
+			expect(title.className).toContain("text-destructive");
 		});
 
-		it("should not apply red color to title when isDestructive is false", () => {
+		it("should not apply destructive color to title when isDestructive is false", () => {
 			render(<ConfirmDialog {...defaultProps} isDestructive={false} title="Confirm Action" />);
 			const title = screen.getByText("Confirm Action");
-			expect(title.className).not.toContain("text-red-600");
+			expect(title.className).not.toContain("text-destructive");
 		});
 
-		it("should use red button styling when isDestructive is true", () => {
+		it("should use destructive button styling when isDestructive is true", () => {
 			render(<ConfirmDialog {...defaultProps} isDestructive={true} />);
 			const confirmButton = screen.getByRole("button", { name: "Confirm" });
-			expect(confirmButton.className).toContain("bg-red-600");
+			expect(confirmButton.className).toContain("bg-destructive");
 		});
 
-		it("should use blue button styling when isDestructive is false", () => {
+		it("should use primary button styling when isDestructive is false", () => {
 			render(<ConfirmDialog {...defaultProps} isDestructive={false} />);
 			const confirmButton = screen.getByRole("button", { name: "Confirm" });
-			expect(confirmButton.className).toContain("bg-blue-600");
+			expect(confirmButton.className).toContain("bg-primary");
 		});
 	});
 

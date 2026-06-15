@@ -69,8 +69,8 @@ describe("AuditPagination", () => {
 			render(
 				<AuditPagination total={75} offset={ITEMS_PER_PAGE} setOffset={vi.fn()} />
 			);
-			// offset 50, showing 51 to 75 of 75
-			expect(screen.getByText("75")).toBeInTheDocument();
+			// offset 50, showing 51 to 75 of 75 — "75" appears in both upper range and total
+			expect(screen.getAllByText("75")).toHaveLength(2);
 		});
 	});
 
