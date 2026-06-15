@@ -257,7 +257,7 @@ export function Users() {
 													<button
 														type="button"
 														onClick={() => handleEditSave(user.id)}
-														className="px-3 py-1 bg-green-600 text-white rounded-md text-xs hover:bg-green-700"
+														className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-xs hover:bg-primary/90"
 													>
 														Save
 													</button>
@@ -281,7 +281,7 @@ export function Users() {
 													<button
 														type="button"
 														onClick={() => handleDelete(user.id, user.username)}
-														className="px-3 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200"
+														className="px-3 py-1 bg-destructive/10 text-destructive rounded text-xs hover:bg-destructive/20"
 													>
 														Delete
 													</button>

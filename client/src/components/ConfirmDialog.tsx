@@ -32,8 +32,8 @@ export function ConfirmDialog({
 	const titleId = useId();
 
 	const buttonClass = isDestructive
-		? "bg-red-600 text-white rounded hover:bg-red-700"
-		: "bg-blue-600 text-white rounded hover:bg-blue-700";
+		? "bg-destructive text-destructive-foreground rounded hover:bg-destructive/90"
+		: "bg-primary text-primary-foreground rounded hover:bg-primary/90";
 
 	return (
 		<dialog
@@ -45,7 +45,7 @@ export function ConfirmDialog({
 				<div className="flex justify-between items-start mb-4">
 					<h2
 						id={titleId}
-						className={`text-lg font-semibold ${isDestructive ? "text-red-600" : ""}`}
+						className={`text-lg font-semibold ${isDestructive ? "text-destructive" : ""}`}
 					>
 						{title}
 					</h2>
