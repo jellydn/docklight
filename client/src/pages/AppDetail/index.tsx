@@ -1428,56 +1428,56 @@ export function AppDetail() {
 				<nav className="flex space-x-4 min-w-max">
 					<button
 						onClick={() => setActiveTab("overview")}
-						className={`pb-2 px-2 ${activeTab === "overview" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "overview" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						Overview
 					</button>
 					<button
 						onClick={() => setActiveTab("config")}
-						className={`pb-2 px-2 ${activeTab === "config" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "config" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						Config
 					</button>
 					<button
 						onClick={() => setActiveTab("domains")}
-						className={`pb-2 px-2 ${activeTab === "domains" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "domains" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						Domains
 					</button>
 					<button
 						onClick={() => setActiveTab("logs")}
-						className={`pb-2 px-2 ${activeTab === "logs" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "logs" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						Logs
 					</button>
 					<button
 						onClick={() => setActiveTab("ssl")}
-						className={`pb-2 px-2 ${activeTab === "ssl" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "ssl" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						SSL
 					</button>
 					<button
 						onClick={() => setActiveTab("settings")}
-						className={`pb-2 px-2 ${activeTab === "settings" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "settings" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						Settings
 					</button>
 					<button
 						onClick={() => setActiveTab("git")}
-						className={`pb-2 px-2 ${activeTab === "git" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "git" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						Git
 					</button>
 					<button
 						onClick={() => setActiveTab("checks")}
-						className={`pb-2 px-2 ${activeTab === "checks" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "checks" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						Checks

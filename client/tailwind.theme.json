@@ -34,6 +34,7 @@
         "h1": [
           "1.875rem",
           {
+            "lineHeight": "1.2",
             "letterSpacing": "-0.025em",
             "fontWeight": "700"
           }
@@ -41,13 +42,16 @@
         "h2": [
           "1.25rem",
           {
+            "lineHeight": "1.4",
             "letterSpacing": "-0.01em",
             "fontWeight": "600"
           }
         ],
         "body-md": [
           "0.875rem",
-          {}
+          {
+            "lineHeight": "1.5"
+          }
         ],
         "label-caps": [
           "0.6875rem",
@@ -58,7 +62,9 @@
         ],
         "mono": [
           "0.8125rem",
-          {}
+          {
+            "lineHeight": "1.6"
+          }
         ]
       },
       "borderRadius": {

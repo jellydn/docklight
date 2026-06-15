@@ -56,7 +56,7 @@ export function AppLayout() {
 
 	const closeSidebar = () => setSidebarOpen(false);
 
-	const isActive = (path: string) =>
+	const isActive = (path: string): boolean =>
 		location.pathname === path || location.pathname.startsWith(path + "/");
 
 	const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-card border-r border-border text-card-foreground transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:z-auto md:pointer-events-auto ${

@@ -107,6 +107,8 @@ components:
   input-focus:
     backgroundColor: "{colors.neutral}"
     textColor: "{colors.primary}" 
+    ringColor: "{colors.tertiary}"
+    ringWidth: 2px
 ---
 
 ## Overview

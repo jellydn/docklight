@@ -38,7 +38,7 @@ export function ConfirmDialog({
 	return (
 		<dialog
 			ref={dialogRef}
-			className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded border bg-card p-0 border border-border backdrop:bg-black/50"
+			className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded border bg-card p-0 border border-border backdrop:bg-foreground/50"
 			aria-labelledby={titleId}
 		>
 			<div className="p-6">

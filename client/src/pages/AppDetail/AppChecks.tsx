@@ -111,7 +111,7 @@ export function AppChecks({
 									type="button"
 									onClick={onDisable}
 									disabled={disabling}
-									className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+									className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
 								>
 									{disabling ? "Disabling..." : "Disable"}
 								</button>
@@ -120,7 +120,7 @@ export function AppChecks({
 									type="button"
 									onClick={onEnable}
 									disabled={enabling}
-									className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+									className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
 								>
 									{enabling ? "Enabling..." : "Enable"}
 								</button>
@@ -138,7 +138,7 @@ export function AppChecks({
 								type="button"
 								onClick={onSkip}
 								disabled={skipping || isSkipAll}
-								className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+								className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
 							>
 								{skipping ? "Skipping..." : "Skip"}
 							</button>
