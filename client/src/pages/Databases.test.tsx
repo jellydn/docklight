@@ -517,7 +517,7 @@ describe("Databases", () => {
 				expect(screen.getByText("Confirm Unlink")).toBeInTheDocument();
 			});
 
-			const unlinkDialog = screen.getByText("Confirm Unlink").closest(".bg-white");
+			const unlinkDialog = screen.getByText("Confirm Unlink").closest(".bg-card");
 			expect(unlinkDialog).toBeInTheDocument();
 			if (!unlinkDialog) return;
 			const unlinkDialogEl = unlinkDialog as HTMLElement;
