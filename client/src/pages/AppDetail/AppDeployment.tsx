@@ -36,7 +36,7 @@ export function AppDeployment({
 
 			{loading ? (
 				<div className="flex justify-center py-8">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tertiary" />
 				</div>
 			) : error ? (
 				<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -45,7 +45,10 @@ export function AppDeployment({
 			) : (
 				<div className="space-y-4">
 					<div>
-						<label htmlFor="deploy-branch" className="block text-sm font-medium text-foreground mb-1">
+						<label
+							htmlFor="deploy-branch"
+							className="block text-sm font-medium text-foreground mb-1"
+						>
 							Deploy Branch
 						</label>
 						<input
@@ -56,7 +59,9 @@ export function AppDeployment({
 							placeholder="main"
 							className="w-full max-w-md border rounded px-3 py-2"
 						/>
-						<p className="mt-1 text-sm text-muted-foreground">The branch to deploy (default: main)</p>
+						<p className="mt-1 text-sm text-muted-foreground">
+							The branch to deploy (default: main)
+						</p>
 					</div>
 
 					<div>
@@ -91,7 +96,9 @@ export function AppDeployment({
 							<option value="dockerfile">Dockerfile</option>
 							<option value="pack">Cloud Native Buildpacks (pack)</option>
 						</select>
-						<p className="mt-1 text-sm text-muted-foreground">The build strategy to use for this app</p>
+						<p className="mt-1 text-sm text-muted-foreground">
+							The build strategy to use for this app
+						</p>
 					</div>
 
 					{canModify && (
@@ -99,7 +106,7 @@ export function AppDeployment({
 							<button
 								onClick={onSave}
 								disabled={submitting}
-								className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+								className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 								type="button"
 							>
 								{submitting ? "Saving..." : "Save Settings"}

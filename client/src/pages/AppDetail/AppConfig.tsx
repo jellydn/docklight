@@ -39,7 +39,7 @@ export function AppConfig({
 
 			{loading ? (
 				<div className="flex justify-center py-8">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tertiary" />
 				</div>
 			) : error ? (
 				<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -70,7 +70,7 @@ export function AppConfig({
 								<button
 									onClick={onAdd}
 									disabled={!newKey || !newValue || submitting}
-									className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+									className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 									type="button"
 								>
 									Set
@@ -85,7 +85,9 @@ export function AppConfig({
 								<thead>
 									<tr>
 										<th className="px-4 py-2 text-left text-sm font-medium text-foreground">Key</th>
-										<th className="px-4 py-2 text-left text-sm font-medium text-foreground">Value</th>
+										<th className="px-4 py-2 text-left text-sm font-medium text-foreground">
+											Value
+										</th>
 										<th className="px-4 py-2">
 											<span className="sr-only">Actions</span>
 										</th>
@@ -100,7 +102,7 @@ export function AppConfig({
 											<td className="px-4 py-2">
 												<button
 													onClick={() => onToggleVisibility(key)}
-													className="font-mono text-sm cursor-pointer hover:text-primary"
+													className="font-mono text-sm cursor-pointer hover:text-tertiary"
 													type="button"
 												>
 													{visibleValues.has(key) ? value : "••••••"}

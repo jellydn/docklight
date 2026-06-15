@@ -57,7 +57,7 @@ export function AppOverview({
 								<button
 									type="button"
 									onClick={onCopyRemote}
-									className="text-primary hover:text-primary text-xs whitespace-nowrap px-2 py-1 rounded hover:bg-primary/10 transition-colors"
+									className="text-tertiary hover:text-tertiary text-xs whitespace-nowrap px-2 py-1 rounded hover:bg-tertiary/10 transition-colors"
 									title="Copy to clipboard"
 								>
 									{copySuccess.remote ? "Copied!" : "Copy"}
@@ -73,7 +73,7 @@ export function AppOverview({
 								<button
 									type="button"
 									onClick={onCopyPush}
-									className="text-primary hover:text-primary text-xs whitespace-nowrap px-2 py-1 rounded hover:bg-primary/10 transition-colors"
+									className="text-tertiary hover:text-tertiary text-xs whitespace-nowrap px-2 py-1 rounded hover:bg-tertiary/10 transition-colors"
 									title="Copy to clipboard"
 								>
 									{copySuccess.push ? "Copied!" : "Copy"}
@@ -127,7 +127,7 @@ export function AppOverview({
 								<div className="mt-4">
 									<button
 										onClick={onApplyScale}
-										className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90"
+										className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90"
 										type="button"
 									>
 										Apply Scaling

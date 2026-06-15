@@ -29,7 +29,7 @@ export function AppDomains({
 
 			{loading ? (
 				<div className="flex justify-center py-8">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tertiary" />
 				</div>
 			) : error ? (
 				<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -52,7 +52,7 @@ export function AppDomains({
 								<button
 									onClick={onAdd}
 									disabled={!newDomain || submitting}
-									className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+									className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 									type="button"
 								>
 									Add
@@ -65,7 +65,9 @@ export function AppDomains({
 						<table className="min-w-full divide-y divide-border">
 							<thead>
 								<tr>
-									<th className="px-4 py-2 text-left text-sm font-medium text-foreground">Domain</th>
+									<th className="px-4 py-2 text-left text-sm font-medium text-foreground">
+										Domain
+									</th>
 									<th className="px-4 py-2">
 										<span className="sr-only">Actions</span>
 									</th>

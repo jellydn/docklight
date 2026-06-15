@@ -47,7 +47,7 @@ export function AppPorts({
 
 			{loading ? (
 				<div className="flex justify-center py-8">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tertiary" />
 				</div>
 			) : error ? (
 				<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -81,9 +81,7 @@ export function AppPorts({
 										{ports.map((port) => (
 											<tr key={`${port.scheme}-${port.hostPort}-${port.containerPort}`}>
 												<td className="px-3 py-2">
-													<code className="bg-muted px-2 py-1 rounded text-sm">
-														{port.scheme}
-													</code>
+													<code className="bg-muted px-2 py-1 rounded text-sm">{port.scheme}</code>
 												</td>
 												<td className="px-3 py-2">{port.hostPort}</td>
 												<td className="px-3 py-2">{port.containerPort}</td>
@@ -143,7 +141,7 @@ export function AppPorts({
 								<button
 									onClick={onAdd}
 									disabled={!newHostPort || !newContainerPort || submitting}
-									className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+									className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 									type="button"
 								>
 									Add Port
@@ -176,7 +174,9 @@ export function AppPorts({
 										</span>
 									)}
 									{proxyReport?.type && (
-										<span className="ml-4 text-sm text-muted-foreground">Type: {proxyReport.type}</span>
+										<span className="ml-4 text-sm text-muted-foreground">
+											Type: {proxyReport.type}
+										</span>
 									)}
 								</div>
 								{canModify && (
@@ -194,7 +194,7 @@ export function AppPorts({
 											<button
 												onClick={onEnableProxy}
 												disabled={proxySubmitting}
-												className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+												className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 												type="button"
 											>
 												Enable

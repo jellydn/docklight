@@ -37,7 +37,7 @@ export function AppDockerOptions({
 
 			{loading ? (
 				<div className="flex justify-center py-8">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tertiary" />
 				</div>
 			) : error ? (
 				<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -85,7 +85,9 @@ export function AppDockerOptions({
 										))}
 									</ul>
 								) : (
-									<p className="text-muted-foreground text-sm mb-4">No {phase} options configured.</p>
+									<p className="text-muted-foreground text-sm mb-4">
+										No {phase} options configured.
+									</p>
 								)}
 							</div>
 						);
@@ -115,7 +117,7 @@ export function AppDockerOptions({
 								<button
 									onClick={onAdd}
 									disabled={!newOption || addSubmitting}
-									className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+									className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 									type="button"
 								>
 									Add

@@ -82,7 +82,7 @@ export function AppChecks({
 
 				{loading ? (
 					<div className="flex justify-center py-8">
-						<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+						<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tertiary" />
 					</div>
 				) : error ? (
 					<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -111,7 +111,7 @@ export function AppChecks({
 									type="button"
 									onClick={onDisable}
 									disabled={disabling}
-									className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+									className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
 								>
 									{disabling ? "Disabling..." : "Disable"}
 								</button>
@@ -120,7 +120,7 @@ export function AppChecks({
 									type="button"
 									onClick={onEnable}
 									disabled={enabling}
-									className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+									className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
 								>
 									{enabling ? "Enabling..." : "Enable"}
 								</button>
@@ -138,7 +138,7 @@ export function AppChecks({
 								type="button"
 								onClick={onSkip}
 								disabled={skipping || isSkipAll}
-								className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+								className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
 							>
 								{skipping ? "Skipping..." : "Skip"}
 							</button>
@@ -155,7 +155,7 @@ export function AppChecks({
 								type="button"
 								onClick={onRun}
 								disabled={running}
-								className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+								className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
 							>
 								{running ? "Running..." : "Run"}
 							</button>

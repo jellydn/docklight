@@ -36,7 +36,10 @@ export function DeleteAppDialog({
 				data will be permanently deleted.
 			</p>
 			<div className="mb-4">
-				<label htmlFor="confirmDeleteName" className="block text-sm font-medium text-foreground mb-2">
+				<label
+					htmlFor="confirmDeleteName"
+					className="block text-sm font-medium text-foreground mb-2"
+				>
 					Type <strong>{appName}</strong> to confirm
 				</label>
 				<input
