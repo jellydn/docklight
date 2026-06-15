@@ -190,7 +190,7 @@ export function Users() {
 					<div>
 						<button
 							type="submit"
-							className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm"
+							className="px-4 py-2 bg-tertiary text-tertiary-foreground rounded-md hover:bg-tertiary/90 text-sm"
 						>
 							Add User
 						</button>
@@ -257,7 +257,7 @@ export function Users() {
 													<button
 														type="button"
 														onClick={() => handleEditSave(user.id)}
-														className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-xs hover:bg-primary/90"
+														className="px-3 py-1 bg-tertiary text-tertiary-foreground rounded-md text-xs hover:bg-tertiary/90"
 													>
 														Save
 													</button>

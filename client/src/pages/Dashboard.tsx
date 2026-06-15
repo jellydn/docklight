@@ -74,20 +74,13 @@ export function Dashboard() {
 	};
 
 	const getStatusBadge = (status: string) => {
-		const color =
-			status === "running"
-				? "bg-green-500/10 text-green-500"
-				: "bg-red-500/10 text-red-500";
+		const color = status === "running" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
 		return (
 			<span
 				className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}
 			>
-				{status === "running" && (
-					<span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-500" />
-				)}
-				{status !== "running" && (
-					<span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
-				)}
+				{status === "running" && <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-800" />}
+				{status !== "running" && <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-red-800" />}
 				{status}
 			</span>
 		);
@@ -104,7 +97,7 @@ export function Dashboard() {
 
 			{isLoading && (
 				<div className="flex justify-center items-center py-12">
-					<div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+					<div className="animate-spin rounded-full h-8 w-8 border-2 border-tertiary border-t-transparent" />
 				</div>
 			)}
 
@@ -135,9 +128,7 @@ export function Dashboard() {
 							)}
 						</div>
 						{(apps?.length ?? 0) === 0 ? (
-							<p className="text-muted-foreground text-sm py-8 text-center">
-								No apps found
-							</p>
+							<p className="text-muted-foreground text-sm py-8 text-center">No apps found</p>
 						) : (
 							<div className="overflow-x-auto">
 								<table className="min-w-full">
@@ -166,14 +157,12 @@ export function Dashboard() {
 												<td className="py-3 px-4">
 													<Link
 														to={`/apps/${app.name}`}
-														className="text-primary hover:underline font-medium"
+														className="text-tertiary hover:underline font-medium"
 													>
 														{app.name}
 													</Link>
 												</td>
-												<td className="py-3 px-4">
-													{getStatusBadge(app.status)}
-												</td>
+												<td className="py-3 px-4">{getStatusBadge(app.status)}</td>
 												<td className="py-3 px-4 text-sm text-muted-foreground">
 													{app.domains.length > 0 ? (
 														<ul className="space-y-0.5">
@@ -199,16 +188,12 @@ export function Dashboard() {
 					<div className="bg-card rounded-lg border border-border p-6">
 						<h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
 						{(commands?.length ?? 0) === 0 ? (
-							<p className="text-muted-foreground text-sm py-8 text-center">
-								No recent activity
-							</p>
+							<p className="text-muted-foreground text-sm py-8 text-center">No recent activity</p>
 						) : (
 							<div className="space-y-3">
 								{(commands ?? []).map((cmd) => (
 									<div key={cmd.id} className="text-sm">
-										<div className="font-mono bg-muted p-3 rounded-md text-sm">
-											{cmd.command}
-										</div>
+										<div className="font-mono bg-muted p-3 rounded-md text-sm">{cmd.command}</div>
 										<div className="text-muted-foreground text-xs mt-1.5">
 											{new Date(cmd.createdAt).toLocaleString()}
 										</div>

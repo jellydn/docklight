@@ -208,7 +208,7 @@ export function Databases() {
 	if (isLoading) {
 		return (
 			<div className="flex justify-center items-center py-12">
-				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tertiary"></div>
 			</div>
 		);
 	}
@@ -277,7 +277,7 @@ export function Databases() {
 							type="button"
 							onClick={handleCreateDatabase}
 							disabled={!newDbPlugin || !newDbName || createDbSubmitting}
-							className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+							className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded-md hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 						>
 							Create
 						</button>
@@ -344,7 +344,7 @@ export function Databases() {
 										<button
 											type="button"
 											onClick={() => toggleConnectionVisibility(db.name)}
-											className="font-mono text-sm cursor-pointer hover:text-primary ml-2"
+											className="font-mono text-sm cursor-pointer hover:text-tertiary ml-2"
 										>
 											{visibleConnections.has(db.name) ? db.connectionInfo : "••••••••••••"}
 										</button>
@@ -379,7 +379,7 @@ export function Databases() {
 													type="button"
 													onClick={handleLinkDatabase}
 													disabled={linkAppName === "" || linkDbName !== db.name || linkSubmitting}
-													className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+													className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded-md hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
 												>
 													Link
 												</button>

@@ -52,7 +52,7 @@ const defaultUserFilters: UserFilters = {
 function AuditLoadingState() {
 	return (
 		<div className="flex justify-center items-center py-12">
-			<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+			<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tertiary" />
 		</div>
 	);
 }
@@ -189,7 +189,7 @@ export function Audit() {
 						onClick={() => setActiveTab("commands")}
 						className={`${
 							activeTab === "commands"
-								? "border-primary text-primary"
+								? "border-tertiary text-tertiary"
 								: "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
 						} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
 						type="button"
@@ -200,7 +200,7 @@ export function Audit() {
 						onClick={() => setActiveTab("users")}
 						className={`${
 							activeTab === "users"
-								? "border-primary text-primary"
+								? "border-tertiary text-tertiary"
 								: "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
 						} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
 						type="button"
@@ -246,14 +246,14 @@ export function Audit() {
 						<div className="flex gap-2 mb-4">
 							<button
 								onClick={() => handleExport("commands", "json")}
-								className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm"
+								className="px-4 py-2 bg-tertiary text-tertiary-foreground rounded-md hover:bg-tertiary/90 text-sm"
 								type="button"
 							>
 								Export JSON
 							</button>
 							<button
 								onClick={() => handleExport("commands", "csv")}
-								className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm"
+								className="px-4 py-2 bg-tertiary text-tertiary-foreground rounded-md hover:bg-tertiary/90 text-sm"
 								type="button"
 							>
 								Export CSV
@@ -318,7 +318,9 @@ export function Audit() {
 														<td colSpan={3} className="px-4 py-4">
 															<div className="space-y-3">
 																<div>
-																	<h4 className="text-sm font-medium text-foreground mb-1">Stdout</h4>
+																	<h4 className="text-sm font-medium text-foreground mb-1">
+																		Stdout
+																	</h4>
 																	{log.stdout ? (
 																		<pre className="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-x-auto max-h-40 overflow-y-auto">
 																			{log.stdout}
@@ -328,7 +330,9 @@ export function Audit() {
 																	)}
 																</div>
 																<div>
-																	<h4 className="text-sm font-medium text-foreground mb-1">Stderr</h4>
+																	<h4 className="text-sm font-medium text-foreground mb-1">
+																		Stderr
+																	</h4>
 																	{log.stderr ? (
 																		<pre className="bg-gray-900 text-red-400 p-3 rounded text-xs overflow-x-auto max-h-40 overflow-y-auto">
 																			{log.stderr}
@@ -387,14 +391,14 @@ export function Audit() {
 						<div className="flex gap-2 mb-4">
 							<button
 								onClick={() => handleExport("users", "json")}
-								className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm"
+								className="px-4 py-2 bg-tertiary text-tertiary-foreground rounded-md hover:bg-tertiary/90 text-sm"
 								type="button"
 							>
 								Export JSON
 							</button>
 							<button
 								onClick={() => handleExport("users", "csv")}
-								className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm"
+								className="px-4 py-2 bg-tertiary text-tertiary-foreground rounded-md hover:bg-tertiary/90 text-sm"
 								type="button"
 							>
 								Export CSV
@@ -409,7 +413,9 @@ export function Audit() {
 						<AuditErrorState error={userError} />
 					) : userLogs.length === 0 ? (
 						<div className="bg-card rounded-lg border border-border p-6">
-							<p className="text-muted-foreground">No user audit logs found matching your filters.</p>
+							<p className="text-muted-foreground">
+								No user audit logs found matching your filters.
+							</p>
 						</div>
 					) : (
 						<div className="bg-card rounded-lg border border-border overflow-hidden">

@@ -201,7 +201,7 @@ export function Settings(): JSX.Element {
 					<button
 						type="submit"
 						disabled={updateMutation.isPending}
-						className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm disabled:opacity-50"
+						className="px-4 py-2 bg-tertiary text-tertiary-foreground rounded-md hover:bg-tertiary/90 text-sm disabled:opacity-50"
 					>
 						{updateMutation.isPending ? "Saving…" : "Save Settings"}
 					</button>

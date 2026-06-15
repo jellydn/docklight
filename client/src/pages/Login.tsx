@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { apiFetch } from "../lib/api.js";
+import { Button } from "@/components/ui/button";
 import { queryKeys } from "../lib/query-keys.js";
 import { AuthMeSchema } from "../lib/schemas.js";
 
@@ -89,12 +90,9 @@ export function Login() {
 						/>
 					</div>
 					{error && <div className="text-destructive text-sm">{error}</div>}
-					<button
-						type="submit"
-						className="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90"
-					>
+					<Button type="submit" className="w-full">
 						Login
-					</button>
+					</Button>
 				</form>
 			</div>
 		</div>
