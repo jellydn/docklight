@@ -888,6 +888,57 @@ git remote add staging dokku@<your-server-ip>:docklight-staging
 git push staging your-branch:main --force
 ```
 
+## Uninstall
+
+To completely remove Docklight, Dokku, and all associated data from a VPS, run `scripts/uninstall.sh` as root:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/uninstall.sh | sudo bash
+```
+
+**WARNING:** This is destructive and irreversible. It removes all Dokku apps, databases, SSL certs, and configs. The script requests interactive confirmation (`yes`/`NO`) before proceeding.
+
+### What it removes
+
+1. **Docklight app** — stopped and destroyed via `dokku apps:destroy`
+2. **Auto-update timer** — systemd timer and service files removed
+3. **Dokku packages** — `dokku` and `herokuish` purged via `apt-get purge`
+4. **Dokku data** — `/home/dokku`, `/var/lib/dokku`, `/var/log/dokku` deleted
+5. **Dokku user** — system user and group removed
+6. **Docker artifacts** — any remaining containers and volumes matching `APP_NAME`
+
+Docker itself is **preserved** by default. Pass `REMOVE_DOCKER=1` to also purge Docker packages and delete `/var/lib/docker`.
+
+### Environment variables
+
+| Variable        | Description                             | Default     |
+| --------------- | --------------------------------------- | ----------- |
+| `APP_NAME`      | Dokku app name to destroy               | `docklight` |
+| `REMOVE_DOCKER` | Also purge Docker (`1`/`0`)             | `0`         |
+| `CONFIRM`       | Skip interactive confirmation (`1`/`0`) | `0`         |
+
+### Examples
+
+**Default uninstall (interactive):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/uninstall.sh | sudo bash
+```
+
+**Non-interactive uninstall with a custom app name:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/uninstall.sh \
+  | sudo APP_NAME=my-docklight CONFIRM=1 bash
+```
+
+**Full purge including Docker:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/uninstall.sh \
+  | sudo REMOVE_DOCKER=1 CONFIRM=1 bash
+```
+
 ## Security Recommendations
 
 1. **Always use HTTPS** — Enable Let's Encrypt (Step 5)
