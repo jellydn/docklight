@@ -17,7 +17,7 @@ export function Login(): JSX.Element {
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
-	const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+	const [mode, setMode] = useState<"login" | "forgot-password">("login");
 	const [resetEmail, setResetEmail] = useState("");
 	const [resetMessage, setResetMessage] = useState("");
 	const [resetError, setResetError] = useState("");
@@ -90,59 +90,63 @@ export function Login(): JSX.Element {
 				<div className="flex justify-center mb-4">
 					<img src="/logo.svg" alt="Docklight logo" className="h-12 w-12" />
 				</div>
-				<h1 className="text-2xl font-bold mb-6 text-center">Docklight Login</h1>
-				<form onSubmit={handleSubmit} className="space-y-4">
-					<div>
-						<label htmlFor="username" className="block text-sm font-medium mb-2">
-							Username
-						</label>
-						<input
-							id="username"
-							type="text"
-							value={username}
-							onChange={(e) => setUsername(e.target.value)}
-							className="w-full px-3 py-2 border border-border rounded-md"
-							required
-							autoComplete="username"
-						/>
-					</div>
-					<div>
-						<label htmlFor="password" className="block text-sm font-medium mb-2">
-							Password
-						</label>
-						<input
-							id="password"
-							type="password"
-							value={password}
-							onChange={(e) => setPassword(e.target.value)}
-							className="w-full px-3 py-2 border border-border rounded-md"
-							required
-							autoComplete="current-password"
-						/>
-					</div>
-					{error && <div className="text-destructive text-sm">{error}</div>}
-					<Button type="submit" className="w-full">
-						Login
-					</Button>
-				</form>
 
-				<div className="mt-4 border-t border-border pt-4">
-					<button
-						type="button"
-						onClick={() => setForgotPasswordOpen((current) => !current)}
-						aria-expanded={forgotPasswordOpen}
-						aria-controls="forgot-password-form"
-						className="text-sm text-muted-foreground hover:text-foreground"
-					>
-						{forgotPasswordOpen ? "Hide password reset" : "Forgot password?"}
-					</button>
-
-					{forgotPasswordOpen && (
-						<form
-							id="forgot-password-form"
-							onSubmit={handleForgotPassword}
-							className="mt-4 space-y-3"
-						>
+				{mode === "login" ? (
+					<>
+						<h1 className="text-2xl font-bold mb-6 text-center">Docklight Login</h1>
+						<form onSubmit={handleSubmit} className="space-y-4">
+							<div>
+								<label htmlFor="username" className="block text-sm font-medium mb-2">
+									Username
+								</label>
+								<input
+									id="username"
+									type="text"
+									value={username}
+									onChange={(e) => setUsername(e.target.value)}
+									className="w-full px-3 py-2 border border-border rounded-md"
+									required
+									autoComplete="username"
+								/>
+							</div>
+							<div>
+								<label htmlFor="password" className="block text-sm font-medium mb-2">
+									Password
+								</label>
+								<input
+									id="password"
+									type="password"
+									value={password}
+									onChange={(e) => setPassword(e.target.value)}
+									className="w-full px-3 py-2 border border-border rounded-md"
+									required
+									autoComplete="current-password"
+								/>
+							</div>
+							{error && <div className="text-destructive text-sm">{error}</div>}
+							<Button type="submit" className="w-full">
+								Login
+							</Button>
+						</form>
+						<div className="mt-4 border-t border-border pt-4 text-center">
+							<button
+								type="button"
+								onClick={() => {
+									setMode("forgot-password");
+									setError("");
+									setResetError("");
+									setResetMessage("");
+								}}
+								className="text-sm text-muted-foreground hover:text-foreground"
+							>
+								Forgot password?
+							</button>
+						</div>
+					</>
+				) : (
+					<>
+						<h1 className="text-2xl font-bold mb-6 text-center">Reset Password</h1>
+						<form onSubmit={handleForgotPassword} className="space-y-4">
 							<div>
 								<label htmlFor="reset-email" className="block text-sm font-medium mb-2">
 									Email
@@ -163,8 +167,22 @@ export function Login(): JSX.Element {
 								Send reset link
 							</Button>
 						</form>
-					)}
-				</div>
+						<div className="mt-4 border-t border-border pt-4 text-center">
+							<button
+								type="button"
+								onClick={() => {
+									setMode("login");
+									setError("");
+									setResetError("");
+									setResetMessage("");
+								}}
+								className="text-sm text-muted-foreground hover:text-foreground"
+							>
+								Back to login
+							</button>
+						</div>
+					</>
+				)}
 			</div>
 		</div>
 	);
