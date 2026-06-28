@@ -21,8 +21,6 @@ vi.mock("../lib/db.js", () => ({
 	getUserAuthStateById: vi.fn(),
 	createPasswordResetToken: vi.fn(),
 	deleteExpiredPasswordResetTokens: vi.fn(),
-	getPasswordResetTokenByHash: vi.fn(),
-	markPasswordResetTokenUsed: vi.fn(),
 	resetPasswordWithToken: vi.fn(),
 	updateUser: vi.fn(),
 }));
@@ -39,12 +37,7 @@ vi.mock("./util.js", () => ({
 }));
 
 import { hashResetToken } from "../lib/auth.js";
-import {
-	createPasswordResetToken,
-	getPasswordResetTokenByHash,
-	getUserByEmail,
-	resetPasswordWithToken,
-} from "../lib/db.js";
+import { createPasswordResetToken, getUserByEmail, resetPasswordWithToken } from "../lib/db.js";
 import { sendPasswordResetEmail } from "../lib/email.js";
 import { registerAuthRoutes } from "./auth.js";
 
@@ -137,15 +130,7 @@ describe("auth routes", () => {
 	});
 
 	it("should reset password and invalidate the reset token", async () => {
-		vi.mocked(getPasswordResetTokenByHash).mockReturnValue({
-			id: 1,
-			userId: 7,
-			tokenHash: "token-hash",
-			expiresAt: new Date(Date.now() + 1000 * 60 * 30).toISOString(),
-			usedAt: null,
-			createdAt: new Date().toISOString(),
-		});
-		vi.mocked(resetPasswordWithToken).mockReturnValue(true);
+		vi.mocked(resetPasswordWithToken).mockReturnValue(7);
 
 		const response = await request(createTestApp())
 			.post("/api/auth/reset-password")
@@ -155,7 +140,6 @@ describe("auth routes", () => {
 		expect(response.body).toEqual({ success: true });
 		expect(resetPasswordWithToken).toHaveBeenCalledWith(
 			hashResetToken("reset-token"),
-			7,
 			expect.any(String)
 		);
 	});

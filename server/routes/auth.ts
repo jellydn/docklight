@@ -11,7 +11,6 @@ import {
 import {
 	createPasswordResetToken,
 	deleteExpiredPasswordResetTokens,
-	getPasswordResetTokenByHash,
 	getUserByEmail,
 	resetPasswordWithToken,
 } from "../lib/db.js";
@@ -90,26 +89,12 @@ export function registerAuthRoutes(app: express.Application): void {
 		}
 
 		const tokenHash = hashResetToken(token);
-		const resetToken = getPasswordResetTokenByHash(tokenHash);
-		if (
-			!resetToken ||
-			resetToken.usedAt !== null ||
-			new Date(resetToken.expiresAt).getTime() <= Date.now()
-		) {
+		const userId = resetPasswordWithToken(tokenHash, await hashPassword(password));
+		if (userId === null) {
 			res.status(400).json({ error: "Invalid or expired token" });
 			return;
 		}
-
-		const success = resetPasswordWithToken(
-			tokenHash,
-			resetToken.userId,
-			await hashPassword(password)
-		);
-		if (!success) {
-			res.status(400).json({ error: "Invalid or expired token" });
-			return;
-		}
-		safeAuditLogWithUserId(req, resetToken.userId, "password:reset", null, null);
+		safeAuditLogWithUserId(req, userId, "password:reset", null, null);
 		res.json({ success: true });
 	});
 

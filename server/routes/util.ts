@@ -154,3 +154,18 @@ export function safeAuditLogWithUserId(
 		logger.error({ err: error as Error, action, userId }, "Failed to write audit log");
 	}
 }
+
+/**
+ * Handles database errors, mapping SQLite unique constraints to proper 409 responses
+ */
+export function handleDbError(err: unknown, res: express.Response): void {
+	const error = err as { code?: number; message?: string };
+	if (error.code === 19 && error.message?.includes("UNIQUE constraint failed")) {
+		const msg = error.message.includes("users.email")
+			? "Email already exists"
+			: "Username already exists";
+		res.status(409).json({ error: msg });
+	} else {
+		res.status(500).json({ error: "Internal server error" });
+	}
+}

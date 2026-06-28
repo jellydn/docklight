@@ -420,33 +420,30 @@ export function createPasswordResetToken(
 		.get(tokenHash) as PasswordResetToken;
 }
 
-export function getPasswordResetTokenByHash(tokenHash: string): PasswordResetToken | null {
-	const stmt = getDb().prepare(
-		"SELECT id, user_id as userId, token_hash as tokenHash, expiresAt, usedAt, createdAt FROM password_reset_tokens WHERE token_hash = ?"
-	);
-	return (stmt.get(tokenHash) as PasswordResetToken) ?? null;
-}
-
-export function markPasswordResetTokenUsed(tokenHash: string): boolean {
-	const result = getDb()
-		.prepare(
-			"UPDATE password_reset_tokens SET usedAt = CURRENT_TIMESTAMP WHERE token_hash = ? AND usedAt IS NULL AND datetime(expiresAt) > datetime('now')"
-		)
-		.run(tokenHash) as unknown as { changes: number };
-	return result.changes === 1;
-}
-
-export function resetPasswordWithToken(
-	tokenHash: string,
-	userId: number,
-	passwordHash: string
-): boolean {
+export function resetPasswordWithToken(tokenHash: string, passwordHash: string): number | null {
 	const db = getDb();
 	const txn = db.transaction((_: null) => {
-		const consumed = markPasswordResetTokenUsed(tokenHash);
-		if (!consumed) return false;
-		updateUser(userId, { passwordHash });
-		return true;
+		const token = db
+			.prepare(
+				"SELECT user_id as userId, expiresAt, usedAt FROM password_reset_tokens WHERE token_hash = ?"
+			)
+			.get(tokenHash) as { userId: number; expiresAt: string; usedAt: string | null } | undefined;
+
+		if (!token || token.usedAt !== null || new Date(token.expiresAt).getTime() <= Date.now()) {
+			return null;
+		}
+
+		const result = db
+			.prepare(
+				"UPDATE password_reset_tokens SET usedAt = CURRENT_TIMESTAMP WHERE token_hash = ? AND usedAt IS NULL"
+			)
+			.run(tokenHash) as unknown as { changes: number };
+		if (result.changes !== 1) {
+			return null;
+		}
+
+		updateUser(token.userId, { passwordHash });
+		return token.userId;
 	});
 	return txn(null);
 }

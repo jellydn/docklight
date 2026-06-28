@@ -11,7 +11,7 @@ import {
 } from "../lib/db.js";
 import { authMiddleware, requireAdmin, hashPassword } from "../lib/auth.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
-import { safeAuditLog } from "./util.js";
+import { safeAuditLog, handleDbError } from "./util.js";
 
 export function registerUserRoutes(app: express.Application): void {
 	app.get("/api/users", authMiddleware, requireAdmin, (_req, res) => {
@@ -62,15 +62,7 @@ export function registerUserRoutes(app: express.Application): void {
 			clearPrefix("users:");
 			res.status(201).json(user);
 		} catch (err: unknown) {
-			const error = err as { code?: number; message?: string };
-			if (error.code === 19 && error.message?.includes("UNIQUE constraint failed")) {
-				const msg = error.message.includes("users.email")
-					? "Email already exists"
-					: "Username already exists";
-				res.status(409).json({ error: msg });
-			} else {
-				res.status(500).json({ error: "Internal server error" });
-			}
+			handleDbError(err, res);
 		}
 	});
 
@@ -132,15 +124,7 @@ export function registerUserRoutes(app: express.Application): void {
 		try {
 			updateUser(id, updates);
 		} catch (err: unknown) {
-			const error = err as { code?: number; message?: string };
-			if (error.code === 19 && error.message?.includes("UNIQUE constraint failed")) {
-				const msg = error.message.includes("users.email")
-					? "Email already exists"
-					: "Username already exists";
-				res.status(409).json({ error: msg });
-			} else {
-				res.status(500).json({ error: "Internal server error" });
-			}
+			handleDbError(err, res);
 			return;
 		}
 
