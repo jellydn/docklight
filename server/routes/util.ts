@@ -159,8 +159,11 @@ export function safeAuditLogWithUserId(
  * Handles database errors, mapping SQLite unique constraints to proper 409 responses
  */
 export function handleDbError(err: unknown, res: express.Response): void {
-	const error = err as { code?: number; message?: string };
-	if (error.code === 19 && error.message?.includes("UNIQUE constraint failed")) {
+	const error = err as { code?: string; message?: string };
+	if (
+		(error.code === "SQLITE_CONSTRAINT" || error.code === "SQLITE_CONSTRAINT_UNIQUE") &&
+		error.message?.includes("UNIQUE constraint failed")
+	) {
 		const msg = error.message.includes("users.email")
 			? "Email already exists"
 			: "Username already exists";

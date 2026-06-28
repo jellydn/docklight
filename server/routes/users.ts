@@ -3,10 +3,9 @@ import {
 	getAllUsers,
 	createUser,
 	getUserById,
-	updateUser,
+	updateUserWithGuard,
 	deleteUser,
 	type UserRole,
-	demoteAdminWithGuard,
 	deleteUserWithAdminGuard,
 } from "../lib/db.js";
 import { authMiddleware, requireAdmin, hashPassword } from "../lib/auth.js";
@@ -90,15 +89,7 @@ export function registerUserRoutes(app: express.Application): void {
 				});
 				return;
 			}
-			if (existing.role === "admin" && role !== "admin") {
-				const result = demoteAdminWithGuard(id, role);
-				if (!result.success) {
-					res.status(400).json({ error: result.error });
-					return;
-				}
-			} else {
-				updates.role = role;
-			}
+			updates.role = role;
 		}
 
 		if (email !== undefined) {
@@ -122,7 +113,11 @@ export function registerUserRoutes(app: express.Application): void {
 		}
 
 		try {
-			updateUser(id, updates);
+			const result = updateUserWithGuard(id, updates);
+			if (!result.success) {
+				res.status(400).json({ error: result.error });
+				return;
+			}
 		} catch (err: unknown) {
 			handleDbError(err, res);
 			return;

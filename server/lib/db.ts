@@ -341,31 +341,34 @@ export function updateUser(
 	stmt.run(...params);
 }
 
-export function demoteAdminWithGuard(
+export function updateUserWithGuard(
 	id: number,
-	newRole: UserRole
+	updates: { role?: UserRole; passwordHash?: string; email?: string | null }
 ): { success: boolean; error?: string } {
 	const db = getDb();
+	const txn = db.transaction((_: null) => {
+		const existing = db.prepare("SELECT role FROM users WHERE id = ?").get(id) as
+			| UserRoleRow
+			| undefined;
 
-	const adminBefore = db
-		.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'")
-		.get() as { count: number };
+		if (!existing) {
+			return { success: false, error: "User not found" };
+		}
 
-	if (adminBefore.count <= 1) {
-		return { success: false, error: "Cannot demote the last admin user" };
-	}
+		if (updates.role !== undefined && existing.role === "admin" && updates.role !== "admin") {
+			const adminCount = db
+				.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'")
+				.get() as { count: number };
 
-	db.prepare("UPDATE users SET role = ? WHERE id = ? AND role = 'admin'").run(newRole, id);
+			if (adminCount.count <= 1) {
+				return { success: false, error: "Cannot demote the last admin user" };
+			}
+		}
 
-	const adminAfter = db
-		.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'")
-		.get() as { count: number };
-
-	if (adminAfter.count >= adminBefore.count) {
-		return { success: false, error: "Cannot demote the last admin user" };
-	}
-
-	return { success: true };
+		updateUser(id, updates);
+		return { success: true };
+	});
+	return txn(null);
 }
 
 export function deleteUserWithAdminGuard(id: number): {
@@ -620,13 +623,11 @@ export function importBackup(backup: BackupData): {
 	try {
 		const transaction = db.transaction((users: BackupUser[]) => {
 			for (const user of users) {
-				upsert.run(
-					user.username,
-					user.email ?? null,
-					user.password_hash,
-					user.role,
-					user.createdAt
-				);
+				const normalizedEmail =
+					typeof user.email === "string" && user.email.trim().length > 0
+						? user.email.trim().toLowerCase()
+						: null;
+				upsert.run(user.username, normalizedEmail, user.password_hash, user.role, user.createdAt);
 			}
 		});
 		transaction(backup.users);
