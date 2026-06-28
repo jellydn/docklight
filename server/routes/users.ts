@@ -29,7 +29,7 @@ export function registerUserRoutes(app: express.Application): void {
 	});
 
 	app.post("/api/users", authMiddleware, requireAdmin, async (req, res) => {
-		const { username, password, role } = req.body;
+		const { username, password, role, email } = req.body;
 
 		if (!username || typeof username !== "string") {
 			res.status(400).json({ error: "Username is required" });
@@ -46,11 +46,18 @@ export function registerUserRoutes(app: express.Application): void {
 			return;
 		}
 
+		const normalizedEmail =
+			typeof email === "string" && email.trim().length > 0 ? email.trim().toLowerCase() : null;
+		if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+			res.status(400).json({ error: "Invalid email address" });
+			return;
+		}
+
 		try {
 			const passwordHash = await hashPassword(password);
-			const user = createUser(username, passwordHash, role);
+			const user = createUser(username, passwordHash, role, normalizedEmail);
 
-			safeAuditLog(req, "user:create", username, { username, role });
+			safeAuditLog(req, "user:create", username, { username, role, email: normalizedEmail });
 
 			clearPrefix("users:");
 			res.status(201).json(user);
@@ -66,7 +73,7 @@ export function registerUserRoutes(app: express.Application): void {
 
 	app.put("/api/users/:id", authMiddleware, requireAdmin, async (req, res) => {
 		const id = Number.parseInt(req.params.id as string);
-		const { role, password } = req.body;
+		const { role, password, email } = req.body;
 
 		if (Number.isNaN(id)) {
 			res.status(400).json({ error: "Invalid user ID" });
@@ -79,7 +86,7 @@ export function registerUserRoutes(app: express.Application): void {
 			return;
 		}
 
-		const updates: { role?: UserRole; passwordHash?: string } = {};
+		const updates: { role?: UserRole; passwordHash?: string; email?: string | null } = {};
 
 		if (role !== undefined) {
 			if (!["admin", "operator", "viewer"].includes(role)) {
@@ -99,6 +106,16 @@ export function registerUserRoutes(app: express.Application): void {
 			}
 		}
 
+		if (email !== undefined) {
+			const normalizedEmail =
+				typeof email === "string" && email.trim().length > 0 ? email.trim().toLowerCase() : null;
+			if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+				res.status(400).json({ error: "Invalid email address" });
+				return;
+			}
+			updates.email = normalizedEmail;
+		}
+
 		if (password !== undefined) {
 			if (typeof password !== "string" || password.length === 0) {
 				res.status(400).json({
@@ -114,6 +131,7 @@ export function registerUserRoutes(app: express.Application): void {
 		safeAuditLog(req, "user:update", existing.username, {
 			username: existing.username,
 			role,
+			email: updates.email,
 			passwordChanged: password !== undefined,
 		});
 

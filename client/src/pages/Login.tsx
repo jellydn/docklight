@@ -7,10 +7,20 @@ import { Button } from "@/components/ui/button";
 import { queryKeys } from "../lib/query-keys.js";
 import { AuthMeSchema } from "../lib/schemas.js";
 
+const ForgotPasswordSchema = z.object({
+	success: z.literal(true),
+	resetToken: z.string().optional(),
+	resetUrl: z.string().optional(),
+});
+
 export function Login() {
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
+	const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+	const [resetEmail, setResetEmail] = useState("");
+	const [resetMessage, setResetMessage] = useState("");
+	const [resetError, setResetError] = useState("");
 	const navigate = useNavigate();
 
 	const { data: authData, isLoading } = useQuery({
@@ -42,6 +52,26 @@ export function Login() {
 			} else {
 				setError("Invalid credentials");
 			}
+		}
+	};
+
+	const handleForgotPassword = async (e: FormEvent) => {
+		e.preventDefault();
+		setResetError("");
+		setResetMessage("");
+
+		try {
+			const result = await apiFetch("/auth/forgot-password", ForgotPasswordSchema, {
+				method: "POST",
+				body: JSON.stringify({ email: resetEmail }),
+			});
+			if (result.resetUrl) {
+				setResetMessage(`Reset link: ${result.resetUrl}`);
+			} else {
+				setResetMessage("If the email exists, a reset link has been created.");
+			}
+		} catch (err) {
+			setResetError(err instanceof Error ? err.message : "Failed to request reset");
 		}
 	};
 
@@ -94,6 +124,40 @@ export function Login() {
 						Login
 					</Button>
 				</form>
+
+				<div className="mt-4 border-t border-border pt-4">
+					<button
+						type="button"
+						onClick={() => setForgotPasswordOpen((current) => !current)}
+						className="text-sm text-muted-foreground hover:text-foreground"
+					>
+						{forgotPasswordOpen ? "Hide password reset" : "Forgot password?"}
+					</button>
+
+					{forgotPasswordOpen && (
+						<form onSubmit={handleForgotPassword} className="mt-4 space-y-3">
+							<div>
+								<label htmlFor="reset-email" className="block text-sm font-medium mb-2">
+									Email
+								</label>
+								<input
+									id="reset-email"
+									type="email"
+									value={resetEmail}
+									onChange={(e) => setResetEmail(e.target.value)}
+									className="w-full px-3 py-2 border border-border rounded-md"
+									required
+									autoComplete="email"
+								/>
+							</div>
+							{resetError && <div className="text-destructive text-sm">{resetError}</div>}
+							{resetMessage && <div className="text-sm text-foreground">{resetMessage}</div>}
+							<Button type="submit" variant="secondary" className="w-full">
+								Send reset link
+							</Button>
+						</form>
+					)}
+				</div>
 			</div>
 		</div>
 	);

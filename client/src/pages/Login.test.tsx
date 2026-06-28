@@ -34,7 +34,6 @@ describe("Login", () => {
 		vi.clearAllMocks();
 		const { apiFetch } = await import("../lib/api.js");
 		apiFetchMock = apiFetch as MockedFunction<typeof apiFetch>;
-		// Default: auth/me fails (not logged in)
 		apiFetchMock.mockImplementation((path: string) => {
 			if (path === "/auth/me") return Promise.reject(new Error("Unauthorized"));
 			return Promise.reject(new Error("Not found"));
@@ -48,6 +47,7 @@ describe("Login", () => {
 		expect(screen.getByLabelText("Username")).toBeInTheDocument();
 		expect(screen.getByLabelText("Password")).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "Login" })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Forgot password?" })).toBeInTheDocument();
 	});
 
 	it("should show error message on failed login", async () => {
@@ -71,6 +71,28 @@ describe("Login", () => {
 
 		await waitFor(() => {
 			expect(screen.getByText("Invalid credentials")).toBeInTheDocument();
+		});
+	});
+
+	it("should request a password reset link", async () => {
+		apiFetchMock.mockImplementation((path: string) => {
+			if (path === "/auth/me") return Promise.reject(new Error("Unauthorized"));
+			if (path === "/auth/forgot-password") {
+				return Promise.resolve({ success: true, resetUrl: "/reset-password?token=abc" });
+			}
+			return Promise.reject(new Error("Not found"));
+		});
+
+		const user = userEvent.setup();
+		renderWithQueryClient(<Login />);
+
+		await screen.findByText("Docklight Login");
+		await user.click(screen.getByRole("button", { name: "Forgot password?" }));
+		await user.type(screen.getByLabelText("Email"), "user@example.com");
+		await user.click(screen.getByRole("button", { name: "Send reset link" }));
+
+		await waitFor(() => {
+			expect(screen.getByText("Reset link: /reset-password?token=abc")).toBeInTheDocument();
 		});
 	});
 

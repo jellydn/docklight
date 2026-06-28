@@ -60,11 +60,38 @@ function getDb(): Database {
 	  CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		username TEXT UNIQUE NOT NULL,
+		email TEXT,
 		password_hash TEXT NOT NULL,
 		role TEXT NOT NULL DEFAULT 'viewer',
 		createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
 	  )
 	`);
+
+	const userColumns = newDb.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+	if (!userColumns.some((column) => column.name === "email")) {
+		newDb.exec("ALTER TABLE users ADD COLUMN email TEXT");
+	}
+	newDb.exec(
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL AND email != ''"
+	);
+
+	newDb.exec(`
+	  CREATE TABLE IF NOT EXISTS password_reset_tokens (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL,
+		token_hash TEXT NOT NULL UNIQUE,
+		expiresAt DATETIME NOT NULL,
+		usedAt DATETIME,
+		createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+	  )
+	`);
+	newDb.exec(
+		"CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id)"
+	);
+	newDb.exec(
+		"CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expiresAt ON password_reset_tokens(expiresAt)"
+	);
 
 	newDb.exec(`
 	  CREATE TABLE IF NOT EXISTS audit_log (
@@ -228,6 +255,7 @@ export type UserRole = "admin" | "operator" | "viewer";
 export interface User {
 	id: number;
 	username: string;
+	email: string | null;
 	password_hash: string;
 	role: UserRole;
 	createdAt: string;
@@ -236,47 +264,67 @@ export interface User {
 export interface SafeUser {
 	id: number;
 	username: string;
+	email: string | null;
 	role: UserRole;
 	createdAt: string;
 }
 
-export function createUser(username: string, passwordHash: string, role: UserRole): SafeUser {
+export function createUser(
+	username: string,
+	passwordHash: string,
+	role: UserRole,
+	email: string | null = null
+): SafeUser {
 	const stmt = getDb().prepare(
-		"INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)"
+		"INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)"
 	);
-	stmt.run(username, passwordHash, role);
+	stmt.run(username, email, passwordHash, role);
 	const user = getDb()
-		.prepare("SELECT id, username, role, createdAt FROM users WHERE username = ?")
+		.prepare("SELECT id, username, email, role, createdAt FROM users WHERE username = ?")
 		.get(username) as SafeUser;
 	return user;
 }
 
 export function getUserByUsername(username: string): User | null {
 	const stmt = getDb().prepare(
-		"SELECT id, username, password_hash, role, createdAt FROM users WHERE username = ?"
+		"SELECT id, username, email, password_hash, role, createdAt FROM users WHERE username = ?"
 	);
 	return (stmt.get(username) as User) ?? null;
 }
 
+export function getUserByEmail(email: string): User | null {
+	const stmt = getDb().prepare(
+		"SELECT id, username, email, password_hash, role, createdAt FROM users WHERE email = ?"
+	);
+	return (stmt.get(email) as User) ?? null;
+}
+
 export function getUserById(id: number): SafeUser | null {
-	const stmt = getDb().prepare("SELECT id, username, role, createdAt FROM users WHERE id = ?");
+	const stmt = getDb().prepare("SELECT id, username, email, role, createdAt FROM users WHERE id = ?");
 	return (stmt.get(id) as SafeUser) ?? null;
 }
 
 export function getAllUsers(): SafeUser[] {
 	const stmt = getDb().prepare(
-		"SELECT id, username, role, createdAt FROM users ORDER BY createdAt ASC"
+		"SELECT id, username, email, role, createdAt FROM users ORDER BY createdAt ASC"
 	);
 	return stmt.all() as SafeUser[];
 }
 
-export function updateUser(id: number, updates: { role?: UserRole; passwordHash?: string }): void {
+export function updateUser(
+	id: number,
+	updates: { role?: UserRole; passwordHash?: string; email?: string | null }
+): void {
 	const fields: string[] = [];
 	const params: unknown[] = [];
 
 	if (updates.role !== undefined) {
 		fields.push("role = ?");
 		params.push(updates.role);
+	}
+	if (updates.email !== undefined) {
+		fields.push("email = ?");
+		params.push(updates.email);
 	}
 	if (updates.passwordHash !== undefined) {
 		fields.push("password_hash = ?");
@@ -342,6 +390,51 @@ export function deleteUserWithAdminGuard(id: number): {
 	db.prepare("DELETE FROM users WHERE id = ?").run(id);
 
 	return { success: true };
+}
+
+export interface PasswordResetToken {
+	id: number;
+	userId: number;
+	tokenHash: string;
+	expiresAt: string;
+	usedAt: string | null;
+	createdAt: string;
+}
+
+export function createPasswordResetToken(
+	userId: number,
+	tokenHash: string,
+	expiresAt: string
+): PasswordResetToken {
+	const stmt = getDb().prepare(
+		"INSERT INTO password_reset_tokens (user_id, token_hash, expiresAt) VALUES (?, ?, ?)"
+	);
+	stmt.run(userId, tokenHash, expiresAt);
+	return getDb()
+		.prepare(
+			"SELECT id, user_id as userId, token_hash as tokenHash, expiresAt, usedAt, createdAt FROM password_reset_tokens WHERE token_hash = ?"
+		)
+		.get(tokenHash) as PasswordResetToken;
+}
+
+export function getPasswordResetTokenByHash(tokenHash: string): PasswordResetToken | null {
+	const stmt = getDb().prepare(
+		"SELECT id, user_id as userId, token_hash as tokenHash, expiresAt, usedAt, createdAt FROM password_reset_tokens WHERE token_hash = ?"
+	);
+	return (stmt.get(tokenHash) as PasswordResetToken) ?? null;
+}
+
+export function markPasswordResetTokenUsed(tokenHash: string): void {
+	getDb()
+		.prepare("UPDATE password_reset_tokens SET usedAt = CURRENT_TIMESTAMP WHERE token_hash = ?")
+		.run(tokenHash);
+}
+
+export function deleteExpiredPasswordResetTokens(): number {
+	const result = getDb()
+		.prepare("DELETE FROM password_reset_tokens WHERE datetime(expiresAt) <= datetime('now')")
+		.run() as unknown as { changes: number };
+	return result.changes;
 }
 
 export function deleteUser(id: number): void {
@@ -412,6 +505,7 @@ export function insertAuditLog(
 
 export interface BackupUser {
 	username: string;
+	email: string | null;
 	password_hash: string;
 	role: UserRole;
 	createdAt: string;
@@ -435,7 +529,7 @@ const ENV_VARS_TO_REFERENCE = [
 
 export function exportBackup(): BackupData {
 	const users = getDb()
-		.prepare("SELECT username, password_hash, role, createdAt FROM users ORDER BY id ASC")
+		.prepare("SELECT username, email, password_hash, role, createdAt FROM users ORDER BY id ASC")
 		.all() as BackupUser[];
 
 	const envConfig: Record<string, boolean> = {};
@@ -444,7 +538,7 @@ export function exportBackup(): BackupData {
 	}
 
 	return {
-		version: "1.0",
+		version: "1.1",
 		timestamp: new Date().toISOString(),
 		users,
 		envConfig,
@@ -457,7 +551,7 @@ export function importBackup(backup: BackupData): {
 	success: boolean;
 	error?: string;
 } {
-	if (!backup || backup.version !== "1.0" || !Array.isArray(backup.users)) {
+	if (!backup || (backup.version !== "1.0" && backup.version !== "1.1") || !Array.isArray(backup.users)) {
 		return { success: false, error: "Invalid backup format" };
 	}
 
@@ -466,6 +560,12 @@ export function importBackup(backup: BackupData): {
 			return {
 				success: false,
 				error: "Invalid user: username must be a non-empty string",
+			};
+		}
+		if (user.email !== undefined && user.email !== null && typeof user.email !== "string") {
+			return {
+				success: false,
+				error: "Invalid user: email must be a string or null",
 			};
 		}
 		if (!user.password_hash || typeof user.password_hash !== "string") {
@@ -492,13 +592,13 @@ export function importBackup(backup: BackupData): {
 
 	const db = getDb();
 	const upsert = db.prepare(
-		"INSERT INTO users (username, password_hash, role, createdAt) VALUES (?, ?, ?, ?) ON CONFLICT(username) DO UPDATE SET password_hash = excluded.password_hash, role = excluded.role, createdAt = excluded.createdAt"
+		"INSERT INTO users (username, email, password_hash, role, createdAt) VALUES (?, ?, ?, ?, ?) ON CONFLICT(username) DO UPDATE SET email = excluded.email, password_hash = excluded.password_hash, role = excluded.role, createdAt = excluded.createdAt"
 	);
 
 	try {
 		const transaction = db.transaction((users: BackupUser[]) => {
 			for (const user of users) {
-				upsert.run(user.username, user.password_hash, user.role, user.createdAt);
+				upsert.run(user.username, user.email ?? null, user.password_hash, user.role, user.createdAt);
 			}
 		});
 		transaction(backup.users);
