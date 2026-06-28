@@ -14,7 +14,7 @@ type Statement = {
 type Database = {
 	prepare: (sql: string) => Statement;
 	exec: (sql: string) => void;
-	transaction: <T>(fn: (arg: T) => void) => (arg: T) => void;
+	transaction: <T, R = void>(fn: (arg: T) => R) => (arg: T) => R;
 };
 
 interface UserRoleRow {
@@ -38,6 +38,7 @@ function getDb(): Database {
 
 	newDb.pragma("journal_mode = WAL");
 	newDb.pragma("synchronous = NORMAL");
+	newDb.pragma("foreign_keys = ON");
 
 	newDb.exec(`
 	  CREATE TABLE IF NOT EXISTS command_history (
@@ -300,7 +301,9 @@ export function getUserByEmail(email: string): User | null {
 }
 
 export function getUserById(id: number): SafeUser | null {
-	const stmt = getDb().prepare("SELECT id, username, email, role, createdAt FROM users WHERE id = ?");
+	const stmt = getDb().prepare(
+		"SELECT id, username, email, role, createdAt FROM users WHERE id = ?"
+	);
 	return (stmt.get(id) as SafeUser) ?? null;
 }
 
@@ -424,10 +427,28 @@ export function getPasswordResetTokenByHash(tokenHash: string): PasswordResetTok
 	return (stmt.get(tokenHash) as PasswordResetToken) ?? null;
 }
 
-export function markPasswordResetTokenUsed(tokenHash: string): void {
-	getDb()
-		.prepare("UPDATE password_reset_tokens SET usedAt = CURRENT_TIMESTAMP WHERE token_hash = ?")
-		.run(tokenHash);
+export function markPasswordResetTokenUsed(tokenHash: string): boolean {
+	const result = getDb()
+		.prepare(
+			"UPDATE password_reset_tokens SET usedAt = CURRENT_TIMESTAMP WHERE token_hash = ? AND usedAt IS NULL AND datetime(expiresAt) > datetime('now')"
+		)
+		.run(tokenHash) as unknown as { changes: number };
+	return result.changes === 1;
+}
+
+export function resetPasswordWithToken(
+	tokenHash: string,
+	userId: number,
+	passwordHash: string
+): boolean {
+	const db = getDb();
+	const txn = db.transaction((_: null) => {
+		const consumed = markPasswordResetTokenUsed(tokenHash);
+		if (!consumed) return false;
+		updateUser(userId, { passwordHash });
+		return true;
+	});
+	return txn(null);
 }
 
 export function deleteExpiredPasswordResetTokens(): number {
@@ -551,7 +572,11 @@ export function importBackup(backup: BackupData): {
 	success: boolean;
 	error?: string;
 } {
-	if (!backup || (backup.version !== "1.0" && backup.version !== "1.1") || !Array.isArray(backup.users)) {
+	if (
+		!backup ||
+		(backup.version !== "1.0" && backup.version !== "1.1") ||
+		!Array.isArray(backup.users)
+	) {
 		return { success: false, error: "Invalid backup format" };
 	}
 
@@ -598,7 +623,13 @@ export function importBackup(backup: BackupData): {
 	try {
 		const transaction = db.transaction((users: BackupUser[]) => {
 			for (const user of users) {
-				upsert.run(user.username, user.email ?? null, user.password_hash, user.role, user.createdAt);
+				upsert.run(
+					user.username,
+					user.email ?? null,
+					user.password_hash,
+					user.role,
+					user.createdAt
+				);
 			}
 		});
 		transaction(backup.users);

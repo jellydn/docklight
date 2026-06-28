@@ -57,14 +57,17 @@ export function registerUserRoutes(app: express.Application): void {
 			const passwordHash = await hashPassword(password);
 			const user = createUser(username, passwordHash, role, normalizedEmail);
 
-			safeAuditLog(req, "user:create", username, { username, role, email: normalizedEmail });
+			safeAuditLog(req, "user:create", username, { username, role, emailSet: !!normalizedEmail });
 
 			clearPrefix("users:");
 			res.status(201).json(user);
 		} catch (err: unknown) {
 			const error = err as { code?: number; message?: string };
 			if (error.code === 19 && error.message?.includes("UNIQUE constraint failed")) {
-				res.status(409).json({ error: "Username already exists" });
+				const msg = error.message.includes("users.email")
+					? "Email already exists"
+					: "Username already exists";
+				res.status(409).json({ error: msg });
 			} else {
 				res.status(500).json({ error: "Internal server error" });
 			}
@@ -126,12 +129,25 @@ export function registerUserRoutes(app: express.Application): void {
 			updates.passwordHash = await hashPassword(password);
 		}
 
-		updateUser(id, updates);
+		try {
+			updateUser(id, updates);
+		} catch (err: unknown) {
+			const error = err as { code?: number; message?: string };
+			if (error.code === 19 && error.message?.includes("UNIQUE constraint failed")) {
+				const msg = error.message.includes("users.email")
+					? "Email already exists"
+					: "Username already exists";
+				res.status(409).json({ error: msg });
+			} else {
+				res.status(500).json({ error: "Internal server error" });
+			}
+			return;
+		}
 
 		safeAuditLog(req, "user:update", existing.username, {
 			username: existing.username,
 			role,
-			email: updates.email,
+			emailChanged: updates.email !== undefined,
 			passwordChanged: password !== undefined,
 		});
 

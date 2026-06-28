@@ -259,7 +259,7 @@ export function Users() {
 													autoComplete="email"
 												/>
 											) : (
-												user.email ?? <span className="text-muted-foreground/60">—</span>
+												(user.email ?? <span className="text-muted-foreground/60">—</span>)
 											)}
 										</td>
 										<td className="px-6 py-3 whitespace-nowrap">

@@ -92,6 +92,14 @@ describe("Login", () => {
 		await user.click(screen.getByRole("button", { name: "Send reset link" }));
 
 		await waitFor(() => {
+			expect(apiFetchMock).toHaveBeenCalledWith(
+				"/auth/forgot-password",
+				expect.any(Object),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({ email: "user@example.com" }),
+				})
+			);
 			expect(screen.getByText("Reset link: /reset-password?token=abc")).toBeInTheDocument();
 		});
 	});

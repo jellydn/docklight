@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type JSX } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { queryKeys } from "../lib/query-keys.js";
 import { AuthMeSchema } from "../lib/schemas.js";
 
-const ForgotPasswordSchema = z.object({
+const FORGOT_PASSWORD_SCHEMA = z.object({
 	success: z.literal(true),
 	resetToken: z.string().optional(),
 	resetUrl: z.string().optional(),
 });
 
-export function Login() {
+export function Login(): JSX.Element {
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
@@ -55,13 +55,13 @@ export function Login() {
 		}
 	};
 
-	const handleForgotPassword = async (e: FormEvent) => {
+	const handleForgotPassword = async (e: FormEvent): Promise<void> => {
 		e.preventDefault();
 		setResetError("");
 		setResetMessage("");
 
 		try {
-			const result = await apiFetch("/auth/forgot-password", ForgotPasswordSchema, {
+			const result = await apiFetch("/auth/forgot-password", FORGOT_PASSWORD_SCHEMA, {
 				method: "POST",
 				body: JSON.stringify({ email: resetEmail }),
 			});
@@ -70,8 +70,9 @@ export function Login() {
 			} else {
 				setResetMessage("If the email exists, a reset link has been created.");
 			}
-		} catch (err) {
-			setResetError(err instanceof Error ? err.message : "Failed to request reset");
+		} catch (err: unknown) {
+			const error = err as { message?: string };
+			setResetError(error.message ?? "Failed to request reset");
 		}
 	};
 
@@ -129,13 +130,19 @@ export function Login() {
 					<button
 						type="button"
 						onClick={() => setForgotPasswordOpen((current) => !current)}
+						aria-expanded={forgotPasswordOpen}
+						aria-controls="forgot-password-form"
 						className="text-sm text-muted-foreground hover:text-foreground"
 					>
 						{forgotPasswordOpen ? "Hide password reset" : "Forgot password?"}
 					</button>
 
 					{forgotPasswordOpen && (
-						<form onSubmit={handleForgotPassword} className="mt-4 space-y-3">
+						<form
+							id="forgot-password-form"
+							onSubmit={handleForgotPassword}
+							className="mt-4 space-y-3"
+						>
 							<div>
 								<label htmlFor="reset-email" className="block text-sm font-medium mb-2">
 									Email

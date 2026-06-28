@@ -1,10 +1,10 @@
 import { randomBytes, scrypt, timingSafeEqual, createHash } from "crypto";
-import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { promisify } from "util";
-import type { UserRole } from "./db.js";
 import { getUserByUsername, getUserByEmail } from "./db.js";
 import { logger } from "./logger.js";
+import type { NextFunction, Request, Response } from "express";
+import type { UserRole } from "./db.js";
 
 const scryptAsync = promisify(scrypt);
 
@@ -85,12 +85,11 @@ export function hashResetToken(token: string): string {
 	return createHash("sha256").update(token).digest("hex");
 }
 
-/** Login: validates username + password against the users table. */
 export async function login(
 	username: string,
 	password: string
 ): Promise<{ id: number; username: string; role: UserRole } | null> {
-	const user = getUserByUsername(username) ?? getUserByEmail(username);
+	const user = getUserByUsername(username) ?? getUserByEmail(username.trim().toLowerCase());
 	if (!user) return null;
 
 	const valid = await verifyPassword(password, user.password_hash);
