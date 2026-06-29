@@ -6,6 +6,7 @@ import { RequireAdmin } from "./components/RequireAdmin";
 import { ToastProvider } from "./components/ToastProvider";
 import { AuthProvider } from "./contexts/auth-context.js";
 import { Login } from "./pages/Login";
+import { ResetPassword } from "./pages/ResetPassword";
 
 const Dashboard = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })));
 const Apps = lazy(() => import("./pages/Apps").then((m) => ({ default: m.Apps })));
@@ -22,6 +23,7 @@ function App() {
 			<BrowserRouter>
 				<Routes>
 					<Route path="/login" element={<Login />} />
+					<Route path="/reset-password" element={<ResetPassword />} />
 					<Route
 						path="/"
 						element={
