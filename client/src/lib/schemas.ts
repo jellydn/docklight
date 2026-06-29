@@ -223,6 +223,7 @@ export type UserRole = z.infer<typeof UserRoleSchema>;
 export const UserSchema = z.object({
 	id: z.number(),
 	username: z.string(),
+	email: z.string().email().nullable().optional(),
 	role: UserRoleSchema,
 	createdAt: z.string(),
 });

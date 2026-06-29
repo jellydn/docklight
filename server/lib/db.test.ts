@@ -250,6 +250,7 @@ describe("importBackup validation", () => {
 		users: [
 			{
 				username: "admin",
+				email: null,
 				password_hash: "salt:hash",
 				role: "admin",
 				createdAt: "2024-01-01T00:00:00.000Z",
@@ -282,7 +283,7 @@ describe("importBackup validation", () => {
 	it("should reject user with missing username", () => {
 		const result = importBackup({
 			...validBackup,
-			users: [{ username: "", password_hash: "hash", role: "admin", createdAt: "" }],
+			users: [{ username: "", email: null, password_hash: "hash", role: "admin", createdAt: "" }],
 		});
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("username");
@@ -291,7 +292,7 @@ describe("importBackup validation", () => {
 	it("should reject user with missing password_hash", () => {
 		const result = importBackup({
 			...validBackup,
-			users: [{ username: "admin", password_hash: "", role: "admin", createdAt: "" }],
+			users: [{ username: "admin", email: null, password_hash: "", role: "admin", createdAt: "" }],
 		});
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("password_hash");
@@ -303,6 +304,7 @@ describe("importBackup validation", () => {
 			users: [
 				{
 					username: "admin",
+					email: null,
 					password_hash: "hash",
 					role: "superuser" as "admin",
 					createdAt: "",
@@ -319,6 +321,7 @@ describe("importBackup validation", () => {
 			users: [
 				{
 					username: "user1",
+					email: null,
 					password_hash: "hash",
 					role: "viewer",
 					createdAt: "",

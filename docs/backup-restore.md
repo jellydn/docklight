@@ -6,7 +6,7 @@ How to back up and restore Docklight configuration (users and settings).
 
 The backup includes:
 
-- **Users** — all accounts with their usernames, hashed passwords, roles, and creation timestamps
+- **Users** — all accounts with their usernames, emails (optional), hashed passwords, roles, and creation timestamps
 - **Environment configuration reference** — which env vars are set (values are **not** exported)
 
 > **Note:** The SQLite command history and audit log are not included in the backup. Only the configuration needed to restore access and user accounts is exported.
@@ -23,15 +23,16 @@ curl -s -b "session=<your-session-token>" \
   -o docklight-backup-$(date +%F).json
 ```
 
-The downloaded file looks like:
+The downloaded file looks like (version 1.1):
 
 ```json
 {
-  "version": "1.0",
+  "version": "1.1",
   "timestamp": "2024-01-15T10:30:00.000Z",
   "users": [
     {
       "username": "admin",
+      "email": "admin@example.com",
       "password_hash": "abc123:...",
       "role": "admin",
       "createdAt": "2024-01-01T00:00:00.000Z"
@@ -72,7 +73,8 @@ A successful response:
 
 ### Restore behaviour
 
-- Users in the backup are **upserted** — existing accounts with the same username are updated; accounts not present in the backup are left untouched.
+- Supports both version `1.0` (legacy format without email) and version `1.1` (current format with email support).
+- Users in the backup are **upserted** — existing accounts with the same username are updated (including their emails); accounts not present in the backup are left untouched.
 - The backup must contain at least one `admin` role user; restores without an admin are rejected to prevent lockout.
 - `createdAt` timestamps are preserved from the backup.
 

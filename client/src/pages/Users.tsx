@@ -35,6 +35,7 @@ export function Users() {
 
 	// Create form state
 	const [newUsername, setNewUsername] = useState("");
+	const [newEmail, setNewEmail] = useState("");
 	const [newPassword, setNewPassword] = useState("");
 	const [newRole, setNewRole] = useState<UserRole>("viewer");
 	const [createError, setCreateError] = useState("");
@@ -42,11 +43,17 @@ export function Users() {
 	// Edit state
 	const [editId, setEditId] = useState<number | null>(null);
 	const [editRole, setEditRole] = useState<UserRole>("viewer");
+	const [editEmail, setEditEmail] = useState("");
 	const [editPassword, setEditPassword] = useState("");
 	const [editError, setEditError] = useState("");
 
 	const createUserMutation = useMutation({
-		mutationFn: async (userData: { username: string; password: string; role: UserRole }) => {
+		mutationFn: async (userData: {
+			username: string;
+			email?: string;
+			password: string;
+			role: UserRole;
+		}) => {
 			return apiFetch("/users", UserSchema, {
 				method: "POST",
 				body: JSON.stringify(userData),
@@ -55,6 +62,7 @@ export function Users() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: queryKeys.users });
 			setNewUsername("");
+			setNewEmail("");
 			setNewPassword("");
 			setNewRole("viewer");
 			setCreateError("");
@@ -70,7 +78,7 @@ export function Users() {
 			data,
 		}: {
 			id: number;
-			data: { role?: UserRole; password?: string };
+			data: { role?: UserRole; password?: string; email?: string };
 		}) => {
 			return apiFetch(`/users/${id}`, UserSchema, {
 				method: "PUT",
@@ -104,6 +112,7 @@ export function Users() {
 		setCreateError("");
 		createUserMutation.mutate({
 			username: newUsername,
+			email: newEmail || undefined,
 			password: newPassword,
 			role: newRole,
 		});
@@ -111,7 +120,9 @@ export function Users() {
 
 	const handleEditSave = async (id: number) => {
 		setEditError("");
-		const body: { role?: UserRole; password?: string } = { role: editRole };
+		const body: { role?: UserRole; password?: string; email?: string } = { role: editRole };
+		if (editEmail.trim()) body.email = editEmail.trim();
+		if (!editEmail.trim() && editId !== null) body.email = "";
 		if (editPassword) body.password = editPassword;
 		updateUserMutation.mutate({ id, data: body });
 	};
@@ -124,6 +135,7 @@ export function Users() {
 	const startEdit = (user: User) => {
 		setEditId(user.id);
 		setEditRole(user.role);
+		setEditEmail(user.email ?? "");
 		setEditPassword("");
 		setEditError("");
 	};
@@ -139,7 +151,7 @@ export function Users() {
 			<div className="bg-card rounded-lg border border-border p-6 mb-6">
 				<h2 className="text-lg font-semibold mb-4">Add User</h2>
 				<form onSubmit={handleCreate} className="flex flex-col gap-3">
-					<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+					<div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
 						<div>
 							<label htmlFor="new-username" className="block text-sm font-medium mb-1">
 								Username
@@ -152,6 +164,20 @@ export function Users() {
 								className="w-full px-3 py-2 border border-border rounded-md text-sm"
 								required
 								autoComplete="off"
+							/>
+						</div>
+						<div>
+							<label htmlFor="new-email" className="block text-sm font-medium mb-1">
+								Email
+							</label>
+							<input
+								id="new-email"
+								type="email"
+								value={newEmail}
+								onChange={(e) => setNewEmail(e.target.value)}
+								className="w-full px-3 py-2 border border-border rounded-md text-sm"
+								autoComplete="email"
+								placeholder="you@example.com"
 							/>
 						</div>
 						<div>
@@ -210,6 +236,7 @@ export function Users() {
 							<thead className="bg-muted/50 text-left">
 								<tr>
 									<th className="px-6 py-3 font-medium text-muted-foreground">Username</th>
+									<th className="px-6 py-3 font-medium text-muted-foreground">Email</th>
 									<th className="px-6 py-3 font-medium text-muted-foreground">Role</th>
 									<th className="px-6 py-3 font-medium text-muted-foreground hidden sm:table-cell">
 										Created
@@ -221,6 +248,20 @@ export function Users() {
 								{userList.map((user) => (
 									<tr key={user.id}>
 										<td className="px-6 py-3 font-medium">{user.username}</td>
+										<td className="px-6 py-3 whitespace-nowrap">
+											{editId === user.id ? (
+												<input
+													type="email"
+													value={editEmail}
+													onChange={(e) => setEditEmail(e.target.value)}
+													className="border border-border rounded-md px-2 py-1 text-xs w-56 max-w-full"
+													placeholder="you@example.com"
+													autoComplete="email"
+												/>
+											) : (
+												(user.email ?? <span className="text-muted-foreground/60">—</span>)
+											)}
+										</td>
 										<td className="px-6 py-3 whitespace-nowrap">
 											{editId === user.id ? (
 												<select
@@ -292,7 +333,7 @@ export function Users() {
 								))}
 								{userList.length === 0 && (
 									<tr>
-										<td colSpan={4} className="px-6 py-4 text-center text-muted-foreground/60">
+										<td colSpan={5} className="px-6 py-4 text-center text-muted-foreground/60">
 											No users yet
 										</td>
 									</tr>

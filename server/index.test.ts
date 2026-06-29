@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import request from "supertest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./lib/apps.js", () => ({
 	getApps: vi.fn(),
@@ -67,18 +67,18 @@ vi.mock("./lib/websocket.js", () => ({
 	setupLogStreaming: vi.fn(),
 }));
 
-import { getApps, getAppDetail, restartApp, rebuildApp, scaleApp } from "./lib/apps.js";
-import { authMiddleware, setAuthCookie, clearAuthCookie, login } from "./lib/auth.js";
+import { getAppDetail, getApps, rebuildApp, restartApp, scaleApp } from "./lib/apps.js";
+import { authMiddleware, clearAuthCookie, login, setAuthCookie } from "./lib/auth.js";
 import { getConfig, setConfig, unsetConfig } from "./lib/config.js";
 import {
-	getDatabases,
 	createDatabase,
 	destroyDatabase,
+	getDatabases,
 	linkDatabase,
 	unlinkDatabase,
 } from "./lib/databases.js";
 import { getRecentCommands } from "./lib/db.js";
-import { getDomains, addDomain, removeDomain } from "./lib/domains.js";
+import { addDomain, getDomains, removeDomain } from "./lib/domains.js";
 import { getPlugins } from "./lib/plugins.js";
 import { getServerHealth } from "./lib/server.js";
 import { enableSSL, getSSL, renewSSL } from "./lib/ssl.js";
@@ -368,7 +368,7 @@ describe("API Routes", () => {
 
 	describe("POST /api/auth/login", () => {
 		it("should return success on valid credentials", async () => {
-			const mockUser = { id: 1, username: "testuser", role: "admin" as const };
+			const mockUser = { id: 1, username: "testuser", role: "admin" as const, sessionVersion: 0 };
 			vi.mocked(login).mockResolvedValue(mockUser);
 
 			const response = await request(app)
