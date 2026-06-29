@@ -45,6 +45,11 @@ export function registerUserRoutes(app: express.Application): void {
 			return;
 		}
 
+		if (email !== undefined && email !== null && typeof email !== "string") {
+			res.status(400).json({ error: "Invalid email address" });
+			return;
+		}
+
 		const normalizedEmail =
 			typeof email === "string" && email.trim().length > 0 ? email.trim().toLowerCase() : null;
 		if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
@@ -93,6 +98,10 @@ export function registerUserRoutes(app: express.Application): void {
 		}
 
 		if (email !== undefined) {
+			if (email !== null && typeof email !== "string") {
+				res.status(400).json({ error: "Invalid email address" });
+				return;
+			}
 			const normalizedEmail =
 				typeof email === "string" && email.trim().length > 0 ? email.trim().toLowerCase() : null;
 			if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {

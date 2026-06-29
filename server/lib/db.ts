@@ -346,7 +346,7 @@ export function updateUserWithGuard(
 	updates: { role?: UserRole; passwordHash?: string; email?: string | null }
 ): { success: boolean; error?: string } {
 	const db = getDb();
-	const txn = db.transaction((_: null) => {
+	const txn = db.transaction((_: null): { success: boolean; error?: string } => {
 		const existing = db.prepare("SELECT role FROM users WHERE id = ?").get(id) as
 			| UserRoleRow
 			| undefined;
@@ -526,7 +526,7 @@ export function insertAuditLog(
 
 export interface BackupUser {
 	username: string;
-	email: string | null;
+	email?: string | null;
 	password_hash: string;
 	role: UserRole;
 	createdAt: string;
@@ -619,9 +619,13 @@ export function importBackup(backup: BackupData): {
 	const upsert = db.prepare(
 		"INSERT INTO users (username, email, password_hash, role, createdAt) VALUES (?, ?, ?, ?, ?) ON CONFLICT(username) DO UPDATE SET email = excluded.email, password_hash = excluded.password_hash, role = excluded.role, createdAt = excluded.createdAt"
 	);
+	const clearEmail = db.prepare("UPDATE users SET email = NULL WHERE username = ?");
 
 	try {
-		const transaction = db.transaction((users: BackupUser[]) => {
+		const transaction = db.transaction((users: BackupUser[]): void => {
+			for (const user of users) {
+				clearEmail.run(user.username);
+			}
 			for (const user of users) {
 				const normalizedEmail =
 					typeof user.email === "string" && user.email.trim().length > 0

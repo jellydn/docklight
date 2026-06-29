@@ -169,6 +169,7 @@ export function handleDbError(err: unknown, res: express.Response): void {
 			: "Username already exists";
 		res.status(409).json({ error: msg });
 	} else {
+		logger.error({ err }, "Database operation failed");
 		res.status(500).json({ error: "Internal server error" });
 	}
 }

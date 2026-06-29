@@ -218,7 +218,7 @@ just build
 | `DOCKLIGHT_COMMAND_WINDOW_MS`       | No                             | Command rate limit window in ms (default `60000` = 1 min)                                                     |
 | `DOCKLIGHT_COMMAND_MAX_REQUESTS`    | No                             | Max command executions per window per user (default `30`, dev: `1000`)                                        |
 | `DOCKLIGHT_ADMIN_MAX_REQUESTS`      | No                             | Max admin API requests per window (default `30`, dev: `1000`)                                                 |
-| `DOCKLIGHT_APP_URL`                 | No                             | App URL used to build password reset links (e.g. `https://docklight.example.com`)                             |
+| `DOCKLIGHT_APP_URL`                 | Yes (if reset email enabled)   | App URL used to build password reset links (e.g. `https://docklight.example.com`). Required when `RESEND_API_KEY` is configured. |
 | `RESEND_API_KEY`                    | No                             | API key for Resend email delivery service (required for password reset emails)                                |
 | `RESEND_FROM_EMAIL`                 | No                             | Sender email address for password reset emails (e.g. `Docklight <no-reply@yourdomain.com>`)                    |
 
