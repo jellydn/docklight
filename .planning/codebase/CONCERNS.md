@@ -4,12 +4,11 @@
 
 ## Security Considerations
 
-### 🚨 Command Allowlist Bypass Vulnerability (P0)
-- **File:** [allowlist.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/allowlist.ts#L5-L11)
-- **Risk:** Command injection bypass.
-- **Detail:** `isCommandAllowed` splits commands by `|` and validates that the base of each segment starts with an allowed command (e.g. `dokku`, `top`, `free`, `df`, `grep`, `awk`, `curl`). However, it does not check for other command chaining/separator operators like `;`, `&&`, `||`, backticks, or `$(...)`.
-- **Impact:** An operator or admin user with the ability to supply or trigger custom parameters to command execution endpoints could bypass the allowlist and execute arbitrary system shell commands (e.g., executing `dokku apps && rm -rf /` since the segment starts with `dokku`).
-- **Recommendation:** Implement a strict parser to reject any string containing shell metacharacters like `;`, `&`, `|`, `$`, `(`, `)`, `` ` `` except where explicitly sanitized or quoted. Better yet, avoid raw shell string execution and build command arguments as arrays.
+### ✅ Command Allowlist Bypass Vulnerability (P0) - [RESOLVED]
+- **File:** [allowlist.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/allowlist.ts)
+- **Status:** **Resolved** via structured `AppCommand` and automatic single-quote escaping.
+- **Detail:** Replaced raw shell string checks in `executeCommand` and `executeCommandStreaming` with internal parser normalization using `splitShellWords`, transforming string inputs to the safe structured `AppCommand` shape. Added automatic argument single-quoting via `shellQuote`, fully neutralizing all shell metacharacter separators (like `;`, `&&`, `||`, etc.).
+
 
 ### ⚠️ JWT Session Revocation / Validation Lag (P1)
 - **File:** [auth.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/auth.ts#L118-L134)
