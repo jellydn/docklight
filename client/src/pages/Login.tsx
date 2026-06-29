@@ -6,6 +6,7 @@ import { apiFetch } from "../lib/api.js";
 import { Button } from "@/components/ui/button";
 import { queryKeys } from "../lib/query-keys.js";
 import { AuthMeSchema } from "../lib/schemas.js";
+import { useToast } from "../components/ToastProvider";
 
 const FORGOT_PASSWORD_SCHEMA = z.object({
 	success: z.literal(true),
@@ -19,8 +20,7 @@ export function Login(): JSX.Element {
 	const [error, setError] = useState("");
 	const [mode, setMode] = useState<"login" | "forgot-password">("login");
 	const [resetEmail, setResetEmail] = useState("");
-	const [resetMessage, setResetMessage] = useState("");
-	const [resetError, setResetError] = useState("");
+	const { addToast } = useToast();
 	const navigate = useNavigate();
 
 	const { data: authData, isLoading } = useQuery({
@@ -57,22 +57,17 @@ export function Login(): JSX.Element {
 
 	const handleForgotPassword = async (e: FormEvent): Promise<void> => {
 		e.preventDefault();
-		setResetError("");
-		setResetMessage("");
 
 		try {
-			const result = await apiFetch("/auth/forgot-password", FORGOT_PASSWORD_SCHEMA, {
+			await apiFetch("/auth/forgot-password", FORGOT_PASSWORD_SCHEMA, {
 				method: "POST",
 				body: JSON.stringify({ email: resetEmail }),
 			});
-			if (result.resetUrl) {
-				setResetMessage(`Reset link: ${result.resetUrl}`);
-			} else {
-				setResetMessage("If the email exists, a reset link has been created.");
-			}
+			addToast("success", "If the email exists, a password reset link has been sent.");
+			setMode("login");
 		} catch (err: unknown) {
 			const error = err as { message?: string };
-			setResetError(error.message ?? "Failed to request reset");
+			addToast("error", error.message ?? "Failed to request reset");
 		}
 	};
 
@@ -134,8 +129,6 @@ export function Login(): JSX.Element {
 								onClick={() => {
 									setMode("forgot-password");
 									setError("");
-									setResetError("");
-									setResetMessage("");
 								}}
 								className="text-sm text-muted-foreground hover:text-foreground"
 							>
@@ -161,8 +154,6 @@ export function Login(): JSX.Element {
 									autoComplete="email"
 								/>
 							</div>
-							{resetError && <div className="text-destructive text-sm">{resetError}</div>}
-							{resetMessage && <div className="text-sm text-foreground">{resetMessage}</div>}
 							<Button type="submit" variant="secondary" className="w-full">
 								Send reset link
 							</Button>
@@ -173,8 +164,6 @@ export function Login(): JSX.Element {
 								onClick={() => {
 									setMode("login");
 									setError("");
-									setResetError("");
-									setResetMessage("");
 								}}
 								className="text-sm text-muted-foreground hover:text-foreground"
 							>

@@ -9,6 +9,15 @@ vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
 }));
 
+const mockToastContext = {
+	addToast: vi.fn(),
+	removeToast: vi.fn(),
+};
+
+vi.mock("../components/ToastProvider", () => ({
+	useToast: () => mockToastContext,
+}));
+
 const createTestQueryClient = () =>
 	new QueryClient({
 		defaultOptions: {
@@ -100,7 +109,10 @@ describe("Login", () => {
 					body: JSON.stringify({ email: "user@example.com" }),
 				})
 			);
-			expect(screen.getByText("Reset link: /reset-password?token=abc")).toBeInTheDocument();
+			expect(mockToastContext.addToast).toHaveBeenCalledWith(
+				"success",
+				expect.stringContaining("sent")
+			);
 		});
 	});
 
