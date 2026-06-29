@@ -1,14 +1,35 @@
 import { exec, spawn } from "child_process";
 import { promisify } from "util";
 import { NodeSSH } from "node-ssh";
-import { isCommandAllowed } from "./allowlist.js";
+import { isCommandAllowed, type AppCommand } from "./allowlist.js";
 import { saveCommand } from "./db.js";
 import { logger } from "./logger.js";
 import { commandRateLimiter } from "./rate-limiter.js";
 import { retryWithBackoff } from "./retry.js";
 import { getSettings } from "./server-config.js";
-import { shellQuote } from "./shell.js";
+import { shellQuote, splitShellWords } from "./shell.js";
 import { parseSshTarget } from "./ssh-target.js";
+
+export type { AppCommand };
+
+function normalizeCommand(command: string | AppCommand): {
+	appCommand: AppCommand;
+	rawCommand: string;
+} {
+	if (typeof command === "object" && command !== null) {
+		const rawCommand = [command.command, ...command.args.map(shellQuote)].join(" ");
+		return { appCommand: command, rawCommand };
+	}
+
+	const words = splitShellWords(command);
+	const base = (words[0] || "") as any;
+	const appCommand: AppCommand = {
+		command: base,
+		args: words.slice(1),
+	};
+	const rawCommand = [appCommand.command, ...appCommand.args.map(shellQuote)].join(" ");
+	return { appCommand, rawCommand };
+}
 
 const execAsync = promisify(exec);
 
@@ -314,16 +335,18 @@ async function executeViaPoolStreaming(
 }
 
 export async function executeCommandStreaming(
-	command: string,
+	command: string | AppCommand,
 	onProgress: ProgressCallback,
 	timeout: number = 30000,
 	options?: ExecuteCommandOptions
 ): Promise<CommandResult> {
+	const { appCommand, rawCommand } = normalizeCommand(command);
+
 	if (options?.userId) {
 		const rateLimitResult = commandRateLimiter.checkLimit(options.userId);
 		if (!rateLimitResult.allowed) {
 			return createErrorResult(
-				command,
+				rawCommand,
 				`Rate limit exceeded. Please try again after ${rateLimitResult.resetAt?.toISOString()}.`,
 				429,
 				options?.skipHistory
@@ -331,24 +354,24 @@ export async function executeCommandStreaming(
 		}
 	}
 
-	if (!isCommandAllowed(command)) {
+	if (!isCommandAllowed(appCommand)) {
 		return createErrorResult(
-			command,
-			`Command not allowed: ${command.split(" ")[0]}`,
+			rawCommand,
+			`Command not allowed: ${appCommand.command}`,
 			1,
 			options?.skipHistory
 		);
 	}
 
 	const sshTarget = getSshTarget();
-	if (sshTarget && command.startsWith("dokku ")) {
-		return executeViaPoolStreaming(command, sshTarget, timeout, onProgress, options);
+	if (sshTarget && appCommand.command === "dokku") {
+		return executeViaPoolStreaming(rawCommand, sshTarget, timeout, onProgress, options);
 	}
 
-	onProgress({ type: "progress", message: `Running ${command}...` });
+	onProgress({ type: "progress", message: `Running ${rawCommand}...` });
 
 	return new Promise((resolve) => {
-		const runtimeCommand = buildRuntimeCommand(command);
+		const runtimeCommand = buildRuntimeCommand(rawCommand);
 		const child = spawn("sh", ["-c", runtimeCommand]);
 
 		let stdout = "";
@@ -368,7 +391,7 @@ export async function executeCommandStreaming(
 			timeoutId = setTimeout(() => {
 				child.kill();
 				finish({
-					command,
+					command: rawCommand,
 					exitCode: 1,
 					stdout: stdout.trim(),
 					stderr: `Command timed out after ${timeout}ms`,
@@ -399,7 +422,7 @@ export async function executeCommandStreaming(
 		child.on("close", (code) => {
 			if (code === 255 && stdout.trim().length > 0 && isSshWarningOnly(stderr)) {
 				finish({
-					command,
+					command: rawCommand,
 					exitCode: 0,
 					stdout: stdout.trim(),
 					stderr: stderr.trim(),
@@ -407,7 +430,7 @@ export async function executeCommandStreaming(
 				return;
 			}
 			finish({
-				command,
+				command: rawCommand,
 				exitCode: code ?? 1,
 				stdout: stdout.trim(),
 				stderr: stderr.trim(),
@@ -416,7 +439,7 @@ export async function executeCommandStreaming(
 
 		child.on("error", (error: Error) => {
 			finish({
-				command,
+				command: rawCommand,
 				exitCode: 1,
 				stdout: stdout.trim(),
 				stderr: error.message,
@@ -426,15 +449,17 @@ export async function executeCommandStreaming(
 }
 
 export async function executeCommand(
-	command: string,
+	command: string | AppCommand,
 	timeout: number = 30000,
 	options?: ExecuteCommandOptions
 ): Promise<CommandResult> {
+	const { appCommand, rawCommand } = normalizeCommand(command);
+
 	if (options?.userId) {
 		const rateLimitResult = commandRateLimiter.checkLimit(options.userId);
 		if (!rateLimitResult.allowed) {
 			return createErrorResult(
-				command,
+				rawCommand,
 				`Rate limit exceeded. Please try again after ${rateLimitResult.resetAt?.toISOString()}.`,
 				429,
 				options?.skipHistory
@@ -442,25 +467,25 @@ export async function executeCommand(
 		}
 	}
 
-	if (!isCommandAllowed(command)) {
+	if (!isCommandAllowed(appCommand)) {
 		return createErrorResult(
-			command,
-			`Command not allowed: ${command.split(" ")[0]}`,
+			rawCommand,
+			`Command not allowed: ${appCommand.command}`,
 			1,
 			options?.skipHistory
 		);
 	}
 
 	const sshTarget = getSshTarget();
-	if (sshTarget && command.startsWith("dokku ")) {
-		return executeViaPool(command, sshTarget, timeout, options);
+	if (sshTarget && appCommand.command === "dokku") {
+		return executeViaPool(rawCommand, sshTarget, timeout, options);
 	}
 
 	try {
-		const runtimeCommand = buildRuntimeCommand(command);
+		const runtimeCommand = buildRuntimeCommand(rawCommand);
 		const { stdout, stderr } = await execAsync(runtimeCommand, { timeout });
 		const result = {
-			command,
+			command: rawCommand,
 			exitCode: 0,
 			stdout: stdout.trim(),
 			stderr: stderr.trim(),
@@ -483,7 +508,7 @@ export async function executeCommand(
 			isSshWarningOnly(stderr)
 		) {
 			const result = {
-				command,
+				command: rawCommand,
 				exitCode: 0,
 				stdout: err.stdout.trim(),
 				stderr: stderr.trim(),
@@ -492,7 +517,7 @@ export async function executeCommand(
 			return result;
 		}
 		const result = {
-			command,
+			command: rawCommand,
 			exitCode: err.code || 1,
 			stdout: err.stdout || "",
 			stderr,

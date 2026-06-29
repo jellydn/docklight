@@ -52,7 +52,7 @@ describe("server-maintenance", () => {
 				ok: true,
 				names: ["app-one", "app-two"],
 			});
-			vi.mocked(executeCommand).mockImplementation(async (command: string) => {
+			vi.mocked(executeCommand).mockImplementation(async (command: any) => {
 				if (command === "dokku repo:purge-cache 'app-one'") {
 					return {
 						command,
@@ -134,7 +134,7 @@ describe("server-maintenance", () => {
 				ok: true,
 				names: ["app-one", "app-two"],
 			});
-			vi.mocked(executeCommand).mockImplementation(async (command: string) => {
+			vi.mocked(executeCommand).mockImplementation(async (command: any) => {
 				if (command === "dokku repo:purge-cache 'app-two'") {
 					return {
 						command,

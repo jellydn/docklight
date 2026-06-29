@@ -1,177 +1,169 @@
-# Coding Conventions
+# Docklight Coding Conventions
 
-**Analysis Date:** 2026-03-11
-
-## Naming Patterns
-
-**Files:**
-
-- kebab-case: `app-buildpacks.ts`, `use-streaming-action.ts`
-- Test files: `<filename>.test.ts` or `<filename>.test.tsx`
-
-**Functions:**
-
-- camelCase: `getApps()`, `restartApp()`, `isValidAppName()`, `executeCommand()`
-- Declare async functions using the `async` keyword: `async function getApp(name: string)`
-
-**Variables:**
-
-- camelCase: `appName`, `exitCode`, `stdout`, `stderr`
-- Constants: SCREAMING_SNAKE_CASE: `ALLOWED_COMMANDS`, `IDLE_TIMEOUT_MS`
-
-**Types:**
-
-- PascalCase for interfaces/types: `App`, `AppDetail`, `CommandResult`
-- Descriptive names: `UserRole`, `JWTPayload`, `ChecksReport`
-- Use `type` for unions/primitives, `interface` for object shapes
-
-## Code Style
-
-**Formatting:**
-
-- Biome 2.4.4 (all-in-one linter and formatter)
-- Key settings:
-  - Indent style: Tabs
-  - Indent width: 2
-  - Line width: 100
-  - Quote style: Double quotes
-  - Trailing commas: ES5
-  - Semicolons: Always
-
-**Linting:**
-
-- Biome linter with recommended rules enabled
-- Specific overrides:
-  - `noExplicitAny`: off
-  - `noTemplateCurlyInString`: off
-  - `useImportType`: on
-  - `useParseIntRadix`: off
-
-**Commands:**
-
-- `just format` - Format all code
-- `just lint` - Lint all code
-- `just server-format` / `just client-format` - Format specific project
-
-## Import Organization
-
-**Order:**
-
-1. External dependencies (npm packages)
-2. Internal modules (relative imports with `./`)
-3. Type-only imports (using `import type`)
-
-**Path Aliases:**
-
-- Client: `@/` alias for `client/src/*` (configured in `client/tsconfig.json`)
-- Server: Relative imports with `.js` extension (even for `.ts` files)
-
-**Example:**
-
-```typescript
-// External dependencies
-import express from "express";
-import { cn } from "@/lib/utils"; // Client alias
-
-// Internal modules
-import { getData } from "./lib/db.js";
-
-// Type-only imports
-import type { Request, Response } from "express";
-import type { Data } from "./lib/types.js";
-```
-
-## Error Handling
-
-**Patterns:**
-
-- Return error objects instead of throwing: `{error: string, command?: string, exitCode?: number}`
-- Never throw for expected failures (command execution, parsing)
-- Validate early and return error responses
-- Type assertions for caught errors: `const err = error as {code?: number; message?: string}`
-
-**Example:**
-
-```typescript
-try {
-  const result = await execAsync(cmd, { timeout });
-  return {
-    command: cmd,
-    exitCode: 0,
-    stdout: result.stdout.trim(),
-    stderr: result.stderr.trim(),
-  };
-} catch (error: unknown) {
-  const err = error as { code?: number; message?: string };
-  return {
-    command: cmd,
-    exitCode: err.code || 1,
-    stdout: "",
-    stderr: err.message || "",
-  };
-}
-```
-
-## Logging
-
-**Framework:** Pino (server), client-side logger (client)
-
-**Patterns:**
-
-- Server: Use `logger` from `server/lib/logger.ts`
-- Log errors with context: `logger.error({err}, "Error message")`
-- Log with appropriate levels: `fatal`, `error`, `warn`, `info`, `debug`, `trace`
-
-## Comments
-
-**When to Comment:**
-
-- Minimal comments - prefer self-documenting code
-- JSDoc only for public APIs and complex functions
-- No comments for obvious code
-
-**JSDoc/TSDoc:**
-
-- Used sparingly in `server/lib/auth.ts`, `server/lib/checks.ts`
-- Focus on parameter types and return values
-
-## Function Design
-
-**Size:** Keep functions focused and under 50 lines when possible
-
-**Parameters:**
-
-- Use objects for multiple related parameters: `{userId, timeout, skipHistory}`
-- Destructure parameters in function signature
-
-**Return Values:**
-
-- Consistent return types (success or error objects)
-- Explicit return types for public functions
-
-**Example:**
-
-```typescript
-async function executeCommand(
-  command: string,
-  timeout: number = 30000,
-  options?: ExecuteCommandOptions,
-): Promise<CommandResult>;
-```
-
-## Module Design
-
-**Exports:**
-
-- Named exports for functions: `export function getApps()`
-- Type exports: `export type { App, AppDetail }`
-- Barrel files: `server/routes/index.ts` exports all route registers
-
-**Barrel Files:**
-
-- `server/routes/index.ts`: Consolidates all route registration functions
-- `client/src/pages/AppDetail/index.tsx`: Exports app detail component
+This document outlines the coding standards, naming conventions, architectural patterns, and error-handling rules enforced across the Docklight codebase.
 
 ---
 
-_Convention analysis: 2026-03-11_
+## 1. Code Style & Formatting
+
+### Biome Configuration
+Docklight uses **Biome (v2.4.4)** as an all-in-one formatter and linter for both frontend (`client/`) and backend (`server/`). Do not use ESLint or Prettier.
+
+Key configuration rules (defined in `biome.json` files):
+*   **Indentation:** Always use **Tabs** (not spaces) for indentation.
+*   **Indent Width:** Set to `2` (interpreted as 2 spaces equivalent).
+*   **Line Width:** Maximum line length is **100 characters**.
+*   **Quotes:** Always use **Double Quotes** (`"`) for strings in JavaScript and TypeScript.
+*   **Trailing Commas:** Enforce ES5 trailing commas.
+*   **Semicolons:** Semicolons are **Always** required at the end of statements.
+
+### Lint Rules Overrides
+*   `noExplicitAny`: **Off** (use with care; explicit types are preferred, but `any` is allowed where generic constraints are impractical).
+*   `useImportType`: **On** (forces type-only imports using `import type`).
+*   `noNonNullAssertion`: **Off** in client (allows TS non-null assertion operator `!`).
+*   `useExhaustiveDependencies`: **Off** in client (React hooks dependency checks are not strictly enforced).
+*   `useButtonType`: **Off** in client.
+*   `useNodejsImportProtocol`: **Off** in server (e.g. allowing `import path from "path"` rather than `import path from "node:path"`).
+
+---
+
+## 2. Naming Conventions
+
+| Identifier Type | Case Convention | Examples |
+| :--- | :--- | :--- |
+| **Files** | `kebab-case` | `command-executor.ts`, `use-native-dialog.ts` |
+| **Test Files** | `<name>.test.ts[x]` or `<name>.spec.ts` | `executor.test.ts`, `apps.spec.ts` (E2E) |
+| **Functions** | `camelCase` | `getApps()`, `executeCommand()`, `isCommandAllowed()` |
+| **Variables** | `camelCase` | `appName`, `exitCode`, `stdout`, `stderr` |
+| **Constants** | `SCREAMING_SNAKE_CASE` | `MAX_RETRIES`, `JWT_SECRET`, `ALLOWED_COMMANDS` |
+| **Classes** | `PascalCase` | `SSHPool`, `MockWebSocket` |
+| **Interfaces / Types** | `PascalCase` | `JWTPayload`, `CommandResult`, `UserRole` |
+
+---
+
+## 3. TypeScript Patterns
+
+### Type Declarations
+*   Always define explicit return types for public-facing functions and API controllers.
+*   Use `interface` for object shapes and structures that may need extension.
+*   Use `type` for union types, primitives, and mapped types.
+*   Prefer self-documenting code. Do not add comments unless specifically asked or if explaining complex workarounds.
+
+### ES Modules & Relative Imports
+*   Relative imports in TypeScript **must include the `.js` extension** (e.g., `import { getApps } from "./lib/apps.js"`), even when importing `.ts` files.
+*   Group imports in the following sequence:
+    1.  External libraries / npm packages
+    2.  Workspace / internal modules (using `@/` for client or relative `./` / `../`)
+    3.  Type-only imports using `import type`
+*   **Path Aliases:** The client uses `@/` to refer to `client/src/*` (e.g., `import { cn } from "@/lib/utils";`).
+
+---
+
+## 4. React & Frontend Conventions
+
+### Component Structure
+*   Implement components exclusively as functional components using React Hooks.
+*   Prefer modern React 19 patterns. For example, retrieve context using `use(Context)` instead of `useContext(Context)`:
+    ```typescript
+    import { use } from "react";
+    import { AuthContext } from "./auth-context.js";
+
+    const auth = use(AuthContext);
+    ```
+
+### Styles and Design System
+*   **Tailwind CSS 4:** Styling is done using Tailwind 4 alongside postcss.
+*   **Aesthetics:** All user interfaces must look high-end, dynamic, and polished. Avoid default/generic colors. Use themed CSS design tokens (`--background`, `--foreground`, `--destructive`, `--success`, `--warning`, etc.) rather than hardcoded classes.
+    *   **Do:** Use `bg-card` instead of `bg-white`.
+    *   **Do:** Use `text-muted-foreground` instead of `text-gray-500`.
+    *   **Do:** Use `hover:bg-accent` instead of `hover:bg-gray-100`.
+*   **Class Merging:** Always use the `cn()` helper (which combines `clsx` and `tailwind-merge`) when merging Tailwind classes dynamically:
+    ```typescript
+    import { cn } from "@/lib/utils";
+
+    export function MyButton({ className, ...props }) {
+      return <button className={cn("bg-primary text-on-primary", className)} {...props} />;
+    }
+    ```
+*   **Component Variants:** Use `class-variance-authority` (cva) for styling complex multi-variant components.
+*   **Accessibility (a11y):** Prefer Radix UI primitives or semantic HTML5 tags. Focus states, keyboard navigation, and button styles must be fully operational.
+
+### API Validation
+*   Validate all API responses on the client side using **Zod** schemas.
+*   Infer static types from Zod schemas:
+    ```typescript
+    import { z } from "zod";
+
+    export const AppSchema = z.object({
+      name: z.string(),
+      status: z.enum(["running", "stopped"]),
+    });
+
+    export type App = z.infer<typeof AppSchema>;
+    ```
+
+---
+
+## 5. Backend (Express + SQLite) Architecture
+
+### Database Integration
+*   Use `better-sqlite3` as the database engine.
+*   Always use prepared statements (`db.prepare(...)`) for queries and mutations. Avoid SQL injection vulnerabilities.
+*   Configure the database with highly performant settings:
+    ```typescript
+    newDb.pragma("journal_mode = WAL");
+    newDb.pragma("synchronous = NORMAL");
+    newDb.pragma("foreign_keys = ON");
+    ```
+*   Define migrations defensively using `CREATE TABLE IF NOT EXISTS` and check for missing columns using `PRAGMA table_info`.
+
+### Middleware and JWT
+*   Fail closed: if `process.env.JWT_SECRET` is not set and the application is not in development/test, throw an error and refuse to start.
+*   Augment the `Express.Request` interface to store authentication credentials:
+    ```typescript
+    declare global {
+      namespace Express {
+        interface Request {
+          user?: JWTPayload;
+        }
+      }
+    }
+    ```
+
+### Logging
+*   Use `pino` (via `server/lib/logger.ts`) for server logs.
+*   Log errors with the error object passed as context:
+    ```typescript
+    logger.error({ err }, "Failed to execute restart command");
+    ```
+
+---
+
+## 6. Error Handling & Command Execution
+
+### Command Return Format
+*   Never throw exceptions for expected shell/SSH command failures.
+*   Always return a unified `CommandResult` object:
+    ```typescript
+    export interface CommandResult {
+      command: string;
+      exitCode: number;
+      stdout: string;
+      stderr: string;
+    }
+    ```
+*   Assert caught errors and parse exit codes/messages safely:
+    ```typescript
+    try {
+      const result = await execAsync(cmd, { timeout });
+      return { command: cmd, exitCode: 0, stdout: result.stdout, stderr: result.stderr };
+    } catch (error: unknown) {
+      const err = error as { code?: number; message?: string };
+      return { command: cmd, exitCode: err.code || 1, stdout: "", stderr: err.message || "" };
+    }
+    ```
+
+### Command Execution Security
+*   Exclusively execute shell commands defined in the allowlist (`server/lib/allowlist.ts`):
+    *   Allowed base commands: `dokku`, `top`, `free`, `df`, `grep`, `awk`, `curl`.
+    *   Validate multi-stage commands separated by pipes (`|`) by validating each part of the pipeline.

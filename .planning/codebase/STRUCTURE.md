@@ -1,176 +1,98 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-03-11
+**Analysis Date:** 2026-06-29
 
 ## Directory Layout
 
 ```
 [project-root]/
-├── server/           # Backend: Express + TypeScript
-│   ├── lib/          # Core business logic
-│   ├── routes/       # API route handlers
-│   ├── data/         # SQLite database files
-│   └── index.ts      # Server entry point
-├── client/           # Frontend: React + Vite
-│   └── src/
-│       ├── components/  # Reusable UI components
-│       ├── contexts/    # React contexts (auth)
-│       ├── hooks/       # Custom React hooks
-│       ├── lib/         # Client utilities
-│       ├── pages/       # Page components
-│       └── main.tsx     # Client entry point
-├── docs/             # Documentation
-├── .github/          # GitHub workflows
-├── justfile          # Task runner commands
-└── biome.json        # Shared linting/formatting config
+├── server/                 # Express backend in TypeScript
+│   ├── data/               # Persistent SQLite database (local dev / gitignored)
+│   ├── lib/                # Core controllers, SSH execution, helpers, test utils
+│   │   └── test-data/      # Raw output mock strings for unit test cases
+│   ├── routes/             # Express API endpoints & middlewares
+│   ├── createUser.ts       # CLI user creator script
+│   ├── index.ts            # Main application entry point
+│   ├── tsconfig.json       # TypeScript configuration
+│   └── package.json        # Node dependency map (Bun-ready)
+├── client/                 # React SPA frontend in TypeScript
+│   ├── e2e/                # Playwright E2E automation test suite
+│   ├── public/             # Static public assets (icons, images)
+│   ├── src/                # Frontend application code
+│   │   ├── assets/         # App-specific css or static image imports
+│   │   ├── components/     # Shareable components (layout, dialogs, custom hooks)
+│   │   │   └── ui/         # Shadcn-like primitive wrappers (Radix UI)
+│   │   ├── contexts/       # React Context provider definitions (auth context)
+│   │   ├── hooks/          # Domain-agnostic custom React Hooks
+│   │   ├── lib/            # Types, constants, api handlers, validation schemas
+│   │   ├── pages/          # Route page containers
+│   │   │   └── AppDetail/  # Sub-pages and tabs for app configurations
+│   │   ├── test/           # React component unit test boilerplate
+│   │   ├── App.tsx         # Route router declarations
+│   │   ├── index.css       # Core design utility rules & custom variables
+│   │   └── main.tsx        # React mounting entry point
+│   ├── vite.config.ts      # Vite dev / build configuration
+│   └── package.json        # Frontend dependency manifest
+├── docs/                   # Markdown developer documentation guides
+├── justfile                # Just task runner definitions
+├── biome.json              # Main lint/formatting options (Biome)
+└── package.json            # Root configuration referencing workspaces
 ```
-
-## Directory Purposes
-
-**server/lib:**
-
-- Purpose: Core business logic, Dokku interactions, database access
-- Contains: Apps, databases, auth, SSH execution, WebSocket, caching
-- Key files: `apps.ts`, `databases.ts`, `executor.ts`, `auth.ts`, `db.ts`
-
-**server/routes:**
-
-- Purpose: HTTP API endpoint handlers
-- Contains: Route registration, request/response handling
-- Key files: `apps.ts`, `commands.ts`, `auth.ts`, `settings.ts`
-
-**server/data:**
-
-- Purpose: SQLite database storage
-- Contains: `docklight.db` (created on first run)
-- Generated: Yes (not committed to git)
-
-**client/src/components:**
-
-- Purpose: Reusable UI components
-- Contains: `ui/` (Radix UI primitives), `AppLayout.tsx`, `CreateAppDialog.tsx`
-- Key files: `AppLayout.tsx`, `RequireAdmin.tsx`, `CommandResult.tsx`
-
-**client/src/pages:**
-
-- Purpose: Page-level components (routes)
-- Contains: `AppDetail/` (subdirectory for app tabs), `Apps.tsx`, `Dashboard.tsx`
-- Key files: `Login.tsx`, `Dashboard.tsx`, `Apps.tsx`, `AppDetail/index.tsx`
-
-**client/src/lib:**
-
-- Purpose: Client-side utilities
-- Contains: API client, schemas, query keys, logging
-- Key files: `api.ts`, `schemas.ts`, `query-keys.ts`
-
-**client/src/hooks:**
-
-- Purpose: Custom React hooks
-- Contains: `use-streaming-action.ts`, `use-audit-log.ts`
-
-**client/src/contexts:**
-
-- Purpose: React contexts for global state
-- Contains: `auth-context.tsx`
-
-## Key File Locations
-
-**Entry Points:**
-
-- `server/index.ts`: Express server setup, route registration
-- `client/src/main.tsx`: React app mounting
-
-**Configuration:**
-
-- `server/.env.example`: Environment variable template
-- `server/biome.json`: Biome config (linting/formatting)
-- `client/biome.json`: Biome config (linting/formatting)
-- `justfile`: Task runner commands
-
-**Core Logic:**
-
-- `server/lib/executor.ts`: SSH and local shell command execution
-- `server/lib/apps.ts`: App management (list, restart, rebuild, scale)
-- `server/lib/databases.ts`: Database plugin management
-- `server/lib/auth.ts`: JWT authentication and password hashing
-- `server/lib/db.ts`: SQLite database operations
-- `server/lib/dokku.ts`: Dokku command builder
-
-**Testing:**
-
-- `server/index.test.ts`: Server entry point tests
-- `client/src/pages/*.test.tsx`: Component tests
-- `client/src/pages/AppDetail/*.test.tsx`: App detail tab tests
-
-## Naming Conventions
-
-**Files:**
-
-- kebab-case for files: `app-buildpacks.ts`, `docker-options.ts`
-- Test files: `<filename>.test.ts` or `<filename>.test.tsx`
-- Route files: `app-*.ts` prefix for app-specific routes
-
-**Directories:**
-
-- kebab-case: `app-buildpacks`, `docker-options`
-
-**Functions:**
-
-- camelCase: `getApps()`, `restartApp()`, `isValidAppName()`
-- Route handlers: `register*Routes()`: `registerAppRoutes()`
-
-**Types:**
-
-- PascalCase for interfaces/types: `App`, `AppDetail`, `CommandResult`
-- Descriptive names: `UserRole`, `JWTPayload`, `ChecksReport`
-
-**Constants:**
-
-- SCREAMING_SNAKE_CASE: `ALLOWED_COMMANDS`, `JWT_SECRET`, `MAX_RETRIES`
-
-## Where to Add New Code
-
-**New Feature:**
-
-- Primary code: `server/lib/<feature>.ts`
-- Routes: `server/routes/<feature>.ts` (if API needed)
-- Tests: `server/lib/<feature>.test.ts`
-
-**New Component/Module:**
-
-- Implementation: `client/src/components/<ComponentName>.tsx`
-- Tests: `client/src/components/<ComponentName>.test.tsx`
-
-**New App Detail Tab:**
-
-- Implementation: `client/src/pages/AppDetail/App<Feature>.tsx`
-- Tests: `client/src/pages/AppDetail/App<Feature>.test.tsx`
-
-**Utilities:**
-
-- Shared helpers: `client/src/lib/utils.ts` (frontend)
-- Shared helpers: `server/lib/util.ts` (backend)
-
-## Special Directories
-
-**server/data:**
-
-- Purpose: SQLite database files
-- Generated: Yes
-- Committed: No (in .gitignore)
-
-**client/dist:**
-
-- Purpose: Built client assets
-- Generated: Yes
-- Committed: No (in .gitignore)
-
-**server/dist:**
-
-- Purpose: Compiled server JavaScript
-- Generated: Yes
-- Committed: No (in .gitignore)
 
 ---
 
-_Structure analysis: 2026-03-11_
+## Directory Purposes
+
+### Server Directories
+
+*   **[server/lib/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/)**: Core server capabilities. Houses the connection pool logic, parsing of SSH/stdout logs, SQLite setup, and rate limiters.
+*   **[server/routes/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/routes/)**: Exposes web-facing REST handlers. Implements route configurations like `/api/apps`, `/api/databases`, `/api/settings`, etc.
+*   **[server/data/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/data/)**: Holds the SQLite database file (`docklight.db`). This folder and database are generated automatically upon starting the server.
+
+### Client Directories
+
+*   **[client/src/components/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/components/)**: Reusable controls and building blocks. The [ui/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/components/ui/) sub-folder contains generic headless components (radix primitives, buttons, dropdowns, inputs).
+*   **[client/src/pages/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/pages/)**: Container views mapped to React routes. The [AppDetail/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/pages/AppDetail/) subdirectory is particularly important, hosting individual tabs for app setup (SSL, Ports, Docker options, Git, Domains, Buildpacks).
+*   **[client/src/lib/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/lib/)**: Schema models (Zod definitions in `schemas.ts`), constants, fetch calls in `api.ts`, and caching keys (`query-keys.ts`).
+
+---
+
+## Naming Conventions
+
+### File & Folder Naming
+*   **Source Files:** Use kebab-case for all files and directories (e.g. `docker-options.ts`, `app-events.ts`).
+*   **Test Files:** Place tests side-by-side with source code using `.test.ts` (for business logic) or `.test.tsx` (for components/pages) suffixes.
+*   **Route Controller Prefixes:** App-specific controllers are prefixed with `app-` (e.g., `app-ports.ts`, `app-proxy.ts`).
+
+### Code Symbol Naming
+*   **Functions:** Use camelCase starting with verbs (e.g. `getApps()`, `verifyPassword()`, `broadcastAppEvent()`).
+*   **Route Registrars:** Functions configuring route collections follow the `register*Routes` pattern (e.g. `registerAppRoutes()`).
+*   **Classes & Interfaces:** Use PascalCase (e.g. `SSHPool`, `CommandResult`, `JWTPayload`).
+*   **Constants:** SCREAMING_SNAKE_CASE (e.g. `ALLOWED_COMMANDS`, `DEFAULT_JWT_SECRET`, `MAX_CONNECTIONS`).
+
+---
+
+## Where to Add New Code
+
+### 1. Adding a New API Endpoint / Backend Feature
+1.  Add logic or shell execution to [server/lib/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/).
+2.  Define the routes controller in [server/routes/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/routes/).
+3.  Register the routes in [server/routes/index.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/routes/index.ts) and call it in [server/index.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/index.ts).
+4.  Implement tests in `server/lib/<feature>.test.ts`.
+
+### 2. Adding a New React Page or Route
+1.  Create the page component in [client/src/pages/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/pages/) using PascalCase filename.
+2.  Import/lazy-load the page in [client/src/App.tsx](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/App.tsx) and mount the `<Route>` element.
+3.  Implement corresponding queries/mutations using TanStack React Query inside hooks or inline.
+
+### 3. Adding a New App Configuration Tab
+1.  Create your sub-pane inside [client/src/pages/AppDetail/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/pages/AppDetail/) (e.g., `AppSSL.tsx`).
+2.  Update the tab listings and render triggers in the main list in [client/src/pages/AppDetail/index.tsx](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/pages/AppDetail/index.tsx).
+
+---
+
+## Output / Dev Artifacts (Ignored by Git)
+
+*   **client/dist/**: Compiled client production-ready assets (generated via `bun run build`).
+*   **server/dist/**: Compiled backend server javascript files.
+*   **server/data/docklight.db**: Persistent local developer SQLite database.

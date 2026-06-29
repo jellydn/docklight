@@ -1,177 +1,93 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-03-11
-
-## Tech Debt
-
-**ANSI Code Parsing:** ✅ Resolved
-
-- Was: Manual ANSI escape code parsing in `server/lib/ansi.ts`
-- Fix: Replaced with `strip-ansi` library plus stray ESC cleanup
-- Files: `server/lib/ansi.ts`, `server/lib/apps.ts` (usage)
-
-**CLI Output Parsing:**
-
-- Issue: Heavy reliance on parsing Dokku CLI output throughout codebase
-- Files: `server/lib/apps.ts`, `server/lib/databases.ts`, `server/lib/*.ts`
-- Impact: Breaking if Dokku changes output format
-- Fix approach: Add more robust parsing with fallbacks, test with various Dokku versions
-
-## Known Bugs
-
-**None documented**
+**Analysis Date:** 2026-06-29
 
 ## Security Considerations
 
-**SSH Key Storage:**
+### 🚨 Command Allowlist Bypass Vulnerability (P0)
+- **File:** [allowlist.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/allowlist.ts#L5-L11)
+- **Risk:** Command injection bypass.
+- **Detail:** `isCommandAllowed` splits commands by `|` and validates that the base of each segment starts with an allowed command (e.g. `dokku`, `top`, `free`, `df`, `grep`, `awk`, `curl`). However, it does not check for other command chaining/separator operators like `;`, `&&`, `||`, backticks, or `$(...)`.
+- **Impact:** An operator or admin user with the ability to supply or trigger custom parameters to command execution endpoints could bypass the allowlist and execute arbitrary system shell commands (e.g., executing `dokku apps && rm -rf /` since the segment starts with `dokku`).
+- **Recommendation:** Implement a strict parser to reject any string containing shell metacharacters like `;`, `&`, `|`, `$`, `(`, `)`, `` ` `` except where explicitly sanitized or quoted. Better yet, avoid raw shell string execution and build command arguments as arrays.
 
-- Risk: SSH keys stored in environment variables or files
-- Files: `server/lib/executor.ts`
-- Current mitigation: Uses SSH key path from env, not the key itself
-- Recommendations: Ensure SSH key files have proper permissions (600)
+### ⚠️ JWT Session Revocation / Validation Lag (P1)
+- **File:** [auth.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/auth.ts#L118-L134)
+- **Risk:** Unauthorized access by deleted or demoted users.
+- **Detail:** The authentication middleware (`authMiddleware`) validates incoming sessions state-lessly using `jwt.verify(token, JWT_SECRET)`. It does not query the database to verify if the user record still exists, if the user's role has changed, or if their password has been reset.
+- **Impact:** When a user is deleted, demoted, or reset, their active JWT session token remains fully valid for up to 24 hours, granting them full API access under their previous permissions during that window.
+- **Recommendation:** Implement a lightweight cache or fast database check in `authMiddleware` to confirm user existence, role matches, and token/password validity (e.g., storing a `tokenVersion` or `passwordChangeTimestamp` in the JWT and comparing it to the database/cache).
 
-**Command Execution:**
-
-- Risk: Shell command execution is inherently dangerous
-- Files: `server/lib/executor.ts`, `server/lib/allowlist.ts`
-- Current mitigation: Command allowlist, rate limiting, authentication
-- Recommendations: Regular security audits, monitor command execution logs
-
-**JWT Secret:**
-
-- Risk: Weak JWT secret can lead to session hijacking
-- Files: `server/lib/auth.ts`
-- Current mitigation: Fails fast in production if JWT_SECRET not set
-- Recommendations: Use strong random secrets, rotate periodically
-
-**Rate Limiting:**
-
-- Risk: DoS attacks on expensive operations
-- Files: `server/lib/rate-limiter.ts`
-- Current mitigation: Per-user rate limiting on auth, commands, admin actions
-- Recommendations: Monitor for abuse, adjust limits based on usage
-
-## Performance Bottlenecks
-
-**SSH Connection Pool:**
-
-- Problem: SSH connections can be slow to establish
-- Files: `server/lib/executor.ts` (SSHPool class)
-- Cause: Network latency, SSH handshake overhead
-- Improvement path: Connection pooling already implemented, consider increasing pool size
-
-**Dokku Command Execution:**
-
-- Problem: Each command is a synchronous shell operation
-- Files: `server/lib/executor.ts`, `server/lib/dokku.ts`
-- Cause: Dokku CLI is inherently sequential
-- Improvement path: Cache results where possible, use parallel execution for independent commands
-
-**App List on Dashboard:**
-
-- Problem: Fetching all apps requires multiple Dokku commands
-- Files: `server/lib/apps.ts` (getApps function)
-- Cause: Each app needs separate ps:report, domains:report, git:report
-- Improvement path: Consider caching app list, incremental updates
-
-## Fragile Areas
-
-**CLI Output Parsing:**
-
-- Files: `server/lib/apps.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`
-- Why fragile: Depends on Dokku's text output format
-- Safe modification: Add more test fixtures from different Dokku versions
-- Test coverage: Good coverage of parsing functions (apps.test.ts, ssl.parsing.test.ts)
-
-**ANSI Parsing:** ✅ Resolved
-
-- Files: `server/lib/ansi.ts`
-- Now uses `strip-ansi` library with stray ESC cleanup
-- Test coverage: Has tests (ansi.test.ts)
-
-**WebSocket Reconnection:**
-
-- Files: `server/lib/websocket.ts`, `client/src/hooks/use-streaming-action.ts`
-- Why fragile: Network issues, SSH timeouts
-- Safe modification: Add reconnection logic, heartbeat messages
-- Test coverage: Limited (websocket.test.ts exists)
-
-## Scaling Limits
-
-**Single Server:**
-
-- Current capacity: Designed for single-node Dokku deployments
-- Limit: Cannot manage multiple Dokku servers
-- Scaling path: Would need major refactor to support multi-server
-
-**SQLite Database:**
-
-- Current capacity: Suitable for single-server deployment
-- Limit: Not suitable for horizontal scaling
-- Scaling path: Migrate to PostgreSQL/MySQL if needed
-
-**In-Memory Cache:**
-
-- Current capacity: Simple in-memory cache
-- Limit: Lost on restart, no sharing across processes
-- Scaling path: Consider Redis for distributed caching
-
-## Dependencies at Risk
-
-**node-ssh:**
-
-- Risk: Maintainer may stop updating, has native dependencies
-- Impact: SSH execution would break
-- Migration plan: Consider using native SSH client or alternative library
-
-**better-sqlite3:**
-
-- Risk: Native module, requires compilation
-- Impact: Database operations would fail
-- Migration plan: Could switch to sql.js (WASM) or other SQLite bindings
-
-## Missing Critical Features
-
-**No Multi-Server Support:**
-
-- Problem: Can only manage one Dokku server
-- Blocks: Managing multiple servers from one UI
-
-**No Real-Time Updates:**
-
-- Problem: UI requires manual refresh for app status changes
-- Blocks: Live dashboards, automatic status updates
-- Possible solution: WebSocket-based push notifications
-
-**No Backup/Restore:**
-
-- Problem: No built-in backup functionality
-- Blocks: Disaster recovery, data portability
-- Possible solution: Add backup endpoints for database and config export
-
-## Test Coverage Gaps
-
-**WebSocket Testing:**
-
-- What's not tested: Full WebSocket lifecycle, reconnection scenarios
-- Files: `server/lib/websocket.ts`, `client/src/hooks/use-streaming-action.ts`
-- Risk: Connection issues may not be caught in tests
-- Priority: Medium
-
-**E2E Testing:**
-
-- What's not tested: Full user workflows across multiple pages
-- Files: `client/playwright.config.ts` exists but test coverage unknown
-- Risk: Integration issues between components
-- Priority: Low (unit tests are good)
-
-**Error Paths:**
-
-- What's not tested: Some error scenarios in API routes
-- Files: `server/routes/*.ts`
-- Risk: Unhandled errors may return unexpected responses
-- Priority: Low (error handling is generally good)
+### ⚠️ Lack of Password Strength Policy (P2)
+- **Files:**
+  - [ResetPassword.tsx](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/pages/ResetPassword.tsx#L19-L48)
+  - [users.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/routes/users.ts#L30-L71)
+  - [auth.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/routes/auth.ts#L78-L99)
+- **Risk:** Brute-force and credential stuffing vulnerability.
+- **Detail:** The user registration, password updates, and password reset flows do not enforce any password length or complexity rules. It accepts arbitrary strings (excluding simple empty or non-string checks).
+- **Recommendation:** Implement password strength rules (e.g., minimum 8 characters, requiring mixed case/digits/special characters) on both client-side forms and server-side routes.
 
 ---
 
-_Concerns audit: 2026-03-11_
+## Tech Debt & Code Quality
+
+### 🧱 Ad-Hoc SQLite Schema Migrations
+- **File:** [db.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/db.ts#L71-L77)
+- **Detail:** Database schema updates (such as adding the `email` column to the `users` table) are currently executed imperatively at runtime during database initialization via column introspection (`PRAGMA table_info`).
+- **Impact:** As the application scales and more tables/columns are added, this introspection pattern becomes difficult to maintain, fragile, and harder to roll back.
+- **Recommendation:** Integrate a structured migration library (e.g., using `better-sqlite3` compatible migration frameworks) or implement a simple file-based migration runner with a dedicated `schema_migrations` tracking table.
+
+### 🧱 Silent Email Service Failures in Production
+- **Files:**
+  - [auth.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/routes/auth.ts#L63-L75)
+  - [email.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/email.ts#L17-L30)
+- **Detail:** If `RESEND_API_KEY` or `RESEND_FROM_EMAIL` is not set in production, the `/api/auth/forgot-password` endpoint fails silently by design (to prevent username enumeration attacks) but logs only a server-side warning. The requesting user sees a success toast but never receives an email, and there is no visible alert in the UI that the system's email sender service is unconfigured.
+- **Recommendation:** Add a startup-level check or self-test query for email credentials, or expose a warning status on the admin Settings page to alert administrators if email services are not configured.
+
+### 🧱 Biome Schema Version Mismatch
+- **File:** `client/biome.json`
+- **Detail:** The configuration schema URL specifies version `2.4.4`, but the installed Biome CLI version is `2.4.5`, causing Biome configuration warnings.
+- **Recommendation:** Update the schema URL to point to `2.4.5` or execute `biome migrate` in the client directory.
+
+---
+
+## Performance Bottlenecks
+
+### ⚡ Synchronous CLI Command Execution
+- **File:** [executor.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/executor.ts#L428-L503)
+- **Detail:** Each non-streaming Dokku call is run via `execAsync` (or node-ssh `execCommand`), blocking node execution or SSH channel resources until completion.
+- **Impact:** While SSH connection pooling (`SSHPool`) is implemented, concurrency is limited. Multiple sequential requests (e.g., rendering the Dashboard for many active users) will incur latency overhead.
+- **Recommendation:** Introduce caching for expensive read-only reports, or queue command execution where possible.
+
+### ⚡ SQLite Single-Node Limitation
+- **File:** [db.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/db.ts#L24-L42)
+- **Detail:** Storing all application metadata (users, password reset tokens, command histories, audit logs) in a single SQLite file restricts Docklight to single-node server setups.
+- **Recommendation:** Acceptable for a lightweight self-hosted utility, but document as a scaling constraint if multi-node High Availability (HA) Dokku managers are ever desired.
+
+---
+
+## Fragile Areas
+
+### 🧩 CLI Output Parsing
+- **Files:**
+  - [apps.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/apps.ts)
+  - [databases.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/databases.ts)
+  - [ssl.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/ssl.ts)
+- **Risk:** High fragility depending on Dokku's version-specific stdout format.
+- **Detail:** The status, virtual host configurations, processes, and database links are parsed from console text output using regex patterns. Any slight variations in stdout headers or layouts between different Dokku minor versions could cause parsing errors.
+- **Recommendation:** Build mock command fixtures from various Dokku versions to verify parsing integrity in tests, and implement fallback strategies for unknown outputs.
+
+### 🧩 Admin Self-Deletion
+- **File:** [users.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/routes/users.ts#L160-L176)
+- **Detail:** While the backend checks that the *last* admin cannot be demoted or deleted, an admin user can still delete their own user account if other admin users exist.
+- **Impact:** An administrator could accidentally delete themselves, resulting in their active session being invalidated on token expiration and blocking their access.
+- **Recommendation:** Implement a specific backend check to disallow users from deleting their own accounts (returning `400 Bad Request` with message "Cannot delete your own user account"), prompting them to have another admin perform the deletion.
+
+### 🧩 Lack of Client-Side WebSocket Heartbeat
+- **File:** [use-app-events.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/hooks/use-app-events.ts#L55-L66)
+- **Detail:** The client listens to `/api/events/stream` and reconnects on socket close. The server implements ping-pong, but if a network segment silently drops without closing the socket (e.g. firewall state expiry, silent Wi-Fi drop), the client may sit in a stale state for a long time.
+- **Recommendation:** Implement a periodic ping or activity check in the client hook, forcing a socket teardown and reconnect if no packets (or ping messages) are received within a reasonable threshold (e.g. 60-90 seconds).
+
+---
+
+_Concerns audit updated: 2026-06-29_

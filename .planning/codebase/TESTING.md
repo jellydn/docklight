@@ -1,219 +1,183 @@
-# Testing Patterns
+# Docklight Testing Patterns
 
-**Analysis Date:** 2026-03-11
+This document details the testing architecture, frameworks, structures, mocking techniques, and strategies for the Docklight project.
 
-## Test Framework
+---
 
-**Runner:**
+## 1. Test Setup & Running
 
-- Vitest 4.0.0 (both server and client)
-- Config: `server/vitest.config.ts`, `client/vitest.config.ts`
+Docklight maintains a three-tiered testing structure: **Backend Unit/Integration Tests**, **Frontend Component/Hook Tests**, and **E2E Browser Tests**.
 
-**Assertion Library:**
-
-- Vitest built-in assertions (based on Chai)
-- @testing-library/jest-dom for DOM assertions (client)
-
-**Run Commands:**
-
+### Key Run Commands
 ```bash
-just test                         # Run all tests
-just server-test                  # Run server tests
-just client-test                  # Run client tests
-cd server && bun run test:watch   # Server watch mode
-cd client && bun run test:watch   # Client watch mode
-cd server && bun run test:coverage  # Server coverage
-cd client && bun run test:coverage  # Client coverage
-```
-
-## Test File Organization
-
-**Location:**
-
-- Co-located with source: `app.test.ts` next to `app.ts`
-- Server: `server/lib/*.test.ts`, `server/routes/*.test.ts`
-- Client: `client/src/pages/*.test.tsx`, `client/src/components/*.test.tsx`
-
-**Naming:**
-
-- Source: `<module>.ts` → Test: `<module>.test.ts`
-- Component: `<Component>.tsx` → Test: `<Component>.test.tsx`
-
-**Structure:**
-
-```
-server/
-  lib/
-    apps.ts
-    apps.test.ts
-    executor.ts
-    executor.test.ts
-client/src/
-  pages/
-    Apps.tsx
-    Apps.test.tsx
-  components/
-    AppLayout.tsx
-    AppLayout.test.tsx
-```
-
-## Test Structure
-
-**Suite Organization:**
-
-```typescript
-import { describe, it, expect, vi, beforeEach } from "vitest";
-
-describe("functionName", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("should do something when condition is met", async () => {
-    // Arrange
-    const input = { ... };
-
-    // Act
-    const result = await functionName(input);
-
-    // Assert
-    expect(result).toEqual(expected);
-  });
-});
-```
-
-**Patterns:**
-
-- Setup: `beforeEach()` to reset mocks before each test
-- Arrange-Act-Assert structure for clarity
-- Descriptive test names: "should [do something] when [condition]"
-
-## Mocking
-
-**Framework:** Vitest (`vi`)
-
-**Patterns:**
-
-```typescript
-// Mock a module
-vi.mock("./lib/executor.js", () => ({
-  executeCommand: vi.fn(),
-}));
-
-// Get typed mock
-const mockExecuteCommand = vi.mocked(executeCommand);
-
-// Setup mock return value
-mockExecuteCommand.mockResolvedValue({
-  command: "dokku apps:list",
-  exitCode: 0,
-  stdout: "my-app",
-  stderr: "",
-});
-
-// Reset mocks
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-```
-
-**What to Mock:**
-
-- External dependencies (SSH, file system, HTTP)
-- Module imports (`executeCommand`, database queries)
-
-**What NOT to Mock:**
-
-- Pure functions and utilities
-- Parsing logic
-
-## Fixtures and Factories
-
-**Test Data:**
-
-- Inline in test files (no separate fixtures directory)
-- Mock data defined as constants or inline strings in each test
-
-**Location:**
-
-- Co-located with test files, defined inline
-
-## Coverage
-
-**Requirements:** No enforced target, but good coverage maintained
-
-**View Coverage:**
-
-```bash
-cd server && bun run test:coverage
-cd client && bun run test:coverage
-```
-
-**Coverage tool:** @vitest/coverage-v8 (c8/v8 based)
-
-## Test Types
-
-**Unit Tests:**
-
-- Focus: Individual functions and modules
-- Scope: Pure functions, CLI output parsing, validation
-- Mock external dependencies
-
-**Integration Tests:**
-
-- Focus: API endpoints with Supertest (server)
-- Scope: HTTP request/response handling, authentication middleware
-
-**E2E Tests:**
-
-- Framework: Playwright
-- Location: `client/playwright.config.ts`
-- Commands: `just client-e2e`, `just client-e2e-ui`
-- Scope: Full user flows through the UI
-
-## Common Patterns
-
-**Async Testing:**
-
-```typescript
-it("should handle async operations", async () => {
-  const result = await asyncFunction();
-  expect(result).toEqual(expected);
-});
-```
-
-**Error Testing:**
-
-```typescript
-it("should return error when command fails", async () => {
-  mockExecuteCommand.mockResolvedValue({
-    exitCode: 1,
-    stderr: "Error message",
-  });
-
-  const result = await functionUnderTest();
-  expect(result).toEqual({
-    error: "Failed to ...",
-    exitCode: 1,
-    stderr: "Error message",
-  });
-});
-```
-
-**Component Testing (Client):**
-
-```typescript
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
-
-describe("MyComponent", () => {
-  it("should render text", () => {
-    render(<MyComponent />);
-    expect(screen.getByText("Hello")).toBeInTheDocument();
-  });
-});
+just test                             # Runs all unit & component tests (both server & client)
+cd server && bun run test             # Run server tests once
+cd client && bun run test             # Run client tests once
+cd server && bun run test:watch       # Run server tests in interactive watch mode
+cd client && bun run test:watch       # Run client tests in interactive watch mode
+cd client && bun run test:e2e         # Run Playwright E2E tests (builds client first)
+cd client && bun run test:e2e:ui      # Run Playwright E2E tests in Playwright UI mode
 ```
 
 ---
 
-_Testing analysis: 2026-03-11_
+## 2. Server Testing (Node.js / Express)
+
+### Framework and Configuration
+*   **Engine:** Vitest (configured in `server/vitest.config.ts`).
+*   **Environment:** `node`.
+*   **Test Globals:** Enabled (`globals: true`).
+*   **Mock Environment Variables:** Declared inside the `test` block of `vitest.config.ts`:
+    ```typescript
+    env: {
+      NODE_ENV: "test",
+      JWT_SECRET: "test-jwt-secret-for-testing-only",
+    }
+    ```
+
+### Mocking Services and Modules
+*   Use `vi.mock()` at the top of the test file to isolate modules under test (such as command execution, database, SSH pools, etc.).
+*   Mock dependencies explicitly with relative paths:
+    ```typescript
+    vi.mock("./lib/apps.js", () => ({
+      getApps: vi.fn(),
+      getAppDetail: vi.fn(),
+    }));
+    ```
+*   In test suites, use `vi.mocked(...)` to perform type-safe overrides on mocked functions:
+    ```typescript
+    import { getApps } from "./lib/apps.js";
+
+    it("returns list of apps", async () => {
+      vi.mocked(getApps).mockResolvedValue([{ name: "app1" }] as never);
+      // test execution...
+    });
+    ```
+*   Always call `vi.clearAllMocks()` in a `beforeEach` hook to ensure test isolation.
+
+### HTTP Route / API Testing
+*   Use **Supertest** to verify API endpoints by wrapping an Express application instance:
+    ```typescript
+    import request from "supertest";
+    import express from "express";
+
+    describe("GET /api/apps", () => {
+      it("should return 200 and list apps", async () => {
+        const response = await request(app).get("/api/apps");
+        expect(response.status).toBe(200);
+      });
+    });
+    ```
+*   Mock authorization middlewares (`authMiddleware`) when testing route handlers, bypass them using mock implementations, or test them separately to isolate route logic from auth details.
+
+### Testing Connection Pools and Timers
+*   Use fake timers for classes that handle connection management (e.g., `SSHPool` idle timeouts):
+    ```typescript
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("closes connection after idle timeout", async () => {
+      await pool.getConnection("dokku@host");
+      vi.advanceTimersByTime(5 * 60 * 1000 + 1000); // 5 min timeout + buffer
+      expect(mockSshInstance.dispose).toHaveBeenCalled();
+    });
+    ```
+
+---
+
+## 3. Client Component & Hook Testing (React)
+
+### Framework and Configuration
+*   **Engine:** Vitest (configured in `client/vitest.config.ts`).
+*   **Environment:** `jsdom`.
+*   **Setup File:** `client/src/test/setup.ts` imports `@testing-library/jest-dom` and polyfills missing DOM methods (e.g., `HTMLDialogElement.prototype.showModal` and `close`):
+    ```typescript
+    import "@testing-library/jest-dom";
+
+    HTMLDialogElement.prototype.showModal ??= function () {
+      this.setAttribute("open", "");
+    };
+    HTMLDialogElement.prototype.close ??= function () {
+      this.removeAttribute("open");
+    };
+    ```
+
+### Mocking and Wrappers for React Query
+*   Since most components and pages fetch data via React Query, tests must render components inside a test `QueryClientProvider`:
+    ```typescript
+    import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+    import { render } from "@testing-library/react";
+
+    const createTestQueryClient = () =>
+      new QueryClient({
+        defaultOptions: { queries: { retry: false } } // Disable retries to fail fast in tests
+      });
+
+    const renderWithQueryClient = (ui: React.ReactElement) => {
+      const queryClient = createTestQueryClient();
+      return render(
+        <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+      );
+    };
+    ```
+
+### User Interactions
+*   Always use `@testing-library/user-event` (specifically `userEvent.setup()`) for testing click, type, and form interactions, as it mirrors browser behavior better than `fireEvent`:
+    ```typescript
+    import userEvent from "@testing-library/user-event";
+
+    it("triggers action on click", async () => {
+      const user = userEvent.setup();
+      renderWithQueryClient(<MyComponent />);
+      await user.click(screen.getByRole("button", { name: "Submit" }));
+      // assertions...
+    });
+    ```
+
+### Theme CSS Token Assertions
+*   Component tests should check for proper application of CSS variables / design tokens rather than hardcoded Tailwind styles (e.g., asserting classes contain `bg-card` instead of `bg-white`).
+
+---
+
+## 4. End-to-End Testing (Playwright)
+
+Docklight uses Playwright for comprehensive page lifecycle testing.
+
+*   **Location:** E2E specs are placed in `client/e2e/` (e.g., `apps.spec.ts`, `login.spec.ts`).
+*   **Configuration:** Configured in `client/playwright.config.ts`.
+*   **API / Route Mocking:** Playwright E2E tests do not connect to a real Dokku backend. Instead, they use `page.route` to mock backend API responses:
+    ```typescript
+    await page.route("**/api/apps", (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockAppsData),
+      });
+    });
+    ```
+*   **SSE Streams:** Real-time logging or server processes that stream output via SSE are simulated in Playwright by writing custom mock route handlers that stream chunks of data:
+    ```typescript
+    // Fulfill Server-Sent Events stream using Playwright route mock helper
+    export function fulfillSSE(route: Route, data: Record<string, unknown>) {
+      route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        body: `data: ${JSON.stringify(data)}\n\n`,
+      });
+    }
+    ```
+
+---
+
+## 5. Coverage Reporting
+
+Docklight uses `@vitest/coverage-v8` to compute coverage statistics.
+
+*   **View Server Coverage:** `cd server && bun run test:coverage`
+*   **View Client Coverage:** `cd client && bun run test:coverage`
+*   **Configured Scope:** Code coverage is collected for all active library and route TS files while excluding tests, Node modules, and build output targets (`dist/`).

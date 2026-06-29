@@ -1,160 +1,144 @@
 # Architecture
 
-**Analysis Date:** 2026-03-11
+**Analysis Date:** 2026-06-29
 
 ## Pattern Overview
 
-**Overall:** Client-Server with SSH Orchestration
+**Pattern:** Client-Server with SSH Orchestration
 
-**Key Characteristics:**
+Docklight operates as a self-hosted single-node admin dashboard. It uses a clean separation between the frontend SPA client and the backend server, orchestrating server actions through SSH execution to the Dokku command-line interface.
 
-- Monolithic backend (Express) + SPA frontend (React)
-- SSH-based command execution to Dokku
-- No microservices
-- Stateful backend (SQLite database)
-- WebSocket for real-time log streaming
+```mermaid
+graph TD
+    Browser[Browser / React SPA] -->|HTTP / JSON / WS| Server[Express API Server]
+    Server -->|Direct SQL| SQLite[(SQLite DB)]
+    Server -->|SSH / SSHPool| DokkuHost[Dokku Host / CLI]
+    DokkuHost -->|Local commands| Docker[Docker Containers]
+```
 
-## Layers
-
-**Presentation Layer (Client):**
-
-- Purpose: React SPA user interface
-- Location: `client/src/`
-- Contains: React components, pages, hooks
-- Depends on: API endpoints via `@tanstack/react-query`
-- Used by: Browser
-
-**API Layer (Server Routes):**
-
-- Purpose: HTTP endpoint handlers
-- Location: `server/routes/`
-- Contains: Route registration, request validation, response formatting
-- Depends on: Business logic in `server/lib/`, authentication middleware
-- Used by: React client
-
-**Business Logic Layer:**
-
-- Purpose: Core application logic and Dokku interactions
-- Location: `server/lib/`
-- Contains: App management, database operations, SSH execution, auth
-- Depends on: Dokku CLI, SQLite database, SSH connection pool
-- Used by: API routes
-
-**Data Layer:**
-
-- Purpose: Persistent storage
-- Location: `server/lib/db.ts`, `server/data/docklight.db`
-- Contains: SQLite schema, prepared statements
-- Depends on: better-sqlite3
-- Used by: Business logic layer
-
-## Data Flow
-
-**Request Flow:**
-
-1. Browser → React SPA (client/src/)
-2. React → API fetch (`client/src/lib/api.ts`)
-3. API Route (`server/routes/*.ts`) → Business Logic (`server/lib/*.ts`)
-4. Business Logic → SSH Execution (`server/lib/executor.ts`) → Dokku CLI
-5. Dokku CLI → Docker
-6. Response flows back through the chain
-
-**WebSocket Flow (Logs):**
-
-1. Client connects via WebSocket
-2. Server authenticates via session token
-3. Server spawns SSH connection and streams stdout/stderr
-4. Client receives real-time log lines
-
-**State Management:**
-
-- Server: SQLite for persistent state, in-memory cache for ephemeral data
-- Client: @tanstack/react-query for server state, React Context for auth
-
-## Key Abstractions
-
-**Command Execution:**
-
-- Purpose: Abstract SSH vs local shell execution
-- Examples: `server/lib/executor.ts`, `server/lib/dokku.ts`
-- Pattern: Result objects with `{command, exitCode, stdout, stderr}`
-
-**App Management:**
-
-- Purpose: Dokku app CRUD operations
-- Examples: `server/lib/apps.ts`, `server/lib/databases.ts`
-- Pattern: Parse CLI output into typed objects
-
-**Authentication:**
-
-- Purpose: JWT-based session management
-- Examples: `server/lib/auth.ts`
-- Pattern: Middleware guards (`authMiddleware`, `requireRole`, `requireAdmin`)
-
-**Rate Limiting:**
-
-- Purpose: Prevent abuse of expensive operations
-- Examples: `server/lib/rate-limiter.ts`
-- Pattern: Sliding window per-user rate limiting
-
-## Entry Points
-
-**Server Entry Point:**
-
-- Location: `server/index.ts`
-- Triggers: `bun run dev` or `node dist/index.js`
-- Responsibilities: Express app setup, route registration, WebSocket server, graceful shutdown
-
-**Client Entry Point:**
-
-- Location: `client/src/main.tsx`
-- Triggers: Browser loads the SPA
-- Responsibilities: React app mounting, query client setup
-
-**Admin User Creation:**
-
-- Location: `server/createUser.ts`
-- Triggers: `npx tsx createUser.ts <username> <password>`
-- Responsibilities: Create initial admin user
-
-## Error Handling
-
-**Strategy:** Never throw for expected failures
-
-**Patterns:**
-
-- Return error objects: `{error: string, command?: string, exitCode?: number, stderr?: string}`
-- Validate early: Route-level validation for app names, params
-- Graceful degradation: Parse failures return empty arrays, not errors
-- SSH errors: Return error result objects, preserve command details
-- Rate limit exceeded: Return 429 with retry-after time
-
-## Cross-Cutting Concerns
-
-**Logging:**
-
-- Pino structured logging (server/lib/logger.ts)
-- HTTP request logging via pino-http
-- Audit logging for all command executions
-
-**Validation:**
-
-- Server: Runtime type checking via TypeScript
-- Client: Zod schemas for API responses (`client/src/lib/schemas.ts`)
-- Route-level validation for app names, parameters
-
-**Authentication:**
-
-- JWT tokens in httpOnly cookies
-- Middleware guards on protected routes
-- Role-based access control (admin, operator, viewer)
-
-**Caching:**
-
-- Simple in-memory cache (`server/lib/cache.ts`)
-- Cache keys follow pattern: `<entity>:<id>:<attribute>`
-- Invalidated on write operations
+### Key Architectural Characteristics:
+*   **Decoupled Client & Server:** A React SPA frontend communicates with an Express API backend via REST and WebSockets.
+*   **Agentic / CLI Wrapper Pattern:** Rather than interacting directly with Docker APIs, Docklight wraps the Dokku CLI over SSH.
+*   **Stateful Backend:** Ephemeral state (caching, connection pools) is kept in Express memory; persistent state (users, audits, settings) is in SQLite.
+*   **Real-time Streaming:** WebSockets stream live logs (`dokku logs -t`) and distribute application events in real-time.
 
 ---
 
-_Architecture analysis: 2026-03-11_
+## Layers
+
+### 1. Presentation Layer (Client)
+*   **Location:** [client/src/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/)
+*   **Key Tech:** React, Vite, Tailwind CSS 4, Radix UI Primitives, Lucide icons.
+*   **State Management:** `@tanstack/react-query` handles server state synchronization. React Context manages authentication session state.
+*   **Responsibilities:** Rendering UI pages (Dashboard, Apps, Databases, Plugins, Audits, Users, Settings), handling forms, validating client inputs, and managing WebSocket connections for live logs.
+
+### 2. API Layer (Server Routes)
+*   **Location:** [server/routes/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/routes/)
+*   **Key Tech:** Express Router.
+*   **Responsibilities:** Mapping HTTP request paths to controllers, enforcing JWT-based route authentication and Role-Based Access Control (RBAC) middleware, parsing query params, and structuring JSON API responses.
+
+### 3. Business Logic Layer
+*   **Location:** [server/lib/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/)
+*   **Key Tech:** Node.js, `node-ssh`, SQLite helpers, event emitters.
+*   **Responsibilities:** Orchestrating Dokku CLI commands, parsing CLI text outputs into clean JSON response formats, checking command execution rules against safety allowlists, maintaining SSH connections, and executing database queries.
+
+### 4. Data Layer (Database & Storage)
+*   **Location:** [server/lib/db.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/db.ts) / [server/data/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/data/)
+*   **Key Tech:** `better-sqlite3` (SQLite engine).
+*   **Responsibilities:** Direct SQL operations using prepared statements, transaction safety, database migration checks (`IF NOT EXISTS`, automatic column additions), and database write throttling/indexing.
+
+---
+
+## Data Flow
+
+### Request-Response Flow
+```mermaid
+sequenceDiagram
+    participant B as Browser (React SPA)
+    participant R as Express Routes (server/routes/)
+    participant L as Business Logic (server/lib/)
+    participant E as Executor (server/lib/executor.ts)
+    participant D as Dokku CLI (Host)
+
+    B->>R: HTTP Request (e.g. POST /api/apps/my-app/rebuild)
+    R->>R: Auth & Role Validation
+    R->>L: Invoke rebuildApp("my-app")
+    L->>E: executeCommand("dokku ps:rebuild my-app")
+    E->>E: Check command allowlist
+    E->>E: Fetch SSH connection from SSHPool
+    E->>D: Run command over SSH tunnel
+    D-->>E: Return stdout / stderr & exitCode
+    E-->>L: CommandResult object
+    L->>L: Parse output & record to audit log
+    L-->>R: Result details
+    R-->>B: HTTP 200 JSON Response
+```
+
+### Real-Time WebSocket Streaming Flow
+```mermaid
+sequenceDiagram
+    participant B as Browser (React SPA)
+    participant W as WebSocket Server (server/lib/websocket.ts)
+    participant E as Spawned Process / SSH
+    participant D as Dokku Host
+
+    B->>W: Establish WS connection (WS /api/apps/:name/logs?token=...)
+    W->>W: Verify JWT Token & Validate App Name
+    W->>E: Spawn "dokku logs :name -t" (via SSHPool or child process)
+    loop Stream Output
+        D-->>E: Output stdout/stderr lines
+        E-->>W: process stdout chunk
+        W-->>B: JSON lines ({ line: "...", error: false })
+    end
+    Note over B,W: Connection closed or idle timeout (30m) triggers cleanup
+```
+
+---
+
+## Key Abstractions
+
+### 1. Command Execution & SSHPool
+*   **File:** [executor.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/executor.ts)
+*   **Details:** Encapsulates the execution of CLI commands.
+*   **Abstraction:** If `DOCKLIGHT_DOKKU_SSH_TARGET` is set, it executes commands over an SSH connection pool (`SSHPool`). Otherwise, it spawns local shell commands.
+*   **CommandResult Interface:** Always returns `{ command: string, exitCode: number, stdout: string, stderr: string }`.
+
+### 2. Command Allowlist
+*   **File:** [allowlist.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/allowlist.ts)
+*   **Details:** Hard security boundary. Splits incoming commands on pipe operators (`|`) and checks each sub-command's base executable against a strict set of permitted commands (`dokku`, `top`, `free`, `df`, `grep`, `awk`, `curl`).
+
+### 3. Real-Time Application Events
+*   **File:** [app-events.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/app-events.ts)
+*   **Details:** Ephemeral publish-subscribe bridge. Allows backend controllers to broadcast app actions (e.g. scaling, building) to connected WebSockets under `/api/events`.
+
+### 4. Database Engine wrapper
+*   **File:** [db.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/db.ts)
+*   **Details:** Configures SQLite features like WAL journal mode, synchronous mode, and foreign keys. Handles user roles, audit logging, reset tokens, and command history logging.
+
+---
+
+## Entry Points
+
+### 1. Backend Server Entry Point
+*   **File:** [server/index.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/index.ts)
+*   **Command:** `bun run server-dev` (development) or `bun start` (production)
+*   **Responsibilities:** Boots Express app, runs database checks, starts background audit log rotation, mounts HTTP middleware/routes, sets up the WebSocket handler, and captures signal listeners (`SIGINT`/`SIGTERM`) for graceful shutdowns.
+
+### 2. Frontend Client Entry Point
+*   **File:** [client/src/main.tsx](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/main.tsx)
+*   **Command:** `bun run client-dev` (development) or `bun run build` (production)
+*   **Responsibilities:** Mounts the React DOM root, initializes the TanStack query client (`QueryClientProvider`), and sets up theme/style configs.
+
+### 3. User Setup CLI Utility
+*   **File:** [server/createUser.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/createUser.ts)
+*   **Command:** `bun run server/createUser.ts <username> <password> <role>`
+*   **Responsibilities:** Bypasses HTTP APIs to seed initial administrators or operators into the database directory.
+
+---
+
+## Error Handling & Reliability
+
+*   **Fail-Closed Auth Safety:** If running outside development or test modes, the server will crash on startup if `JWT_SECRET` is not set.
+*   **Graceful Exit Code Handlers:** The execution wrappers translate common warnings (e.g., SSH Permanently Added hosts warning) into `exitCode: 0` instead of letting them propagate as fatal execution failures.
+*   **Rate Limiting Protection:** Rate-limiting via sliding windows prevents brute force login attacks and API overload. Expensive CLI actions are blocked with `HTTP 429` responses if thresholds are crossed.
+*   **Retry with Backoff:** SSH connection handshakes employ retry-with-backoff algorithms to survive intermittent packet loss during remote host connects.

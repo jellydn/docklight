@@ -1,6 +1,6 @@
 # Technology Stack
 
-**Analysis Date:** 2026-03-11
+**Analysis Date:** 2026-06-29
 
 ## Languages
 
@@ -13,93 +13,86 @@
 
 **Environment:**
 
-- Node.js 20+ (via Bun package manager)
+- Node.js 24+ (final runtime Docker image uses `node:24-alpine`)
 - Docker/Dokku (deployment target)
 
 **Package Manager:**
 
-- Bun 1.x
-- Lockfile: `bun.lock` (server), `client/bun.lock`
+- Bun 1.x (used for local dependency management and script execution)
+- Lockfiles: `server/bun.lock`, `client/bun.lock` (Note: npm is used inside the final Dockerfile build stage)
 
 ## Frameworks
 
 **Core Backend:**
 
 - Express 5.0.0 - Web server and API routing
-- TypeScript 5.3.2 - Type safety
-- node-ssh 13.2.1 - SSH connection pool for Dokku commands
+- Node-SSH 13.2.1 - SSH connection pool for executing Dokku commands
+- WS 8.19.0 - WebSockets for streaming log outputs
 
 **Core Frontend:**
 
-- React 19.2.0 - UI framework
-- React Router DOM 7.13.1 - Client-side routing
-- Vite 7.3.1 - Build tool and dev server
+- React 19.2.0 - UI component framework
+- React Router DOM 7.13.1 - Client-side SPA routing
+- Vite 8.0.0 - Build tool and dev server
 
 **Testing:**
 
-- Vitest 4.0.0 - Unit and integration test runner
-- @vitest/coverage-v8 - Code coverage reporting
-- Supertest 7.0.0 - HTTP endpoint testing (server)
-- @testing-library/react 16.3.2 - Component testing (client)
-- Playwright 1.58.2 - E2E testing (client)
+- Vitest 4.0.0 - Unit and integration test runner (shared server and client)
+- Playwright 1.58.2 - E2E testing framework (client-side)
+- Supertest 7.0.0 - HTTP endpoint integration tests (server-side)
+- @testing-library/react 16.3.2 - React UI component test utilities
 
 **Build/Dev:**
 
-- tsx 4.6.2 - TypeScript execution for development
-- Biome 2.4.4 - Linting and formatting
-- Tailwind CSS 4 - Styling
-- @tailwindcss/postcss 4.2.1 - Tailwind PostCSS integration
+- tsx 4.6.2 - TypeScript execution engine for backend dev watches
+- Biome 2.4.4 - Shared code style formatting and linting rules
+- Tailwind CSS 4 - Utility-first CSS styling
+- @tailwindcss/postcss 4.2.1 - Tailwind CSS PostCSS integration wrapper
 
 ## Key Dependencies
 
 **Critical Backend:**
 
-- better-sqlite3 12.6.2 - Embedded database for users, audit logs, settings
-- jsonwebtoken 9.0.3 - JWT session authentication
-- pino 10.3.1 - Structured logging
-- pino-http 11.0.0 - HTTP request logging
-- ws 8.19.0 - WebSocket for live log streaming
-- express-rate-limit 8.2.1 - Rate limiting middleware
-- cookie-parser 1.4.7 - Cookie parsing for sessions
+- better-sqlite3 12.6.2 - High-performance SQLite3 driver (prepared statements, WAL mode)
+- jsonwebtoken 9.0.3 - JWT utility for secure session credentials
+- pino 10.3.1 & pino-http 11.0.0 - Structured logging utilities
+- express-rate-limit 8.2.1 - In-memory API request rate limiting
+- cookie-parser 1.4.7 - Cookie parsing middleware
 
 **Critical Frontend:**
 
-- @tanstack/react-query 5.90.21 - Server state management and caching
-- zod 4.3.6 - Runtime type validation and API schemas
-- lucide-react 0.577.0 - Icon library
-- sonner 2.0.7 - Toast notifications
-- @radix-ui/react-dialog 1.1.15 - Accessible dialog components
-- @radix-ui/react-slot 1.2.4 - Component composition primitives
-- class-variance-authority 0.7.1 - Component variant management
-- tailwind-merge 3.5.0 - Tailwind class merging utilities
+- @tanstack/react-query 5.90.21 - Server state synchronization and asynchronous cache manager
+- zod 4.3.6 - Schema validation and runtime type assertion helper
+- lucide-react 1.0.0 - Clean icon component library
+- sonner 2.0.7 - Lightweight toast notification system
+- @radix-ui/react-dialog 1.1.15 - Headless dialog element configuration
+- @radix-ui/react-slot 1.2.4 - UI element slot composition helper
+- class-variance-authority 0.7.1 - Type-safe CSS class generation
+- tailwind-merge 3.5.0 - Utility for merging duplicate Tailwind CSS utility rules
 
 ## Configuration
 
-**Environment:**
+**Environment Configuration:**
 
-- `.env` files for local development (see `server/.env.example`)
-- Environment variables for production secrets
+- Local `.env` files (e.g. `server/.env.example` reference)
+- App settings JSON file: `data/server-settings.json` (filesystem persistent cache)
 
-**Build:**
+**Build and Type Check Configurations:**
 
-- `server/tsconfig.json` - TypeScript config for backend
-- `client/tsconfig.json` - TypeScript config for frontend
-- `biome.json` - Shared linting/formatting rules
-- `justfile` - Task runner commands (alternative to npm scripts)
+- `server/tsconfig.json` - Backend compiler directives
+- `client/tsconfig.json`, `client/tsconfig.app.json`, `client/tsconfig.node.json` - Client-side build targets
+- `biome.json`, `client/biome.json`, `server/biome.json` - Code formatting preferences
+- `justfile` - Standard project task automation recipes
 
 ## Platform Requirements
 
-**Development:**
+**Development Environment:**
 
 - Bun 1.x or Node.js 20+
-- macOS/Linux/WSL2
+- macOS / Linux / WSL2 shell (required for executing ssh tasks)
 
-**Production:**
+**Production/Deployment Environment:**
 
-- Docker via Dokku
-- VPS with SSH access
-- 512MB+ RAM recommended
-
----
-
-_Stack analysis: 2026-03-11_
+- Docker (using multi-stage Dockerfile configuration)
+- Dokku hosting instance (SSH accessible via `DOCKLIGHT_DOKKU_SSH_TARGET`)
+- Recommended resource profile: 512MB RAM minimum
