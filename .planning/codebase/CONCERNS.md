@@ -38,7 +38,7 @@
 - **Files:**
   - [auth.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/routes/auth.ts#L63-L75)
   - [email.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/email.ts#L17-L30)
-- **Risk:** Users are told a password reset email was sent, but it never arrives — with no visible alert that email is unconfigured.
+- **Impact:** Users are told a password reset email was sent, but it never arrives — with no visible alert that email is unconfigured.
 - **Detail:** When `RESEND_API_KEY` or `RESEND_FROM_EMAIL` is missing in production, the forgot-password endpoint returns success (to prevent username enumeration) and logs a server-side warning. The admin has no UI indication that email is unconfigured.
 - **Recommendation:** Add a startup-level check for email credentials, or expose the email configuration status on the admin Settings page.
 
