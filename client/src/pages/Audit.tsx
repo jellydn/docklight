@@ -10,7 +10,7 @@ import {
 	type UserAuditLog,
 	UserAuditLogResultSchema,
 } from "../lib/schemas.js";
-import { alertBannerClass, statusBadgeClass } from "@/lib/status-styles.js";
+import { alertBannerClass, badgeClass, statusBadgeClass } from "@/lib/status-styles.js";
 
 type ExitCodeFilter = "all" | "success" | "error";
 type AuditTab = "commands" | "users";
@@ -153,11 +153,7 @@ export function Audit() {
 			deploy: "success",
 		};
 		const variant = variantMap[verb] ?? "warning";
-		return (
-			<span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${alertBannerClass(variant)}`}>
-				{action}
-			</span>
-		);
+		return <span className={badgeClass(variant)}>{action}</span>;
 	};
 
 	const handleExport = (type: "commands" | "users", format: "json" | "csv") => {

@@ -1,12 +1,19 @@
 import { describe, it, expect } from "vitest";
 import {
 	alertBannerClass,
+	badgeClass,
 	healthBannerClass,
 	statusBadgeClass,
 	statusDotClass,
 } from "./status-styles.js";
 
 describe("status-styles", () => {
+	it("returns badge variant classes", () => {
+		expect(badgeClass("success")).toContain("bg-success-surface");
+		expect(badgeClass("warning")).toContain("bg-warning-surface");
+		expect(badgeClass("error")).toContain("bg-destructive-surface");
+	});
+
 	it("returns running badge classes", () => {
 		expect(statusBadgeClass("running")).toContain("bg-success-surface");
 		expect(statusBadgeClass("running")).toContain("text-success-on-surface");

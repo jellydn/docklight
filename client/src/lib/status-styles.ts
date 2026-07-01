@@ -2,14 +2,22 @@ import { cn } from "@/lib/utils";
 
 export type AppStatus = "running" | "stopped" | string;
 
-export function statusBadgeClass(status: AppStatus): string {
-	const isRunning = status === "running";
+export type BadgeVariant = "success" | "warning" | "error";
+
+export function badgeClass(variant: BadgeVariant): string {
+	const variants = {
+		success: "bg-success-surface text-success-on-surface",
+		warning: "bg-warning-surface text-warning-on-surface",
+		error: "bg-destructive-surface text-destructive-on-surface",
+	};
 	return cn(
 		"inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-		isRunning
-			? "bg-success-surface text-success-on-surface"
-			: "bg-destructive-surface text-destructive-on-surface"
+		variants[variant]
 	);
+}
+
+export function statusBadgeClass(status: AppStatus): string {
+	return badgeClass(status === "running" ? "success" : "error");
 }
 
 export function statusDotClass(status: AppStatus): string {
