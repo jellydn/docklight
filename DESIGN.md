@@ -198,19 +198,20 @@ Light and dark themes share the same semantic structure. Tertiary blue, success 
 
 ### Light mode
 
-- **Primary (#17171C):** Near-black for text and the sidebar background. High contrast against white surfaces.
-- **Secondary (#71717A):** Zinc gray for supporting text, metadata, and de-emphasized content.
-- **Tertiary (#2563EB):** Blue for interactive elements — buttons, links, selected states. Used sparingly to preserve its signal as an action affordance.
+- **Primary (#0F0F12):** Near-black for text and the sidebar background. Tuned for WCAG AAA contrast on white surfaces.
+- **Secondary (#52525B):** Zinc gray for supporting text, metadata, and de-emphasized content (≥7:1 on surface).
+- **Tertiary (#1E40AF):** Deep blue for links and interactive text. Meets AAA on white; buttons use white on-surface text.
 - **Neutral (#FFFFFF):** Card backgrounds and white surfaces. The default canvas.
 - **Surface (#F8F9FA):** Page background. Slightly off-white to create subtle depth against cards.
-- **Destructive (#DC2626):** Red for destructive actions (delete, destroy) and critical errors.
-- **Success (#16A34A):** Green for running status and successful operations.
-- **Warning (#D97706):** Amber for warnings and degraded states.
+- **Destructive (#B91C1C):** Red for destructive actions (delete, destroy) and critical errors.
+- **Success (#15803D):** Green for running status and successful operations.
+- **Warning (#B45309):** Amber for warnings and degraded states.
 
 ### Dark mode
 
 - **Primary-dark (#FAFAFA):** Near-white for primary text on dark surfaces.
-- **Secondary-dark (#A1A1AA):** Muted zinc for supporting text and metadata.
+- **Secondary-dark (#D4D4D8):** Light zinc for supporting text and metadata (≥7:1 on dark surfaces).
+- **Tertiary-dark (#93C5FD):** Light blue for links on dark backgrounds.
 - **Neutral-dark (#18181B):** Card and elevated surface background.
 - **Surface-dark (#09090B):** Page background. Deep zinc for maximum contrast with cards.
 - **Border-dark (#27272A):** Subtle dividers and input borders.
@@ -269,7 +270,7 @@ Tables use horizontal scroll on narrow viewports. Tab navigation scrolls horizon
 
 Depth is achieved through **tonal layers**, not shadows. The page surface sits one step below card surfaces; the sidebar uses the darkest tone in light mode and matches card tone in dark mode.
 
-- **Light:** Surface (#F8F9FA) → Card (#FFFFFF) → Sidebar (#17171C)
+- **Light:** Surface (#F8F9FA) → Card (#FFFFFF) → Sidebar (#0F0F12)
 - **Dark:** Surface (#09090B) → Card (#18181B) → Sidebar (#18181B with border)
 
 Interactive focus rings use tertiary blue in light mode and a lighter ring in dark mode. No box-shadows on cards or buttons.
@@ -286,7 +287,7 @@ Interactive focus rings use tertiary blue in light mode and a lighter ring in da
 - **Sidebar:** Dark background in light mode, card-tone in dark mode. Logo and app name at top. Navigation links with subtle hover/active states. Theme toggle and user info pinned to bottom.
 - **Theme toggle:** Icon button (sun/moon) in sidebar footer and mobile header. Persists preference to localStorage; respects `prefers-color-scheme` on first visit.
 - **Card:** Surface-colored background, 12px radius, responsive padding (16px mobile, 24px desktop). No shadow.
-- **Button (primary):** Blue (#2563EB), white text, 6px radius. Hover darkens to #1D4ED8.
+- **Button (primary):** Blue (#1E40AF), white text, 6px radius. Hover darkens to #1D4ED8.
 - **Button (secondary):** Surface background, primary text, thin border. Hover lightens.
 - **Status badge:** Pill-shaped with tinted background tokens. Green for running, red for stopped/error, amber for warning. Uses theme-aware surface tokens.
 - **Alert banner:** Tinted destructive/warning/success surfaces for inline errors and health status.

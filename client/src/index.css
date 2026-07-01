@@ -91,10 +91,11 @@
   }
   html {
     font-size: 16px;
-    text-rendering: optimizeLegibility;
+    text-rendering: optimizelegibility;
   }
   body {
     @apply bg-background text-foreground antialiased;
+
     font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
     font-feature-settings: "kern", "liga", "calt";
     font-size: 1rem;
