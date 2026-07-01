@@ -222,3 +222,12 @@ Server (.env or environment):
 - Use Tailwind 4 with `@tailwindcss/postcss`
 - Use `tw-animate-css` for animations
 - Client components use the `cn()` helper for class merging
+
+## Cursor Cloud specific instructions
+
+- Toolchain: `bun` and `just` are required and are installed at the system level (`/usr/local/bin`). Node 22 is preinstalled. The startup update script runs `bun install` in both `server/` and `client/`; standard commands live in the `## Commands` section above.
+- Run dev servers (long-lived) in separate tmux sessions, not one-shot: backend `cd server && bun run dev` (port 3001), frontend `cd client && bun run dev` (port 5173, proxies `/api` → 3001). Do not use `just build`/`bun start` for development.
+- `JWT_SECRET` is only mandatory in production; in dev the server boots with a built-in dev secret. There is no `server/.env` committed — export `JWT_SECRET` if you want a custom one.
+- No Dokku host is available in this environment. Login, user management, the audit log, and the SQLite-backed dashboard cards (CPU/Mem/Disk run via local shell) all work. Any real Dokku action (apps/databases/domains/SSL) will error unless `DOCKLIGHT_DOKKU_SSH_TARGET` points to a reachable Dokku host — this is expected, not a setup failure. Leave `DOCKLIGHT_DOKKU_SSH_TARGET` unset in dev so commands run locally instead of trying the example `dokku@172.17.0.1`.
+- No signup UI: bootstrap an admin with `cd server && npx tsx createUser.ts <user> <password>` (creates/updates an `admin` user in the SQLite DB at `data/docklight.db`). Re-running updates the password.
+- `just test` runs Vitest for both projects (no Dokku needed; deps are mocked). Playwright E2E (`cd client && bun run test:e2e`) builds the client and mocks all `/api` responses, so it also needs no real backend — but requires Playwright browsers to be installed first.
