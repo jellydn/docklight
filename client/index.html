@@ -14,12 +14,17 @@
     <title>Docklight</title>
     <script>
       (function () {
-        var stored = localStorage.getItem("docklight-theme");
-        var theme =
-          stored === "dark" ||
-          (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches)
-            ? "dark"
-            : "light";
+        var theme = "light";
+        try {
+          var stored = localStorage.getItem("docklight-theme");
+          theme =
+            stored === "dark" ||
+            (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+              ? "dark"
+              : "light";
+        } catch (e) {
+          theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
         if (theme === "dark") {
           document.documentElement.classList.add("dark");
         }

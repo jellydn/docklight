@@ -4,6 +4,7 @@ import {
 	useContext,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 	type ReactNode,
 } from "react";
@@ -25,16 +26,19 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
 	const [theme, setThemeState] = useState<Theme>(() => resolveTheme(getStoredTheme()));
+	const hasUserPreference = useRef(getStoredTheme() !== null);
 
 	useEffect(() => {
 		applyTheme(theme);
-		persistTheme(theme);
+		if (hasUserPreference.current) {
+			persistTheme(theme);
+		}
 	}, [theme]);
 
 	useEffect(() => {
 		const media = window.matchMedia("(prefers-color-scheme: dark)");
 		const handleChange = () => {
-			if (getStoredTheme() === null) {
+			if (!hasUserPreference.current) {
 				setThemeState(media.matches ? "dark" : "light");
 			}
 		};
@@ -43,10 +47,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	const setTheme = useCallback((next: Theme) => {
+		hasUserPreference.current = true;
 		setThemeState(next);
 	}, []);
 
 	const toggleTheme = useCallback(() => {
+		hasUserPreference.current = true;
 		setThemeState((current) => (current === "dark" ? "light" : "dark"));
 	}, []);
 

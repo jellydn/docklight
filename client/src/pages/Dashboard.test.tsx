@@ -421,7 +421,7 @@ describe("Dashboard", () => {
 		});
 	});
 
-	it("should render warning label for critical health", async () => {
+	it("should render critical label for critical health", async () => {
 		apiFetchMock.mockImplementation((endpoint: string) => {
 			if (endpoint === "/server/health") return Promise.resolve(mockCriticalHealth);
 			if (endpoint === "/apps") return Promise.resolve(mockApps);
@@ -436,7 +436,7 @@ describe("Dashboard", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByText("VPS status: Warning")).toBeInTheDocument();
+			expect(screen.getByText("VPS status: Critical")).toBeInTheDocument();
 		});
 	});
 
@@ -464,7 +464,7 @@ describe("Dashboard", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByText("VPS status: Warning")).toBeInTheDocument();
+			expect(screen.getByText("VPS status: Critical")).toBeInTheDocument();
 		});
 
 		expect(screen.queryByRole("button", { name: "Clean unused" })).not.toBeInTheDocument();
@@ -494,7 +494,7 @@ describe("Dashboard", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByText("VPS status: Warning")).toBeInTheDocument();
+			expect(screen.getByText("VPS status: Critical")).toBeInTheDocument();
 		});
 
 		expect(screen.queryByRole("button", { name: "Purge build caches" })).not.toBeInTheDocument();

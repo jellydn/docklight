@@ -19,7 +19,7 @@ const METRICS: ReadonlyArray<{ key: MetricKey; label: string }> = [
 const HEALTH_STATUS_LABELS: Record<HealthStatus, string> = {
 	ok: "OK",
 	warning: "Watch closely",
-	critical: "Warning",
+	critical: "Critical",
 };
 
 const MAINTENANCE_ACTIONS: ReadonlyArray<{

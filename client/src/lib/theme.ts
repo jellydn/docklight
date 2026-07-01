@@ -13,9 +13,13 @@ export function getStoredTheme(): Theme | null {
 	if (typeof window === "undefined") {
 		return null;
 	}
-	const stored = localStorage.getItem(THEME_STORAGE_KEY);
-	if (stored === "light" || stored === "dark") {
-		return stored;
+	try {
+		const stored = localStorage.getItem(THEME_STORAGE_KEY);
+		if (stored === "light" || stored === "dark") {
+			return stored;
+		}
+	} catch {
+		return null;
 	}
 	return null;
 }
@@ -31,5 +35,9 @@ export function applyTheme(theme: Theme): void {
 }
 
 export function persistTheme(theme: Theme): void {
-	localStorage.setItem(THEME_STORAGE_KEY, theme);
+	try {
+		localStorage.setItem(THEME_STORAGE_KEY, theme);
+	} catch {
+		// Storage may be blocked in private browsing or sandboxed contexts.
+	}
 }
