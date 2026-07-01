@@ -1,177 +1,92 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-03-11
-
-## Tech Debt
-
-**ANSI Code Parsing:** ✅ Resolved
-
-- Was: Manual ANSI escape code parsing in `server/lib/ansi.ts`
-- Fix: Replaced with `strip-ansi` library plus stray ESC cleanup
-- Files: `server/lib/ansi.ts`, `server/lib/apps.ts` (usage)
-
-**CLI Output Parsing:**
-
-- Issue: Heavy reliance on parsing Dokku CLI output throughout codebase
-- Files: `server/lib/apps.ts`, `server/lib/databases.ts`, `server/lib/*.ts`
-- Impact: Breaking if Dokku changes output format
-- Fix approach: Add more robust parsing with fallbacks, test with various Dokku versions
-
-## Known Bugs
-
-**None documented**
+**Analysis Date:** 2026-06-29
 
 ## Security Considerations
 
-**SSH Key Storage:**
+### ✅ Command Allowlist Bypass Vulnerability (P0) - [RESOLVED]
+- **File:** [allowlist.ts](server/lib/allowlist.ts)
+- **Status:** **Resolved** via structured `AppCommand` and automatic single-quote escaping.
+- **Detail:** Replaced raw shell string checks in `executeCommand`/`executeCommandStreaming` with structured `AppCommand` normalization and automatic single-quote escaping via `shellQuote`, neutralizing shell metacharacter injection (`;`, `&&`, `||`, etc.).
 
-- Risk: SSH keys stored in environment variables or files
-- Files: `server/lib/executor.ts`
-- Current mitigation: Uses SSH key path from env, not the key itself
-- Recommendations: Ensure SSH key files have proper permissions (600)
+### ⚠️ JWT Session Revocation / Validation Lag (P1)
+- **File:** [auth.ts](server/lib/auth.ts#L118-L134)
+- **Risk:** Deleted or demoted users retain API access until token expiry (up to 24h).
+- **Detail:** The auth middleware validates sessions statelessly via `jwt.verify(token, JWT_SECRET)` without querying the database for user existence, role changes, or password resets.
+- **Recommendation:** Store a `tokenVersion` or `passwordChangeTimestamp` in the JWT and verify against the database in `authMiddleware`, or implement a lightweight cache check.
 
-**Command Execution:**
-
-- Risk: Shell command execution is inherently dangerous
-- Files: `server/lib/executor.ts`, `server/lib/allowlist.ts`
-- Current mitigation: Command allowlist, rate limiting, authentication
-- Recommendations: Regular security audits, monitor command execution logs
-
-**JWT Secret:**
-
-- Risk: Weak JWT secret can lead to session hijacking
-- Files: `server/lib/auth.ts`
-- Current mitigation: Fails fast in production if JWT_SECRET not set
-- Recommendations: Use strong random secrets, rotate periodically
-
-**Rate Limiting:**
-
-- Risk: DoS attacks on expensive operations
-- Files: `server/lib/rate-limiter.ts`
-- Current mitigation: Per-user rate limiting on auth, commands, admin actions
-- Recommendations: Monitor for abuse, adjust limits based on usage
-
-## Performance Bottlenecks
-
-**SSH Connection Pool:**
-
-- Problem: SSH connections can be slow to establish
-- Files: `server/lib/executor.ts` (SSHPool class)
-- Cause: Network latency, SSH handshake overhead
-- Improvement path: Connection pooling already implemented, consider increasing pool size
-
-**Dokku Command Execution:**
-
-- Problem: Each command is a synchronous shell operation
-- Files: `server/lib/executor.ts`, `server/lib/dokku.ts`
-- Cause: Dokku CLI is inherently sequential
-- Improvement path: Cache results where possible, use parallel execution for independent commands
-
-**App List on Dashboard:**
-
-- Problem: Fetching all apps requires multiple Dokku commands
-- Files: `server/lib/apps.ts` (getApps function)
-- Cause: Each app needs separate ps:report, domains:report, git:report
-- Improvement path: Consider caching app list, incremental updates
-
-## Fragile Areas
-
-**CLI Output Parsing:**
-
-- Files: `server/lib/apps.ts`, `server/lib/databases.ts`, `server/lib/ssl.ts`
-- Why fragile: Depends on Dokku's text output format
-- Safe modification: Add more test fixtures from different Dokku versions
-- Test coverage: Good coverage of parsing functions (apps.test.ts, ssl.parsing.test.ts)
-
-**ANSI Parsing:** ✅ Resolved
-
-- Files: `server/lib/ansi.ts`
-- Now uses `strip-ansi` library with stray ESC cleanup
-- Test coverage: Has tests (ansi.test.ts)
-
-**WebSocket Reconnection:**
-
-- Files: `server/lib/websocket.ts`, `client/src/hooks/use-streaming-action.ts`
-- Why fragile: Network issues, SSH timeouts
-- Safe modification: Add reconnection logic, heartbeat messages
-- Test coverage: Limited (websocket.test.ts exists)
-
-## Scaling Limits
-
-**Single Server:**
-
-- Current capacity: Designed for single-node Dokku deployments
-- Limit: Cannot manage multiple Dokku servers
-- Scaling path: Would need major refactor to support multi-server
-
-**SQLite Database:**
-
-- Current capacity: Suitable for single-server deployment
-- Limit: Not suitable for horizontal scaling
-- Scaling path: Migrate to PostgreSQL/MySQL if needed
-
-**In-Memory Cache:**
-
-- Current capacity: Simple in-memory cache
-- Limit: Lost on restart, no sharing across processes
-- Scaling path: Consider Redis for distributed caching
-
-## Dependencies at Risk
-
-**node-ssh:**
-
-- Risk: Maintainer may stop updating, has native dependencies
-- Impact: SSH execution would break
-- Migration plan: Consider using native SSH client or alternative library
-
-**better-sqlite3:**
-
-- Risk: Native module, requires compilation
-- Impact: Database operations would fail
-- Migration plan: Could switch to sql.js (WASM) or other SQLite bindings
-
-## Missing Critical Features
-
-**No Multi-Server Support:**
-
-- Problem: Can only manage one Dokku server
-- Blocks: Managing multiple servers from one UI
-
-**No Real-Time Updates:**
-
-- Problem: UI requires manual refresh for app status changes
-- Blocks: Live dashboards, automatic status updates
-- Possible solution: WebSocket-based push notifications
-
-**No Backup/Restore:**
-
-- Problem: No built-in backup functionality
-- Blocks: Disaster recovery, data portability
-- Possible solution: Add backup endpoints for database and config export
-
-## Test Coverage Gaps
-
-**WebSocket Testing:**
-
-- What's not tested: Full WebSocket lifecycle, reconnection scenarios
-- Files: `server/lib/websocket.ts`, `client/src/hooks/use-streaming-action.ts`
-- Risk: Connection issues may not be caught in tests
-- Priority: Medium
-
-**E2E Testing:**
-
-- What's not tested: Full user workflows across multiple pages
-- Files: `client/playwright.config.ts` exists but test coverage unknown
-- Risk: Integration issues between components
-- Priority: Low (unit tests are good)
-
-**Error Paths:**
-
-- What's not tested: Some error scenarios in API routes
-- Files: `server/routes/*.ts`
-- Risk: Unhandled errors may return unexpected responses
-- Priority: Low (error handling is generally good)
+### ⚠️ Lack of Password Strength Policy (P2)
+- **Files:**
+  - [ResetPassword.tsx](client/src/pages/ResetPassword.tsx#L19-L48)
+  - [users.ts](server/routes/users.ts#L30-L71)
+  - [auth.ts](server/routes/auth.ts#L78-L99)
+- **Risk:** Brute-force and credential stuffing vulnerability.
+- **Detail:** Registration, password update, and password reset flows only reject empty or non-string values — no length or complexity rules are enforced.
+- **Recommendation:** Enforce minimum 8 characters with mixed case/digits/special characters on both client-side forms and server-side routes.
 
 ---
 
-_Concerns audit: 2026-03-11_
+## Tech Debt & Code Quality
+
+### 🧱 Ad-Hoc SQLite Schema Migrations
+- **File:** [db.ts](server/lib/db.ts#L71-L77)
+- **Detail:** Schema updates (e.g., adding the `email` column to `users`) are executed imperatively at startup via column introspection (`PRAGMA table_info`).
+- **Impact:** As more tables/columns are added, this pattern becomes fragile and hard to roll back.
+- **Recommendation:** Integrate a structured migration framework or implement a file-based migration runner with a `schema_migrations` tracking table.
+
+### 🧱 Silent Email Service Failures in Production
+- **Files:**
+  - [auth.ts](server/routes/auth.ts#L63-L75)
+  - [email.ts](server/lib/email.ts#L17-L30)
+- **Impact:** Users are told a password reset email was sent, but it never arrives — with no visible alert that email is unconfigured.
+- **Detail:** When `RESEND_API_KEY` or `RESEND_FROM_EMAIL` is missing in production, the forgot-password endpoint returns success (to prevent username enumeration) and logs a server-side warning. The admin has no UI indication that email is unconfigured.
+- **Recommendation:** Add a startup-level check for email credentials, or expose the email configuration status on the admin Settings page.
+
+### 🧱 Biome Schema Version Mismatch
+- **File:** `client/biome.json`
+- **Detail:** The schema URL references version `2.4.4` but the installed Biome CLI is `2.4.5`, causing configuration warnings.
+- **Recommendation:** Update the schema URL to `2.4.5` or run `biome migrate` in the client directory.
+
+---
+
+## Performance Bottlenecks
+
+### ⚡ Synchronous CLI Command Execution
+- **File:** [executor.ts](server/lib/executor.ts#L428-L503)
+- **Detail:** Each non-streaming Dokku call runs via `execAsync` or `node-ssh execCommand`, blocking the event loop until completion.
+- **Impact:** SSH connection pooling is in place, but concurrency is limited — multiple sequential requests (e.g., Dashboard for many active users) incur latency overhead.
+- **Recommendation:** Cache expensive read-only reports, or queue command execution where possible.
+
+### ⚡ SQLite Single-Node Limitation
+- **File:** [db.ts](server/lib/db.ts#L24-L42)
+- **Detail:** All application metadata (users, password reset tokens, command histories, audit logs) is stored in a single SQLite file, restricting Docklight to single-node deployments.
+- **Recommendation:** Acceptable for a lightweight self-hosted utility, but document as a scaling constraint if multi-node HA Dokku management is desired.
+
+---
+
+## Fragile Areas
+
+### 🧩 CLI Output Parsing
+- **Files:**
+  - [apps.ts](server/lib/apps.ts)
+  - [databases.ts](server/lib/databases.ts)
+  - [ssl.ts](server/lib/ssl.ts)
+- **Risk:** High fragility depending on Dokku's version-specific stdout format.
+- **Detail:** Status, virtual host configs, processes, and database links are parsed from console output using regex. Slight variations in stdout formats between Dokku versions could cause parsing errors.
+- **Recommendation:** Build mock command fixtures from various Dokku versions for parsing tests, and implement fallback strategies for unknown output formats.
+
+### 🧩 Admin Self-Deletion
+- **File:** [users.ts](server/routes/users.ts#L160-L176)
+- **Risk:** An admin can accidentally delete their own account, locking themselves out on token expiry.
+- **Detail:** The backend prevents deleting the *last* admin, but does not prevent an admin from deleting their own account when other admins exist.
+- **Recommendation:** Return `400 Bad Request` with "Cannot delete your own user account" when a user attempts to delete themselves.
+
+### 🧩 Lack of Client-Side WebSocket Heartbeat
+- **File:** [use-app-events.ts](client/src/hooks/use-app-events.ts#L55-L66)
+- **Risk:** Client may sit in a stale connection state during silent network drops (firewall state expiry, Wi-Fi drop) without the socket closing.
+- **Detail:** The client reconnects on socket close and the server implements ping-pong, but there is no client-side activity check for silent connection drops.
+- **Recommendation:** Implement a client-side ping or activity check, forcing teardown and reconnect if no packets are received within a reasonable threshold (e.g., 60-90 seconds).
+
+---
+
+_Concerns audit updated: 2026-06-29_

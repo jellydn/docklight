@@ -10,6 +10,7 @@ vi.mock("./executor.js", () => ({
 
 import { listAppNames } from "./apps.js";
 import { executeCommand } from "./executor.js";
+import type { AppCommand } from "./allowlist.js";
 import {
 	MAINTENANCE_TIMEOUT_MS,
 	PURGE_AGGREGATE_COMMAND,
@@ -52,17 +53,17 @@ describe("server-maintenance", () => {
 				ok: true,
 				names: ["app-one", "app-two"],
 			});
-			vi.mocked(executeCommand).mockImplementation(async (command: string) => {
+			vi.mocked(executeCommand).mockImplementation(async (command: string | AppCommand) => {
 				if (command === "dokku repo:purge-cache 'app-one'") {
 					return {
-						command,
+						command: command as string,
 						exitCode: 0,
 						stdout: "Purged app-one",
 						stderr: "",
 					};
 				}
 				return {
-					command,
+					command: command as string,
 					exitCode: 0,
 					stdout: "Purged app-two",
 					stderr: "",
@@ -134,17 +135,17 @@ describe("server-maintenance", () => {
 				ok: true,
 				names: ["app-one", "app-two"],
 			});
-			vi.mocked(executeCommand).mockImplementation(async (command: string) => {
+			vi.mocked(executeCommand).mockImplementation(async (command: string | AppCommand) => {
 				if (command === "dokku repo:purge-cache 'app-two'") {
 					return {
-						command,
+						command: command as string,
 						exitCode: 1,
 						stdout: "",
 						stderr: "purge failed",
 					};
 				}
 				return {
-					command,
+					command: command as string,
 					exitCode: 0,
 					stdout: "Purged app-one",
 					stderr: "",

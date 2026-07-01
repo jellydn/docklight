@@ -6,7 +6,12 @@ import { SSHPool, sshPool, buildRuntimeCommand, executeCommand } from "./executo
 // ---------------------------------------------------------------------------
 
 vi.mock("./allowlist.js", () => ({
-	isCommandAllowed: vi.fn((cmd: string) => cmd.startsWith("dokku ")),
+	isCommandAllowed: vi.fn((cmd: string | { command: string }) => {
+		if (typeof cmd === "object" && cmd !== null) {
+			return cmd.command === "dokku";
+		}
+		return cmd.startsWith("dokku");
+	}),
 }));
 
 vi.mock("./db.js", () => ({
@@ -269,7 +274,7 @@ describe("executeCommand with SSH pool", () => {
 
 		expect(result.exitCode).toBe(0);
 		expect(result.stdout).toBe("app1\napp2");
-		expect(mockSshInstance.execCommand).toHaveBeenCalledWith("dokku apps:list");
+		expect(mockSshInstance.execCommand).toHaveBeenCalledWith("dokku 'apps:list'");
 	});
 
 	it("returns non-zero exit code when remote command fails", async () => {
@@ -381,6 +386,47 @@ describe("executeCommand with SSH pool", () => {
 			expect(result.exitCode).toBe(0);
 			expect(result.stdout).toBe("success");
 			expect(execCallCount).toBe(2);
+		});
+	});
+
+	describe("Structured AppCommand execution and safety", () => {
+		it("executes a structured AppCommand object successfully", async () => {
+			mockSshInstance.execCommand.mockResolvedValue(makeExecResult("app-detail", "", 0));
+
+			const result = await executeCommand({
+				command: "dokku",
+				args: ["apps:info", "my-app"],
+			});
+
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toBe("app-detail");
+			expect(mockSshInstance.execCommand).toHaveBeenCalledWith("dokku 'apps:info' 'my-app'");
+		});
+
+		it("escapes shell metacharacters to prevent command injection", async () => {
+			mockSshInstance.execCommand.mockResolvedValue(makeExecResult("escaped-run", "", 0));
+
+			const result = await executeCommand({
+				command: "dokku",
+				args: ["apps:create", "my-app; rm -rf /"],
+			});
+
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toBe("escaped-run");
+			expect(mockSshInstance.execCommand).toHaveBeenCalledWith(
+				"dokku 'apps:create' 'my-app; rm -rf /'"
+			);
+		});
+
+		it("executes raw string command when raw option is true", async () => {
+			mockSshInstance.execCommand.mockResolvedValue(makeExecResult("success", "", 0));
+
+			const result = await executeCommand("dokku ps:report my-app | grep web", 30000, {
+				raw: true,
+			});
+
+			expect(result.exitCode).toBe(0);
+			expect(mockSshInstance.execCommand).toHaveBeenCalledWith("dokku ps:report my-app | grep web");
 		});
 	});
 });
