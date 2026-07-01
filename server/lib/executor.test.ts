@@ -416,6 +416,17 @@ describe("executeCommand with SSH pool", () => {
 				"dokku 'apps:create' 'my-app; rm -rf /'"
 			);
 		});
+
+		it("executes raw string command when raw option is true", async () => {
+			mockSshInstance.execCommand.mockResolvedValue(makeExecResult("success", "", 0));
+
+			const result = await executeCommand("dokku ps:report my-app | grep web", 30000, {
+				raw: true,
+			});
+
+			expect(result.exitCode).toBe(0);
+			expect(mockSshInstance.execCommand).toHaveBeenCalledWith("dokku ps:report my-app | grep web");
+		});
 	});
 });
 

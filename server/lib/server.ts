@@ -92,10 +92,12 @@ export async function getServerHealth(): Promise<
 	try {
 		const [cpuResult, memResult, diskResult] = await Promise.all([
 			executeCommand(
-				"grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage}'"
+				"grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage}'",
+				30000,
+				{ raw: true }
 			),
-			executeCommand("free -m"),
-			executeCommand("df -h / | awk 'NR==2 {print $5}'"),
+			executeCommand("free -m", 30000, { raw: true }),
+			executeCommand("df -h / | awk 'NR==2 {print $5}'", 30000, { raw: true }),
 		]);
 
 		const cpu = cpuResult.exitCode === 0 ? parseCpuPercent(cpuResult.stdout) : 0;

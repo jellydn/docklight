@@ -12,13 +12,26 @@ import { parseSshTarget } from "./ssh-target.js";
 
 export type { AppCommand };
 
-function normalizeCommand(command: string | AppCommand): {
-	appCommand: AppCommand;
+export interface ExecuteCommandOptions {
+	userId?: string;
+	skipHistory?: boolean;
+	raw?: boolean;
+}
+
+function normalizeCommand(
+	command: string | AppCommand,
+	options?: ExecuteCommandOptions
+): {
+	appCommand: AppCommand | string;
 	rawCommand: string;
 } {
 	if (typeof command === "object" && command !== null) {
 		const rawCommand = [command.command, ...command.args.map(shellQuote)].join(" ");
 		return { appCommand: command, rawCommand };
+	}
+
+	if (options?.raw) {
+		return { appCommand: command, rawCommand: command };
 	}
 
 	const words = splitShellWords(command);
@@ -38,11 +51,6 @@ export interface CommandResult {
 	exitCode: number;
 	stdout: string;
 	stderr: string;
-}
-
-interface ExecuteCommandOptions {
-	userId?: string;
-	skipHistory?: boolean;
 }
 
 function maybeSaveCommand(result: CommandResult, skipHistory?: boolean): void {
@@ -340,7 +348,7 @@ export async function executeCommandStreaming(
 	timeout: number = 30000,
 	options?: ExecuteCommandOptions
 ): Promise<CommandResult> {
-	const { appCommand, rawCommand } = normalizeCommand(command);
+	const { appCommand, rawCommand } = normalizeCommand(command, options);
 
 	if (options?.userId) {
 		const rateLimitResult = commandRateLimiter.checkLimit(options.userId);
@@ -355,16 +363,24 @@ export async function executeCommandStreaming(
 	}
 
 	if (!isCommandAllowed(appCommand)) {
+		const displayCmd =
+			typeof appCommand === "object" && appCommand !== null
+				? appCommand.command
+				: appCommand.split(" ")[0] || "";
 		return createErrorResult(
 			rawCommand,
-			`Command not allowed: ${appCommand.command}`,
+			`Command not allowed: ${displayCmd}`,
 			1,
 			options?.skipHistory
 		);
 	}
 
 	const sshTarget = getSshTarget();
-	if (sshTarget && appCommand.command === "dokku") {
+	const isDokku =
+		typeof appCommand === "object" && appCommand !== null
+			? appCommand.command === "dokku"
+			: appCommand.startsWith("dokku");
+	if (sshTarget && isDokku) {
 		return executeViaPoolStreaming(rawCommand, sshTarget, timeout, onProgress, options);
 	}
 
@@ -453,7 +469,7 @@ export async function executeCommand(
 	timeout: number = 30000,
 	options?: ExecuteCommandOptions
 ): Promise<CommandResult> {
-	const { appCommand, rawCommand } = normalizeCommand(command);
+	const { appCommand, rawCommand } = normalizeCommand(command, options);
 
 	if (options?.userId) {
 		const rateLimitResult = commandRateLimiter.checkLimit(options.userId);
@@ -468,16 +484,24 @@ export async function executeCommand(
 	}
 
 	if (!isCommandAllowed(appCommand)) {
+		const displayCmd =
+			typeof appCommand === "object" && appCommand !== null
+				? appCommand.command
+				: appCommand.split(" ")[0] || "";
 		return createErrorResult(
 			rawCommand,
-			`Command not allowed: ${appCommand.command}`,
+			`Command not allowed: ${displayCmd}`,
 			1,
 			options?.skipHistory
 		);
 	}
 
 	const sshTarget = getSshTarget();
-	if (sshTarget && appCommand.command === "dokku") {
+	const isDokku =
+		typeof appCommand === "object" && appCommand !== null
+			? appCommand.command === "dokku"
+			: appCommand.startsWith("dokku");
+	if (sshTarget && isDokku) {
 		return executeViaPool(rawCommand, sshTarget, timeout, options);
 	}
 
