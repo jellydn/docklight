@@ -15,8 +15,8 @@
 .agents/skills/dev-browser/src/snapshot/browser-script.ts
 .agents/skills/dev-browser/src/snapshot/index.ts
 .agents/skills/dev-browser/src/snapshot/inject.ts
-data/docklight.db
-server/data/docklight.db
+data/docklight.db*
+server/data/docklight.db*
 .claude/settings.local.json
 node_modules/
 server/package-lock.json
