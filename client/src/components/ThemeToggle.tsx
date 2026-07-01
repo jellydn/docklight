@@ -23,7 +23,7 @@ export function ThemeToggle({ variant = "sidebar", className }: ThemeToggleProps
 			title={label}
 			className={cn(
 				variant === "sidebar"
-					? "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-foreground/10"
+					? "text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-foreground/10"
 					: "text-muted-foreground hover:text-foreground",
 				className
 			)}

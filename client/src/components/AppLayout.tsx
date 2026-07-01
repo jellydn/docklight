@@ -50,7 +50,7 @@ function SidebarLink({ to, label, icon: Icon, active, onClick }: SidebarLinkProp
 			className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
 				active
 					? "bg-sidebar-foreground/20 text-sidebar-foreground"
-					: "text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground"
+					: "text-sidebar-muted hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground"
 			}`}
 		>
 			<Icon className="h-4 w-4 shrink-0" />
@@ -140,7 +140,7 @@ export function AppLayout() {
 					<button
 						type="button"
 						onClick={handleLogout}
-						className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground transition-colors w-full mt-4"
+						className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-sidebar-muted hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground transition-colors w-full mt-4"
 					>
 						<LogOut className="h-4 w-4 shrink-0" />
 						Logout
@@ -148,7 +148,7 @@ export function AppLayout() {
 				</nav>
 				<div className="mt-auto border-t border-sidebar-foreground/10 p-4 space-y-3">
 					<div className="flex items-center justify-between">
-						<span className="text-xs font-medium uppercase tracking-wider text-sidebar-foreground/50">
+						<span className="text-xs font-semibold uppercase tracking-wide text-sidebar-muted">
 							Theme
 						</span>
 						<ThemeToggle variant="sidebar" />
@@ -157,7 +157,7 @@ export function AppLayout() {
 						<div>
 							<p className="text-sm font-medium text-sidebar-foreground truncate">{username}</p>
 							{role && (
-								<p className="text-xs text-sidebar-foreground/60 capitalize">{role}</p>
+								<p className="text-xs text-sidebar-muted capitalize">{role}</p>
 							)}
 						</div>
 					)}

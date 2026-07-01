@@ -236,7 +236,7 @@ describe("AppLayout", () => {
 			expect(roleEl.className).toContain("capitalize");
 		});
 
-		it("role text should use text-sidebar-foreground/60 class (not text-gray-400)", () => {
+		it("role text should use text-sidebar-muted class (not text-gray-400)", () => {
 			mockUsername = "alice";
 			mockRole = "admin";
 			render(
@@ -245,7 +245,7 @@ describe("AppLayout", () => {
 				</MemoryRouter>
 			);
 			const roleEl = screen.getByText("admin");
-			expect(roleEl.className).toContain("text-sidebar-foreground/60");
+			expect(roleEl.className).toContain("text-sidebar-muted");
 			expect(roleEl.className).not.toContain("text-gray-400");
 		});
 	});

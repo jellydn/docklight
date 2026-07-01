@@ -3,59 +3,68 @@ version: alpha
 name: Docklight
 description: A clean, minimal admin dashboard for Dokku server management. Neutral palette with high-contrast typography, subtle depth, and purposeful color for status signals. Supports light and dark themes with responsive layouts from mobile to desktop.
 colors:
-  primary: "#17171C"
-  secondary: "#71717A"
-  tertiary: "#2563EB"
+  primary: "#0F0F12"
+  secondary: "#52525B"
+  tertiary: "#1E40AF"
   neutral: "#FFFFFF"
   surface: "#F8F9FA"
   on-primary: "#FAFAFA"
   on-tertiary: "#FFFFFF"
-  destructive: "#DC2626"
-  success: "#16A34A"
-  warning: "#D97706"
+  destructive: "#B91C1C"
+  success: "#15803D"
+  warning: "#B45309"
   success-surface: "#DCFCE7"
-  success-on-surface: "#166534"
+  success-on-surface: "#14532D"
   destructive-surface: "#FEE2E2"
-  destructive-on-surface: "#991B1B"
+  destructive-on-surface: "#7F1D1D"
   warning-surface: "#FEF3C7"
-  warning-on-surface: "#92400E"
+  warning-on-surface: "#78350F"
   primary-dark: "#FAFAFA"
-  secondary-dark: "#A1A1AA"
+  secondary-dark: "#D4D4D8"
   neutral-dark: "#18181B"
   surface-dark: "#09090B"
   on-primary-dark: "#18181B"
   border-dark: "#27272A"
+  tertiary-dark: "#93C5FD"
   success-surface-dark: "#052E16"
-  success-on-surface-dark: "#86EFAC"
+  success-on-surface-dark: "#BBF7D0"
   destructive-surface-dark: "#450A0A"
-  destructive-on-surface-dark: "#FCA5A5"
+  destructive-on-surface-dark: "#FECACA"
   warning-surface-dark: "#422006"
-  warning-on-surface-dark: "#FCD34D"
+  warning-on-surface-dark: "#FDE68A"
 typography:
+  font-sans:
+    fontFamily: "IBM Plex Sans"
+    fontFeature: "\"kern\", \"liga\", \"calt\""
+  font-mono:
+    fontFamily: "IBM Plex Mono"
+    fontFeature: "\"kern\", \"liga\""
   h1:
-    fontFamily: Inter
+    fontFamily: "IBM Plex Sans"
     fontSize: 1.875rem
     fontWeight: 700
-    lineHeight: 1.2
-    letterSpacing: "-0.025em"
+    lineHeight: 1.25
+    letterSpacing: "-0.02em"
   h2:
-    fontFamily: Inter
+    fontFamily: "IBM Plex Sans"
     fontSize: 1.25rem
     fontWeight: 600
     lineHeight: 1.4
     letterSpacing: "-0.01em"
   body-md:
-    fontFamily: Inter
-    fontSize: 0.875rem
-    lineHeight: 1.5
+    fontFamily: "IBM Plex Sans"
+    fontSize: 1rem
+    fontWeight: 400
+    lineHeight: 1.6
+    letterSpacing: "0.01em"
   label-caps:
-    fontFamily: Inter
-    fontSize: 0.6875rem
+    fontFamily: "IBM Plex Sans"
+    fontSize: 0.75rem
     fontWeight: 600
-    letterSpacing: "0.08em"
+    letterSpacing: "0.06em"
   mono:
-    fontFamily: "JetBrains Mono"
-    fontSize: 0.8125rem
+    fontFamily: "IBM Plex Mono"
+    fontSize: 0.875rem
     lineHeight: 1.6
 rounded:
   sm: 6px
@@ -206,17 +215,32 @@ Light and dark themes share the same semantic structure. Tertiary blue, success 
 - **Surface-dark (#09090B):** Page background. Deep zinc for maximum contrast with cards.
 - **Border-dark (#27272A):** Subtle dividers and input borders.
 
-Status badges use tinted surface tokens (`success-surface`, `destructive-surface`, `warning-surface`) with paired on-surface text colors for WCAG AA contrast in both themes.
+Status badges use tinted surface tokens (`success-surface`, `destructive-surface`, `warning-surface`) with paired on-surface text colors tuned for **WCAG AAA** (7:1 normal text, 4.5:1 large text) in both themes.
 
 ## Typography
 
-Inter for all UI text. JetBrains Mono for command output and code. Weight and size carry hierarchy — no decorative fonts. Tight letter-spacing on headings; default tracking on body text.
+**IBM Plex Sans** for all UI text. **IBM Plex Mono** for command output and code.
+
+IBM Plex Sans was chosen over Inter for this admin UI because it offers stronger character distinction at small sizes (Il1, O0), a slightly taller x-height for dense tables, and was designed for technical interfaces. It remains neutral and professional without the over-familiar “startup dashboard” feel of Inter.
+
+Both families are loaded via Google Fonts with `display=swap` and fall back to system UI fonts when offline.
+
+### Readability rules (AAA)
+
+- **Base body size is 16px (1rem)** — 14px fails AAA contrast targets for secondary text far more often.
+- **Line height 1.6** on body copy for comfortable scanning of logs and tables.
+- **Muted text** uses `secondary` tokens darkened/lightened to maintain ≥7:1 against page and card surfaces.
+- **Links** use a darker blue (`#1E40AF`) in light mode and a lighter blue (`#93C5FD`) in dark mode — both meet AAA on their respective surfaces.
+- **Table labels** use 12px semibold uppercase minimum; avoid 11px for any text that carries meaning.
+- Enable kerning and ligatures via `font-feature-settings`.
+
+### Scale
 
 - **H1 (1.875rem, 700):** Page titles. Bold, slightly tight tracking.
 - **H2 (1.25rem, 600):** Section headers within cards and content areas.
-- **Body (0.875rem):** Default text size. Compact for information density.
-- **Label (0.6875rem, 600, uppercase tracking):** Small caps for table headers and labels.
-- **Mono (0.8125rem):** Command output, log entries, technical values.
+- **Body (1rem, 400):** Default text size. 16px base for AAA compliance.
+- **Label (0.75rem, 600, uppercase tracking):** Table headers and metadata labels.
+- **Mono (0.875rem):** Command output, log entries, technical values.
 
 ## Layout
 
@@ -275,7 +299,8 @@ Interactive focus rings use tertiary blue in light mode and a lighter ring in da
 - **Do** use status colors consistently: green = healthy, red = error/stopped, amber = warning.
 - **Do** keep interactive elements visually distinct from static content.
 - **Do** test layouts at 375px, 768px, and 1280px widths.
-- **Do** place the theme toggle in the sidebar footer and mobile header for consistent access.
+- **Do** maintain WCAG AAA contrast (7:1 normal text, 4.5:1 large text) when introducing new color pairs.
+- **Do** use IBM Plex Sans / IBM Plex Mono via design tokens — do not load additional display fonts.
 - **Don't** add decorative elements, gradients, or illustrations. The UI is functional.
 - **Don't** use box-shadows for depth — use background color contrast instead.
 - **Don't** introduce colors outside the palette. Extend the palette if a new semantic color is needed.
