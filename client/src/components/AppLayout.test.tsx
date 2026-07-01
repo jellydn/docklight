@@ -19,6 +19,10 @@ vi.mock("@/hooks/use-app-events.js", () => ({
 	useAppEvents: vi.fn(),
 }));
 
+vi.mock("@/components/ThemeToggle.js", () => ({
+	ThemeToggle: () => <button type="button" aria-label="Theme toggle" />,
+}));
+
 // Mutable mock state for auth context so tests can control role/username
 let mockRole: string | null = null;
 let mockUsername: string | null = null;
@@ -96,7 +100,7 @@ describe("AppLayout", () => {
 	});
 
 	describe("isActive (active route highlighting)", () => {
-		const activeClass = "bg-white/20";
+		const activeClass = "bg-sidebar-foreground/20";
 
 		it.each([
 			["/dashboard", /Dashboard/],
@@ -115,8 +119,8 @@ describe("AppLayout", () => {
 		});
 
 		it.each([
-			[/^Apps$/, "bg-white/20 text-white"],
-			[/Audit Logs/, "bg-white/20 text-white"],
+			[/^Apps$/, "bg-sidebar-foreground/20 text-sidebar-foreground"],
+			[/Audit Logs/, "bg-sidebar-foreground/20 text-sidebar-foreground"],
 		])("%s should not have active styling when on /dashboard", (namePattern, notClass) => {
 			render(
 				<MemoryRouter initialEntries={["/dashboard"]}>
@@ -173,7 +177,7 @@ describe("AppLayout", () => {
 		it.each([
 			["/users", /Users/],
 			["/settings", /^Settings$/],
-		])("should apply bg-white/20 to %s link when role is admin", (route, namePattern) => {
+		])("should apply bg-sidebar-foreground/20 to %s link when role is admin", (route, namePattern) => {
 			mockRole = "admin";
 			render(
 				<MemoryRouter initialEntries={[route]}>
@@ -181,7 +185,7 @@ describe("AppLayout", () => {
 				</MemoryRouter>
 			);
 			const link = screen.getByRole("link", { name: namePattern });
-			expect(link.className).toContain("bg-white/20");
+			expect(link.className).toContain("bg-sidebar-foreground/20");
 		});
 	});
 
@@ -232,7 +236,7 @@ describe("AppLayout", () => {
 			expect(roleEl.className).toContain("capitalize");
 		});
 
-		it("role text should use text-primary-foreground/60 class (not text-gray-400)", () => {
+		it("role text should use text-sidebar-foreground/60 class (not text-gray-400)", () => {
 			mockUsername = "alice";
 			mockRole = "admin";
 			render(
@@ -241,20 +245,20 @@ describe("AppLayout", () => {
 				</MemoryRouter>
 			);
 			const roleEl = screen.getByText("admin");
-			expect(roleEl.className).toContain("text-primary-foreground/60");
+			expect(roleEl.className).toContain("text-sidebar-foreground/60");
 			expect(roleEl.className).not.toContain("text-gray-400");
 		});
 	});
 
 	describe("sidebar CSS classes", () => {
-		it("should use bg-primary for sidebar background (not bg-gray-900)", () => {
+		it("should use bg-sidebar for sidebar background (not bg-gray-900)", () => {
 			render(
 				<MemoryRouter initialEntries={["/dashboard"]}>
 					<AppLayout />
 				</MemoryRouter>
 			);
 			const sidebar = screen.getByRole("complementary");
-			expect(sidebar.className).toContain("bg-primary");
+			expect(sidebar.className).toContain("bg-sidebar");
 			expect(sidebar.className).not.toContain("bg-gray-900");
 		});
 

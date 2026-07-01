@@ -4,7 +4,22 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>Docklight</title>
+    <script>
+      (function () {
+        var stored = localStorage.getItem("docklight-theme");
+        var theme =
+          stored === "dark" ||
+          (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+            ? "dark"
+            : "light";
+        if (theme === "dark") {
+          document.documentElement.classList.add("dark");
+        }
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

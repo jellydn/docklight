@@ -23,7 +23,7 @@ export function AppLogs({
 }: AppLogsProps) {
 	const getConnectionStatusBadge = () => {
 		const colors = {
-			connected: "bg-green-100 text-green-800",
+			connected: "bg-success-surface text-success-on-surface",
 			disconnected: "bg-muted text-foreground",
 			reconnecting: "bg-yellow-100 text-yellow-800",
 		};

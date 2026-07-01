@@ -1,4 +1,5 @@
 import type { AppDetailHeaderProps } from "./types.js";
+import { statusBadgeClass } from "@/lib/status-styles.js";
 
 export function AppDetailHeader({
 	appName,
@@ -9,23 +10,20 @@ export function AppDetailHeader({
 	onRestart,
 	onRebuild,
 }: AppDetailHeaderProps) {
-	const getStatusBadge = () => {
-		const color = status === "running" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
-		return <span className={`px-3 py-1 rounded-full text-sm font-medium ${color}`}>{status}</span>;
-	};
-
 	return (
-		<div className="flex flex-wrap gap-3 justify-between items-center mb-6">
-			<div>
-				<h1 className="text-2xl font-bold">{appName}</h1>
-				<div className="mt-2">{getStatusBadge()}</div>
+		<div className="page-header items-start sm:items-center">
+			<div className="min-w-0">
+				<h1 className="page-title break-all">{appName}</h1>
+				<div className="mt-2">
+					<span className={statusBadgeClass(status)}>{status}</span>
+				</div>
 			</div>
 			{canModify && (
-				<div className="flex gap-2">
+				<div className="flex flex-wrap gap-2 w-full sm:w-auto">
 					{status === "running" && (
 						<button
 							onClick={onStop}
-							className="bg-warning text-white px-4 py-2 rounded hover:bg-warning/90"
+							className="bg-warning text-warning-foreground px-4 py-2 rounded hover:bg-warning/90"
 							type="button"
 						>
 							Stop
@@ -34,7 +32,7 @@ export function AppDetailHeader({
 					{status === "stopped" && (
 						<button
 							onClick={onStart}
-							className="bg-success text-white px-4 py-2 rounded hover:bg-success/90"
+							className="bg-success text-success-foreground px-4 py-2 rounded hover:bg-success/90"
 							type="button"
 						>
 							Start

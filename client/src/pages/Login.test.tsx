@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider } from "@/contexts/theme-context.js";
 import { Login } from "./Login";
 
 vi.mock("../lib/api.js", () => ({
@@ -31,7 +32,9 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 	const testQueryClient = createTestQueryClient();
 	return render(
 		<QueryClientProvider client={testQueryClient}>
-			<MemoryRouter>{ui}</MemoryRouter>
+			<ThemeProvider>
+				<MemoryRouter>{ui}</MemoryRouter>
+			</ThemeProvider>
 		</QueryClientProvider>
 	);
 };

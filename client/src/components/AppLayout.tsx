@@ -7,6 +7,7 @@ import { queryClient } from "../lib/query-client.js";
 import { queryKeys } from "../lib/query-keys.js";
 import { useAuth } from "@/contexts/auth-context.js";
 import { useAppEvents } from "@/hooks/use-app-events.js";
+import { ThemeToggle } from "@/components/ThemeToggle.js";
 import {
 	LayoutDashboard,
 	AppWindow,
@@ -48,11 +49,11 @@ function SidebarLink({ to, label, icon: Icon, active, onClick }: SidebarLinkProp
 			onClick={onClick}
 			className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
 				active
-					? "bg-white/20 text-white"
-					: "text-primary-foreground/60 hover:bg-primary-foreground/10 hover:text-primary-foreground"
+					? "bg-sidebar-foreground/20 text-sidebar-foreground"
+					: "text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground"
 			}`}
 		>
-			<Icon className="h-4 w-4" />
+			<Icon className="h-4 w-4 shrink-0" />
 			{label}
 		</Link>
 	);
@@ -84,13 +85,12 @@ export function AppLayout() {
 	const isActive = (path: string): boolean =>
 		location.pathname === path || location.pathname.startsWith(`${path}/`);
 
-	const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-primary text-primary-foreground transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:z-auto md:pointer-events-auto ${
+	const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-sidebar text-sidebar-foreground transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:z-auto md:pointer-events-auto ${
 		sidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
 	}`;
 
 	return (
 		<div className="flex min-h-screen bg-background">
-			{/* Mobile overlay */}
 			{sidebarOpen && (
 				<button
 					type="button"
@@ -100,23 +100,22 @@ export function AppLayout() {
 				/>
 			)}
 
-			{/* Sidebar */}
 			<aside className={`${sidebarClasses} flex flex-col`}>
-				<div className="flex items-center justify-between p-4 border-b border-primary-foreground/10">
-					<div className="flex items-center gap-2">
-						<img src="/logo.svg" alt="Docklight logo" className="h-6 w-6" />
-						<h1 className="text-xl font-bold text-primary-foreground">Docklight</h1>
+				<div className="flex items-center justify-between p-4 border-b border-sidebar-foreground/10">
+					<div className="flex items-center gap-2 min-w-0">
+						<img src="/logo.svg" alt="Docklight logo" className="h-6 w-6 shrink-0" />
+						<h1 className="text-xl font-bold text-sidebar-foreground truncate">Docklight</h1>
 					</div>
 					<button
 						type="button"
 						onClick={closeSidebar}
-						className="md:hidden text-primary-foreground/60 hover:text-primary-foreground"
+						className="md:hidden text-sidebar-foreground/60 hover:text-sidebar-foreground"
 						aria-label="Close menu"
 					>
 						<X className="h-5 w-5" />
 					</button>
 				</div>
-				<nav className="mt-4 flex-1 px-2 space-y-1">
+				<nav className="mt-4 flex-1 px-2 space-y-1 overflow-y-auto">
 					{navItems.map(({ to, label, icon }) => (
 						<SidebarLink
 							key={to}
@@ -141,41 +140,53 @@ export function AppLayout() {
 					<button
 						type="button"
 						onClick={handleLogout}
-						className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-primary-foreground/60 hover:bg-primary-foreground/10 hover:text-primary-foreground transition-colors w-full mt-4"
+						className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground transition-colors w-full mt-4"
 					>
-						<LogOut className="h-4 w-4" />
+						<LogOut className="h-4 w-4 shrink-0" />
 						Logout
 					</button>
 				</nav>
-				{username && (
-					<div className="mt-auto border-t border-primary-foreground/10 p-4">
-						<p className="text-sm font-medium text-primary-foreground truncate">{username}</p>
-						{role && <p className="text-xs text-primary-foreground/60 capitalize">{role}</p>}
+				<div className="mt-auto border-t border-sidebar-foreground/10 p-4 space-y-3">
+					<div className="flex items-center justify-between">
+						<span className="text-xs font-medium uppercase tracking-wider text-sidebar-foreground/50">
+							Theme
+						</span>
+						<ThemeToggle variant="sidebar" />
 					</div>
-				)}
+					{username && (
+						<div>
+							<p className="text-sm font-medium text-sidebar-foreground truncate">{username}</p>
+							{role && (
+								<p className="text-xs text-sidebar-foreground/60 capitalize">{role}</p>
+							)}
+						</div>
+					)}
+				</div>
 			</aside>
 
 			<div className="flex flex-col flex-1 min-w-0">
-				{/* Mobile top bar */}
 				<header className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-card">
-					<div className="flex items-center gap-3">
+					<div className="flex items-center gap-3 min-w-0">
 						<button
 							type="button"
 							onClick={() => setSidebarOpen(true)}
-							className="text-muted-foreground hover:text-foreground"
+							className="text-muted-foreground hover:text-foreground shrink-0"
 							aria-label="Open menu"
 						>
 							<Menu className="h-5 w-5" />
 						</button>
-						<div className="flex items-center gap-2">
-							<img src="/logo.svg" alt="Docklight logo" className="h-6 w-6" />
-							<h1 className="text-lg font-bold">Docklight</h1>
+						<div className="flex items-center gap-2 min-w-0">
+							<img src="/logo.svg" alt="Docklight logo" className="h-6 w-6 shrink-0" />
+							<h1 className="text-lg font-bold truncate">Docklight</h1>
 						</div>
 					</div>
+					<ThemeToggle variant="header" />
 				</header>
 
 				<main className="flex-1 p-4 md:p-6 lg:p-8">
-					<Outlet />
+					<div className="content-container">
+						<Outlet />
+					</div>
 				</main>
 			</div>
 		</div>

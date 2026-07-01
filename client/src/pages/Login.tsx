@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { queryKeys } from "../lib/query-keys.js";
 import { AuthMeSchema } from "../lib/schemas.js";
 import { useToast } from "../components/ToastProvider";
+import { ThemeToggle } from "@/components/ThemeToggle.js";
 
 const FORGOT_PASSWORD_SCHEMA = z.object({
 	success: z.literal(true),
@@ -80,8 +81,11 @@ export function Login(): JSX.Element {
 	}
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-background px-4">
-			<div className="bg-card p-8 rounded-lg border border-border w-full max-w-sm">
+		<div className="min-h-screen flex items-center justify-center bg-background px-4 py-8 relative">
+			<div className="absolute top-4 right-4">
+				<ThemeToggle variant="header" />
+			</div>
+			<div className="bg-card p-6 sm:p-8 rounded-lg border border-border w-full max-w-sm">
 				<div className="flex justify-center mb-4">
 					<img src="/logo.svg" alt="Docklight logo" className="h-12 w-12" />
 				</div>

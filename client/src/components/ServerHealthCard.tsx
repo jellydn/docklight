@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ConfirmDialog.js";
+import { healthBannerClass, healthBarClass } from "@/lib/status-styles.js";
 import { isDiskUnderPressure, type ServerHealth } from "../lib/schemas.js";
 
 export type MaintenanceActionId = "cleanup" | "purge";
@@ -15,25 +16,10 @@ const METRICS: ReadonlyArray<{ key: MetricKey; label: string }> = [
 	{ key: "disk", label: "Disk" },
 ];
 
-const HEALTH_STATUS_PRESENTATION: Record<
-	HealthStatus,
-	{ label: string; banner: string; bar: string }
-> = {
-	ok: {
-		label: "OK",
-		banner: "bg-green-50 border-green-200 text-green-800",
-		bar: "bg-green-500",
-	},
-	warning: {
-		label: "Watch closely",
-		banner: "bg-yellow-50 border-yellow-200 text-yellow-800",
-		bar: "bg-yellow-500",
-	},
-	critical: {
-		label: "Warning",
-		banner: "bg-red-50 border-red-200 text-red-800",
-		bar: "bg-red-500",
-	},
+const HEALTH_STATUS_LABELS: Record<HealthStatus, string> = {
+	ok: "OK",
+	warning: "Watch closely",
+	critical: "Warning",
 };
 
 const MAINTENANCE_ACTIONS: ReadonlyArray<{
@@ -77,8 +63,6 @@ interface HealthMetricBarProps {
 }
 
 function HealthMetricBar({ label, value, status }: HealthMetricBarProps) {
-	const presentation = HEALTH_STATUS_PRESENTATION[status];
-
 	return (
 		<div>
 			<div className="flex justify-between mb-1">
@@ -87,7 +71,7 @@ function HealthMetricBar({ label, value, status }: HealthMetricBarProps) {
 			</div>
 			<div className="w-full bg-muted rounded-full h-2">
 				<div
-					className={`h-2 rounded-full transition-all ${presentation.bar}`}
+					className={`h-2 rounded-full transition-all ${healthBarClass(status)}`}
 					style={{ width: `${value}%` }}
 				/>
 			</div>
@@ -109,7 +93,6 @@ export function ServerHealthCard({
 	onActionConfirm,
 }: ServerHealthCardProps) {
 	const [activeActionId, setActiveActionId] = useState<MaintenanceActionId | null>(null);
-	const statusPresentation = HEALTH_STATUS_PRESENTATION[health.status];
 	const visibleActions = MAINTENANCE_ACTIONS.filter((action) => action.visible(health));
 	const activeAction = MAINTENANCE_ACTIONS.find((action) => action.id === activeActionId);
 
@@ -124,10 +107,10 @@ export function ServerHealthCard({
 	return (
 		<>
 			<Card className="mb-6">
-				<CardHeader className="flex flex-row items-center justify-between space-y-0">
+				<CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between space-y-0">
 					<CardTitle>Server Health</CardTitle>
 					{canModify && (
-						<div className="flex gap-2">
+						<div className="flex flex-wrap gap-2">
 							{visibleActions.map((action) => (
 								<Button
 									key={action.id}
@@ -144,10 +127,8 @@ export function ServerHealthCard({
 				</CardHeader>
 				<CardContent>
 					<div className="space-y-4">
-						<div
-							className={`rounded-md border px-4 py-3 text-sm font-medium ${statusPresentation.banner}`}
-						>
-							VPS status: {statusPresentation.label}
+						<div className={healthBannerClass(health.status)}>
+							VPS status: {HEALTH_STATUS_LABELS[health.status]}
 						</div>
 						{METRICS.map(({ key, label }) => (
 							<HealthMetricBar
