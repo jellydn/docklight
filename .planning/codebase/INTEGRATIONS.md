@@ -7,13 +7,13 @@
 ### Dokku CLI (via SSH)
 - **Integration Mechanism:** SSH commands are executed remotely via the `node-ssh` library.
 - **Implementation:**
-  - Dynamic shell command builder: [dokku.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/dokku.ts)
-  - Security command verification: [allowlist.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/allowlist.ts)
-- **Authentication:** Authenticates to the Dokku host using SSH private key keys via `DOCKLIGHT_DOKKU_SSH_KEY_PATH`.
+  - Dynamic shell command builder: [dokku.ts](server/lib/dokku.ts)
+  - Security command verification: [allowlist.ts](server/lib/allowlist.ts)
+- **Authentication:** Authenticates to the Dokku host using SSH private key via `DOCKLIGHT_DOKKU_SSH_KEY_PATH`.
 
 ### Resend Email API
 - **Integration Mechanism:** Native `fetch` HTTP client queries the Resend REST API endpoints (`https://api.resend.com/emails`).
-- **Implementation:** [email.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/email.ts)
+- **Implementation:** [email.ts](server/lib/email.ts)
 - **Use Case:** Transmits system-generated password reset request hyperlinks to verified user emails.
 - **Authentication:** Leverages API Bearer Token authorization header using the `RESEND_API_KEY` configuration.
 
@@ -34,7 +34,7 @@
 - **Application Server Settings:** Persisted directly inside `data/server-settings.json` on the host container's filesystem. Manages `dokkuSshTarget`, `dokkuSshKeyPath`, and `logLevel` configurations.
 
 ### Caching
-- **Implementation:** Simple, transient memory cache dictionary wrapper ([cache.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/cache.ts)) used for buffering short-term, expensive Dokku CLI results. No external cache dependencies (e.g. Redis).
+- **Implementation:** Simple, transient memory cache dictionary wrapper ([cache.ts](server/lib/cache.ts)) used for buffering short-term, expensive Dokku CLI results. No external cache dependencies (e.g. Redis).
 
 ---
 
@@ -54,7 +54,7 @@
 
 - **Logging Library:** Pino structured logger (`pino` and `pino-http`).
 - **Level Controls:** Configured globally via the `LOG_LEVEL` environment variable.
-- **Audit Logs:** Log rotation schedules configured under [audit-rotation.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/audit-rotation.ts) to manage audit storage footprint.
+- **Audit Logs:** Log rotation schedules configured under [audit-rotation.ts](server/lib/audit-rotation.ts) to manage audit storage footprint.
 
 ---
 

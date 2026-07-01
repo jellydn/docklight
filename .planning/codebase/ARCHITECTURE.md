@@ -27,23 +27,23 @@ graph TD
 ## Layers
 
 ### 1. Presentation Layer (Client)
-*   **Location:** [client/src/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/)
+*   **Location:** [client/src/](client/src/)
 *   **Key Tech:** React, Vite, Tailwind CSS 4, Radix UI Primitives, Lucide icons.
 *   **State Management:** `@tanstack/react-query` handles server state synchronization. React Context manages authentication session state.
 *   **Responsibilities:** Rendering UI pages (Dashboard, Apps, Databases, Plugins, Audits, Users, Settings), handling forms, validating client inputs, and managing WebSocket connections for live logs.
 
 ### 2. API Layer (Server Routes)
-*   **Location:** [server/routes/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/routes/)
+*   **Location:** [server/routes/](server/routes/)
 *   **Key Tech:** Express Router.
 *   **Responsibilities:** Mapping HTTP request paths to controllers, enforcing JWT-based route authentication and Role-Based Access Control (RBAC) middleware, parsing query params, and structuring JSON API responses.
 
 ### 3. Business Logic Layer
-*   **Location:** [server/lib/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/)
+*   **Location:** [server/lib/](server/lib/)
 *   **Key Tech:** Node.js, `node-ssh`, SQLite helpers, event emitters.
 *   **Responsibilities:** Orchestrating Dokku CLI commands, parsing CLI text outputs into clean JSON response formats, checking command execution rules against safety allowlists, maintaining SSH connections, and executing database queries.
 
 ### 4. Data Layer (Database & Storage)
-*   **Location:** [server/lib/db.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/db.ts) / [server/data/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/data/)
+*   **Location:** [server/lib/db.ts](server/lib/db.ts) / [server/data/](server/data/)
 *   **Key Tech:** `better-sqlite3` (SQLite engine).
 *   **Responsibilities:** Direct SQL operations using prepared statements, transaction safety, database migration checks (`IF NOT EXISTS`, automatic column additions), and database write throttling/indexing.
 
@@ -98,21 +98,21 @@ sequenceDiagram
 ## Key Abstractions
 
 ### 1. Command Execution & SSHPool
-*   **File:** [executor.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/executor.ts)
+*   **File:** [executor.ts](server/lib/executor.ts)
 *   **Details:** Encapsulates the execution of CLI commands.
 *   **Abstraction:** If `DOCKLIGHT_DOKKU_SSH_TARGET` is set, it executes commands over an SSH connection pool (`SSHPool`). Otherwise, it spawns local shell commands.
 *   **CommandResult Interface:** Always returns `{ command: string, exitCode: number, stdout: string, stderr: string }`.
 
 ### 2. Command Allowlist
-*   **File:** [allowlist.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/allowlist.ts)
+*   **File:** [allowlist.ts](server/lib/allowlist.ts)
 *   **Details:** Hard security boundary. Splits incoming commands on pipe operators (`|`) and checks each sub-command's base executable against a strict set of permitted commands (`dokku`, `top`, `free`, `df`, `grep`, `awk`, `curl`).
 
 ### 3. Real-Time Application Events
-*   **File:** [app-events.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/app-events.ts)
+*   **File:** [app-events.ts](server/lib/app-events.ts)
 *   **Details:** Ephemeral publish-subscribe bridge. Allows backend controllers to broadcast app actions (e.g. scaling, building) to connected WebSockets under `/api/events`.
 
 ### 4. Database Engine wrapper
-*   **File:** [db.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/db.ts)
+*   **File:** [db.ts](server/lib/db.ts)
 *   **Details:** Configures SQLite features like WAL journal mode, synchronous mode, and foreign keys. Handles user roles, audit logging, reset tokens, and command history logging.
 
 ---
@@ -120,17 +120,17 @@ sequenceDiagram
 ## Entry Points
 
 ### 1. Backend Server Entry Point
-*   **File:** [server/index.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/index.ts)
+*   **File:** [server/index.ts](server/index.ts)
 *   **Command:** `bun run server-dev` (development) or `bun start` (production)
 *   **Responsibilities:** Boots Express app, runs database checks, starts background audit log rotation, mounts HTTP middleware/routes, sets up the WebSocket handler, and captures signal listeners (`SIGINT`/`SIGTERM`) for graceful shutdowns.
 
 ### 2. Frontend Client Entry Point
-*   **File:** [client/src/main.tsx](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/main.tsx)
+*   **File:** [client/src/main.tsx](client/src/main.tsx)
 *   **Command:** `bun run client-dev` (development) or `bun run build` (production)
 *   **Responsibilities:** Mounts the React DOM root, initializes the TanStack query client (`QueryClientProvider`), and sets up theme/style configs.
 
 ### 3. User Setup CLI Utility
-*   **File:** [server/createUser.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/createUser.ts)
+*   **File:** [server/createUser.ts](server/createUser.ts)
 *   **Command:** `bun run server/createUser.ts <username> <password> <role>`
 *   **Responsibilities:** Bypasses HTTP APIs to seed initial administrators or operators into the database directory.
 

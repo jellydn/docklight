@@ -1,7 +1,7 @@
 import { exec, spawn } from "child_process";
 import { promisify } from "util";
 import { NodeSSH } from "node-ssh";
-import { isCommandAllowed, type AppCommand } from "./allowlist.js";
+import { isCommandAllowed, type AppCommand, type AllowedCommand } from "./allowlist.js";
 import { saveCommand } from "./db.js";
 import { logger } from "./logger.js";
 import { commandRateLimiter } from "./rate-limiter.js";
@@ -26,6 +26,9 @@ function normalizeCommand(
 	rawCommand: string;
 } {
 	if (typeof command === "object" && command !== null) {
+		if (!Array.isArray(command.args)) {
+			return { appCommand: command, rawCommand: command.command };
+		}
 		const rawCommand = [command.command, ...command.args.map(shellQuote)].join(" ");
 		return { appCommand: command, rawCommand };
 	}
@@ -35,7 +38,7 @@ function normalizeCommand(
 	}
 
 	const words = splitShellWords(command);
-	const base = (words[0] || "") as any;
+	const base = (words[0] || "") as AllowedCommand;
 	const appCommand: AppCommand = {
 		command: base,
 		args: words.slice(1),

@@ -45,7 +45,7 @@
 **Build/Dev:**
 
 - tsx 4.6.2 - TypeScript execution engine for backend dev watches
-- Biome 2.4.4 - Shared code style formatting and linting rules
+- Biome 2.4.5 - Shared code style formatting and linting rules
 - Tailwind CSS 4 - Utility-first CSS styling
 - @tailwindcss/postcss 4.2.1 - Tailwind CSS PostCSS integration wrapper
 

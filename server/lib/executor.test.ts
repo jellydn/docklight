@@ -412,6 +412,7 @@ describe("executeCommand with SSH pool", () => {
 			});
 
 			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toBe("escaped-run");
 			expect(mockSshInstance.execCommand).toHaveBeenCalledWith(
 				"dokku 'apps:create' 'my-app; rm -rf /'"
 			);

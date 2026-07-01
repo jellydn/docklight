@@ -45,15 +45,15 @@
 
 ### Server Directories
 
-*   **[server/lib/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/)**: Core server capabilities. Houses the connection pool logic, parsing of SSH/stdout logs, SQLite setup, and rate limiters.
-*   **[server/routes/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/routes/)**: Exposes web-facing REST handlers. Implements route configurations like `/api/apps`, `/api/databases`, `/api/settings`, etc.
-*   **[server/data/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/data/)**: Holds the SQLite database file (`docklight.db`). This folder and database are generated automatically upon starting the server.
+*   **[server/lib/](server/lib/)**: Core server capabilities. Houses the connection pool logic, parsing of SSH/stdout logs, SQLite setup, and rate limiters.
+*   **[server/routes/](server/routes/)**: Exposes web-facing REST handlers. Implements route configurations like `/api/apps`, `/api/databases`, `/api/settings`, etc.
+*   **[server/data/](server/data/)**: Holds the SQLite database file (`docklight.db`). This folder and database are generated automatically upon starting the server.
 
 ### Client Directories
 
-*   **[client/src/components/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/components/)**: Reusable controls and building blocks. The [ui/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/components/ui/) sub-folder contains generic headless components (radix primitives, buttons, dropdowns, inputs).
-*   **[client/src/pages/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/pages/)**: Container views mapped to React routes. The [AppDetail/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/pages/AppDetail/) subdirectory is particularly important, hosting individual tabs for app setup (SSL, Ports, Docker options, Git, Domains, Buildpacks).
-*   **[client/src/lib/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/lib/)**: Schema models (Zod definitions in `schemas.ts`), constants, fetch calls in `api.ts`, and caching keys (`query-keys.ts`).
+*   **[client/src/components/](client/src/components/)**: Reusable controls and building blocks. The [ui/](client/src/components/ui/) sub-folder contains generic headless components (radix primitives, buttons, dropdowns, inputs).
+*   **[client/src/pages/](client/src/pages/)**: Container views mapped to React routes. The [AppDetail/](client/src/pages/AppDetail/) subdirectory is particularly important, hosting individual tabs for app setup (SSL, Ports, Docker options, Git, Domains, Buildpacks).
+*   **[client/src/lib/](client/src/lib/)**: Schema models (Zod definitions in `schemas.ts`), constants, fetch calls in `api.ts`, and caching keys (`query-keys.ts`).
 
 ---
 
@@ -75,19 +75,19 @@
 ## Where to Add New Code
 
 ### 1. Adding a New API Endpoint / Backend Feature
-1.  Add logic or shell execution to [server/lib/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/lib/).
-2.  Define the routes controller in [server/routes/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/routes/).
-3.  Register the routes in [server/routes/index.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/routes/index.ts) and call it in [server/index.ts](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/server/index.ts).
+1.  Add logic or shell execution to [server/lib/](server/lib/).
+2.  Define the routes controller in [server/routes/](server/routes/).
+3.  Register the routes in [server/routes/index.ts](server/routes/index.ts) and call it in [server/index.ts](server/index.ts).
 4.  Implement tests in `server/lib/<feature>.test.ts`.
 
 ### 2. Adding a New React Page or Route
-1.  Create the page component in [client/src/pages/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/pages/) using PascalCase filename.
-2.  Import/lazy-load the page in [client/src/App.tsx](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/App.tsx) and mount the `<Route>` element.
+1.  Create the page component in [client/src/pages/](client/src/pages/) using PascalCase filename.
+2.  Import/lazy-load the page in [client/src/App.tsx](client/src/App.tsx) and mount the `<Route>` element.
 3.  Implement corresponding queries/mutations using TanStack React Query inside hooks or inline.
 
 ### 3. Adding a New App Configuration Tab
-1.  Create your sub-pane inside [client/src/pages/AppDetail/](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/pages/AppDetail/) (e.g., `AppSSL.tsx`).
-2.  Update the tab listings and render triggers in the main list in [client/src/pages/AppDetail/index.tsx](file:///Users/huynhdung/src/tries/2026-06-28-jellydn-docklight-pr-137/client/src/pages/AppDetail/index.tsx).
+1.  Create your sub-pane inside [client/src/pages/AppDetail/](client/src/pages/AppDetail/) (e.g., `AppSSL.tsx`).
+2.  Update the tab listings and render triggers in the main list in [client/src/pages/AppDetail/index.tsx](client/src/pages/AppDetail/index.tsx).
 
 ---
 

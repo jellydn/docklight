@@ -7,7 +7,7 @@ This document outlines the coding standards, naming conventions, architectural p
 ## 1. Code Style & Formatting
 
 ### Biome Configuration
-Docklight uses **Biome (v2.4.4)** as an all-in-one formatter and linter for both frontend (`client/`) and backend (`server/`). Do not use ESLint or Prettier.
+Docklight uses **Biome (v2.4.5)** as an all-in-one formatter and linter for both frontend (`client/`) and backend (`server/`). Do not use ESLint or Prettier.
 
 Key configuration rules (defined in `biome.json` files):
 *   **Indentation:** Always use **Tabs** (not spaces) for indentation.
