@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider } from "@/contexts/theme-context.js";
 import { ResetPassword } from "./ResetPassword";
 
 vi.mock("../lib/api.js", () => ({
@@ -31,12 +32,14 @@ const renderWithQueryClientAndParams = (initialEntries: string[]) => {
 	const testQueryClient = createTestQueryClient();
 	return render(
 		<QueryClientProvider client={testQueryClient}>
-			<MemoryRouter initialEntries={initialEntries}>
-				<Routes>
-					<Route path="/reset-password" element={<ResetPassword />} />
-					<Route path="/login" element={<div>Mock Login Page</div>} />
-				</Routes>
-			</MemoryRouter>
+			<ThemeProvider>
+				<MemoryRouter initialEntries={initialEntries}>
+					<Routes>
+						<Route path="/reset-password" element={<ResetPassword />} />
+						<Route path="/login" element={<div>Mock Login Page</div>} />
+					</Routes>
+				</MemoryRouter>
+			</ThemeProvider>
 		</QueryClientProvider>
 	);
 };

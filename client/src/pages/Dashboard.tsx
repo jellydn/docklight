@@ -9,6 +9,7 @@ import { useServerMaintenanceMutation } from "@/hooks/use-server-maintenance-mut
 import { apiFetch } from "../lib/api.js";
 import { useAuth } from "@/contexts/auth-context.js";
 import { formatDeployTime } from "@/lib/utils.js";
+import { statusBadgeClass, statusDotClass } from "@/lib/status-styles.js";
 import { queryKeys } from "../lib/query-keys.js";
 import {
 	ServerHealthSchema,
@@ -74,13 +75,9 @@ export function Dashboard() {
 	};
 
 	const getStatusBadge = (status: string) => {
-		const color = status === "running" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
 		return (
-			<span
-				className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}
-			>
-				{status === "running" && <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-800" />}
-				{status !== "running" && <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-red-800" />}
+			<span className={statusBadgeClass(status)}>
+				<span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${statusDotClass(status)}`} />
 				{status}
 			</span>
 		);
@@ -88,8 +85,8 @@ export function Dashboard() {
 
 	return (
 		<div>
-			<div className="mb-6 flex items-center justify-between">
-				<h1 className="text-2xl font-bold">Dashboard</h1>
+			<div className="page-header">
+				<h1 className="page-title">Dashboard</h1>
 				<Button onClick={handleRefresh} size="sm" variant="outline">
 					Refresh
 				</Button>
@@ -118,8 +115,8 @@ export function Dashboard() {
 						/>
 					)}
 
-					<div className="bg-card rounded-lg border border-border p-6 mb-6">
-						<div className="flex items-center justify-between mb-4">
+					<div className="bg-card rounded-lg border border-border p-4 sm:p-6 mb-6">
+						<div className="page-header mb-4">
 							<h2 className="text-lg font-semibold">Apps</h2>
 							{canModify && (
 								<Button size="sm" onClick={() => setCreateAppOpen(true)}>
@@ -130,22 +127,14 @@ export function Dashboard() {
 						{(apps?.length ?? 0) === 0 ? (
 							<p className="text-muted-foreground text-sm py-8 text-center">No apps found</p>
 						) : (
-							<div className="overflow-x-auto">
-								<table className="min-w-full">
+							<div className="overflow-x-auto -mx-4 sm:mx-0">
+								<table className="data-table">
 									<thead>
 										<tr className="border-b border-border">
-											<th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-												Name
-											</th>
-											<th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-												Status
-											</th>
-											<th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-												Domains
-											</th>
-											<th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-												Last Deploy
-											</th>
+											<th>Name</th>
+											<th>Status</th>
+											<th>Domains</th>
+											<th>Last Deploy</th>
 										</tr>
 									</thead>
 									<tbody>
@@ -157,7 +146,7 @@ export function Dashboard() {
 												<td className="py-3 px-4">
 													<Link
 														to={`/apps/${app.name}`}
-														className="text-tertiary hover:underline font-medium"
+														className="text-tertiary hover:underline font-medium break-all"
 													>
 														{app.name}
 													</Link>
@@ -185,7 +174,7 @@ export function Dashboard() {
 						)}
 					</div>
 
-					<div className="bg-card rounded-lg border border-border p-6">
+					<div className="bg-card rounded-lg border border-border p-4 sm:p-6">
 						<h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
 						{(commands?.length ?? 0) === 0 ? (
 							<p className="text-muted-foreground text-sm py-8 text-center">No recent activity</p>

@@ -1,3 +1,5 @@
+import { badgeClass } from "@/lib/status-styles.js";
+import { cn } from "@/lib/utils";
 import type { RefObject } from "react";
 
 type ConnectionStatus = "connected" | "disconnected" | "reconnecting";
@@ -22,13 +24,19 @@ export function AppLogs({
 	onAutoScrollToggle,
 }: AppLogsProps) {
 	const getConnectionStatusBadge = () => {
-		const colors = {
-			connected: "bg-green-100 text-green-800",
-			disconnected: "bg-muted text-foreground",
-			reconnecting: "bg-yellow-100 text-yellow-800",
-		};
+		if (connectionStatus === "connected") {
+			return <span className={badgeClass("success")}>{connectionStatus}</span>;
+		}
+		if (connectionStatus === "reconnecting") {
+			return <span className={badgeClass("warning")}>{connectionStatus}</span>;
+		}
 		return (
-			<span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[connectionStatus]}`}>
+			<span
+				className={cn(
+					"inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+					"bg-muted text-muted-foreground"
+				)}
+			>
 				{connectionStatus}
 			</span>
 		);

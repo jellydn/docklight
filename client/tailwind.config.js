@@ -4,6 +4,10 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"IBM Plex Sans"', "system-ui", "-apple-system", "sans-serif"],
+        mono: ['"IBM Plex Mono"', "ui-monospace", "monospace"],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
@@ -51,6 +55,17 @@ export default {
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
+        },
+        "success-surface": "hsl(var(--success-surface))",
+        "success-on-surface": "hsl(var(--success-on-surface))",
+        "destructive-surface": "hsl(var(--destructive-surface))",
+        "destructive-on-surface": "hsl(var(--destructive-on-surface))",
+        "warning-surface": "hsl(var(--warning-surface))",
+        "warning-on-surface": "hsl(var(--warning-on-surface))",
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar))",
+          foreground: "hsl(var(--sidebar-foreground))",
+          muted: "hsl(var(--sidebar-muted))",
         },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

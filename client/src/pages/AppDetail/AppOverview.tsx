@@ -1,4 +1,5 @@
 import type { AppDetail as AppDetailData } from "../../lib/schemas.js";
+import { statusBadgeClass } from "@/lib/status-styles.js";
 import type { CopySuccess } from "./types.js";
 
 interface AppOverviewProps {
@@ -27,11 +28,7 @@ export function AppOverview({
 	onDeleteApp,
 }: AppOverviewProps) {
 	const getStatusBadge = () => {
-		const color =
-			app.status === "running" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
-		return (
-			<span className={`px-3 py-1 rounded-full text-sm font-medium ${color}`}>{app.status}</span>
-		);
+		return <span className={statusBadgeClass(app.status)}>{app.status}</span>;
 	};
 
 	return (
@@ -141,10 +138,10 @@ export function AppOverview({
 				</div>
 
 				{canModify && (
-					<div className="mt-8 pt-6 border-t border-red-200">
-						<div className="border border-red-300 rounded-lg p-4 bg-red-50">
-							<h3 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h3>
-							<p className="text-sm text-red-600 mb-4">
+					<div className="mt-8 pt-6 border-t border-destructive/20">
+						<div className="rounded-lg border border-destructive/30 p-4 bg-destructive-surface">
+							<h3 className="text-lg font-semibold text-destructive-on-surface mb-2">Danger Zone</h3>
+							<p className="text-sm text-destructive-on-surface mb-4">
 								Deleting an app is irreversible. All data, logs, and configurations will be
 								permanently removed.
 							</p>

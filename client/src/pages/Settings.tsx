@@ -95,7 +95,7 @@ export function Settings(): JSX.Element {
 			<h1 className="text-2xl font-bold mb-6">Server Settings</h1>
 
 			{errorMessage && (
-				<div className="bg-red-50 border border-red-200 text-red-700 rounded-md p-4 mb-6">
+				<div className="bg-destructive-surface border border-destructive/30 text-destructive-on-surface rounded-md p-4 mb-6">
 					{errorMessage}
 				</div>
 			)}

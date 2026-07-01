@@ -1,4 +1,5 @@
 import type { ChecksReport } from "@/lib/schemas.js";
+import { alertBannerClass } from "@/lib/status-styles.js";
 
 interface AppChecksProps {
 	checksReport: ChecksReport | null;
@@ -21,11 +22,11 @@ function StatusBanner({ report }: { report: ChecksReport }) {
 
 	if (disabled) {
 		return (
-			<div className="flex items-center gap-2 rounded-md bg-yellow-50 border border-yellow-200 px-4 py-3">
-				<span className="text-yellow-600 text-lg">⚠</span>
+			<div className={`flex items-center gap-2 ${alertBannerClass("warning")}`}>
+				<span className="text-warning text-lg">⚠</span>
 				<div>
-					<p className="text-sm font-medium text-yellow-800">Zero-downtime deploys are disabled</p>
-					<p className="text-xs text-yellow-700">
+					<p className="text-sm font-medium">Zero-downtime deploys are disabled</p>
+					<p className="text-xs opacity-80">
 						Old containers will be stopped before new ones start, which may cause downtime.
 					</p>
 				</div>
@@ -34,11 +35,11 @@ function StatusBanner({ report }: { report: ChecksReport }) {
 	}
 	if (skipped) {
 		return (
-			<div className="flex items-center gap-2 rounded-md bg-orange-50 border border-orange-200 px-4 py-3">
-				<span className="text-orange-600 text-lg">⏭</span>
+			<div className={`flex items-center gap-2 ${alertBannerClass("warning")}`}>
+				<span className="text-warning text-lg">⏭</span>
 				<div>
-					<p className="text-sm font-medium text-orange-800">Checks are being skipped</p>
-					<p className="text-xs text-orange-700">
+					<p className="text-sm font-medium">Checks are being skipped</p>
+					<p className="text-xs opacity-80">
 						The default wait period and custom checks will not run on the next deploy.
 					</p>
 				</div>
@@ -46,11 +47,11 @@ function StatusBanner({ report }: { report: ChecksReport }) {
 		);
 	}
 	return (
-		<div className="flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-4 py-3">
-			<span className="text-green-600 text-lg">✓</span>
+		<div className={`flex items-center gap-2 ${alertBannerClass("success")}`}>
+			<span className="text-success text-lg">✓</span>
 			<div>
-				<p className="text-sm font-medium text-green-800">Zero-downtime deploys are active</p>
-				<p className="text-xs text-green-700">
+				<p className="text-sm font-medium">Zero-downtime deploys are active</p>
+				<p className="text-xs opacity-80">
 					Dokku will verify containers are responding before switching traffic.
 				</p>
 			</div>
@@ -85,7 +86,7 @@ export function AppChecks({
 						<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tertiary" />
 					</div>
 				) : error ? (
-					<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+					<div className={alertBannerClass("error")}>
 						<p>{error}</p>
 					</div>
 				) : checksReport ? (

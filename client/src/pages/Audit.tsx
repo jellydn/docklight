@@ -10,6 +10,7 @@ import {
 	type UserAuditLog,
 	UserAuditLogResultSchema,
 } from "../lib/schemas.js";
+import { alertBannerClass, badgeClass, statusBadgeClass } from "@/lib/status-styles.js";
 
 type ExitCodeFilter = "all" | "success" | "error";
 type AuditTab = "commands" | "users";
@@ -59,7 +60,7 @@ function AuditLoadingState() {
 
 function AuditErrorState({ error }: { error: string }) {
 	return (
-		<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">{error}</div>
+		<div className={alertBannerClass("error")}>{error}</div>
 	);
 }
 
@@ -137,26 +138,22 @@ export function Audit() {
 	};
 
 	const getExitCodeBadge = (exitCode: number) => {
-		const color = exitCode === 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
-		return (
-			<span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>
-				{exitCode === 0 ? "Success" : `Error (${exitCode})`}
-			</span>
-		);
+		const label = exitCode === 0 ? "Success" : `Error (${exitCode})`;
+		return <span className={statusBadgeClass(exitCode === 0 ? "running" : "stopped")}>{label}</span>;
 	};
 
 	const getActionBadge = (action: string) => {
 		const verb = action.split(":").pop() ?? action;
-		const colorMap: Record<string, string> = {
-			create: "bg-blue-100 text-blue-800",
-			update: "bg-yellow-100 text-yellow-800",
-			delete: "bg-red-100 text-red-800",
-			login: "bg-green-100 text-green-800",
-			logout: "bg-gray-100 text-gray-800",
-			deploy: "bg-purple-100 text-purple-800",
+		const variantMap: Record<string, "success" | "warning" | "error"> = {
+			create: "success",
+			update: "warning",
+			delete: "error",
+			login: "success",
+			logout: "warning",
+			deploy: "success",
 		};
-		const color = colorMap[verb] || "bg-gray-100 text-gray-800";
-		return <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>{action}</span>;
+		const variant = variantMap[verb] ?? "warning";
+		return <span className={badgeClass(variant)}>{action}</span>;
 	};
 
 	const handleExport = (type: "commands" | "users", format: "json" | "csv") => {

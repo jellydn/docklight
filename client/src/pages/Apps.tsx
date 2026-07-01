@@ -7,6 +7,7 @@ import { CreateAppDialog } from "@/components/CreateAppDialog.js";
 import { apiFetch } from "../lib/api.js";
 import { useAuth } from "@/contexts/auth-context.js";
 import { formatDeployTime } from "@/lib/utils.js";
+import { alertBannerClass, statusBadgeClass } from "@/lib/status-styles.js";
 import { queryKeys } from "../lib/query-keys.js";
 import { AppSchema } from "../lib/schemas.js";
 
@@ -25,14 +26,13 @@ export function Apps() {
 	});
 
 	const getStatusBadge = (status: string) => {
-		const color = status === "running" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
-		return <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>{status}</span>;
+		return <span className={statusBadgeClass(status)}>{status}</span>;
 	};
 
 	return (
 		<div>
-			<div className="mb-6 flex items-center justify-between">
-				<h1 className="text-2xl font-bold">Apps</h1>
+			<div className="page-header">
+				<h1 className="page-title">Apps</h1>
 				{canModify && <Button onClick={() => setCreateAppOpen(true)}>Create App</Button>}
 			</div>
 
@@ -42,11 +42,7 @@ export function Apps() {
 				</div>
 			)}
 
-			{error && (
-				<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-					{error.message}
-				</div>
-			)}
+			{error && <div className={`${alertBannerClass("error")} mb-6`}>{error.message}</div>}
 
 			{!isLoading && !error && (
 				<div className="bg-card rounded-lg border border-border">
@@ -59,21 +55,13 @@ export function Apps() {
 						</div>
 					) : (
 						<div className="overflow-x-auto">
-							<table className="min-w-full">
+							<table className="data-table">
 								<thead>
 									<tr className="border-b border-border bg-muted/50">
-										<th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">
-											Name
-										</th>
-										<th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">
-											Status
-										</th>
-										<th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">
-											Domains
-										</th>
-										<th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">
-											Last Deploy
-										</th>
+										<th>Name</th>
+										<th>Status</th>
+										<th>Domains</th>
+										<th>Last Deploy</th>
 									</tr>
 								</thead>
 								<tbody>

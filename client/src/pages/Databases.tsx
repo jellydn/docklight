@@ -11,6 +11,7 @@ import {
 	DATABASE_PLUGINS,
 	type SupportedPlugin,
 } from "../lib/database-plugins.js";
+import { alertBannerClass } from "@/lib/status-styles.js";
 
 export function Databases() {
 	const { canModify } = useAuth();
@@ -215,7 +216,7 @@ export function Databases() {
 
 	if (error) {
 		return (
-			<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+			<div className={alertBannerClass("error")}>
 				{error instanceof Error ? error.message : "Failed to load data"}
 			</div>
 		);

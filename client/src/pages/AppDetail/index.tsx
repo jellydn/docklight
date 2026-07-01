@@ -41,6 +41,7 @@ import { AppChecks } from "./AppChecks.js";
 import { ConfirmDialog } from "../../components/ConfirmDialog.js";
 import { DeleteAppDialog, ScaleDialog } from "./Dialogs.js";
 import type { TabType } from "./types.js";
+import { alertBannerClass } from "@/lib/status-styles.js";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -1167,7 +1168,7 @@ export function AppDetail() {
 
 	if (error || !app) {
 		return (
-			<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+			<div className={alertBannerClass("error")}>
 				{error || "App not found"}
 			</div>
 		);
