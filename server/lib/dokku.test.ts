@@ -95,6 +95,12 @@ describe("DokkuCommands", () => {
 		it("configUnset returns config:unset command without quoting key", () => {
 			expect(DokkuCommands.configUnset("my-app", "KEY")).toBe("dokku config:unset 'my-app' KEY");
 		});
+
+		it("configSet rejects invalid keys before building command", () => {
+			expect(() => DokkuCommands.configSet("my-app", "KEY;evil", "x")).toThrow(
+				/Invalid characters/
+			);
+		});
 	});
 
 	describe("plugins", () => {
