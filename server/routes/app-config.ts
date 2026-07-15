@@ -1,5 +1,5 @@
 import type express from "express";
-import { getConfig, setConfig, unsetConfig } from "../lib/config.js";
+import { getConfig, setConfig, unsetConfig, validateConfigKey } from "../lib/config.js";
 import { clearPrefix } from "../lib/cache.js";
 import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { DokkuCommands } from "../lib/dokku.js";
@@ -22,6 +22,11 @@ export function registerAppConfigRoutes(app: express.Application): void {
 		if (isSSERequest(req)) {
 			if (!isValidAppName(name) || !key) {
 				res.status(400).json({ error: "Invalid app name or key" });
+				return;
+			}
+			const keyError = validateConfigKey(key);
+			if (keyError) {
+				res.status(400).json({ error: keyError });
 				return;
 			}
 			await streamAction(req, res, {
@@ -50,6 +55,11 @@ export function registerAppConfigRoutes(app: express.Application): void {
 		if (isSSERequest(req)) {
 			if (!isValidAppName(name) || !key) {
 				res.status(400).json({ error: "Invalid app name or key" });
+				return;
+			}
+			const unsetKeyError = validateConfigKey(key);
+			if (unsetKeyError) {
+				res.status(400).json({ error: unsetKeyError });
 				return;
 			}
 			await streamAction(req, res, {

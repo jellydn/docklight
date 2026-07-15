@@ -419,6 +419,41 @@ After step 6 the app is reachable at `https://hermes-hub.yourdomain.com` on bare
 - `ufw status` / cloud-provider firewall allows **80** and **443** inbound
 - The container actually listens on the port shown as "container port" — verify with `dokku logs hermes-hub` and the app's own startup message
 
+### Let's Encrypt HTTP-01 returns 404 on `/.well-known/acme-challenge/...`
+
+Example error:
+
+```text
+invalid authorization: ... Invalid response from http://docklight.example.com/.well-known/acme-challenge/...: 404
+```
+
+Often **port 80 is not served by Dokku** for that hostname. A host-level nginx (default welcome page, `Content-Length: 615`, old `Last-Modified`) or another reverse proxy answers instead, so the ACME proxy never sees the challenge.
+
+**On the server (as root):**
+
+```bash
+APP_NAME=docklight
+
+# 1) See who owns port 80
+ss -tlnp | grep ':80 '
+curl -sI http://127.0.0.1/ -H 'Host: docklight.itman.fyi' | head -5
+
+# 2) Docklight listens on 3001 in the container (see Dockerfile)
+dokku proxy:ports "${APP_NAME}"
+# If http is NOT host port 80, remap (adjust container port if your report differs):
+dokku proxy:ports-remove "${APP_NAME}" http:8008:3001   # example — use your actual mapping
+dokku proxy:ports-add "${APP_NAME}" http:80:3001
+dokku proxy:build-config "${APP_NAME}"
+
+# 3) Confirm Dokku nginx is serving this vhost (do not stop the host nginx service on a standard Dokku install — Dokku uses it for reverse proxying):
+dokku nginx:show-config "${APP_NAME}" | head -20
+
+# 4) Retry certificate
+dokku letsencrypt:enable "${APP_NAME}"
+```
+
+**Quick external check:** `curl -sI http://docklight.itman.fyi/` should **not** look like a static default page; after fixing, you should get Docklight or an HTTP→HTTPS redirect, and `letsencrypt:enable` should succeed.
+
 > **Note:** The Docklight one-line installer handles all of this automatically when you pass `DOMAIN=…` plus `ENABLE_HTTPS=1 LETSENCRYPT_EMAIL=…`. The steps above are for apps deployed separately (any app, not just Docklight), or when you skipped those flags and want to add HTTPS after the fact.
 
 ### `dokku git:sync` fails on a private GitHub repo
@@ -562,6 +597,59 @@ ssh root@<server-ip> dokku nginx:report <app> | grep -i 'client max body size'
 ```
 
 If you set it but uploads still fail at 1 MB, you forgot `dokku proxy:build-config <app>` (or there's a separate reverse proxy in front, e.g. Cloudflare's own 100 MB cap on the Free plan — check that too).
+
+### Wrong TLS certificate (hostname mismatch)
+
+Browsers and `curl` fail with:
+
+```text
+SSL: no alternative certificate subject name matches target host name 'docklight.example.com'
+```
+
+or the certificate `subject` shows a **different** app domain (e.g. you open `docklight.itman.fyi` but the cert is for `ai-flow-staging.itman.fyi`).
+
+**Cause:** The Dokku app behind that hostname does not have the domain attached and/or Let's Encrypt was never issued for that app. Nginx then serves another vhost's default certificate.
+
+**Diagnose from your laptop:**
+
+```bash
+dig +short docklight.example.com
+openssl s_client -connect docklight.example.com:443 -servername docklight.example.com </dev/null 2>/dev/null \
+  | openssl x509 -noout -subject -issuer -dates
+```
+
+**Fix on the Dokku server (as root):**
+
+```bash
+# Replace app name, domain, and email
+APP_NAME=docklight
+DOMAIN=docklight.itman.fyi
+LETSENCRYPT_EMAIL=you@example.com
+
+dokku domains:report "${APP_NAME}"
+dokku domains:set "${APP_NAME}" "${DOMAIN}"
+
+dokku plugin:install https://github.com/dokku/dokku-letsencrypt.git 2>/dev/null || true
+dokku letsencrypt:set "${APP_NAME}" email "${LETSENCRYPT_EMAIL}"
+dokku letsencrypt:enable "${APP_NAME}"
+dokku letsencrypt:cron-job --add
+```
+
+Or run the helper script from this repo:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/repair-ssl.sh \
+  | sudo APP_NAME=docklight DOMAIN=docklight.itman.fyi LETSENCRYPT_EMAIL=you@example.com bash
+```
+
+**Checklist:**
+
+- `dig +short <domain>` returns your server IP
+- `dokku domains:report docklight` lists `<domain>`
+- Inbound **80** and **443** are open (UFW / cloud firewall)
+- If HTTP-01 fails, see **"App URL shows a random `:NNNN` port"** above and map proxy `http:80:<container-port>`
+
+Production deploys via GitHub Actions (`.github/workflows/deploy-production.yml`) only `git push` code; they do **not** configure domains or SSL. Set domain + Let's Encrypt once on the server (or use `scripts/install.sh` with `DOMAIN=… ENABLE_HTTPS=1 LETSENCRYPT_EMAIL=…`).
 
 ### "Could not resolve hostname"
 
