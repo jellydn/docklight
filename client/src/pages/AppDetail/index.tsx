@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -21,10 +21,12 @@ import {
 	GitInfoSchema,
 	NetworkReportSchema,
 	type PortMapping,
+	PortConflictsResponseSchema,
 	PortsResponseSchema,
 	ProxyReportSchema,
 	SSLStatusSchema,
 } from "../../lib/schemas.js";
+import { buildRoutingIssues } from "../../lib/routing-issues.js";
 import { AppDetailHeader } from "./AppDetailHeader.js";
 import { AppOverview } from "./AppOverview.js";
 import { AppLogs } from "./AppLogs.js";
@@ -33,6 +35,7 @@ import { AppDomains } from "./AppDomains.js";
 import { AppSSL } from "./AppSSL.js";
 import { AppDeployment } from "./AppDeployment.js";
 import { AppPorts } from "./AppPorts.js";
+import { AppRoutingIssues } from "./AppRoutingIssues.js";
 import { AppBuildpacks } from "./AppBuildpacks.js";
 import { AppDockerOptions } from "./AppDockerOptions.js";
 import { AppNetwork } from "./AppNetwork.js";
@@ -165,6 +168,7 @@ export function AppDetail() {
 	const sslError = sslErrorData?.message || null;
 
 	const settingsEnabled = activeTab === "settings" && !!name;
+	const portsQueryEnabled = (activeTab === "settings" || activeTab === "ssl") && !!name;
 
 	// Deployment settings query
 	const {
@@ -195,7 +199,7 @@ export function AppDetail() {
 	} = useQuery({
 		queryKey: queryKeys.apps.ports(name || ""),
 		queryFn: () => apiFetch(`/apps/${encodeURIComponent(name || "")}/ports`, PortsResponseSchema),
-		enabled: settingsEnabled,
+		enabled: portsQueryEnabled,
 	});
 	const ports = portsData?.ports ?? [];
 	const portsError = portsErrorData?.message || null;
@@ -208,6 +212,25 @@ export function AppDetail() {
 	const [showRemovePortDialog, setShowRemovePortDialog] = useState(false);
 	const [pendingRemovePort, setPendingRemovePort] = useState<PortMapping | null>(null);
 	const [portRemoveSubmitting, setPortRemoveSubmitting] = useState(false);
+
+	const routingDiagnosticsEnabled =
+		(activeTab === "settings" || activeTab === "ssl") && !!name;
+	const {
+		data: portConflictsData,
+		isLoading: portConflictsLoading,
+		refetch: refetchPortConflicts,
+	} = useQuery({
+		queryKey: queryKeys.apps.portConflicts,
+		queryFn: () => apiFetch("/apps/port-conflicts", PortConflictsResponseSchema),
+		enabled: routingDiagnosticsEnabled,
+	});
+	const routingIssues = useMemo(
+		() =>
+			name
+				? buildRoutingIssues(name, ports, portConflictsData?.conflicts ?? [])
+				: [],
+		[name, ports, portConflictsData?.conflicts]
+	);
 
 	// Proxy query
 	const {
@@ -737,6 +760,7 @@ export function AppDetail() {
 				setNewHostPort("");
 				setNewContainerPort("");
 				void refetchPorts();
+				void refetchPortConflicts();
 			},
 		});
 
@@ -764,6 +788,7 @@ export function AppDetail() {
 				setShowRemovePortDialog(false);
 				setPendingRemovePort(null);
 				void refetchPorts();
+				void refetchPortConflicts();
 			},
 			onError: () => {
 				setShowRemovePortDialog(false);
@@ -784,6 +809,7 @@ export function AppDetail() {
 			onSuccess: () => {
 				setShowClearPortsDialog(false);
 				void refetchPorts();
+				void refetchPortConflicts();
 			},
 			onError: () => {
 				setShowClearPortsDialog(false);
@@ -1167,11 +1193,7 @@ export function AppDetail() {
 	}
 
 	if (error || !app) {
-		return (
-			<div className={alertBannerClass("error")}>
-				{error || "App not found"}
-			</div>
-		);
+		return <div className={alertBannerClass("error")}>{error || "App not found"}</div>;
 	}
 
 	return (
@@ -1546,21 +1568,31 @@ export function AppDetail() {
 			)}
 
 			{activeTab === "ssl" && (
-				<AppSSL
-					sslStatus={sslStatus ?? null}
-					loading={sslLoading}
-					error={sslError}
-					email={sslEmail}
-					submitting={sslSubmitting}
-					canModify={canModify}
-					onEmailChange={setSslEmail}
-					onEnable={handleEnableSSL}
-					onRenew={handleRenewSSL}
-				/>
+				<>
+					<AppRoutingIssues
+						issues={routingIssues}
+						loading={portConflictsLoading || portsLoading}
+					/>
+					<AppSSL
+						sslStatus={sslStatus ?? null}
+						loading={sslLoading}
+						error={sslError}
+						email={sslEmail}
+						submitting={sslSubmitting}
+						canModify={canModify}
+						onEmailChange={setSslEmail}
+						onEnable={handleEnableSSL}
+						onRenew={handleRenewSSL}
+					/>
+				</>
 			)}
 
 			{activeTab === "settings" && (
 				<div className="space-y-6">
+					<AppRoutingIssues
+						issues={routingIssues}
+						loading={portConflictsLoading || portsLoading}
+					/>
 					<AppDeployment
 						settings={deploymentSettings ?? null}
 						loading={deploymentLoading}

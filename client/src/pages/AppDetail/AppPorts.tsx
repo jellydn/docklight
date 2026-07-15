@@ -51,12 +51,14 @@ export function AppPorts({
 					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tertiary" />
 				</div>
 			) : error ? (
-				<div className={alertBannerClass("error")}>
-					{error}
-				</div>
+				<div className={alertBannerClass("error")}>{error}</div>
 			) : (
 				<div className="space-y-6">
 					<div>
+						<p className="text-sm text-muted-foreground mb-3">
+							Each app should use a unique host port. Sharing port 80 between apps breaks HTTPS and
+							Let&apos;s Encrypt.
+						</p>
 						<h3 className="text-sm font-medium text-foreground mb-3">Port Mappings</h3>
 
 						{ports.length > 0 ? (

@@ -156,6 +156,20 @@ export const PortsResponseSchema = z.object({
 
 export type PortsResponse = z.infer<typeof PortsResponseSchema>;
 
+const PortConflictSchema = z.object({
+	scheme: z.string(),
+	hostPort: z.number(),
+	apps: z.array(z.string()),
+});
+
+export type PortConflict = z.infer<typeof PortConflictSchema>;
+
+export const PortConflictsResponseSchema = z.object({
+	conflicts: z.array(PortConflictSchema),
+});
+
+export type PortConflictsResponse = z.infer<typeof PortConflictsResponseSchema>;
+
 // Proxy report schema
 export const ProxyReportSchema = z.object({
 	enabled: z.boolean(),
