@@ -26,7 +26,7 @@ import {
 	ProxyReportSchema,
 	SSLStatusSchema,
 } from "../../lib/schemas.js";
-import { buildRoutingIssues } from "../../lib/routing-issues.js";
+import { buildRoutingIssues } from "@/lib/routing-issues.js";
 import { AppDetailHeader } from "./AppDetailHeader.js";
 import { AppOverview } from "./AppOverview.js";
 import { AppLogs } from "./AppLogs.js";
@@ -229,7 +229,7 @@ export function AppDetail() {
 			name
 				? buildRoutingIssues(name, ports, portConflictsData?.conflicts ?? [])
 				: [],
-		[name, ports, portConflictsData?.conflicts]
+		[name, portsData?.ports, portConflictsData?.conflicts]
 	);
 
 	// Proxy query

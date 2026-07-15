@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRoutingIssues } from "./routing-issues.js";
+import { buildRoutingIssues } from "@/lib/routing-issues.js";
 
 describe("buildRoutingIssues", () => {
 	it("flags shared host port 80 between apps", () => {

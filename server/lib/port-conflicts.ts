@@ -60,9 +60,14 @@ export async function getPortConflicts(userId?: string): Promise<
 		};
 	}
 
+	const portResults = await Promise.all(
+		listResult.names.map(async (appName) => {
+			const ports = await getPorts(appName);
+			return { appName, ports };
+		})
+	);
 	const appPorts: Record<string, PortMapping[]> = {};
-	for (const appName of listResult.names) {
-		const ports = await getPorts(appName);
+	for (const { appName, ports } of portResults) {
 		if (Array.isArray(ports)) {
 			appPorts[appName] = ports;
 		}

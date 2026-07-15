@@ -18,14 +18,14 @@ import { streamAction } from "./stream-util.js";
 
 export function registerAppPortRoutes(app: express.Application): void {
 	app.get("/api/apps/port-conflicts", authMiddleware, async (req, res) => {
-		const cacheKey = "apps:port-conflicts";
+		const userId = getUserId(req);
+		const cacheKey = `apps:port-conflicts:${userId ?? "anonymous"}`;
 		const cached = get(cacheKey);
 		if (cached) {
 			res.json(cached);
 			return;
 		}
 
-		const userId = getUserId(req);
 		const result = await getPortConflicts(userId);
 		if ("error" in result && result.error) {
 			res.status(getStatusCode(result.exitCode)).json(result);

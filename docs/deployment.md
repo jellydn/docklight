@@ -445,10 +445,8 @@ dokku proxy:ports-remove "${APP_NAME}" http:8008:3001   # example — use your a
 dokku proxy:ports-add "${APP_NAME}" http:80:3001
 dokku proxy:build-config "${APP_NAME}"
 
-# 3) If a system nginx package is installed and conflicts with Dokku:
-systemctl is-active nginx
-# If active and Dokku should own 80/443, stop/disable host nginx after confirming Dokku nginx is up:
-# systemctl stop nginx && systemctl disable nginx
+# 3) Confirm Dokku nginx is serving this vhost (do not stop the host nginx service on a standard Dokku install — Dokku uses it for reverse proxying):
+dokku nginx:show-config "${APP_NAME}" | head -20
 
 # 4) Retry certificate
 dokku letsencrypt:enable "${APP_NAME}"

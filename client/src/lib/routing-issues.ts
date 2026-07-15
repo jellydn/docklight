@@ -1,4 +1,4 @@
-import type { PortConflict, PortMapping } from "./schemas.js";
+import type { PortConflict, PortMapping } from "@/lib/schemas.js";
 
 export interface RoutingIssue {
 	id: string;
@@ -26,7 +26,11 @@ export function buildRoutingIssues(
 			title: `Host port ${conflict.hostPort} (${conflict.scheme}) is shared with other apps`,
 			detail: `These apps all map ${conflict.scheme} to host port ${conflict.hostPort}: ${conflict.apps.join(", ")}. Only one app can reliably own that port — this often causes wrong TLS certificates (SNI) and Let's Encrypt HTTP-01 failures (404 on acme-challenge). Give each public app its own host port, or map only one app to port 80 for HTTP.`,
 		});
-		if (others.length > 0 && conflict.scheme === "http" && conflict.hostPort === 80) {
+		if (
+			others.length > 0 &&
+			conflict.scheme.toLowerCase() === "http" &&
+			conflict.hostPort === 80
+		) {
 			issues.push({
 				id: "ssl-http80-conflict",
 				severity: "error",
@@ -36,8 +40,10 @@ export function buildRoutingIssues(
 		}
 	}
 
-	const hasHttp80 = ports.some((p) => p.scheme === "http" && p.hostPort === 80);
-	if (!hasHttp80 && ports.some((p) => p.scheme === "http")) {
+	const hasHttp80 = ports.some(
+		(p) => p.scheme.toLowerCase() === "http" && p.hostPort === 80
+	);
+	if (!hasHttp80 && ports.some((p) => p.scheme.toLowerCase() === "http")) {
 		issues.push({
 			id: "no-http-80",
 			severity: "warning",

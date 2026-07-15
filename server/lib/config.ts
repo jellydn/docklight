@@ -2,6 +2,18 @@ import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { DokkuCommands } from "./dokku.js";
 
+const CONFIG_KEY_PATTERN = /^[a-zA-Z0-9_]+$/;
+
+export function validateConfigKey(key: string): string | null {
+	if (typeof key !== "string" || key.length === 0) {
+		return "Config key is required";
+	}
+	if (!CONFIG_KEY_PATTERN.test(key)) {
+		return "Invalid characters in key";
+	}
+	return null;
+}
+
 export async function getConfig(
 	name: string
 ): Promise<
@@ -65,11 +77,11 @@ export async function setConfig(
 		};
 	}
 
-	// Key must be alphanumeric + underscore (env var convention)
-	const sanitizedKey = key.replace(/[^a-zA-Z0-9_]/g, "");
-	if (sanitizedKey !== key) {
-		return { error: "Invalid characters in key", command: "", exitCode: 400 };
+	const keyError = validateConfigKey(key);
+	if (keyError) {
+		return { error: keyError, command: "", exitCode: 400 };
 	}
+	const sanitizedKey = key;
 
 	// Value: block shell injection but allow common chars like quotes, @, #, etc.
 	if (/[`$;|<>\\]/.test(value)) {
@@ -106,18 +118,12 @@ export async function unsetConfig(
 		};
 	}
 
-	// Sanitize key to prevent shell injection
-	const sanitizedKey = key.replace(/[^a-zA-Z0-9_]/g, "");
-
-	if (sanitizedKey !== key) {
-		return {
-			error: "Invalid characters in key",
-			command: "",
-			exitCode: 400,
-		};
+	const keyError = validateConfigKey(key);
+	if (keyError) {
+		return { error: keyError, command: "", exitCode: 400 };
 	}
 
-	const command = DokkuCommands.configUnset(name, sanitizedKey);
+	const command = DokkuCommands.configUnset(name, key);
 
 	try {
 		return executeCommand(command);

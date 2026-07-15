@@ -1,4 +1,4 @@
-import type { RoutingIssue } from "../../lib/routing-issues.js";
+import type { RoutingIssue } from "@/lib/routing-issues.js";
 import { alertBannerClass } from "@/lib/status-styles.js";
 
 interface AppRoutingIssuesProps {
