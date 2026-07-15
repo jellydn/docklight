@@ -154,9 +154,8 @@ export const DokkuCommands: DokkuCommands = {
 	// Config
 	configShow: (app: string): string => `dokku config:show ${app}`,
 	configSet: (app: string, key: string, value: string): string =>
-		`dokku config:set ${shellQuote(app)} ${shellQuote(key)}=${shellQuote(value)}`,
-	configUnset: (app: string, key: string): string =>
-		`dokku config:unset ${shellQuote(app)} ${shellQuote(key)}`,
+		`dokku config:set ${shellQuote(app)} ${key}=${shellQuote(value)}`,
+	configUnset: (app: string, key: string): string => `dokku config:unset ${shellQuote(app)} ${key}`,
 
 	// Plugins (read-only)
 	pluginList: (): string => "dokku plugin:list",
