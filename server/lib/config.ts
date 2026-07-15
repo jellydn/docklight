@@ -1,18 +1,9 @@
 import { executeCommand, type CommandResult } from "./executor.js";
 import { isValidAppName } from "./apps.js";
 import { DokkuCommands } from "./dokku.js";
+import { validateConfigKey } from "./env-config-key.js";
 
-const CONFIG_KEY_PATTERN = /^[a-zA-Z0-9_]+$/;
-
-export function validateConfigKey(key: string): string | null {
-	if (typeof key !== "string" || key.length === 0) {
-		return "Config key is required";
-	}
-	if (!CONFIG_KEY_PATTERN.test(key)) {
-		return "Invalid characters in key";
-	}
-	return null;
-}
+export { validateConfigKey } from "./env-config-key.js";
 
 export async function getConfig(
 	name: string
