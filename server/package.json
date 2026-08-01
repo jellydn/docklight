@@ -28,7 +28,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.4",
-		"@types/better-sqlite3": "^7.6.13",
+		"@types/better-sqlite3": "^9.0.0",
 		"@types/cookie-parser": "^1.4.10",
 		"@types/express": "^5.0.0",
 		"@types/express-rate-limit": "^6.0.2",
