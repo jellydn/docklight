@@ -3,13 +3,21 @@ import { Link } from "react-router-dom";
 import { z } from "zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateAppDialog } from "@/components/CreateAppDialog.js";
+import { ServerHealthCard } from "@/components/ServerHealthCard.js";
+import { useServerMaintenanceMutation } from "@/hooks/use-server-maintenance-mutation.js";
 import { apiFetch } from "../lib/api.js";
 import { useAuth } from "@/contexts/auth-context.js";
 import { formatDeployTime } from "@/lib/utils.js";
+import { statusBadgeClass, statusDotClass } from "@/lib/status-styles.js";
 import { queryKeys } from "../lib/query-keys.js";
-import { ServerHealthSchema, AppSchema, CommandHistorySchema } from "../lib/schemas.js";
+import {
+	ServerHealthSchema,
+	AppSchema,
+	CommandHistorySchema,
+	CommandResultSchema,
+	PurgeCacheResultSchema,
+} from "../lib/schemas.js";
 
 export function Dashboard() {
 	const { canModify } = useAuth();
@@ -34,6 +42,26 @@ export function Dashboard() {
 		refetchInterval: 30000,
 	});
 
+	const cleanupMutation = useServerMaintenanceMutation({
+		endpoint: "/server/cleanup",
+		schema: CommandResultSchema,
+		successMessage: "Cleanup completed",
+		errorMessage: "Cleanup failed",
+	});
+
+	const purgeCacheMutation = useServerMaintenanceMutation({
+		endpoint: "/server/purge-cache",
+		schema: PurgeCacheResultSchema,
+		successMessage: "Build caches purged",
+		errorMessage: "Build cache purge failed",
+	});
+
+	const submittingAction = cleanupMutation.isPending
+		? "cleanup"
+		: purgeCacheMutation.isPending
+			? "purge"
+			: null;
+
 	const isLoading = healthLoading || appsLoading || commandsLoading;
 
 	const handleRefresh = () => {
@@ -46,21 +74,19 @@ export function Dashboard() {
 		void queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
 	};
 
-	const getHealthColor = (value: number) => {
-		if (value < 60) return "bg-green-500";
-		if (value < 85) return "bg-yellow-500";
-		return "bg-red-500";
-	};
-
 	const getStatusBadge = (status: string) => {
-		const color = status === "running" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
-		return <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>{status}</span>;
+		return (
+			<span className={statusBadgeClass(status)}>
+				<span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${statusDotClass(status)}`} />
+				{status}
+			</span>
+		);
 	};
 
 	return (
 		<div>
-			<div className="mb-6 flex items-center justify-between">
-				<h1 className="text-2xl font-bold">Dashboard</h1>
+			<div className="page-header">
+				<h1 className="page-title">Dashboard</h1>
 				<Button onClick={handleRefresh} size="sm" variant="outline">
 					Refresh
 				</Button>
@@ -68,64 +94,29 @@ export function Dashboard() {
 
 			{isLoading && (
 				<div className="flex justify-center items-center py-12">
-					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+					<div className="animate-spin rounded-full h-8 w-8 border-2 border-tertiary border-t-transparent" />
 				</div>
 			)}
 
 			{!isLoading && (
 				<>
-					{/* Server Health */}
-					<Card className="mb-6">
-						<CardHeader>
-							<CardTitle>Server Health</CardTitle>
-						</CardHeader>
-						<CardContent>
-							{health && (
-								<div className="space-y-4">
-									<div>
-										<div className="flex justify-between mb-1">
-											<span className="text-sm font-medium">CPU</span>
-											<span className="text-sm text-gray-600">{health.cpu.toFixed(1)}%</span>
-										</div>
-										<div className="w-full bg-gray-200 rounded-full h-2">
-											<div
-												className={`h-2 rounded-full transition-all ${getHealthColor(health.cpu)}`}
-												style={{ width: `${health.cpu}%` }}
-											></div>
-										</div>
-									</div>
-									<div>
-										<div className="flex justify-between mb-1">
-											<span className="text-sm font-medium">Memory</span>
-											<span className="text-sm text-gray-600">{health.memory.toFixed(1)}%</span>
-										</div>
-										<div className="w-full bg-gray-200 rounded-full h-2">
-											<div
-												className={`h-2 rounded-full transition-all ${getHealthColor(health.memory)}`}
-												style={{ width: `${health.memory}%` }}
-											></div>
-										</div>
-									</div>
-									<div>
-										<div className="flex justify-between mb-1">
-											<span className="text-sm font-medium">Disk</span>
-											<span className="text-sm text-gray-600">{health.disk.toFixed(1)}%</span>
-										</div>
-										<div className="w-full bg-gray-200 rounded-full h-2">
-											<div
-												className={`h-2 rounded-full transition-all ${getHealthColor(health.disk)}`}
-												style={{ width: `${health.disk}%` }}
-											></div>
-										</div>
-									</div>
-								</div>
-							)}
-						</CardContent>
-					</Card>
+					{health && (
+						<ServerHealthCard
+							health={health}
+							canModify={canModify}
+							submittingAction={submittingAction}
+							onActionConfirm={(actionId) => {
+								if (actionId === "cleanup") {
+									cleanupMutation.mutate();
+									return;
+								}
+								purgeCacheMutation.mutate();
+							}}
+						/>
+					)}
 
-					{/* Apps */}
-					<div className="bg-white rounded-lg shadow p-6 mb-6">
-						<div className="flex items-center justify-between mb-4">
+					<div className="bg-card rounded-lg border border-border p-4 sm:p-6 mb-6">
+						<div className="page-header mb-4">
 							<h2 className="text-lg font-semibold">Apps</h2>
 							{canModify && (
 								<Button size="sm" onClick={() => setCreateAppOpen(true)}>
@@ -134,39 +125,47 @@ export function Dashboard() {
 							)}
 						</div>
 						{(apps?.length ?? 0) === 0 ? (
-							<p className="text-gray-500">No apps found</p>
+							<p className="text-muted-foreground text-sm py-8 text-center">No apps found</p>
 						) : (
-							<div className="overflow-x-auto">
-								<table className="min-w-full">
+							<div className="overflow-x-auto -mx-4 sm:mx-0">
+								<table className="data-table">
 									<thead>
-										<tr className="border-b">
-											<th className="text-left py-2 px-4">Name</th>
-											<th className="text-left py-2 px-4">Status</th>
-											<th className="text-left py-2 px-4">Domains</th>
-											<th className="text-left py-2 px-4">Last Deploy</th>
+										<tr className="border-b border-border">
+											<th>Name</th>
+											<th>Status</th>
+											<th>Domains</th>
+											<th>Last Deploy</th>
 										</tr>
 									</thead>
 									<tbody>
 										{(apps ?? []).map((app) => (
-											<tr key={app.name} className="border-b">
-												<td className="py-2 px-4">
-													<Link to={`/apps/${app.name}`} className="text-blue-600 hover:underline">
+											<tr
+												key={app.name}
+												className="border-b border-border last:border-0 hover:bg-accent/50 transition-colors"
+											>
+												<td className="py-3 px-4">
+													<Link
+														to={`/apps/${app.name}`}
+														className="text-tertiary hover:underline font-medium break-all"
+													>
 														{app.name}
 													</Link>
 												</td>
-												<td className="py-2 px-4">{getStatusBadge(app.status)}</td>
-												<td className="py-2 px-4">
+												<td className="py-3 px-4">{getStatusBadge(app.status)}</td>
+												<td className="py-3 px-4 text-sm text-muted-foreground">
 													{app.domains.length > 0 ? (
-														<ul className="list-disc list-inside">
+														<ul className="space-y-0.5">
 															{app.domains.map((domain) => (
 																<li key={domain}>{domain}</li>
 															))}
 														</ul>
 													) : (
-														<span className="text-gray-400">-</span>
+														<span className="text-muted-foreground/50">-</span>
 													)}
 												</td>
-												<td className="py-2 px-4">{formatDeployTime(app.lastDeployTime)}</td>
+												<td className="py-3 px-4 text-sm text-muted-foreground">
+													{formatDeployTime(app.lastDeployTime)}
+												</td>
 											</tr>
 										))}
 									</tbody>
@@ -175,17 +174,16 @@ export function Dashboard() {
 						)}
 					</div>
 
-					{/* Recent Activity */}
-					<div className="bg-white rounded-lg shadow p-6">
+					<div className="bg-card rounded-lg border border-border p-4 sm:p-6">
 						<h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
 						{(commands?.length ?? 0) === 0 ? (
-							<p className="text-gray-500">No recent activity</p>
+							<p className="text-muted-foreground text-sm py-8 text-center">No recent activity</p>
 						) : (
-							<div className="space-y-2">
+							<div className="space-y-3">
 								{(commands ?? []).map((cmd) => (
 									<div key={cmd.id} className="text-sm">
-										<div className="font-mono bg-gray-100 p-2 rounded">{cmd.command}</div>
-										<div className="text-gray-500 text-xs mt-1">
+										<div className="font-mono bg-muted p-3 rounded-md text-sm">{cmd.command}</div>
+										<div className="text-muted-foreground text-xs mt-1.5">
 											{new Date(cmd.createdAt).toLocaleString()}
 										</div>
 									</div>

@@ -1,4 +1,5 @@
 import type express from "express";
+import type { JWTPayload } from "../lib/auth.js";
 import type { CommandResult } from "../lib/executor.js";
 import { insertAuditLog } from "../lib/db.js";
 import { logger } from "../lib/logger.js";
@@ -37,6 +38,11 @@ export function handleCommandResult(res: express.Response, result: CommandResult
  * Gets a string parameter from Express request params
  * Express params can be string | string[], this ensures we always get a string
  */
+export function getUserId(req: express.Request): string | undefined {
+	const user = req.user as JWTPayload | undefined;
+	return user?.userId !== undefined ? String(user.userId) : undefined;
+}
+
 export function getParam(params: unknown, key: string): string {
 	const value = (params as Record<string, unknown>)[key];
 	if (Array.isArray(value)) return value[0] ?? "";
@@ -146,5 +152,24 @@ export function safeAuditLogWithUserId(
 		);
 	} catch (error: unknown) {
 		logger.error({ err: error as Error, action, userId }, "Failed to write audit log");
+	}
+}
+
+/**
+ * Handles database errors, mapping SQLite unique constraints to proper 409 responses
+ */
+export function handleDbError(err: unknown, res: express.Response): void {
+	const error = err as { code?: string; message?: string };
+	if (
+		(error.code === "SQLITE_CONSTRAINT" || error.code === "SQLITE_CONSTRAINT_UNIQUE") &&
+		error.message?.includes("UNIQUE constraint failed")
+	) {
+		const msg = error.message.includes("users.email")
+			? "Email already exists"
+			: "Username already exists";
+		res.status(409).json({ error: msg });
+	} else {
+		logger.error({ err }, "Database operation failed");
+		res.status(500).json({ error: "Internal server error" });
 	}
 }

@@ -4,6 +4,7 @@ import type { Request, Response, NextFunction } from "express";
 // Mock db and logger before importing auth
 vi.mock("./db.js", () => ({
 	getUserByUsername: vi.fn(),
+	getUserByEmail: vi.fn(),
 }));
 
 vi.mock("./logger.js", () => ({
@@ -60,6 +61,7 @@ describe("login", () => {
 		vi.mocked(getUserByUsername).mockReturnValue({
 			id: 1,
 			username: "alice",
+			email: null,
 			password_hash: hash,
 			role: "admin",
 			createdAt: new Date().toISOString(),
@@ -73,6 +75,7 @@ describe("login", () => {
 		vi.mocked(getUserByUsername).mockReturnValue({
 			id: 1,
 			username: "alice",
+			email: null,
 			password_hash: hash,
 			role: "admin",
 			createdAt: new Date().toISOString(),
@@ -170,7 +173,12 @@ describe("requireRole", () => {
 
 	it("should allow matching role", () => {
 		const req = {
-			user: { authenticated: true, userId: 1, username: "alice", role: "admin" },
+			user: {
+				authenticated: true,
+				userId: 1,
+				username: "alice",
+				role: "admin",
+			},
 		} as unknown as Request;
 		const res = {
 			status: vi.fn().mockReturnThis(),

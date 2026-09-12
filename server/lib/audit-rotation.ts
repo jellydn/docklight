@@ -10,7 +10,10 @@ function getRetentionDays(): number {
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : 90;
 }
 
-export function runAuditRotation(): { deletedLogs: number; deletedCommands: number } {
+export function runAuditRotation(): {
+	deletedLogs: number;
+	deletedCommands: number;
+} {
 	const retentionDays = getRetentionDays();
 	const deletedLogs = deleteOldAuditLogs(retentionDays);
 	const deletedCommands = deleteOldCommandHistory(retentionDays);

@@ -21,7 +21,7 @@ interface UseAuditLogResult<T> {
 	refresh: () => void;
 }
 
-export function useAuditLog<T>({
+function useAuditLog<T>({
 	fetchUrl,
 	schema,
 	fetchDeps,

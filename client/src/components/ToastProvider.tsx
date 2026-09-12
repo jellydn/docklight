@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useCallback, useContext } from "react";
+import { createContext, type ReactNode, use, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import type { CommandResult } from "./types.js";
 
@@ -29,13 +29,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 		toast.dismiss(id);
 	}, []);
 
-	return (
-		<ToastContext.Provider value={{ addToast, removeToast }}>{children}</ToastContext.Provider>
-	);
+	const value = useMemo(() => ({ addToast, removeToast }), [addToast, removeToast]);
+
+	return <ToastContext.Provider value={value}>{children}</ToastContext.Provider>;
 }
 
 export function useToast() {
-	const context = useContext(ToastContext);
+	const context = use(ToastContext);
 	if (!context) {
 		throw new Error("useToast must be used within a ToastProvider");
 	}

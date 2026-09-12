@@ -55,6 +55,12 @@ const mockDatabases: Database[] = [
 		linkedApps: [],
 		connectionInfo: "redis://host:6379",
 	},
+	{
+		name: "queue",
+		plugin: "rabbitmq",
+		linkedApps: ["api"],
+		connectionInfo: "amqp://localhost/queue",
+	},
 ];
 
 const mockApps: App[] = [
@@ -204,8 +210,10 @@ describe("Databases", () => {
 		await waitFor(() => {
 			expect(screen.getByText("postgres Databases")).toBeInTheDocument();
 			expect(screen.getByText("redis Databases")).toBeInTheDocument();
+			expect(screen.getByText("rabbitmq Databases")).toBeInTheDocument();
 			expect(screen.getByText("postgres-test-db")).toBeInTheDocument();
 			expect(screen.getByText("redis-cache")).toBeInTheDocument();
+			expect(screen.getByText("queue")).toBeInTheDocument();
 		});
 	});
 
@@ -285,6 +293,7 @@ describe("Databases", () => {
 			expect(screen.getByText("Postgres:")).toBeInTheDocument();
 			expect(screen.getByText("Redis:")).toBeInTheDocument();
 			expect(screen.getByText("MySQL:")).toBeInTheDocument();
+			expect(screen.getByText("RabbitMQ:")).toBeInTheDocument();
 		});
 	});
 
@@ -453,7 +462,9 @@ describe("Databases", () => {
 				expect(screen.getByText("redis-cache")).toBeInTheDocument();
 			});
 
-			const redisSection = screen.getByText("redis-cache").closest(".border.rounded.p-4.mb-4");
+			const redisSection = screen
+				.getByText("redis-cache")
+				.closest(".border.border-border.rounded-md.p-4.mb-4");
 			expect(redisSection).toBeInTheDocument();
 			if (!redisSection) return;
 			const redisSectionEl = redisSection as HTMLElement;
@@ -463,7 +474,9 @@ describe("Databases", () => {
 			if (!linkSelect) return;
 
 			await user.selectOptions(linkSelect as HTMLSelectElement, "my-app");
-			const linkButton = within(redisSectionEl).getByRole("button", { name: "Link" });
+			const linkButton = within(redisSectionEl).getByRole("button", {
+				name: "Link",
+			});
 			await waitFor(() => {
 				expect(linkButton).not.toBeDisabled();
 			});
@@ -506,11 +519,13 @@ describe("Databases", () => {
 				expect(screen.getByText("Confirm Unlink")).toBeInTheDocument();
 			});
 
-			const unlinkDialog = screen.getByText("Confirm Unlink").closest(".bg-white");
+			const unlinkDialog = screen.getByText("Confirm Unlink").closest(".bg-card");
 			expect(unlinkDialog).toBeInTheDocument();
 			if (!unlinkDialog) return;
 			const unlinkDialogEl = unlinkDialog as HTMLElement;
-			const confirmButton = within(unlinkDialogEl).getByRole("button", { name: "Unlink" });
+			const confirmButton = within(unlinkDialogEl).getByRole("button", {
+				name: "Unlink",
+			});
 
 			const { resolve } = mockPendingStream();
 			await user.click(confirmButton);

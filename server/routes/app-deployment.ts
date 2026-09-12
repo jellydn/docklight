@@ -147,7 +147,10 @@ export function registerAppDeploymentRoutes(app: express.Application): void {
 			}
 			if (buildDir !== undefined) {
 				if (buildDir !== null && typeof buildDir !== "string") {
-					res.status(400).json({ exitCode: 400, stderr: "buildDir must be a string or null" });
+					res.status(400).json({
+						exitCode: 400,
+						stderr: "buildDir must be a string or null",
+					});
 					return;
 				}
 				promises.push(

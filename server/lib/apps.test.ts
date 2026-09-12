@@ -4,6 +4,8 @@ import {
 	getApps,
 	getAppDetail,
 	isValidAppName,
+	listAppNames,
+	parseAppNamesFromListOutput,
 	restartApp,
 	rebuildApp,
 	scaleApp,
@@ -30,6 +32,86 @@ describe("isValidAppName", () => {
 
 		invalidNames.forEach((name) => {
 			expect(isValidAppName(name)).toBe(false);
+		});
+	});
+});
+
+describe("parseAppNamesFromListOutput", () => {
+	it("should parse and filter valid app names", () => {
+		expect(parseAppNamesFromListOutput("my-app\nanother-app\nINVALID\n")).toEqual([
+			"my-app",
+			"another-app",
+		]);
+	});
+});
+
+describe("listAppNames", () => {
+	const mockExecuteCommand = executeCommand as ReturnType<typeof vi.fn>;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("should return app names from quiet list", async () => {
+		mockExecuteCommand.mockResolvedValue({
+			command: "dokku --quiet apps:list",
+			exitCode: 0,
+			stdout: "my-app\nanother-app",
+			stderr: "",
+		});
+
+		const result = await listAppNames();
+
+		expect(result).toEqual({ ok: true, names: ["my-app", "another-app"] });
+		expect(mockExecuteCommand).toHaveBeenCalledTimes(1);
+	});
+
+	it("should fall back to apps:list when quiet list fails", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku --quiet apps:list",
+				exitCode: 1,
+				stdout: "",
+				stderr: "quiet failed",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku apps:list",
+				exitCode: 0,
+				stdout: "my-app",
+				stderr: "",
+			});
+
+		const result = await listAppNames();
+
+		expect(result).toEqual({ ok: true, names: ["my-app"] });
+		expect(mockExecuteCommand).toHaveBeenCalledTimes(2);
+	});
+
+	it("should return an error when both list commands fail", async () => {
+		mockExecuteCommand
+			.mockResolvedValueOnce({
+				command: "dokku --quiet apps:list",
+				exitCode: 1,
+				stdout: "",
+				stderr: "quiet failed",
+			})
+			.mockResolvedValueOnce({
+				command: "dokku apps:list",
+				exitCode: 1,
+				stdout: "",
+				stderr: "apps list failed",
+			});
+
+		const result = await listAppNames();
+
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				command: "dokku apps:list",
+				exitCode: 1,
+				stdout: "",
+				stderr: "apps list failed",
+			},
 		});
 	});
 });

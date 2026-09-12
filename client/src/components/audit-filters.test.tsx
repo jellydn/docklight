@@ -10,7 +10,12 @@ describe("AuditFilters", () => {
 			const fields = [
 				{ name: "startDate", label: "Start Date", type: "date" as const },
 				{ name: "endDate", label: "End Date", type: "date" as const },
-				{ name: "search", label: "Search", type: "text" as const, placeholder: "Search..." },
+				{
+					name: "search",
+					label: "Search",
+					type: "text" as const,
+					placeholder: "Search...",
+				},
 			];
 			const filters = { startDate: "", endDate: "", search: "" };
 
@@ -156,7 +161,12 @@ describe("AuditFilters", () => {
 			const user = userEvent.setup();
 			const onFilterChange = vi.fn();
 			const fields = [
-				{ name: "search", label: "Search", type: "text" as const, placeholder: "Search..." },
+				{
+					name: "search",
+					label: "Search",
+					type: "text" as const,
+					placeholder: "Search...",
+				},
 			];
 			const filters = { search: "" };
 

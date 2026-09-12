@@ -3,10 +3,20 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider } from "@/contexts/theme-context.js";
 import { Login } from "./Login";
 
 vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
+}));
+
+const mockToastContext = {
+	addToast: vi.fn(),
+	removeToast: vi.fn(),
+};
+
+vi.mock("../components/ToastProvider", () => ({
+	useToast: () => mockToastContext,
 }));
 
 const createTestQueryClient = () =>
@@ -22,7 +32,9 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 	const testQueryClient = createTestQueryClient();
 	return render(
 		<QueryClientProvider client={testQueryClient}>
-			<MemoryRouter>{ui}</MemoryRouter>
+			<ThemeProvider>
+				<MemoryRouter>{ui}</MemoryRouter>
+			</ThemeProvider>
 		</QueryClientProvider>
 	);
 };
@@ -34,7 +46,6 @@ describe("Login", () => {
 		vi.clearAllMocks();
 		const { apiFetch } = await import("../lib/api.js");
 		apiFetchMock = apiFetch as MockedFunction<typeof apiFetch>;
-		// Default: auth/me fails (not logged in)
 		apiFetchMock.mockImplementation((path: string) => {
 			if (path === "/auth/me") return Promise.reject(new Error("Unauthorized"));
 			return Promise.reject(new Error("Not found"));
@@ -48,6 +59,7 @@ describe("Login", () => {
 		expect(screen.getByLabelText("Username")).toBeInTheDocument();
 		expect(screen.getByLabelText("Password")).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "Login" })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Forgot password?" })).toBeInTheDocument();
 	});
 
 	it("should show error message on failed login", async () => {
@@ -71,6 +83,39 @@ describe("Login", () => {
 
 		await waitFor(() => {
 			expect(screen.getByText("Invalid credentials")).toBeInTheDocument();
+		});
+	});
+
+	it("should request a password reset link", async () => {
+		apiFetchMock.mockImplementation((path: string) => {
+			if (path === "/auth/me") return Promise.reject(new Error("Unauthorized"));
+			if (path === "/auth/forgot-password") {
+				return Promise.resolve({ success: true, resetUrl: "/reset-password?token=abc" });
+			}
+			return Promise.reject(new Error("Not found"));
+		});
+
+		const user = userEvent.setup();
+		renderWithQueryClient(<Login />);
+
+		await screen.findByText("Docklight Login");
+		await user.click(screen.getByRole("button", { name: "Forgot password?" }));
+		await user.type(screen.getByLabelText("Email"), "user@example.com");
+		await user.click(screen.getByRole("button", { name: "Send reset link" }));
+
+		await waitFor(() => {
+			expect(apiFetchMock).toHaveBeenCalledWith(
+				"/auth/forgot-password",
+				expect.any(Object),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({ email: "user@example.com" }),
+				})
+			);
+			expect(mockToastContext.addToast).toHaveBeenCalledWith(
+				"success",
+				expect.stringContaining("sent")
+			);
 		});
 	});
 
@@ -99,7 +144,10 @@ describe("Login", () => {
 				expect.any(Object),
 				expect.objectContaining({
 					method: "POST",
-					body: JSON.stringify({ username: "testuser", password: "correct-password" }),
+					body: JSON.stringify({
+						username: "testuser",
+						password: "correct-password",
+					}),
 				})
 			);
 		});

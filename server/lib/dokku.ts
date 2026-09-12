@@ -1,4 +1,5 @@
 import { executeCommand } from "./executor.js";
+import { assertValidConfigKey } from "./env-config-key.js";
 import { shellQuote } from "./shell.js";
 
 export interface GitSyncResult {
@@ -13,6 +14,10 @@ export interface GitSyncResult {
 export interface DokkuCommands {
 	// Version
 	version(): string;
+
+	// Server maintenance
+	cleanup(): string;
+	repoPurgeCache(app: string): string;
 
 	// Apps
 	appsList(): string;
@@ -119,6 +124,10 @@ export const DokkuCommands: DokkuCommands = {
 	// Version
 	version: (): string => "dokku version",
 
+	// Server maintenance
+	cleanup: (): string => "dokku cleanup",
+	repoPurgeCache: (app: string): string => `dokku repo:purge-cache ${shellQuote(app)}`,
+
 	// Apps
 	appsList: (): string => "dokku apps:list",
 	appsListQuiet: (): string => "dokku --quiet apps:list",
@@ -145,10 +154,14 @@ export const DokkuCommands: DokkuCommands = {
 
 	// Config
 	configShow: (app: string): string => `dokku config:show ${app}`,
-	configSet: (app: string, key: string, value: string): string =>
-		`dokku config:set ${shellQuote(app)} ${shellQuote(key)}=${shellQuote(value)}`,
-	configUnset: (app: string, key: string): string =>
-		`dokku config:unset ${shellQuote(app)} ${shellQuote(key)}`,
+	configSet: (app: string, key: string, value: string): string => {
+		assertValidConfigKey(key);
+		return `dokku config:set ${shellQuote(app)} ${key}=${shellQuote(value)}`;
+	},
+	configUnset: (app: string, key: string): string => {
+		assertValidConfigKey(key);
+		return `dokku config:unset ${shellQuote(app)} ${key}`;
+	},
 
 	// Plugins (read-only)
 	pluginList: (): string => "dokku plugin:list",

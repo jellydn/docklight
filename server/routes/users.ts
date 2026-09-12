@@ -3,15 +3,14 @@ import {
 	getAllUsers,
 	createUser,
 	getUserById,
-	updateUser,
+	updateUserWithGuard,
 	deleteUser,
 	type UserRole,
-	demoteAdminWithGuard,
 	deleteUserWithAdminGuard,
 } from "../lib/db.js";
 import { authMiddleware, requireAdmin, hashPassword } from "../lib/auth.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
-import { safeAuditLog } from "./util.js";
+import { safeAuditLog, handleDbError } from "./util.js";
 
 export function registerUserRoutes(app: express.Application): void {
 	app.get("/api/users", authMiddleware, requireAdmin, (_req, res) => {
@@ -29,7 +28,7 @@ export function registerUserRoutes(app: express.Application): void {
 	});
 
 	app.post("/api/users", authMiddleware, requireAdmin, async (req, res) => {
-		const { username, password, role } = req.body;
+		const { username, password, role, email } = req.body;
 
 		if (!username || typeof username !== "string") {
 			res.status(400).json({ error: "Username is required" });
@@ -46,27 +45,34 @@ export function registerUserRoutes(app: express.Application): void {
 			return;
 		}
 
+		if (email !== undefined && email !== null && typeof email !== "string") {
+			res.status(400).json({ error: "Invalid email address" });
+			return;
+		}
+
+		const normalizedEmail =
+			typeof email === "string" && email.trim().length > 0 ? email.trim().toLowerCase() : null;
+		if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+			res.status(400).json({ error: "Invalid email address" });
+			return;
+		}
+
 		try {
 			const passwordHash = await hashPassword(password);
-			const user = createUser(username, passwordHash, role);
+			const user = createUser(username, passwordHash, role, normalizedEmail);
 
-			safeAuditLog(req, "user:create", username, { username, role });
+			safeAuditLog(req, "user:create", username, { username, role, emailSet: !!normalizedEmail });
 
 			clearPrefix("users:");
 			res.status(201).json(user);
 		} catch (err: unknown) {
-			const error = err as { code?: number; message?: string };
-			if (error.code === 19 && error.message?.includes("UNIQUE constraint failed")) {
-				res.status(409).json({ error: "Username already exists" });
-			} else {
-				res.status(500).json({ error: "Internal server error" });
-			}
+			handleDbError(err, res);
 		}
 	});
 
 	app.put("/api/users/:id", authMiddleware, requireAdmin, async (req, res) => {
 		const id = Number.parseInt(req.params.id as string);
-		const { role, password } = req.body;
+		const { role, password, email } = req.body;
 
 		if (Number.isNaN(id)) {
 			res.status(400).json({ error: "Invalid user ID" });
@@ -79,7 +85,7 @@ export function registerUserRoutes(app: express.Application): void {
 			return;
 		}
 
-		const updates: { role?: UserRole; passwordHash?: string } = {};
+		const updates: { role?: UserRole; passwordHash?: string; email?: string | null } = {};
 
 		if (role !== undefined) {
 			if (!["admin", "operator", "viewer"].includes(role)) {
@@ -88,15 +94,21 @@ export function registerUserRoutes(app: express.Application): void {
 				});
 				return;
 			}
-			if (existing.role === "admin" && role !== "admin") {
-				const result = demoteAdminWithGuard(id, role);
-				if (!result.success) {
-					res.status(400).json({ error: result.error });
-					return;
-				}
-			} else {
-				updates.role = role;
+			updates.role = role;
+		}
+
+		if (email !== undefined) {
+			if (email !== null && typeof email !== "string") {
+				res.status(400).json({ error: "Invalid email address" });
+				return;
 			}
+			const normalizedEmail =
+				typeof email === "string" && email.trim().length > 0 ? email.trim().toLowerCase() : null;
+			if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+				res.status(400).json({ error: "Invalid email address" });
+				return;
+			}
+			updates.email = normalizedEmail;
 		}
 
 		if (password !== undefined) {
@@ -109,11 +121,21 @@ export function registerUserRoutes(app: express.Application): void {
 			updates.passwordHash = await hashPassword(password);
 		}
 
-		updateUser(id, updates);
+		try {
+			const result = updateUserWithGuard(id, updates);
+			if (!result.success) {
+				res.status(400).json({ error: result.error });
+				return;
+			}
+		} catch (err: unknown) {
+			handleDbError(err, res);
+			return;
+		}
 
 		safeAuditLog(req, "user:update", existing.username, {
 			username: existing.username,
 			role,
+			emailChanged: updates.email !== undefined,
 			passwordChanged: password !== undefined,
 		});
 

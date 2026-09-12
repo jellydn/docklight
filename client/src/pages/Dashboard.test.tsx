@@ -47,6 +47,36 @@ const mockHealth: ServerHealth = {
 	cpu: 45.5,
 	memory: 62.3,
 	disk: 78.9,
+	status: "warning",
+	resources: {
+		cpu: { value: 45.5, status: "ok" },
+		memory: { value: 62.3, status: "ok" },
+		disk: { value: 78.9, status: "warning" },
+	},
+};
+
+const mockCriticalHealth: ServerHealth = {
+	cpu: 12,
+	memory: 70,
+	disk: 97,
+	status: "critical",
+	resources: {
+		cpu: { value: 12, status: "ok" },
+		memory: { value: 70, status: "warning" },
+		disk: { value: 97, status: "critical" },
+	},
+};
+
+const mockOkHealth: ServerHealth = {
+	cpu: 12,
+	memory: 45,
+	disk: 60,
+	status: "ok",
+	resources: {
+		cpu: { value: 12, status: "ok" },
+		memory: { value: 45, status: "ok" },
+		disk: { value: 60, status: "ok" },
+	},
 };
 
 const mockApps: App[] = [
@@ -63,6 +93,34 @@ const mockApps: App[] = [
 		lastDeployTime: undefined,
 	},
 ];
+
+type DashboardMockOptions = {
+	health?: ServerHealth;
+	apps?: App[];
+	commands?: CommandHistory[];
+	maintenance?: Record<string, { response?: unknown; error?: Error }>;
+};
+
+function createDashboardMock({
+	health = mockHealth,
+	apps = mockApps,
+	commands = mockCommands,
+	maintenance = {},
+}: DashboardMockOptions = {}) {
+	return (endpoint: string, _schema?: unknown, options?: RequestInit) => {
+		const maintenanceConfig = maintenance[endpoint];
+		if (maintenanceConfig && options?.method === "POST") {
+			if (maintenanceConfig.error) {
+				return Promise.reject(maintenanceConfig.error);
+			}
+			return Promise.resolve(maintenanceConfig.response);
+		}
+		if (endpoint === "/server/health") return Promise.resolve(health);
+		if (endpoint === "/apps") return Promise.resolve(apps);
+		if (endpoint === "/commands?limit=20") return Promise.resolve(commands);
+		return Promise.reject(new Error("Unknown endpoint"));
+	};
+}
 
 const mockCommands: CommandHistory[] = [
 	{
@@ -85,6 +143,20 @@ const mockCommands: CommandHistory[] = [
 
 describe("Dashboard", () => {
 	let apiFetchMock: ReturnType<typeof vi.fn>;
+
+	async function renderLoadedDashboard(options: DashboardMockOptions = {}) {
+		apiFetchMock.mockImplementation(createDashboardMock(options));
+
+		renderWithQueryClient(
+			<MemoryRouter>
+				<Dashboard />
+			</MemoryRouter>
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("Server Health")).toBeInTheDocument();
+		});
+	}
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
@@ -327,6 +399,222 @@ describe("Dashboard", () => {
 		await waitFor(() => {
 			expect(screen.getByText("running")).toBeInTheDocument();
 			expect(screen.getByText("stopped")).toBeInTheDocument();
+		});
+	});
+
+	it("should render watch closely label for warning health", async () => {
+		apiFetchMock.mockImplementation((endpoint: string) => {
+			if (endpoint === "/server/health") return Promise.resolve(mockHealth);
+			if (endpoint === "/apps") return Promise.resolve(mockApps);
+			if (endpoint === "/commands?limit=20") return Promise.resolve(mockCommands);
+			return Promise.reject(new Error("Unknown endpoint"));
+		});
+
+		renderWithQueryClient(
+			<MemoryRouter>
+				<Dashboard />
+			</MemoryRouter>
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("VPS status: Watch closely")).toBeInTheDocument();
+		});
+	});
+
+	it("should render critical label for critical health", async () => {
+		apiFetchMock.mockImplementation((endpoint: string) => {
+			if (endpoint === "/server/health") return Promise.resolve(mockCriticalHealth);
+			if (endpoint === "/apps") return Promise.resolve(mockApps);
+			if (endpoint === "/commands?limit=20") return Promise.resolve(mockCommands);
+			return Promise.reject(new Error("Unknown endpoint"));
+		});
+
+		renderWithQueryClient(
+			<MemoryRouter>
+				<Dashboard />
+			</MemoryRouter>
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("VPS status: Critical")).toBeInTheDocument();
+		});
+	});
+
+	it("should show cleanup button for admin", async () => {
+		await renderLoadedDashboard();
+
+		expect(screen.getByRole("button", { name: "Clean unused" })).toBeInTheDocument();
+	});
+
+	it("should hide cleanup button for viewer role", async () => {
+		mockAuthState.role = "viewer";
+		mockAuthState.canModify = false;
+
+		apiFetchMock.mockImplementation((endpoint: string) => {
+			if (endpoint === "/server/health") return Promise.resolve(mockCriticalHealth);
+			if (endpoint === "/apps") return Promise.resolve(mockApps);
+			if (endpoint === "/commands?limit=20") return Promise.resolve(mockCommands);
+			return Promise.reject(new Error("Unknown endpoint"));
+		});
+
+		renderWithQueryClient(
+			<MemoryRouter>
+				<Dashboard />
+			</MemoryRouter>
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("VPS status: Critical")).toBeInTheDocument();
+		});
+
+		expect(screen.queryByRole("button", { name: "Clean unused" })).not.toBeInTheDocument();
+	});
+
+	it("should show purge button for admin when disk is warning or critical", async () => {
+		await renderLoadedDashboard();
+
+		expect(screen.getByRole("button", { name: "Purge build caches" })).toBeInTheDocument();
+	});
+
+	it("should hide purge button for viewer role", async () => {
+		mockAuthState.role = "viewer";
+		mockAuthState.canModify = false;
+
+		apiFetchMock.mockImplementation((endpoint: string) => {
+			if (endpoint === "/server/health") return Promise.resolve(mockCriticalHealth);
+			if (endpoint === "/apps") return Promise.resolve(mockApps);
+			if (endpoint === "/commands?limit=20") return Promise.resolve(mockCommands);
+			return Promise.reject(new Error("Unknown endpoint"));
+		});
+
+		renderWithQueryClient(
+			<MemoryRouter>
+				<Dashboard />
+			</MemoryRouter>
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("VPS status: Critical")).toBeInTheDocument();
+		});
+
+		expect(screen.queryByRole("button", { name: "Purge build caches" })).not.toBeInTheDocument();
+	});
+
+	it("should hide purge button when disk is ok", async () => {
+		apiFetchMock.mockImplementation((endpoint: string) => {
+			if (endpoint === "/server/health") return Promise.resolve(mockOkHealth);
+			if (endpoint === "/apps") return Promise.resolve(mockApps);
+			if (endpoint === "/commands?limit=20") return Promise.resolve(mockCommands);
+			return Promise.reject(new Error("Unknown endpoint"));
+		});
+
+		renderWithQueryClient(
+			<MemoryRouter>
+				<Dashboard />
+			</MemoryRouter>
+		);
+
+		await waitFor(() => {
+			expect(screen.getByRole("button", { name: "Clean unused" })).toBeInTheDocument();
+		});
+
+		expect(screen.queryByRole("button", { name: "Purge build caches" })).not.toBeInTheDocument();
+	});
+
+	it.each([
+		{
+			buttonLabel: "Purge build caches",
+			endpoint: "/server/purge-cache",
+			successToast: "Build caches purged",
+			response: {
+				command: "dokku repo:purge-cache --all-apps",
+				exitCode: 0,
+				stdout: "Purged caches",
+				stderr: "",
+				results: [],
+			},
+		},
+		{
+			buttonLabel: "Clean unused",
+			endpoint: "/server/cleanup",
+			successToast: "Cleanup completed",
+			response: {
+				command: "dokku cleanup",
+				exitCode: 0,
+				stdout: "Cleanup complete",
+				stderr: "",
+			},
+		},
+	])("should confirm $buttonLabel, call endpoint, and refresh data", async ({
+		buttonLabel,
+		endpoint,
+		successToast,
+		response,
+	}) => {
+		const user = userEvent.setup();
+		let healthFetchCount = 0;
+		let commandsFetchCount = 0;
+
+		apiFetchMock.mockImplementation(
+			(fetchEndpoint: string, _schema?: unknown, options?: RequestInit) => {
+				if (fetchEndpoint === endpoint && options?.method === "POST") {
+					return Promise.resolve(response);
+				}
+				if (fetchEndpoint === "/server/health") {
+					healthFetchCount++;
+					return Promise.resolve(mockHealth);
+				}
+				if (fetchEndpoint === "/apps") return Promise.resolve(mockApps);
+				if (fetchEndpoint === "/commands?limit=20") {
+					commandsFetchCount++;
+					return Promise.resolve(mockCommands);
+				}
+				return Promise.reject(new Error("Unknown endpoint"));
+			}
+		);
+
+		renderWithQueryClient(
+			<MemoryRouter>
+				<Dashboard />
+			</MemoryRouter>
+		);
+
+		await waitFor(() => {
+			expect(screen.getByRole("button", { name: buttonLabel })).toBeInTheDocument();
+		});
+
+		const initialHealthFetches = healthFetchCount;
+		const initialCommandsFetches = commandsFetchCount;
+
+		await user.click(screen.getByRole("button", { name: buttonLabel }));
+		await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+		await waitFor(() => {
+			expect(apiFetchMock).toHaveBeenCalledWith(
+				endpoint,
+				expect.anything(),
+				expect.objectContaining({ method: "POST" })
+			);
+			expect(mockToastContext.addToast).toHaveBeenCalledWith("success", successToast);
+			expect(healthFetchCount).toBeGreaterThan(initialHealthFetches);
+			expect(commandsFetchCount).toBeGreaterThan(initialCommandsFetches);
+		});
+	});
+
+	it("should show error toast when purge cache fails", async () => {
+		const user = userEvent.setup();
+
+		await renderLoadedDashboard({
+			maintenance: {
+				"/server/purge-cache": { error: new Error("purge failed") },
+			},
+		});
+
+		await user.click(screen.getByRole("button", { name: "Purge build caches" }));
+		await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+		await waitFor(() => {
+			expect(mockToastContext.addToast).toHaveBeenCalledWith("error", "purge failed");
 		});
 	});
 });

@@ -18,8 +18,18 @@ export const CommandResultSchema = z.object({
 
 export type CommandResult = z.infer<typeof CommandResultSchema>;
 
+export const PurgeCacheResultSchema = CommandResultSchema.extend({
+	results: z.array(
+		CommandResultSchema.extend({
+			app: z.string(),
+		})
+	),
+});
+
+export type PurgeCacheResult = z.infer<typeof PurgeCacheResultSchema>;
+
 // API Error schema
-export const ApiErrorSchema = z.object({
+const ApiErrorSchema = z.object({
 	error: z.string(),
 	command: z.string().optional(),
 	exitCode: z.number().optional(),
@@ -28,11 +38,29 @@ export const ApiErrorSchema = z.object({
 
 export type ApiError = z.infer<typeof ApiErrorSchema>;
 
-// Server health schema
+const HealthStatusSchema = z.enum(["ok", "warning", "critical"]);
+export type HealthStatus = z.infer<typeof HealthStatusSchema>;
+
+export function isDiskUnderPressure(status: HealthStatus): boolean {
+	return status === "warning" || status === "critical";
+}
+
+const ResourceHealthSchema = z.object({
+	value: z.number(),
+	status: HealthStatusSchema,
+});
+
+// Server health schema. Top-level cpu/memory/disk mirror resources.*.value for backward compatibility.
 export const ServerHealthSchema = z.object({
 	cpu: z.number(),
 	memory: z.number(),
 	disk: z.number(),
+	status: HealthStatusSchema,
+	resources: z.object({
+		cpu: ResourceHealthSchema,
+		memory: ResourceHealthSchema,
+		disk: ResourceHealthSchema,
+	}),
 });
 
 export type ServerHealth = z.infer<typeof ServerHealthSchema>;
@@ -113,7 +141,7 @@ export const CreateAppResultSchema = z.object({
 export type CreateAppResult = z.infer<typeof CreateAppResultSchema>;
 
 // Port mapping schema
-export const PortMappingSchema = z.object({
+const PortMappingSchema = z.object({
 	scheme: z.string(),
 	hostPort: z.number(),
 	containerPort: z.number(),
@@ -128,6 +156,26 @@ export const PortsResponseSchema = z.object({
 
 export type PortsResponse = z.infer<typeof PortsResponseSchema>;
 
+const PortConflictSchema = z.object({
+	scheme: z.string(),
+	hostPort: z.number().int().min(1).max(65535),
+	apps: z.array(z.string()),
+});
+
+export interface PortConflict {
+	scheme: string;
+	hostPort: number;
+	apps: string[];
+}
+
+export const PortConflictsResponseSchema = z.object({
+	conflicts: z.array(PortConflictSchema),
+});
+
+export interface PortConflictsResponse {
+	conflicts: PortConflict[];
+}
+
 // Proxy report schema
 export const ProxyReportSchema = z.object({
 	enabled: z.boolean(),
@@ -137,7 +185,7 @@ export const ProxyReportSchema = z.object({
 export type ProxyReport = z.infer<typeof ProxyReportSchema>;
 
 // Buildpack schema
-export const BuildpackSchema = z.object({
+const BuildpackSchema = z.object({
 	index: z.number(),
 	url: z.string(),
 });
@@ -188,13 +236,14 @@ export const GitInfoSchema = z.object({
 export type GitInfo = z.infer<typeof GitInfoSchema>;
 
 // User role
-export const UserRoleSchema = z.enum(["admin", "operator", "viewer"]);
+const UserRoleSchema = z.enum(["admin", "operator", "viewer"]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 // User schema (safe, no password hash)
 export const UserSchema = z.object({
 	id: z.number(),
 	username: z.string(),
+	email: z.string().email().nullable().optional(),
 	role: UserRoleSchema,
 	createdAt: z.string(),
 });
@@ -214,7 +263,7 @@ export const AuthMeSchema = z.object({
 });
 
 // User audit log schema
-export const UserAuditLogSchema = z.object({
+const UserAuditLogSchema = z.object({
 	id: z.number(),
 	userId: z.number().nullable(),
 	action: z.string(),

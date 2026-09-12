@@ -1,4 +1,5 @@
 import type { DockerOptions } from "../../lib/schemas.js";
+import { alertBannerClass } from "@/lib/status-styles.js";
 
 interface AppDockerOptionsProps {
 	dockerOptions: DockerOptions | null;
@@ -32,15 +33,15 @@ export function AppDockerOptions({
 	onClearPhase,
 }: AppDockerOptionsProps) {
 	return (
-		<div className="bg-white rounded-lg shadow p-6">
+		<div className="bg-card rounded-lg border border-border p-6">
 			<h2 className="text-lg font-semibold mb-4">Docker Options</h2>
 
 			{loading ? (
 				<div className="flex justify-center py-8">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tertiary" />
 				</div>
 			) : error ? (
-				<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+				<div className={alertBannerClass("error")}>
 					{error}
 				</div>
 			) : (
@@ -50,7 +51,7 @@ export function AppDockerOptions({
 						return (
 							<div key={phase} className="border rounded-lg p-4">
 								<div className="flex justify-between items-center mb-3">
-									<h3 className="text-sm font-medium text-gray-700 capitalize">{phase} Phase</h3>
+									<h3 className="text-sm font-medium text-foreground capitalize">{phase} Phase</h3>
 									{canModify && options.length > 0 && (
 										<button
 											onClick={() => onClearPhase(phase)}
@@ -68,9 +69,9 @@ export function AppDockerOptions({
 										{options.map((option) => (
 											<li
 												key={option}
-												className="flex items-center justify-between bg-gray-50 rounded px-3 py-2"
+												className="flex items-center justify-between bg-muted/50 rounded px-3 py-2"
 											>
-												<code className="font-mono text-sm text-gray-800">{option}</code>
+												<code className="font-mono text-sm text-foreground">{option}</code>
 												{canModify && (
 													<button
 														onClick={() => onRemove(phase, option)}
@@ -85,7 +86,9 @@ export function AppDockerOptions({
 										))}
 									</ul>
 								) : (
-									<p className="text-gray-500 text-sm mb-4">No {phase} options configured.</p>
+									<p className="text-muted-foreground text-sm mb-4">
+										No {phase} options configured.
+									</p>
 								)}
 							</div>
 						);
@@ -93,7 +96,7 @@ export function AppDockerOptions({
 
 					{canModify && (
 						<div className="pt-4 border-t">
-							<h3 className="text-sm font-medium text-gray-700 mb-3">Add Docker Option</h3>
+							<h3 className="text-sm font-medium text-foreground mb-3">Add Docker Option</h3>
 							<div className="flex flex-col sm:flex-row gap-2 mb-2">
 								<select
 									value={newPhase}
@@ -110,17 +113,18 @@ export function AppDockerOptions({
 									value={newOption}
 									onChange={(e) => onOptionChange(e.target.value)}
 									className="flex-1 border rounded px-3 py-2 font-mono text-sm"
+									aria-label="Docker option"
 								/>
 								<button
 									onClick={onAdd}
 									disabled={!newOption || addSubmitting}
-									className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+									className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 									type="button"
 								>
 									Add
 								</button>
 							</div>
-							<p className="text-xs text-gray-500">
+							<p className="text-xs text-muted-foreground">
 								Enter Docker flags (e.g., --memory=512m, --cpus=0.5, --env VAR=value)
 							</p>
 						</div>

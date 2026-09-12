@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -21,10 +21,12 @@ import {
 	GitInfoSchema,
 	NetworkReportSchema,
 	type PortMapping,
+	PortConflictsResponseSchema,
 	PortsResponseSchema,
 	ProxyReportSchema,
 	SSLStatusSchema,
 } from "../../lib/schemas.js";
+import { buildRoutingIssues } from "@/lib/routing-issues.js";
 import { AppDetailHeader } from "./AppDetailHeader.js";
 import { AppOverview } from "./AppOverview.js";
 import { AppLogs } from "./AppLogs.js";
@@ -33,13 +35,16 @@ import { AppDomains } from "./AppDomains.js";
 import { AppSSL } from "./AppSSL.js";
 import { AppDeployment } from "./AppDeployment.js";
 import { AppPorts } from "./AppPorts.js";
+import { AppRoutingIssues } from "./AppRoutingIssues.js";
 import { AppBuildpacks } from "./AppBuildpacks.js";
 import { AppDockerOptions } from "./AppDockerOptions.js";
 import { AppNetwork } from "./AppNetwork.js";
 import { AppGit } from "./AppGit.js";
 import { AppChecks } from "./AppChecks.js";
-import { ConfirmDialog, DeleteAppDialog, ScaleDialog } from "./Dialogs.js";
+import { ConfirmDialog } from "../../components/ConfirmDialog.js";
+import { DeleteAppDialog, ScaleDialog } from "./Dialogs.js";
 import type { TabType } from "./types.js";
+import { alertBannerClass } from "@/lib/status-styles.js";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -92,7 +97,10 @@ export function AppDetail() {
 	const [pendingScaleChanges, setPendingScaleChanges] = useState<ScaleChange[]>([]);
 	const [scaleSubmitting, setScaleSubmitting] = useState(false);
 	const [scaleChanges, setScaleChanges] = useState<Record<string, number>>({});
-	const [copySuccess, setCopySuccess] = useState<{ remote: boolean; push: boolean }>({
+	const [copySuccess, setCopySuccess] = useState<{
+		remote: boolean;
+		push: boolean;
+	}>({
 		remote: false,
 		push: false,
 	});
@@ -160,6 +168,7 @@ export function AppDetail() {
 	const sslError = sslErrorData?.message || null;
 
 	const settingsEnabled = activeTab === "settings" && !!name;
+	const portsQueryEnabled = (activeTab === "settings" || activeTab === "ssl") && !!name;
 
 	// Deployment settings query
 	const {
@@ -190,7 +199,7 @@ export function AppDetail() {
 	} = useQuery({
 		queryKey: queryKeys.apps.ports(name || ""),
 		queryFn: () => apiFetch(`/apps/${encodeURIComponent(name || "")}/ports`, PortsResponseSchema),
-		enabled: settingsEnabled,
+		enabled: portsQueryEnabled,
 	});
 	const ports = portsData?.ports ?? [];
 	const portsError = portsErrorData?.message || null;
@@ -203,6 +212,25 @@ export function AppDetail() {
 	const [showRemovePortDialog, setShowRemovePortDialog] = useState(false);
 	const [pendingRemovePort, setPendingRemovePort] = useState<PortMapping | null>(null);
 	const [portRemoveSubmitting, setPortRemoveSubmitting] = useState(false);
+
+	const routingDiagnosticsEnabled =
+		(activeTab === "settings" || activeTab === "ssl") && !!name;
+	const {
+		data: portConflictsData,
+		isLoading: portConflictsLoading,
+		refetch: refetchPortConflicts,
+	} = useQuery({
+		queryKey: queryKeys.apps.portConflicts,
+		queryFn: () => apiFetch("/apps/port-conflicts", PortConflictsResponseSchema),
+		enabled: routingDiagnosticsEnabled,
+	});
+	const routingIssues = useMemo(
+		() =>
+			name
+				? buildRoutingIssues(name, ports, portConflictsData?.conflicts ?? [])
+				: [],
+		[name, portsData?.ports, portConflictsData?.conflicts]
+	);
 
 	// Proxy query
 	const {
@@ -329,22 +357,8 @@ export function AppDetail() {
 	const logsEndRef = useRef<HTMLPreElement>(null);
 
 	useEffect(() => {
-		if (activeTab === "logs" && name) {
-			connectWebSocket();
-		}
+		if (activeTab !== "logs" || !name) return;
 
-		return () => {
-			disconnectWebSocket();
-		};
-	}, [activeTab, name, lineCount]);
-
-	useEffect(() => {
-		if (autoScroll && logsEndRef.current) {
-			logsEndRef.current.scrollTop = logsEndRef.current.scrollHeight;
-		}
-	}, [logs, autoScroll]);
-
-	const connectWebSocket = () => {
 		const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 		const wsUrl = `${protocol}//${window.location.host}/api/apps/${name}/logs/stream`;
 
@@ -381,14 +395,18 @@ export function AppDetail() {
 		ws.onerror = () => {
 			setConnectionStatus("disconnected");
 		};
-	};
 
-	const disconnectWebSocket = () => {
-		if (wsRef.current) {
-			wsRef.current.close();
+		return () => {
+			ws.close();
 			wsRef.current = null;
+		};
+	}, [activeTab, name, lineCount]);
+
+	useEffect(() => {
+		if (autoScroll && logsEndRef.current) {
+			logsEndRef.current.scrollTop = logsEndRef.current.scrollHeight;
 		}
-	};
+	}, [logs, autoScroll]);
 
 	const handleAction = async (action: "restart" | "rebuild") => {
 		setPendingAction(action);
@@ -568,8 +586,8 @@ export function AppDetail() {
 		const gitRemoteCommand = `git remote add dokku dokku@${hostname}:${app.name}`;
 		try {
 			await navigator.clipboard.writeText(gitRemoteCommand);
-			setCopySuccess({ ...copySuccess, remote: true });
-			setTimeout(() => setCopySuccess({ ...copySuccess, remote: false }), 2000);
+			setCopySuccess((prev) => ({ ...prev, remote: true }));
+			setTimeout(() => setCopySuccess((prev) => ({ ...prev, remote: false })), 2000);
 		} catch {
 			// Fallback: user can manually copy
 		}
@@ -579,8 +597,8 @@ export function AppDetail() {
 		const gitPushCommand = "git push dokku main";
 		try {
 			await navigator.clipboard.writeText(gitPushCommand);
-			setCopySuccess({ ...copySuccess, push: true });
-			setTimeout(() => setCopySuccess({ ...copySuccess, push: false }), 2000);
+			setCopySuccess((prev) => ({ ...prev, push: true }));
+			setTimeout(() => setCopySuccess((prev) => ({ ...prev, push: false })), 2000);
 		} catch {
 			// Fallback: user can manually copy
 		}
@@ -742,6 +760,7 @@ export function AppDetail() {
 				setNewHostPort("");
 				setNewContainerPort("");
 				void refetchPorts();
+				void refetchPortConflicts();
 			},
 		});
 
@@ -769,6 +788,7 @@ export function AppDetail() {
 				setShowRemovePortDialog(false);
 				setPendingRemovePort(null);
 				void refetchPorts();
+				void refetchPortConflicts();
 			},
 			onError: () => {
 				setShowRemovePortDialog(false);
@@ -789,6 +809,7 @@ export function AppDetail() {
 			onSuccess: () => {
 				setShowClearPortsDialog(false);
 				void refetchPorts();
+				void refetchPortConflicts();
 			},
 			onError: () => {
 				setShowClearPortsDialog(false);
@@ -933,7 +954,10 @@ export function AppDetail() {
 
 		await streamAction(`/apps/${encodeURIComponent(name)}/docker-options`, "docker-option:add", {
 			method: "POST",
-			body: JSON.stringify({ phase: newDockerOptionPhase, option: newDockerOption }),
+			body: JSON.stringify({
+				phase: newDockerOptionPhase,
+				option: newDockerOption,
+			}),
 			onSuccess: () => {
 				setNewDockerOption("");
 				void refetchDockerOptions();
@@ -1163,17 +1187,13 @@ export function AppDetail() {
 	if (loading) {
 		return (
 			<div className="flex justify-center items-center py-12">
-				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tertiary" />
 			</div>
 		);
 	}
 
 	if (error || !app) {
-		return (
-			<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-				{error || "App not found"}
-			</div>
-		);
+		return <div className={alertBannerClass("error")}>{error || "App not found"}</div>;
 	}
 
 	return (
@@ -1431,56 +1451,56 @@ export function AppDetail() {
 				<nav className="flex space-x-4 min-w-max">
 					<button
 						onClick={() => setActiveTab("overview")}
-						className={`pb-2 px-2 ${activeTab === "overview" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "overview" ? "border-tertiary text-tertiary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						Overview
 					</button>
 					<button
 						onClick={() => setActiveTab("config")}
-						className={`pb-2 px-2 ${activeTab === "config" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "config" ? "border-tertiary text-tertiary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						Config
 					</button>
 					<button
 						onClick={() => setActiveTab("domains")}
-						className={`pb-2 px-2 ${activeTab === "domains" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "domains" ? "border-tertiary text-tertiary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						Domains
 					</button>
 					<button
 						onClick={() => setActiveTab("logs")}
-						className={`pb-2 px-2 ${activeTab === "logs" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "logs" ? "border-tertiary text-tertiary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						Logs
 					</button>
 					<button
 						onClick={() => setActiveTab("ssl")}
-						className={`pb-2 px-2 ${activeTab === "ssl" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "ssl" ? "border-tertiary text-tertiary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						SSL
 					</button>
 					<button
 						onClick={() => setActiveTab("settings")}
-						className={`pb-2 px-2 ${activeTab === "settings" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "settings" ? "border-tertiary text-tertiary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						Settings
 					</button>
 					<button
 						onClick={() => setActiveTab("git")}
-						className={`pb-2 px-2 ${activeTab === "git" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "git" ? "border-tertiary text-tertiary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						Git
 					</button>
 					<button
 						onClick={() => setActiveTab("checks")}
-						className={`pb-2 px-2 ${activeTab === "checks" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+						className={`pb-2 px-2 border-b-2 ${activeTab === "checks" ? "border-tertiary text-tertiary" : "border-transparent text-muted-foreground"}`}
 						type="button"
 					>
 						Checks
@@ -1548,21 +1568,31 @@ export function AppDetail() {
 			)}
 
 			{activeTab === "ssl" && (
-				<AppSSL
-					sslStatus={sslStatus ?? null}
-					loading={sslLoading}
-					error={sslError}
-					email={sslEmail}
-					submitting={sslSubmitting}
-					canModify={canModify}
-					onEmailChange={setSslEmail}
-					onEnable={handleEnableSSL}
-					onRenew={handleRenewSSL}
-				/>
+				<>
+					<AppRoutingIssues
+						issues={routingIssues}
+						loading={portConflictsLoading || portsLoading}
+					/>
+					<AppSSL
+						sslStatus={sslStatus ?? null}
+						loading={sslLoading}
+						error={sslError}
+						email={sslEmail}
+						submitting={sslSubmitting}
+						canModify={canModify}
+						onEmailChange={setSslEmail}
+						onEnable={handleEnableSSL}
+						onRenew={handleRenewSSL}
+					/>
+				</>
 			)}
 
 			{activeTab === "settings" && (
 				<div className="space-y-6">
+					<AppRoutingIssues
+						issues={routingIssues}
+						loading={portConflictsLoading || portsLoading}
+					/>
 					<AppDeployment
 						settings={deploymentSettings ?? null}
 						loading={deploymentLoading}

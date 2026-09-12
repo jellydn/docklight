@@ -1,5 +1,4 @@
 import type express from "express";
-import type { JWTPayload } from "../lib/auth.js";
 import {
 	getAppDetail,
 	getApps,
@@ -19,13 +18,8 @@ import { authMiddleware, requireOperator } from "../lib/auth.js";
 import { executeCommandStreaming } from "../lib/executor.js";
 import { DokkuCommands } from "../lib/dokku.js";
 import { isSSERequest, createSSEWriter } from "../lib/sse.js";
-import { getParam, safeAuditLog } from "./util.js";
+import { getParam, getUserId, safeAuditLog } from "./util.js";
 import { broadcastAppEvent } from "../lib/app-events.js";
-
-function getUserId(req: express.Request): string | undefined {
-	const user = req.user as JWTPayload | undefined;
-	return user?.userId ? String(user.userId) : undefined;
-}
 
 async function streamAction(
 	req: express.Request,
@@ -54,7 +48,11 @@ async function streamAction(
 		if (result.exitCode === 0) {
 			safeAuditLog(req, auditAction, appName, { app: appName });
 			clearPrefix("apps:");
-			broadcastAppEvent({ type: auditAction, appName, timestamp: new Date().toISOString() });
+			broadcastAppEvent({
+				type: auditAction,
+				appName,
+				timestamp: new Date().toISOString(),
+			});
 		}
 		sse.sendResult(result);
 	} catch (err) {
@@ -105,7 +103,11 @@ export function registerAppRoutes(app: express.Application): void {
 		safeAuditLog(req, "app:create", name, { name });
 
 		clearPrefix("apps:");
-		broadcastAppEvent({ type: "app:create", appName: name, timestamp: new Date().toISOString() });
+		broadcastAppEvent({
+			type: "app:create",
+			appName: name,
+			timestamp: new Date().toISOString(),
+		});
 		res.status(201).json({ success: true, name });
 	});
 
@@ -140,7 +142,11 @@ export function registerAppRoutes(app: express.Application): void {
 		safeAuditLog(req, "app:restart", name, { app: name });
 
 		clearPrefix("apps:");
-		broadcastAppEvent({ type: "app:restart", appName: name, timestamp: new Date().toISOString() });
+		broadcastAppEvent({
+			type: "app:restart",
+			appName: name,
+			timestamp: new Date().toISOString(),
+		});
 		res.json(result);
 	});
 
@@ -168,7 +174,11 @@ export function registerAppRoutes(app: express.Application): void {
 		safeAuditLog(req, "app:rebuild", name, { app: name });
 
 		clearPrefix("apps:");
-		broadcastAppEvent({ type: "app:rebuild", appName: name, timestamp: new Date().toISOString() });
+		broadcastAppEvent({
+			type: "app:rebuild",
+			appName: name,
+			timestamp: new Date().toISOString(),
+		});
 		res.json(result);
 	});
 
@@ -196,7 +206,11 @@ export function registerAppRoutes(app: express.Application): void {
 		safeAuditLog(req, "app:stop", name, { app: name });
 
 		clearPrefix("apps:");
-		broadcastAppEvent({ type: "app:stop", appName: name, timestamp: new Date().toISOString() });
+		broadcastAppEvent({
+			type: "app:stop",
+			appName: name,
+			timestamp: new Date().toISOString(),
+		});
 		res.json(result);
 	});
 
@@ -224,7 +238,11 @@ export function registerAppRoutes(app: express.Application): void {
 		safeAuditLog(req, "app:start", name, { app: name });
 
 		clearPrefix("apps:");
-		broadcastAppEvent({ type: "app:start", appName: name, timestamp: new Date().toISOString() });
+		broadcastAppEvent({
+			type: "app:start",
+			appName: name,
+			timestamp: new Date().toISOString(),
+		});
 		res.json(result);
 	});
 
@@ -252,7 +270,11 @@ export function registerAppRoutes(app: express.Application): void {
 		safeAuditLog(req, "app:unlock", name, { app: name });
 
 		clearPrefix("apps:");
-		broadcastAppEvent({ type: "app:unlock", appName: name, timestamp: new Date().toISOString() });
+		broadcastAppEvent({
+			type: "app:unlock",
+			appName: name,
+			timestamp: new Date().toISOString(),
+		});
 		res.json(result);
 	});
 
@@ -289,7 +311,11 @@ export function registerAppRoutes(app: express.Application): void {
 		safeAuditLog(req, "app:scale", name, { app: name, processType, count });
 
 		clearPrefix("apps:");
-		broadcastAppEvent({ type: "app:scale", appName: name, timestamp: new Date().toISOString() });
+		broadcastAppEvent({
+			type: "app:scale",
+			appName: name,
+			timestamp: new Date().toISOString(),
+		});
 		res.json(result);
 	});
 
@@ -322,7 +348,11 @@ export function registerAppRoutes(app: express.Application): void {
 		safeAuditLog(req, "app:destroy", name, { app: name });
 
 		clearPrefix("apps:");
-		broadcastAppEvent({ type: "app:destroy", appName: name, timestamp: new Date().toISOString() });
+		broadcastAppEvent({
+			type: "app:destroy",
+			appName: name,
+			timestamp: new Date().toISOString(),
+		});
 		res.json(result);
 	});
 }

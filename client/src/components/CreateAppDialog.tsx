@@ -172,7 +172,7 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 								<button
 									type="button"
 									onClick={() => setShowAdvanced(!showAdvanced)}
-									className="flex items-center text-sm text-gray-600 hover:text-gray-900"
+									className="flex items-center text-sm text-muted-foreground hover:text-foreground"
 								>
 									<span className={`mr-2 transition-transform ${showAdvanced ? "rotate-90" : ""}`}>
 										▶
@@ -207,7 +207,7 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 											onChange={(e) => setBuildDir(e.target.value)}
 											disabled={loading}
 										/>
-										<p className="mt-1 text-xs text-gray-500">
+										<p className="mt-1 text-xs text-muted-foreground">
 											For monorepo: path to subdirectory (e.g., apps/api)
 										</p>
 									</div>
@@ -261,7 +261,7 @@ export function CreateAppDialog({ open, onOpenChange, onCreated }: CreateAppDial
 										git remote add dokku dokku@{hostname}:{createdAppName}
 										<button
 											type="button"
-											className="ml-2 text-blue-500 hover:underline"
+											className="ml-2 text-tertiary hover:underline"
 											onClick={handleCopyRemote}
 											title="Copy to clipboard"
 										>

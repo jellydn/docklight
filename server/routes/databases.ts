@@ -5,6 +5,7 @@ import {
 	destroyDatabase,
 	getDatabases,
 	linkDatabase,
+	validateDatabaseLink,
 	unlinkDatabase,
 } from "../lib/databases.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
@@ -112,20 +113,12 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const name = getParam(req.params, "name");
 		const { plugin, app, alias } = req.body;
 
-		// Validate and trim alias if provided (consistent with linkDatabase validation)
-		const trimmedAlias = alias ? alias.trim() : undefined;
-		if (trimmedAlias) {
-			const sanitizedAlias = trimmedAlias.replace(/[^a-zA-Z0-9_]/g, "");
-			if (sanitizedAlias !== trimmedAlias) {
-				res.status(400).json({
-					error:
-						"Alias contains invalid characters (only letters, numbers, and underscores allowed)",
-					command: "",
-					exitCode: 400,
-				});
-				return;
-			}
+		const validationError = validateDatabaseLink(plugin, name, app, alias);
+		if (validationError) {
+			res.status(400).json(validationError);
+			return;
 		}
+		const trimmedAlias = alias?.trim() || undefined;
 
 		if (isSSERequest(req)) {
 			await streamAction(
@@ -142,11 +135,15 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const result = await linkDatabase(plugin, name, app, trimmedAlias);
 
 		if (result.exitCode === 0) {
-			safeAuditLog(req, "database:link", name, { plugin, database: name, app, alias: trimmedAlias });
+			safeAuditLog(req, "database:link", name, {
+				plugin,
+				database: name,
+				app,
+				alias: trimmedAlias,
+			});
 		}
 
 		clearPrefix("databases:");
-		// Return proper HTTP status code based on exitCode
 		const statusCode = result.exitCode >= 400 ? result.exitCode : result.exitCode !== 0 ? 500 : 200;
 		res.status(statusCode).json(result);
 	});
@@ -170,7 +167,11 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const result = await unlinkDatabase(plugin, name, app);
 
 		if (result.exitCode === 0) {
-			safeAuditLog(req, "database:unlink", name, { plugin, database: name, app });
+			safeAuditLog(req, "database:unlink", name, {
+				plugin,
+				database: name,
+				app,
+			});
 		}
 
 		clearPrefix("databases:");

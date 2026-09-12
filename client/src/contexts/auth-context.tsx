@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode, type JSX } from "react";
+import { createContext, type ReactNode, type JSX, use, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api.js";
 import { AuthMeSchema } from "@/lib/schemas.js";
@@ -30,13 +30,14 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
 	const username = authData?.user?.username ?? null;
 	const canModify = role === "admin" || role === "operator";
 
-	return (
-		<AuthContext.Provider value={{ role, username, loading: isLoading, canModify }}>
-			{children}
-		</AuthContext.Provider>
+	const value = useMemo(
+		() => ({ role, username, loading: isLoading, canModify }),
+		[role, username, isLoading, canModify]
 	);
+
+	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {
-	return useContext(AuthContext);
+	return use(AuthContext);
 }

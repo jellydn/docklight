@@ -87,6 +87,10 @@ describe("parsePortMappings", () => {
 		].join("\n");
 		const result = parsePortMappings(stdout);
 		expect(result).toHaveLength(1);
-		expect(result[0]).toEqual({ scheme: "http", hostPort: 80, containerPort: 5000 });
+		expect(result[0]).toEqual({
+			scheme: "http",
+			hostPort: 80,
+			containerPort: 5000,
+		});
 	});
 });

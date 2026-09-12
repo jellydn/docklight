@@ -250,6 +250,7 @@ describe("importBackup validation", () => {
 		users: [
 			{
 				username: "admin",
+				email: null,
 				password_hash: "salt:hash",
 				role: "admin",
 				createdAt: "2024-01-01T00:00:00.000Z",
@@ -282,7 +283,7 @@ describe("importBackup validation", () => {
 	it("should reject user with missing username", () => {
 		const result = importBackup({
 			...validBackup,
-			users: [{ username: "", password_hash: "hash", role: "admin", createdAt: "" }],
+			users: [{ username: "", email: null, password_hash: "hash", role: "admin", createdAt: "" }],
 		});
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("username");
@@ -291,7 +292,7 @@ describe("importBackup validation", () => {
 	it("should reject user with missing password_hash", () => {
 		const result = importBackup({
 			...validBackup,
-			users: [{ username: "admin", password_hash: "", role: "admin", createdAt: "" }],
+			users: [{ username: "admin", email: null, password_hash: "", role: "admin", createdAt: "" }],
 		});
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("password_hash");
@@ -303,6 +304,7 @@ describe("importBackup validation", () => {
 			users: [
 				{
 					username: "admin",
+					email: null,
 					password_hash: "hash",
 					role: "superuser" as "admin",
 					createdAt: "",
@@ -316,7 +318,15 @@ describe("importBackup validation", () => {
 	it("should reject backup with no admin user", () => {
 		const result = importBackup({
 			...validBackup,
-			users: [{ username: "user1", password_hash: "hash", role: "viewer", createdAt: "" }],
+			users: [
+				{
+					username: "user1",
+					email: null,
+					password_hash: "hash",
+					role: "viewer",
+					createdAt: "",
+				},
+			],
 		});
 		expect(result).toEqual({
 			success: false,
@@ -367,7 +377,12 @@ describe("backup SQL logic", () => {
 
 		const users = testDb
 			.prepare("SELECT username, password_hash, role, createdAt FROM users ORDER BY id ASC")
-			.all() as Array<{ username: string; password_hash: string; role: string; createdAt: string }>;
+			.all() as Array<{
+			username: string;
+			password_hash: string;
+			role: string;
+			createdAt: string;
+		}>;
 
 		expect(users).toHaveLength(2);
 		expect(users[0].username).toBe("admin");
@@ -851,7 +866,12 @@ describe("deleteOldAuditLogs and deleteOldCommandHistory", () => {
 	it("should delete old command history older than specified days", async () => {
 		const { saveCommand, deleteOldCommandHistory, getRecentCommands } = await import("./db.js");
 
-		saveCommand({ command: "dokku apps:list", exitCode: 0, stdout: "", stderr: "" });
+		saveCommand({
+			command: "dokku apps:list",
+			exitCode: 0,
+			stdout: "",
+			stderr: "",
+		});
 
 		const before = getRecentCommands(10);
 		expect(before).toHaveLength(1);
@@ -866,7 +886,12 @@ describe("deleteOldAuditLogs and deleteOldCommandHistory", () => {
 	it("should not delete command history newer than specified days", async () => {
 		const { saveCommand, deleteOldCommandHistory, getRecentCommands } = await import("./db.js");
 
-		saveCommand({ command: "dokku apps:list", exitCode: 0, stdout: "", stderr: "" });
+		saveCommand({
+			command: "dokku apps:list",
+			exitCode: 0,
+			stdout: "",
+			stderr: "",
+		});
 
 		const deleted = deleteOldCommandHistory(365);
 		expect(deleted).toBe(0);
@@ -905,7 +930,12 @@ describe("getCommandHistoryForExport and getUserAuditLogsForExport", () => {
 		const { saveCommand, getCommandHistoryForExport } = await import("./db.js");
 
 		for (let i = 0; i < 5; i++) {
-			saveCommand({ command: `dokku apps:list ${i}`, exitCode: 0, stdout: "", stderr: "" });
+			saveCommand({
+				command: `dokku apps:list ${i}`,
+				exitCode: 0,
+				stdout: "",
+				stderr: "",
+			});
 		}
 
 		const logs = getCommandHistoryForExport();
@@ -930,8 +960,18 @@ describe("getCommandHistoryForExport and getUserAuditLogsForExport", () => {
 	it("should filter command history by command pattern for export", async () => {
 		const { saveCommand, getCommandHistoryForExport } = await import("./db.js");
 
-		saveCommand({ command: "dokku apps:list", exitCode: 0, stdout: "", stderr: "" });
-		saveCommand({ command: "dokku ps:restart my-app", exitCode: 0, stdout: "", stderr: "" });
+		saveCommand({
+			command: "dokku apps:list",
+			exitCode: 0,
+			stdout: "",
+			stderr: "",
+		});
+		saveCommand({
+			command: "dokku ps:restart my-app",
+			exitCode: 0,
+			stdout: "",
+			stderr: "",
+		});
 
 		const logs = getCommandHistoryForExport({ command: "apps" });
 		expect(logs).toHaveLength(1);
@@ -990,7 +1030,12 @@ describe("command output truncation", () => {
 		const { saveCommand, getRecentCommands } = await import("./db.js");
 
 		const shortOutput = "short output";
-		saveCommand({ command: "dokku apps:list", exitCode: 0, stdout: shortOutput, stderr: "" });
+		saveCommand({
+			command: "dokku apps:list",
+			exitCode: 0,
+			stdout: shortOutput,
+			stderr: "",
+		});
 
 		const commands = getRecentCommands(1);
 		expect(commands).toHaveLength(1);
@@ -1001,7 +1046,12 @@ describe("command output truncation", () => {
 		const { saveCommand, getRecentCommands } = await import("./db.js");
 
 		const longOutput = "a".repeat(5000);
-		saveCommand({ command: "dokku apps:list", exitCode: 0, stdout: longOutput, stderr: "" });
+		saveCommand({
+			command: "dokku apps:list",
+			exitCode: 0,
+			stdout: longOutput,
+			stderr: "",
+		});
 
 		const commands = getRecentCommands(1);
 		expect(commands).toHaveLength(1);
@@ -1013,7 +1063,12 @@ describe("command output truncation", () => {
 		const { saveCommand, getRecentCommands } = await import("./db.js");
 
 		const longError = "e".repeat(5000);
-		saveCommand({ command: "dokku apps:list", exitCode: 1, stdout: "", stderr: longError });
+		saveCommand({
+			command: "dokku apps:list",
+			exitCode: 1,
+			stdout: "",
+			stderr: longError,
+		});
 
 		const commands = getRecentCommands(1);
 		expect(commands).toHaveLength(1);
@@ -1026,7 +1081,12 @@ describe("command output truncation", () => {
 
 		const longOutput = "a".repeat(5000);
 		const longError = "e".repeat(5000);
-		saveCommand({ command: "dokku apps:list", exitCode: 1, stdout: longOutput, stderr: longError });
+		saveCommand({
+			command: "dokku apps:list",
+			exitCode: 1,
+			stdout: longOutput,
+			stderr: longError,
+		});
 
 		const commands = getRecentCommands(1);
 		expect(commands).toHaveLength(1);
@@ -1040,7 +1100,12 @@ describe("command output truncation", () => {
 		const { saveCommand, getRecentCommands } = await import("./db.js");
 
 		const longOutput = "x".repeat(5000);
-		saveCommand({ command: "dokku apps:list", exitCode: 0, stdout: longOutput, stderr: "" });
+		saveCommand({
+			command: "dokku apps:list",
+			exitCode: 0,
+			stdout: longOutput,
+			stderr: "",
+		});
 
 		const commands = getRecentCommands(1);
 		expect(commands[0].stdout).toMatch(/\.\.\. \[output truncated\]$/);

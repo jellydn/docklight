@@ -80,14 +80,26 @@ describe("DokkuCommands", () => {
 			expect(DokkuCommands.configShow("my-app")).toBe("dokku config:show my-app");
 		});
 
-		it("configSet returns config:set command with quoted value", () => {
+		it("configSet returns config:set command with quoted value only", () => {
 			expect(DokkuCommands.configSet("my-app", "KEY", "value")).toBe(
-				"dokku config:set 'my-app' 'KEY'='value'"
+				"dokku config:set 'my-app' KEY='value'"
 			);
 		});
 
-		it("configUnset returns config:unset command", () => {
-			expect(DokkuCommands.configUnset("my-app", "KEY")).toBe("dokku config:unset 'my-app' 'KEY'");
+		it("configSet does not quote env var keys", () => {
+			expect(
+				DokkuCommands.configSet("my-app", "SUPER_ADMIN_BOOTSTRAP_EMAIL", "admin@example.com")
+			).toBe("dokku config:set 'my-app' SUPER_ADMIN_BOOTSTRAP_EMAIL='admin@example.com'");
+		});
+
+		it("configUnset returns config:unset command without quoting key", () => {
+			expect(DokkuCommands.configUnset("my-app", "KEY")).toBe("dokku config:unset 'my-app' KEY");
+		});
+
+		it("configSet rejects invalid keys before building command", () => {
+			expect(() => DokkuCommands.configSet("my-app", "KEY;evil", "x")).toThrow(
+				/Invalid characters/
+			);
 		});
 	});
 
@@ -308,6 +320,16 @@ describe("DokkuCommands", () => {
 			expect(DokkuCommands.dbDestroy("postgres", "mydb")).toBe(
 				"dokku postgres:destroy 'mydb' --force"
 			);
+		});
+	});
+
+	describe("server maintenance", () => {
+		it("cleanup returns cleanup command", () => {
+			expect(DokkuCommands.cleanup()).toBe("dokku cleanup");
+		});
+
+		it("repoPurgeCache returns repo:purge-cache command with quoted app name", () => {
+			expect(DokkuCommands.repoPurgeCache("my-app")).toBe("dokku repo:purge-cache 'my-app'");
 		});
 	});
 

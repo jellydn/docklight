@@ -40,7 +40,14 @@ describe("Admin routes", () => {
 			const mockBackup = {
 				version: "1.0",
 				timestamp: "2024-01-01T00:00:00.000Z",
-				users: [{ username: "admin", password_hash: "hash", role: "admin", createdAt: "" }],
+				users: [
+					{
+						username: "admin",
+						password_hash: "hash",
+						role: "admin",
+						createdAt: "",
+					},
+				],
 				envConfig: { JWT_SECRET: true },
 			};
 			vi.mocked(exportBackup).mockReturnValue(mockBackup as never);
@@ -64,7 +71,14 @@ describe("Admin routes", () => {
 			const backupData = {
 				version: "1.0",
 				timestamp: "2024-01-01T00:00:00.000Z",
-				users: [{ username: "admin", password_hash: "hash", role: "admin", createdAt: "" }],
+				users: [
+					{
+						username: "admin",
+						password_hash: "hash",
+						role: "admin",
+						createdAt: "",
+					},
+				],
 				envConfig: {},
 			};
 
@@ -76,7 +90,10 @@ describe("Admin routes", () => {
 		});
 
 		it("should return 400 when importBackup fails", async () => {
-			vi.mocked(importBackup).mockReturnValue({ success: false, error: "Invalid backup format" });
+			vi.mocked(importBackup).mockReturnValue({
+				success: false,
+				error: "Invalid backup format",
+			});
 
 			const response = await request(app).post("/api/admin/restore").send({ version: "99" });
 
@@ -85,7 +102,10 @@ describe("Admin routes", () => {
 		});
 
 		it("should return 400 when backup format is invalid", async () => {
-			vi.mocked(importBackup).mockReturnValue({ success: false, error: "Invalid backup format" });
+			vi.mocked(importBackup).mockReturnValue({
+				success: false,
+				error: "Invalid backup format",
+			});
 
 			const response = await request(app)
 				.post("/api/admin/restore")

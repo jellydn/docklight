@@ -1,6 +1,7 @@
 export const queryKeys = {
 	apps: {
 		all: ["apps"] as const,
+		portConflicts: ["apps", "port-conflicts"] as const,
 		detail: (name: string) => ["apps", name] as const,
 		config: (name: string) => ["apps", name, "config"] as const,
 		domains: (name: string) => ["apps", name, "domains"] as const,

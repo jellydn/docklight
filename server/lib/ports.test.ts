@@ -206,8 +206,12 @@ describe("addPort", () => {
 			stderr: "",
 		});
 
-		await expect(addPort("my-app", "https", 443, 5000)).resolves.toMatchObject({ exitCode: 0 });
-		await expect(addPort("my-app", "tcp", 2222, 22)).resolves.toMatchObject({ exitCode: 0 });
+		await expect(addPort("my-app", "https", 443, 5000)).resolves.toMatchObject({
+			exitCode: 0,
+		});
+		await expect(addPort("my-app", "tcp", 2222, 22)).resolves.toMatchObject({
+			exitCode: 0,
+		});
 	});
 });
 

@@ -7,6 +7,7 @@ import { CreateAppDialog } from "@/components/CreateAppDialog.js";
 import { apiFetch } from "../lib/api.js";
 import { useAuth } from "@/contexts/auth-context.js";
 import { formatDeployTime } from "@/lib/utils.js";
+import { alertBannerClass, statusBadgeClass } from "@/lib/status-styles.js";
 import { queryKeys } from "../lib/query-keys.js";
 import { AppSchema } from "../lib/schemas.js";
 
@@ -25,64 +26,51 @@ export function Apps() {
 	});
 
 	const getStatusBadge = (status: string) => {
-		const color = status === "running" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
-		return <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>{status}</span>;
+		return <span className={statusBadgeClass(status)}>{status}</span>;
 	};
 
 	return (
 		<div>
-			<div className="mb-6 flex items-center justify-between">
-				<h1 className="text-2xl font-bold">Apps</h1>
+			<div className="page-header">
+				<h1 className="page-title">Apps</h1>
 				{canModify && <Button onClick={() => setCreateAppOpen(true)}>Create App</Button>}
 			</div>
 
 			{isLoading && (
 				<div className="flex justify-center items-center py-12">
-					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tertiary"></div>
 				</div>
 			)}
 
-			{error && (
-				<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-					{error.message}
-				</div>
-			)}
+			{error && <div className={`${alertBannerClass("error")} mb-6`}>{error.message}</div>}
 
 			{!isLoading && !error && (
-				<div className="bg-white rounded-lg shadow">
+				<div className="bg-card rounded-lg border border-border">
 					{(apps?.length ?? 0) === 0 ? (
 						<div className="text-center py-12">
-							<p className="text-gray-500 mb-4">No apps found</p>
+							<p className="text-muted-foreground mb-4">No apps found</p>
 							{canModify && (
 								<Button onClick={() => setCreateAppOpen(true)}>Create your first app</Button>
 							)}
 						</div>
 					) : (
 						<div className="overflow-x-auto">
-							<table className="min-w-full">
+							<table className="data-table">
 								<thead>
-									<tr className="border-b bg-gray-50">
-										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
-											Name
-										</th>
-										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
-											Status
-										</th>
-										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
-											Domains
-										</th>
-										<th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
-											Last Deploy
-										</th>
+									<tr className="border-b border-border bg-muted/50">
+										<th>Name</th>
+										<th>Status</th>
+										<th>Domains</th>
+										<th>Last Deploy</th>
 									</tr>
 								</thead>
 								<tbody>
 									{apps?.map((app) => (
-										<tr key={app.name} className="border-b hover:bg-gray-50">
+										<tr key={app.name} className="border-b border-border hover:bg-accent">
 											<td className="py-3 px-4">
 												<Link
 													to={`/apps/${app.name}`}
-													className="text-blue-600 hover:underline font-medium"
+													className="text-primary hover:underline font-medium"
 												>
 													{app.name}
 												</Link>
@@ -98,10 +86,10 @@ export function Apps() {
 														))}
 													</ul>
 												) : (
-													<span className="text-gray-400">-</span>
+													<span className="text-muted-foreground/60">-</span>
 												)}
 											</td>
-											<td className="py-3 px-4 text-sm text-gray-600">
+											<td className="py-3 px-4 text-sm text-muted-foreground">
 												{formatDeployTime(app.lastDeployTime)}
 											</td>
 										</tr>

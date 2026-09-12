@@ -25,11 +25,17 @@ export function registerAppGitRoutes(app: express.Application): void {
 			const name = getParam(req.params, "name");
 
 			if (typeof req.body !== "object" || req.body === null) {
-				res.status(400).json({ exitCode: 400, stderr: "request body must be a JSON object" });
+				res.status(400).json({
+					exitCode: 400,
+					stderr: "request body must be a JSON object",
+				});
 				return;
 			}
 
-			const { repo, branch } = req.body as { repo?: unknown; branch?: unknown };
+			const { repo, branch } = req.body as {
+				repo?: unknown;
+				branch?: unknown;
+			};
 
 			if (!repo || typeof repo !== "string") {
 				res.status(400).json({ exitCode: 400, stderr: "repo must be a non-empty string" });
@@ -103,7 +109,10 @@ export function registerAppGitRoutes(app: express.Application): void {
 			if (!handleCommandResult(res, result)) return;
 
 			const sanitizedRepo = sanitizeRepoUrl(repo);
-			safeAuditLog(req, "app:git:sync", name, { repo: sanitizedRepo, branch: branch || null });
+			safeAuditLog(req, "app:git:sync", name, {
+				repo: sanitizedRepo,
+				branch: branch || null,
+			});
 			clearPrefix("apps:");
 			res.json(result);
 		} catch (error: unknown) {

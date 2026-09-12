@@ -1,3 +1,5 @@
+import { badgeClass } from "@/lib/status-styles.js";
+import { cn } from "@/lib/utils";
 import type { RefObject } from "react";
 
 type ConnectionStatus = "connected" | "disconnected" | "reconnecting";
@@ -22,20 +24,26 @@ export function AppLogs({
 	onAutoScrollToggle,
 }: AppLogsProps) {
 	const getConnectionStatusBadge = () => {
-		const colors = {
-			connected: "bg-green-100 text-green-800",
-			disconnected: "bg-gray-100 text-gray-800",
-			reconnecting: "bg-yellow-100 text-yellow-800",
-		};
+		if (connectionStatus === "connected") {
+			return <span className={badgeClass("success")}>{connectionStatus}</span>;
+		}
+		if (connectionStatus === "reconnecting") {
+			return <span className={badgeClass("warning")}>{connectionStatus}</span>;
+		}
 		return (
-			<span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[connectionStatus]}`}>
+			<span
+				className={cn(
+					"inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+					"bg-muted text-muted-foreground"
+				)}
+			>
 				{connectionStatus}
 			</span>
 		);
 	};
 
 	return (
-		<div className="bg-white rounded-lg shadow p-6">
+		<div className="bg-card rounded-lg border border-border p-6">
 			<div className="flex flex-wrap gap-3 justify-between items-center mb-4">
 				<h2 className="text-lg font-semibold">Logs</h2>
 				<div className="flex flex-wrap items-center gap-3">
@@ -51,7 +59,7 @@ export function AppLogs({
 					</select>
 					<button
 						onClick={onAutoScrollToggle}
-						className="px-3 py-1 border rounded hover:bg-gray-100"
+						className="px-3 py-1 border rounded hover:bg-accent"
 						type="button"
 					>
 						{autoScroll ? "Auto-scroll: ON" : "Auto-scroll: OFF"}

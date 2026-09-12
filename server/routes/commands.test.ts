@@ -173,7 +173,10 @@ describe("Command routes - export endpoint", () => {
 			);
 
 			expect(getCommandHistoryForExport).toHaveBeenCalledWith(
-				expect.objectContaining({ startDate: "2024-01-01", endDate: "2024-01-31" })
+				expect.objectContaining({
+					startDate: "2024-01-01",
+					endDate: "2024-01-31",
+				})
 			);
 		});
 
@@ -185,7 +188,11 @@ describe("Command routes - export endpoint", () => {
 			);
 
 			expect(getUserAuditLogsForExport).toHaveBeenCalledWith(
-				expect.objectContaining({ userId: 1, action: "login", startDate: "2024-01-01" })
+				expect.objectContaining({
+					userId: 1,
+					action: "login",
+					startDate: "2024-01-01",
+				})
 			);
 		});
 
@@ -214,7 +221,11 @@ describe("Command routes - export endpoint", () => {
 			const response = await request(app).post("/api/audit/rotate");
 
 			expect(response.status).toBe(200);
-			expect(response.body).toEqual({ success: true, deletedLogs: 5, deletedCommands: 3 });
+			expect(response.body).toEqual({
+				success: true,
+				deletedLogs: 5,
+				deletedCommands: 3,
+			});
 			expect(runAuditRotation).toHaveBeenCalledOnce();
 		});
 	});

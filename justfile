@@ -78,6 +78,10 @@ browser-test-watch:
 browser-start-server:
     cd .agents/skills/dev-browser && bun run start-server
 
+# Design system lint (Google DESIGN.md format)
+design-lint:
+    bunx @google/design.md lint DESIGN.md
+
 # Typecheck all
 typecheck:
     cd server && bun run typecheck

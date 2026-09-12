@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "bun run build && playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -34,10 +35,10 @@
     "@biomejs/biome": "^2.4.4",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.2.1",
-    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
-    "@types/node": "^25.0.0",
+    "@types/node": "^26.0.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.0",
@@ -47,7 +48,7 @@
     "postcss": "^8.5.6",
     "tailwindcss": "4",
     "tw-animate-css": "^1.4.0",
-    "typescript": "~5.9.3",
+    "typescript": "~7.0.0",
     "vite": "^8.0.0"
   }
 }

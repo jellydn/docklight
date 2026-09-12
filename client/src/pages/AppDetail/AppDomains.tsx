@@ -1,3 +1,5 @@
+import { alertBannerClass } from "@/lib/status-styles.js";
+
 interface AppDomainsProps {
 	domains: string[];
 	loading: boolean;
@@ -22,24 +24,24 @@ export function AppDomains({
 	onRemove,
 }: AppDomainsProps) {
 	return (
-		<div className="bg-white rounded-lg shadow p-6">
+		<div className="bg-card rounded-lg border border-border p-6">
 			<div className="flex justify-between items-center mb-4">
 				<h2 className="text-lg font-semibold">Domains</h2>
 			</div>
 
 			{loading ? (
 				<div className="flex justify-center py-8">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tertiary" />
 				</div>
 			) : error ? (
-				<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+				<div className={alertBannerClass("error")}>
 					{error}
 				</div>
 			) : (
 				<>
 					{canModify && (
 						<div className="mb-6">
-							<h3 className="text-sm font-medium text-gray-700 mb-2">Add New Domain</h3>
+							<h3 className="text-sm font-medium text-foreground mb-2">Add New Domain</h3>
 							<div className="flex flex-col sm:flex-row gap-2">
 								<input
 									type="text"
@@ -47,11 +49,12 @@ export function AppDomains({
 									value={newDomain}
 									onChange={(e) => onDomainChange(e.target.value)}
 									className="flex-1 border rounded px-3 py-2"
+									aria-label="New domain name"
 								/>
 								<button
 									onClick={onAdd}
 									disabled={!newDomain || submitting}
-									className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+									className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 									type="button"
 								>
 									Add
@@ -61,18 +64,22 @@ export function AppDomains({
 					)}
 
 					{domains.length > 0 ? (
-						<table className="min-w-full divide-y divide-gray-200">
+						<table className="min-w-full divide-y divide-border">
 							<thead>
 								<tr>
-									<th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Domain</th>
-									<th className="px-4 py-2" />
+									<th className="px-4 py-2 text-left text-sm font-medium text-foreground">
+										Domain
+									</th>
+									<th className="px-4 py-2">
+										<span className="sr-only">Actions</span>
+									</th>
 								</tr>
 							</thead>
-							<tbody className="divide-y divide-gray-200">
+							<tbody className="divide-y divide-border">
 								{domains.map((domain) => (
 									<tr key={domain}>
 										<td className="px-4 py-2">
-											<code className="bg-gray-100 px-2 py-1 rounded text-sm">{domain}</code>
+											<code className="bg-muted px-2 py-1 rounded text-sm">{domain}</code>
 										</td>
 										<td className="px-4 py-2 text-right">
 											{canModify && (
@@ -91,7 +98,7 @@ export function AppDomains({
 							</tbody>
 						</table>
 					) : (
-						<p className="text-gray-500">No domains configured.</p>
+						<p className="text-muted-foreground">No domains configured.</p>
 					)}
 				</>
 			)}
