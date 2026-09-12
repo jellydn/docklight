@@ -221,13 +221,12 @@ export async function createDatabase(
 	}
 }
 
-export async function linkDatabase(
+export function validateDatabaseLink(
 	plugin: string,
 	name: string,
 	app: string,
 	alias?: string
-): Promise<CommandResult | { error: string; exitCode: number }> {
-	// Validate plugin
+): { error: string; command: string; exitCode: number } | null {
 	if (!SUPPORTED_PLUGINS.includes(plugin as (typeof SUPPORTED_PLUGINS)[number])) {
 		return {
 			error: "Invalid database plugin",
@@ -236,8 +235,7 @@ export async function linkDatabase(
 		};
 	}
 
-	// Validate database name
-	if (!name || name.trim().length === 0) {
+	if (typeof name !== "string" || name.trim().length === 0) {
 		return {
 			error: "Database name cannot be empty",
 			command: "",
@@ -245,8 +243,7 @@ export async function linkDatabase(
 		};
 	}
 
-	// Validate app name
-	if (!app || app.trim().length === 0) {
+	if (typeof app !== "string" || app.trim().length === 0) {
 		return {
 			error: "App name cannot be empty",
 			command: "",
@@ -254,7 +251,6 @@ export async function linkDatabase(
 		};
 	}
 
-	// Sanitize names
 	const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, "");
 	const sanitizedApp = app.replace(/[^a-zA-Z0-9_-]/g, "");
 
@@ -266,7 +262,10 @@ export async function linkDatabase(
 		};
 	}
 
-	if (alias) {
+	if (alias !== undefined) {
+		if (typeof alias !== "string") {
+			return { error: "Alias must be a string", command: "", exitCode: 400 };
+		}
 		const trimmedAlias = alias.trim();
 		const sanitizedAlias = trimmedAlias.replace(/[^a-zA-Z0-9_]/g, "");
 		if (sanitizedAlias !== trimmedAlias) {
@@ -276,11 +275,19 @@ export async function linkDatabase(
 				exitCode: 400,
 			};
 		}
-		// Use the trimmed alias in the command
-		alias = trimmedAlias;
 	}
+	return null;
+}
 
-	const command = DokkuCommands.dbLink(plugin, sanitizedName, sanitizedApp, alias);
+export async function linkDatabase(
+	plugin: string,
+	name: string,
+	app: string,
+	alias?: string
+): Promise<CommandResult | { error: string; exitCode: number }> {
+	const validationError = validateDatabaseLink(plugin, name, app, alias);
+	if (validationError) return validationError;
+	const command = DokkuCommands.dbLink(plugin, name, app, alias?.trim() || undefined);
 
 	try {
 		return executeCommand(command);

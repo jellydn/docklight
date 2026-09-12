@@ -15,7 +15,7 @@ import { executeCommandStreaming } from "../lib/executor.js";
 import { DokkuCommands } from "../lib/dokku.js";
 import { isSSERequest, createSSEWriter } from "../lib/sse.js";
 import type { UserRole } from "../lib/db.js";
-import { getParam, safeAuditLog } from "./util.js";
+import { getParam, getStatusCode, safeAuditLog } from "./util.js";
 
 function filterConnectionInfoForViewer(
 	databases: Database[],
@@ -144,7 +144,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		}
 
 		clearPrefix("databases:");
-		const statusCode = result.exitCode >= 400 ? result.exitCode : result.exitCode !== 0 ? 500 : 200;
+		const statusCode = result.exitCode === 0 ? 200 : getStatusCode(result.exitCode);
 		res.status(statusCode).json(result);
 	});
 

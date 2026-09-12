@@ -375,10 +375,43 @@ describe("Databases", () => {
 		expect(screen.queryByText("Create New Database")).not.toBeInTheDocument();
 		expect(screen.queryByText("Install Dokku Plugin")).not.toBeInTheDocument();
 		expect(screen.queryByText("Destroy Database")).not.toBeInTheDocument();
-		expect(screen.queryByText("Unlink")).not.toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Unlink" })).not.toBeInTheDocument();
 	});
 
 	describe("with submitting states", () => {
+		it("clears app and alias when changing database rows", async () => {
+			const user = userEvent.setup();
+			apiFetchMock.mockImplementation((endpoint: string) =>
+				Promise.resolve(endpoint === "/databases" ? mockDatabases : mockApps)
+			);
+			renderWithQueryClient(
+				<MemoryRouter>
+					<Databases />
+				</MemoryRouter>
+			);
+			const selectors = await screen.findAllByLabelText("Link app selector");
+			const aliases = screen.getAllByLabelText("Environment alias");
+			await user.selectOptions(selectors[0], "another-app");
+			await user.type(aliases[0], "BLUE_DATABASE");
+			await user.type(aliases[1], "CACHE");
+			expect(selectors[1]).toHaveValue("");
+			expect(screen.getAllByRole("button", { name: "Link" })[1]).toBeDisabled();
+			await user.selectOptions(selectors[0], "another-app");
+			expect(aliases[0]).toHaveValue("");
+			await user.type(aliases[0], "BLUE_DATABASE");
+			const { resolve } = mockPendingStream();
+			await user.click(screen.getAllByRole("button", { name: "Link" })[0]);
+			expect(globalThis.fetch).toHaveBeenCalledWith(
+				"/api/databases/postgres-test-db/link",
+				expect.objectContaining({
+					body: JSON.stringify({ plugin: "postgres", app: "another-app", alias: "BLUE_DATABASE" }),
+				})
+			);
+			await act(async () => {
+				resolve();
+			});
+		});
+
 		function mockPendingStream(): { resolve: () => void } {
 			let resolveStream: (() => void) | undefined;
 			const mockStream = new ReadableStream({
