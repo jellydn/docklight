@@ -5,6 +5,7 @@ import {
 	destroyDatabase,
 	getDatabases,
 	linkDatabase,
+	validateDatabaseLink,
 	unlinkDatabase,
 } from "../lib/databases.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
@@ -14,7 +15,7 @@ import { executeCommandStreaming } from "../lib/executor.js";
 import { DokkuCommands } from "../lib/dokku.js";
 import { isSSERequest, createSSEWriter } from "../lib/sse.js";
 import type { UserRole } from "../lib/db.js";
-import { getParam, safeAuditLog } from "./util.js";
+import { getParam, getStatusCode, safeAuditLog } from "./util.js";
 
 function filterConnectionInfoForViewer(
 	databases: Database[],
@@ -32,7 +33,8 @@ async function streamAction(
 	dokkuCommand: string,
 	auditAction: string,
 	name: string,
-	timeout: number = 120000
+	timeout: number = 120000,
+	auditDetails: Record<string, unknown> | null = null
 ): Promise<void> {
 	const sse = createSSEWriter(res);
 	try {
@@ -49,7 +51,7 @@ async function streamAction(
 		);
 
 		if (result.exitCode === 0) {
-			safeAuditLog(req, auditAction, name);
+			safeAuditLog(req, auditAction, name, auditDetails);
 			clearPrefix("databases:");
 		}
 		sse.sendResult(result);
@@ -110,32 +112,38 @@ export function registerDatabaseRoutes(app: express.Application): void {
 
 	app.post("/api/databases/:name/link", authMiddleware, requireOperator, async (req, res) => {
 		const name = getParam(req.params, "name");
-		const { plugin, app } = req.body;
+		const { plugin, app, alias } = req.body;
+
+		const validationError = validateDatabaseLink(plugin, name, app, alias);
+		if (validationError) {
+			res.status(400).json(validationError);
+			return;
+		}
+		const trimmedAlias = alias?.trim() || undefined;
+		const auditDetails = { plugin, database: name, app, alias: trimmedAlias };
 
 		if (isSSERequest(req)) {
 			await streamAction(
 				req,
 				res,
-				DokkuCommands.dbLink(plugin, name, app),
+				DokkuCommands.dbLink(plugin, name, app, trimmedAlias),
 				"database:link",
 				name,
-				60000
+				60000,
+				auditDetails
 			);
 			return;
 		}
 
-		const result = await linkDatabase(plugin, name, app);
+		const result = await linkDatabase(plugin, name, app, trimmedAlias);
 
 		if (result.exitCode === 0) {
-			safeAuditLog(req, "database:link", name, {
-				plugin,
-				database: name,
-				app,
-			});
+			safeAuditLog(req, "database:link", name, auditDetails);
 		}
 
 		clearPrefix("databases:");
-		res.json(result);
+		const statusCode = result.exitCode === 0 ? 200 : getStatusCode(result.exitCode);
+		res.status(statusCode).json(result);
 	});
 
 	app.post("/api/databases/:name/unlink", authMiddleware, requireOperator, async (req, res) => {
