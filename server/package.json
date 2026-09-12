@@ -15,7 +15,7 @@
 		"test:coverage": "vitest run --coverage"
 	},
 	"dependencies": {
-		"better-sqlite3": "^12.6.2",
+		"better-sqlite3": "^13.0.0",
 		"cookie-parser": "^1.4.7",
 		"express": "^5.0.0",
 		"express-rate-limit": "^8.2.1",
@@ -28,7 +28,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.4",
-		"@types/better-sqlite3": "^7.6.13",
+		"@types/better-sqlite3": "^9.0.0",
 		"@types/cookie-parser": "^1.4.10",
 		"@types/express": "^5.0.0",
 		"@types/express-rate-limit": "^6.0.2",
