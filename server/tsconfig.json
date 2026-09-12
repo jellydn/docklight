@@ -1,7 +1,7 @@
 {
 	"compilerOptions": {
 		"target": "ES2022",
-		"module": "commonjs",
+		"module": "NodeNext",
 		"lib": ["ES2022"],
 		"outDir": "./dist",
 		"rootDir": "./",
@@ -9,7 +9,7 @@
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
-		"moduleResolution": "node",
+		"moduleResolution": "NodeNext",
 		"resolveJsonModule": true,
 		"types": ["node", "vitest/globals"]
 	},
