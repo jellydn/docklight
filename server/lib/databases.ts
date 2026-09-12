@@ -221,12 +221,18 @@ export async function createDatabase(
 	}
 }
 
+interface DatabaseLinkValidationError {
+	error: string;
+	command: string;
+	exitCode: number;
+}
+
 export function validateDatabaseLink(
 	plugin: string,
 	name: string,
 	app: string,
 	alias?: string
-): { error: string; command: string; exitCode: number } | null {
+): DatabaseLinkValidationError | null {
 	if (!SUPPORTED_PLUGINS.includes(plugin as (typeof SUPPORTED_PLUGINS)[number])) {
 		return {
 			error: "Invalid database plugin",

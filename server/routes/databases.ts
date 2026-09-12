@@ -33,7 +33,8 @@ async function streamAction(
 	dokkuCommand: string,
 	auditAction: string,
 	name: string,
-	timeout: number = 120000
+	timeout: number = 120000,
+	auditDetails: Record<string, unknown> | null = null
 ): Promise<void> {
 	const sse = createSSEWriter(res);
 	try {
@@ -50,7 +51,7 @@ async function streamAction(
 		);
 
 		if (result.exitCode === 0) {
-			safeAuditLog(req, auditAction, name);
+			safeAuditLog(req, auditAction, name, auditDetails);
 			clearPrefix("databases:");
 		}
 		sse.sendResult(result);
@@ -119,6 +120,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 			return;
 		}
 		const trimmedAlias = alias?.trim() || undefined;
+		const auditDetails = { plugin, database: name, app, alias: trimmedAlias };
 
 		if (isSSERequest(req)) {
 			await streamAction(
@@ -127,7 +129,8 @@ export function registerDatabaseRoutes(app: express.Application): void {
 				DokkuCommands.dbLink(plugin, name, app, trimmedAlias),
 				"database:link",
 				name,
-				60000
+				60000,
+				auditDetails
 			);
 			return;
 		}
@@ -135,12 +138,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const result = await linkDatabase(plugin, name, app, trimmedAlias);
 
 		if (result.exitCode === 0) {
-			safeAuditLog(req, "database:link", name, {
-				plugin,
-				database: name,
-				app,
-				alias: trimmedAlias,
-			});
+			safeAuditLog(req, "database:link", name, auditDetails);
 		}
 
 		clearPrefix("databases:");

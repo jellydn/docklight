@@ -13,6 +13,7 @@ vi.mock("../lib/auth.js", () => ({
 }));
 
 import { executeCommand, executeCommandStreaming } from "../lib/executor.js";
+import { insertAuditLog } from "../lib/db.js";
 import { registerDatabaseRoutes } from "./databases.js";
 
 describe.each(["application/json", "text/event-stream"])("Database link: %s", (accept) => {
@@ -24,6 +25,32 @@ describe.each(["application/json", "text/event-stream"])("Database link: %s", (a
 		const result = { command: "", exitCode: 0, stdout: "", stderr: "" };
 		vi.mocked(executeCommand).mockResolvedValue(result);
 		vi.mocked(executeCommandStreaming).mockResolvedValue(result);
+	});
+
+	it.each([0, 1])("records link details only on success (exit %s)", async (exitCode) => {
+		const result = { command: "", exitCode, stdout: "", stderr: "" };
+		vi.mocked(executeCommand).mockResolvedValue(result);
+		vi.mocked(executeCommandStreaming).mockResolvedValue(result);
+		await request(app)
+			.post("/api/databases/store/link")
+			.set("Accept", accept)
+			.send({ plugin: "postgres", app: "web", alias: " BLUE_DATABASE " });
+		if (exitCode === 0) {
+			expect(insertAuditLog).toHaveBeenCalledWith(
+				null,
+				"database:link",
+				"store",
+				JSON.stringify({
+					plugin: "postgres",
+					database: "store",
+					app: "web",
+					alias: "BLUE_DATABASE",
+				}),
+				expect.any(String)
+			);
+		} else {
+			expect(insertAuditLog).not.toHaveBeenCalled();
+		}
 	});
 
 	it.each([
