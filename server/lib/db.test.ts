@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import type { CommandHistory } from "./db.js";
 import { importBackup } from "./db.js";
 import type { BackupData } from "./db.js";
@@ -31,7 +31,7 @@ describe("db indexes", () => {
 	});
 
 	it("should create indexes on command_history table", () => {
-		const testDb = new Database(TEST_DB_PATH);
+		const testDb = new DatabaseSync(TEST_DB_PATH);
 
 		// Create table and indexes (same as in db.ts)
 		testDb.exec(`
@@ -64,7 +64,7 @@ describe("db indexes", () => {
 	});
 
 	it("should not fail when indexes already exist", () => {
-		const testDb = new Database(TEST_DB_PATH);
+		const testDb = new DatabaseSync(TEST_DB_PATH);
 
 		// Create table
 		testDb.exec(`
@@ -98,7 +98,7 @@ describe("db indexes", () => {
 	});
 
 	it("should filter by exitCode efficiently using index", () => {
-		const testDb = new Database(TEST_DB_PATH);
+		const testDb = new DatabaseSync(TEST_DB_PATH);
 
 		// Setup table and indexes
 		testDb.exec(`
@@ -132,7 +132,7 @@ describe("db indexes", () => {
 			.prepare(
 				"SELECT id, command, exitCode, stdout, stderr, createdAt FROM command_history WHERE exitCode = 0 ORDER BY createdAt DESC"
 			)
-			.all() as CommandHistory[];
+			.all() as unknown as CommandHistory[];
 
 		expect(results.length).toBe(4); // 0, 3, 6, 9 have exitCode 0
 		expect(results.every((r) => r.exitCode === 0)).toBe(true);
@@ -141,7 +141,7 @@ describe("db indexes", () => {
 	});
 
 	it("should filter by command pattern using index", () => {
-		const testDb = new Database(TEST_DB_PATH);
+		const testDb = new DatabaseSync(TEST_DB_PATH);
 
 		// Setup table and indexes
 		testDb.exec(`
@@ -175,7 +175,7 @@ describe("db indexes", () => {
 			.prepare(
 				"SELECT id, command, exitCode, stdout, stderr, createdAt FROM command_history WHERE command LIKE 'dokku apps%' ORDER BY createdAt DESC"
 			)
-			.all() as CommandHistory[];
+			.all() as unknown as CommandHistory[];
 
 		expect(results.length).toBe(3);
 		expect(results.every((r) => r.command.startsWith("dokku apps"))).toBe(true);
@@ -184,7 +184,7 @@ describe("db indexes", () => {
 	});
 
 	it("should filter by date range using createdAt index", () => {
-		const testDb = new Database(TEST_DB_PATH);
+		const testDb = new DatabaseSync(TEST_DB_PATH);
 
 		// Setup table and indexes
 		testDb.exec(`
@@ -230,7 +230,7 @@ describe("db indexes", () => {
 			.prepare(
 				"SELECT id, command, exitCode, stdout, stderr, createdAt FROM command_history WHERE createdAt >= ? ORDER BY createdAt DESC"
 			)
-			.all(startDate) as CommandHistory[];
+			.all(startDate) as unknown as CommandHistory[];
 
 		expect(results.length).toBe(2);
 		expect(results[0].command).toBe("dokku apps:restart");
@@ -342,7 +342,7 @@ describe("importBackup validation", () => {
 const BACKUP_TEST_DB_PATH = path.join(__dirname, "test-data", "backup-test.db");
 
 function createBackupTestDb() {
-	const testDb = new Database(BACKUP_TEST_DB_PATH);
+	const testDb = new DatabaseSync(BACKUP_TEST_DB_PATH);
 	testDb.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

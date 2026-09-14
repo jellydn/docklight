@@ -18,9 +18,6 @@ export default defineConfig({
 			exclude: ["node_modules/", "dist/", "**/*.test.ts"],
 		},
 	},
-	optimizeDeps: {
-		exclude: ["better-sqlite3"],
-	},
 	resolve: {
 		alias: {
 			"@": path.resolve(__dirname, "./"),

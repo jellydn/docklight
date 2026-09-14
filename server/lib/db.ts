@@ -1,21 +1,10 @@
 import fs from "fs";
+import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import path from "path";
 import type { CommandResult } from "./executor.js";
 
 const MAX_OUTPUT_SIZE = 4096;
 const TRUNCATION_INDICATOR = "\n... [output truncated]";
-
-type Statement = {
-	run: (...args: unknown[]) => void;
-	all: (...args: unknown[]) => unknown[];
-	get: (...args: unknown[]) => unknown;
-};
-
-type Database = {
-	prepare: (sql: string) => Statement;
-	exec: (sql: string) => void;
-	transaction: <T, R = void>(fn: (arg: T) => R) => (arg: T) => R;
-};
 
 interface UserRoleRow {
 	role: UserRole;
@@ -28,17 +17,28 @@ if (!fs.existsSync(DATA_DIR)) {
 	fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-let db: Database | null = null;
+let db: DatabaseSync | null = null;
 
-function getDb(): Database {
+function runInTransaction<T>(database: DatabaseSync, operation: () => T): T {
+	database.exec("BEGIN");
+	try {
+		const result = operation();
+		database.exec("COMMIT");
+		return result;
+	} catch (error: unknown) {
+		database.exec("ROLLBACK");
+		throw error;
+	}
+}
+
+function getDb(): DatabaseSync {
 	if (db) return db;
 
-	const Database = require("better-sqlite3");
-	const newDb = new Database(DB_PATH);
+	const newDb = new DatabaseSync(DB_PATH);
 
-	newDb.pragma("journal_mode = WAL");
-	newDb.pragma("synchronous = NORMAL");
-	newDb.pragma("foreign_keys = ON");
+	newDb.exec("PRAGMA journal_mode = WAL");
+	newDb.exec("PRAGMA synchronous = NORMAL");
+	newDb.exec("PRAGMA foreign_keys = ON");
 
 	newDb.exec(`
 	  CREATE TABLE IF NOT EXISTS command_history (
@@ -187,7 +187,7 @@ export function getRecentCommands(limit: number = 20): CommandHistory[] {
     ORDER BY createdAt DESC
     LIMIT ?
   `);
-	return stmt.all(limit) as CommandHistory[];
+	return stmt.all(limit) as unknown as CommandHistory[];
 }
 
 export interface AuditLogFilters {
@@ -239,7 +239,7 @@ export function getAuditLogs(filters: AuditLogFilters = {}): AuditLogResult {
 		 ORDER BY createdAt DESC
 		 LIMIT ? OFFSET ?`
 	);
-	const logs = dataStmt.all(...params, limit, offset) as CommandHistory[];
+	const logs = dataStmt.all(...params, limit, offset) as unknown as CommandHistory[];
 
 	return {
 		logs,
@@ -282,7 +282,7 @@ export function createUser(
 	stmt.run(username, email, passwordHash, role);
 	const user = getDb()
 		.prepare("SELECT id, username, email, role, createdAt FROM users WHERE username = ?")
-		.get(username) as SafeUser;
+		.get(username) as unknown as SafeUser;
 	return user;
 }
 
@@ -290,28 +290,28 @@ export function getUserByUsername(username: string): User | null {
 	const stmt = getDb().prepare(
 		"SELECT id, username, email, password_hash, role, createdAt FROM users WHERE username = ?"
 	);
-	return (stmt.get(username) as User) ?? null;
+	return (stmt.get(username) as unknown as User) ?? null;
 }
 
 export function getUserByEmail(email: string): User | null {
 	const stmt = getDb().prepare(
 		"SELECT id, username, email, password_hash, role, createdAt FROM users WHERE email = ?"
 	);
-	return (stmt.get(email) as User) ?? null;
+	return (stmt.get(email) as unknown as User) ?? null;
 }
 
 export function getUserById(id: number): SafeUser | null {
 	const stmt = getDb().prepare(
 		"SELECT id, username, email, role, createdAt FROM users WHERE id = ?"
 	);
-	return (stmt.get(id) as SafeUser) ?? null;
+	return (stmt.get(id) as unknown as SafeUser) ?? null;
 }
 
 export function getAllUsers(): SafeUser[] {
 	const stmt = getDb().prepare(
 		"SELECT id, username, email, role, createdAt FROM users ORDER BY createdAt ASC"
 	);
-	return stmt.all() as SafeUser[];
+	return stmt.all() as unknown as SafeUser[];
 }
 
 export function updateUser(
@@ -319,7 +319,7 @@ export function updateUser(
 	updates: { role?: UserRole; passwordHash?: string; email?: string | null }
 ): void {
 	const fields: string[] = [];
-	const params: unknown[] = [];
+	const params: SQLInputValue[] = [];
 
 	if (updates.role !== undefined) {
 		fields.push("role = ?");
@@ -346,7 +346,7 @@ export function updateUserWithGuard(
 	updates: { role?: UserRole; passwordHash?: string; email?: string | null }
 ): { success: boolean; error?: string } {
 	const db = getDb();
-	const txn = db.transaction((_: null): { success: boolean; error?: string } => {
+	return runInTransaction(db, (): { success: boolean; error?: string } => {
 		const existing = db.prepare("SELECT role FROM users WHERE id = ?").get(id) as
 			| UserRoleRow
 			| undefined;
@@ -368,7 +368,6 @@ export function updateUserWithGuard(
 		updateUser(id, updates);
 		return { success: true };
 	});
-	return txn(null);
 }
 
 export function deleteUserWithAdminGuard(id: number): {
@@ -420,12 +419,12 @@ export function createPasswordResetToken(
 		.prepare(
 			"SELECT id, user_id as userId, token_hash as tokenHash, expiresAt, usedAt, createdAt FROM password_reset_tokens WHERE token_hash = ?"
 		)
-		.get(tokenHash) as PasswordResetToken;
+		.get(tokenHash) as unknown as PasswordResetToken;
 }
 
 export function resetPasswordWithToken(tokenHash: string, passwordHash: string): number | null {
 	const db = getDb();
-	const txn = db.transaction((_: null) => {
+	return runInTransaction(db, () => {
 		const token = db
 			.prepare(
 				"SELECT user_id as userId, expiresAt, usedAt FROM password_reset_tokens WHERE token_hash = ?"
@@ -448,7 +447,6 @@ export function resetPasswordWithToken(tokenHash: string, passwordHash: string):
 		updateUser(token.userId, { passwordHash });
 		return token.userId;
 	});
-	return txn(null);
 }
 
 export function deleteExpiredPasswordResetTokens(): number {
@@ -551,7 +549,7 @@ const ENV_VARS_TO_REFERENCE = [
 export function exportBackup(): BackupData {
 	const users = getDb()
 		.prepare("SELECT username, email, password_hash, role, createdAt FROM users ORDER BY id ASC")
-		.all() as BackupUser[];
+		.all() as unknown as BackupUser[];
 
 	const envConfig: Record<string, boolean> = {};
 	for (const key of ENV_VARS_TO_REFERENCE) {
@@ -622,11 +620,11 @@ export function importBackup(backup: BackupData): {
 	const clearEmail = db.prepare("UPDATE users SET email = NULL WHERE username = ?");
 
 	try {
-		const transaction = db.transaction((users: BackupUser[]): void => {
-			for (const user of users) {
+		runInTransaction(db, (): void => {
+			for (const user of backup.users) {
 				clearEmail.run(user.username);
 			}
-			for (const user of users) {
+			for (const user of backup.users) {
 				const normalizedEmail =
 					typeof user.email === "string" && user.email.trim().length > 0
 						? user.email.trim().toLowerCase()
@@ -634,7 +632,6 @@ export function importBackup(backup: BackupData): {
 				upsert.run(user.username, normalizedEmail, user.password_hash, user.role, user.createdAt);
 			}
 		});
-		transaction(backup.users);
 		return { success: true };
 	} catch (error: unknown) {
 		const err = error as { message?: string };
@@ -686,7 +683,7 @@ export function getCommandHistoryForExport(filters: AuditLogFilters = {}): Comma
 		 ${whereClause}
 		 ORDER BY createdAt DESC`
 	);
-	return stmt.all(...params) as CommandHistory[];
+	return stmt.all(...params) as unknown as CommandHistory[];
 }
 
 export function getUserAuditLogsForExport(filters: UserAuditLogFilters = {}): AuditLog[] {
@@ -713,7 +710,7 @@ export function getUserAuditLogsForExport(filters: UserAuditLogFilters = {}): Au
 		 ${whereClause}
 		 ORDER BY createdAt DESC`
 	);
-	return stmt.all(...params) as AuditLog[];
+	return stmt.all(...params) as unknown as AuditLog[];
 }
 
 export function getUserAuditLogs(filters: UserAuditLogFilters = {}): UserAuditLogResult {
@@ -749,7 +746,7 @@ export function getUserAuditLogs(filters: UserAuditLogFilters = {}): UserAuditLo
 		 ORDER BY createdAt DESC
 		 LIMIT ? OFFSET ?`
 	);
-	const logs = dataStmt.all(...params, limit, offset) as AuditLog[];
+	const logs = dataStmt.all(...params, limit, offset) as unknown as AuditLog[];
 
 	return {
 		logs,
