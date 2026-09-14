@@ -152,4 +152,41 @@ describe("Login", () => {
 			);
 		});
 	});
+
+	it("should request a two-factor code after valid primary credentials", async () => {
+		apiFetchMock.mockImplementation((path: string, _schema: unknown, options?: RequestInit) => {
+			if (path === "/auth/me") return Promise.reject(new Error("Unauthorized"));
+			if (path === "/auth/login") {
+				const body = JSON.parse(String(options?.body)) as { twoFactorCode?: string };
+				return body.twoFactorCode
+					? Promise.resolve({ success: true })
+					: Promise.resolve({ success: false, requiresTwoFactor: true });
+			}
+			return Promise.reject(new Error("Not found"));
+		});
+		const user = userEvent.setup();
+		renderWithQueryClient(<Login />);
+
+		await user.type(await screen.findByLabelText("Username"), "alice");
+		await user.type(screen.getByLabelText("Password"), "correct-password");
+		await user.click(screen.getByRole("button", { name: "Login" }));
+
+		expect(await screen.findByText("Two-factor authentication")).toBeInTheDocument();
+		await user.type(screen.getByLabelText("Authenticator or recovery code"), "ABCDE-FGHIJ");
+		await user.click(screen.getByRole("button", { name: "Verify" }));
+
+		await waitFor(() => {
+			expect(apiFetchMock).toHaveBeenLastCalledWith(
+				"/auth/login",
+				expect.any(Object),
+				expect.objectContaining({
+					body: JSON.stringify({
+						username: "alice",
+						password: "correct-password",
+						twoFactorCode: "ABCDE-FGHIJ",
+					}),
+				})
+			);
+		});
+	});
 });

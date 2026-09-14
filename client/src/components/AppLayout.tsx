@@ -18,6 +18,7 @@ import {
 	Settings,
 	LogOut,
 	Menu,
+	ShieldCheck,
 	X,
 } from "lucide-react";
 
@@ -27,6 +28,7 @@ const navItems = [
 	{ to: "/databases", label: "Databases", icon: Database },
 	{ to: "/plugins", label: "Plugins", icon: Puzzle },
 	{ to: "/audit", label: "Audit Logs", icon: ScrollText },
+	{ to: "/security", label: "Security", icon: ShieldCheck },
 ] as const;
 
 const adminNavItems = [
