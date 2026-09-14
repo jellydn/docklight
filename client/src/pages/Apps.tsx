@@ -12,7 +12,7 @@ import { queryKeys } from "../lib/query-keys.js";
 import { AppSchema } from "../lib/schemas.js";
 
 export function Apps() {
-	const { canModify } = useAuth();
+	const { canCreateApp } = useAuth();
 	const [createAppOpen, setCreateAppOpen] = useState(false);
 
 	const {
@@ -33,7 +33,7 @@ export function Apps() {
 		<div>
 			<div className="page-header">
 				<h1 className="page-title">Apps</h1>
-				{canModify && <Button onClick={() => setCreateAppOpen(true)}>Create App</Button>}
+				{canCreateApp && <Button onClick={() => setCreateAppOpen(true)}>Create App</Button>}
 			</div>
 
 			{isLoading && (
@@ -49,7 +49,7 @@ export function Apps() {
 					{(apps?.length ?? 0) === 0 ? (
 						<div className="text-center py-12">
 							<p className="text-muted-foreground mb-4">No apps found</p>
-							{canModify && (
+							{canCreateApp && (
 								<Button onClick={() => setCreateAppOpen(true)}>Create your first app</Button>
 							)}
 						</div>
@@ -101,7 +101,7 @@ export function Apps() {
 				</div>
 			)}
 
-			{canModify && (
+			{canCreateApp && (
 				<CreateAppDialog
 					open={createAppOpen}
 					onOpenChange={setCreateAppOpen}

@@ -18,6 +18,8 @@ vi.mock("../lib/apps.js", () => ({
 vi.mock("../lib/auth.js", () => ({
 	authMiddleware: vi.fn((_req: Request, _res: Response, next: () => void) => next()),
 	requireOperator: vi.fn((_req: Request, _res: Response, next: () => void) => next()),
+	requireAppPermission: vi.fn(() => (_req: Request, _res: Response, next: () => void) => next()),
+	canAccessApp: vi.fn(() => true),
 }));
 
 vi.mock("../lib/cache.js", () => ({

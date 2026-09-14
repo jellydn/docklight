@@ -1,7 +1,7 @@
 import type express from "express";
 import { clearNetworkProperty, getNetworkReport, setNetworkProperty } from "../lib/network.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
-import { authMiddleware, requireOperator } from "../lib/auth.js";
+import { authMiddleware } from "../lib/auth.js";
 import { DokkuCommands } from "../lib/dokku.js";
 import { isSSERequest } from "../lib/sse.js";
 import { isValidAppName } from "../lib/apps.js";
@@ -29,7 +29,7 @@ export function registerAppNetworkRoutes(app: express.Application): void {
 		res.json(networkReport);
 	});
 
-	app.put("/api/apps/:name/network", authMiddleware, requireOperator, async (req, res) => {
+	app.put("/api/apps/:name/network", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { key, value } = req.body;
 
@@ -54,7 +54,7 @@ export function registerAppNetworkRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.delete("/api/apps/:name/network", authMiddleware, requireOperator, async (req, res) => {
+	app.delete("/api/apps/:name/network", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { key } = req.body;
 

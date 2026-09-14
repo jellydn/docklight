@@ -9,7 +9,7 @@ import {
 } from "../lib/ports.js";
 import { getPortConflicts } from "../lib/port-conflicts.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
-import { authMiddleware, requireOperator } from "../lib/auth.js";
+import { authMiddleware } from "../lib/auth.js";
 import { DokkuCommands } from "../lib/dokku.js";
 import { isSSERequest } from "../lib/sse.js";
 import { isValidAppName } from "../lib/apps.js";
@@ -55,7 +55,7 @@ export function registerAppPortRoutes(app: express.Application): void {
 		res.json({ ports });
 	});
 
-	app.post("/api/apps/:name/ports", authMiddleware, requireOperator, async (req, res) => {
+	app.post("/api/apps/:name/ports", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { scheme, hostPort, containerPort } = req.body;
 
@@ -105,7 +105,7 @@ export function registerAppPortRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.delete("/api/apps/:name/ports", authMiddleware, requireOperator, async (req, res) => {
+	app.delete("/api/apps/:name/ports", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { scheme, hostPort, containerPort } = req.body;
 
@@ -155,7 +155,7 @@ export function registerAppPortRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.delete("/api/apps/:name/ports/all", authMiddleware, requireOperator, async (req, res) => {
+	app.delete("/api/apps/:name/ports/all", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 
 		if (isSSERequest(req)) {

@@ -3,7 +3,7 @@ import { getGitInfo, isValidRepoUrl, syncFromRepo } from "../lib/git.js";
 import { isValidAppName } from "../lib/apps.js";
 import { clearPrefix } from "../lib/cache.js";
 import { logger } from "../lib/logger.js";
-import { authMiddleware, requireOperator } from "../lib/auth.js";
+import { authMiddleware } from "../lib/auth.js";
 import { executeCommandStreaming } from "../lib/executor.js";
 import { DokkuCommands } from "../lib/dokku.js";
 import { isSSERequest, createSSEWriter } from "../lib/sse.js";
@@ -20,7 +20,7 @@ export function registerAppGitRoutes(app: express.Application): void {
 		res.json(gitInfo);
 	});
 
-	app.post("/api/apps/:name/git/sync", authMiddleware, requireOperator, async (req, res) => {
+	app.post("/api/apps/:name/git/sync", authMiddleware, async (req, res) => {
 		try {
 			const name = getParam(req.params, "name");
 
