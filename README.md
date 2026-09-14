@@ -48,7 +48,7 @@ Docklight is designed to run on the same VPS as Dokku.
 - Audit logs for command history, filtering, and export (JSON/CSV).
 - Command transparency: exact CLI command, exit code, stdout/stderr.
 - Enhanced health checks with Dokku connectivity and database status.
-- Simple auth with username/password and JWT session.
+- Per-user authentication with password, optional TOTP two-factor authentication, recovery codes, and JWT sessions.
 
 ## 🧱 Tech Stack
 
@@ -208,6 +208,7 @@ just build
 | Variable                            | Required                       | Description                                                                                                   |
 | ----------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | `JWT_SECRET`                        | Yes (in production)            | JWT signing secret                                                                                            |
+| `DOCKLIGHT_2FA_ENCRYPTION_KEY`      | No                             | Secret used to encrypt TOTP keys; defaults to `JWT_SECRET`. Set it before enrollment and do not rotate it without disabling 2FA first. |
 | `DOCKLIGHT_DOKKU_SSH_TARGET`        | No (recommended in production) | Container-reachable Dokku SSH target (e.g. `dokku@172.17.0.1`); the public IP may not work from inside Docker |
 | `DOCKLIGHT_DOKKU_SSH_KEY_PATH`      | No                             | Private key path inside container                                                                             |
 | `DOCKLIGHT_DOKKU_SSH_OPTS`          | No                             | Extra SSH options                                                                                             |
@@ -255,6 +256,12 @@ Docklight executes Dokku commands on your server.
 - Keep SSH fallback access to your server.
 - Command execution is restricted to an allowlist.
 - Create admin users via CLI or database for access.
+
+### Two-factor authentication
+
+Each user can open **Security** after login and enroll an authenticator app. Scan the QR code, confirm a six-digit code, and save the recovery codes outside Docklight. Each recovery code can be used once in place of an authenticator code.
+
+Disabling two-factor authentication requires the account password. TOTP secrets are encrypted at rest with `DOCKLIGHT_2FA_ENCRYPTION_KEY`, or with `JWT_SECRET` when no separate key is set. Configure a stable `DOCKLIGHT_2FA_ENCRYPTION_KEY` before users enroll if JWT signing keys rotate independently.
 
 ## 📦 Project Structure
 

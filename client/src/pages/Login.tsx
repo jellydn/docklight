@@ -15,9 +15,16 @@ const FORGOT_PASSWORD_SCHEMA = z.object({
 	resetUrl: z.string().optional(),
 });
 
+const LOGIN_SCHEMA = z.union([
+	z.object({ success: z.literal(true) }),
+	z.object({ success: z.literal(false), requiresTwoFactor: z.literal(true) }),
+]);
+
 export function Login(): JSX.Element {
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
+	const [twoFactorCode, setTwoFactorCode] = useState("");
+	const [twoFactorRequired, setTwoFactorRequired] = useState(false);
 	const [error, setError] = useState("");
 	const [mode, setMode] = useState<"login" | "forgot-password">("login");
 	const [resetEmail, setResetEmail] = useState("");
@@ -41,17 +48,25 @@ export function Login(): JSX.Element {
 		setError("");
 
 		try {
-			await apiFetch("/auth/login", z.object({ success: z.literal(true) }), {
+			const result = await apiFetch("/auth/login", LOGIN_SCHEMA, {
 				method: "POST",
-				body: JSON.stringify({ username, password }),
+				body: JSON.stringify({
+					username,
+					password,
+					...(twoFactorRequired ? { twoFactorCode } : {}),
+				}),
 			});
+			if (!result.success) {
+				setTwoFactorRequired(true);
+				return;
+			}
 			navigate("/dashboard");
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "";
 			if (message.includes("Too many login attempts")) {
 				setError(message);
 			} else {
-				setError("Invalid credentials");
+				setError(twoFactorRequired ? "Invalid two-factor code" : "Invalid credentials");
 			}
 		}
 	};
@@ -92,9 +107,11 @@ export function Login(): JSX.Element {
 
 				{mode === "login" ? (
 					<>
-						<h1 className="text-2xl font-bold mb-6 text-center">Docklight Login</h1>
+						<h1 className="text-2xl font-bold mb-6 text-center">
+							{twoFactorRequired ? "Two-factor authentication" : "Docklight Login"}
+						</h1>
 						<form onSubmit={handleSubmit} className="space-y-4">
-							<div>
+							{!twoFactorRequired && <div>
 								<label htmlFor="username" className="block text-sm font-medium mb-2">
 									Username
 								</label>
@@ -107,8 +124,8 @@ export function Login(): JSX.Element {
 									required
 									autoComplete="username"
 								/>
-							</div>
-							<div>
+							</div>}
+							{!twoFactorRequired && <div>
 								<label htmlFor="password" className="block text-sm font-medium mb-2">
 									Password
 								</label>
@@ -121,13 +138,41 @@ export function Login(): JSX.Element {
 									required
 									autoComplete="current-password"
 								/>
-							</div>
+							</div>}
+							{twoFactorRequired && (
+								<div>
+									<label htmlFor="two-factor-code" className="block text-sm font-medium mb-2">
+										Authenticator or recovery code
+									</label>
+									<input
+										id="two-factor-code"
+										value={twoFactorCode}
+										onChange={(event) => setTwoFactorCode(event.target.value)}
+										className="w-full px-3 py-2 border border-border rounded-md"
+										required
+										autoComplete="one-time-code"
+									/>
+								</div>
+							)}
 							{error && <div className="text-destructive text-sm">{error}</div>}
 							<Button type="submit" className="w-full">
-								Login
+								{twoFactorRequired ? "Verify" : "Login"}
 							</Button>
 						</form>
-						<div className="mt-4 border-t border-border pt-4 text-center">
+						{twoFactorRequired && (
+							<button
+								type="button"
+								onClick={() => {
+									setTwoFactorRequired(false);
+									setTwoFactorCode("");
+									setError("");
+								}}
+								className="mt-4 w-full text-sm text-muted-foreground hover:text-foreground"
+							>
+								Use another account
+							</button>
+						)}
+						{!twoFactorRequired && <div className="mt-4 border-t border-border pt-4 text-center">
 							<button
 								type="button"
 								onClick={() => {
@@ -138,7 +183,7 @@ export function Login(): JSX.Element {
 							>
 								Forgot password?
 							</button>
-						</div>
+						</div>}
 					</>
 				) : (
 					<>
