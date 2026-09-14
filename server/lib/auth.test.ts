@@ -1,3 +1,5 @@
+import express from "express";
+import request from "supertest";
 import { describe, it, expect, vi } from "vitest";
 import type { Request, Response, NextFunction } from "express";
 
@@ -5,6 +7,7 @@ import type { Request, Response, NextFunction } from "express";
 vi.mock("./db.js", () => ({
 	getUserByUsername: vi.fn(),
 	getUserByEmail: vi.fn(),
+	findAppPermission: vi.fn(),
 }));
 
 vi.mock("./logger.js", () => ({
@@ -15,7 +18,7 @@ vi.mock("./logger.js", () => ({
 	},
 }));
 
-import { getUserByUsername } from "./db.js";
+import { findAppPermission, getUserByUsername } from "./db.js";
 import {
 	hashPassword,
 	verifyPassword,
@@ -26,6 +29,8 @@ import {
 	requireRole,
 	setAuthCookie,
 	clearAuthCookie,
+	requireAppPermission,
+	requireScopedAppPermission,
 } from "./auth.js";
 import type { JWTPayload } from "./auth.js";
 
@@ -205,6 +210,99 @@ describe("requireRole", () => {
 
 		expect(res.status).toHaveBeenCalledWith(403);
 		expect(next).not.toHaveBeenCalled();
+	});
+});
+
+describe("requireAppPermission", () => {
+	function runMiddleware(role: "admin" | "operator" | "viewer", action: "update" | "delete") {
+		const req = {
+			params: { name: "billing" },
+			user: { authenticated: true, userId: 7, username: "alice", role },
+		} as unknown as Request;
+		const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
+		const next = vi.fn() as NextFunction;
+		requireAppPermission(action, (request) => request.params.name as string)(req, res, next);
+		return { res, next };
+	}
+
+	it("should let a specific allow override a viewer role", () => {
+		vi.mocked(findAppPermission).mockReturnValue("allow");
+		const { next } = runMiddleware("viewer", "update");
+
+		expect(next).toHaveBeenCalledOnce();
+	});
+
+	it("should let a specific deny override an operator role", () => {
+		vi.mocked(findAppPermission).mockReturnValue("deny");
+		const { res, next } = runMiddleware("operator", "delete");
+
+		expect(res.status).toHaveBeenCalledWith(403);
+		expect(next).not.toHaveBeenCalled();
+	});
+
+	it("should preserve role behavior without a matching rule", () => {
+		vi.mocked(findAppPermission).mockReturnValue(null);
+
+		expect(runMiddleware("operator", "update").next).toHaveBeenCalledOnce();
+		expect(runMiddleware("viewer", "update").res.status).toHaveBeenCalledWith(403);
+	});
+
+	it("should always allow admins", () => {
+		vi.mocked(findAppPermission).mockReturnValue("deny");
+		const { next } = runMiddleware("admin", "delete");
+
+		expect(next).toHaveBeenCalledOnce();
+		expect(findAppPermission).not.toHaveBeenCalled();
+	});
+
+	it("should map scoped HTTP methods to read, update, and delete actions", () => {
+		vi.mocked(findAppPermission).mockReturnValue("allow");
+		for (const [method, action] of [
+			["GET", "read"],
+			["POST", "update"],
+			["DELETE", "delete"],
+		] as const) {
+			const req = {
+				method,
+				path: "/",
+				params: { name: "billing" },
+				user: { authenticated: true, userId: 7, username: "alice", role: "viewer" },
+			} as unknown as Request;
+			requireScopedAppPermission(req, {} as Response, vi.fn());
+			expect(findAppPermission).toHaveBeenLastCalledWith(7, action, "billing");
+		}
+	});
+
+	it("should treat deletion of an app sub-resource as an app update", () => {
+		vi.mocked(findAppPermission).mockReturnValue("allow");
+		const req = {
+			method: "DELETE",
+			path: "/config/API_KEY",
+			params: { name: "billing" },
+			user: { authenticated: true, userId: 7, username: "alice", role: "viewer" },
+		} as unknown as Request;
+
+		requireScopedAppPermission(req, {} as Response, vi.fn());
+
+		expect(findAppPermission).toHaveBeenLastCalledWith(7, "update", "billing");
+	});
+
+	it("should classify mounted app and sub-resource deletion paths", async () => {
+		vi.mocked(findAppPermission).mockReturnValue("allow");
+		const app = express();
+		app.use((req, _res, next) => {
+			req.user = { authenticated: true, userId: 7, username: "alice", role: "viewer" };
+			next();
+		});
+		app.use("/api/apps/:name", requireScopedAppPermission);
+		app.delete("/api/apps/:name", (_req, res) => res.sendStatus(204));
+		app.delete("/api/apps/:name/config/:key", (_req, res) => res.sendStatus(204));
+
+		await request(app).delete("/api/apps/billing").expect(204);
+		expect(findAppPermission).toHaveBeenLastCalledWith(7, "delete", "billing");
+
+		await request(app).delete("/api/apps/billing/config/API_KEY").expect(204);
+		expect(findAppPermission).toHaveBeenLastCalledWith(7, "update", "billing");
 	});
 });
 

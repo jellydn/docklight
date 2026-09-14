@@ -39,7 +39,13 @@ vi.mock("../components/ToastProvider", () => ({
 }));
 
 vi.mock("../contexts/auth-context.js", () => ({
-	useAuth: () => ({ role: "admin", loading: false, canModify: true }),
+	useAuth: () => ({
+		role: "admin",
+		loading: false,
+		canModify: true,
+		canModifyApp: () => true,
+		canDeleteApp: () => true,
+	}),
 }));
 
 const mockAppDetail: AppDetailData = {

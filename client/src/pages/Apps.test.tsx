@@ -24,11 +24,13 @@ vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
 }));
 
-const mockAuthState: { role: string; loading: boolean; canModify: boolean } = {
-	role: "admin",
-	loading: false,
-	canModify: true,
-};
+const mockAuthState: { role: string; loading: boolean; canModify: boolean; canCreateApp: boolean } =
+	{
+		role: "admin",
+		loading: false,
+		canModify: true,
+		canCreateApp: true,
+	};
 
 vi.mock("../contexts/auth-context.js", () => ({
 	useAuth: () => mockAuthState,
@@ -65,6 +67,7 @@ describe("Apps", () => {
 		vi.clearAllMocks();
 		mockAuthState.role = "admin";
 		mockAuthState.canModify = true;
+		mockAuthState.canCreateApp = true;
 		mockAuthState.loading = false;
 		const { apiFetch } = await import("../lib/api.js");
 		apiFetchMock = apiFetch as any;
@@ -155,6 +158,7 @@ describe("Apps", () => {
 	it("should hide create app button for viewer role", async () => {
 		mockAuthState.role = "viewer";
 		mockAuthState.canModify = false;
+		mockAuthState.canCreateApp = false;
 
 		apiFetchMock.mockResolvedValue(mockApps);
 

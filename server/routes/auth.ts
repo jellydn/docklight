@@ -16,6 +16,7 @@ import {
 	disableTwoFactor,
 	enableTwoFactor,
 	getUserByEmail,
+	getAppPermissions,
 	getUserTwoFactorState,
 	resetPasswordWithToken,
 	savePendingTwoFactorSecret,
@@ -245,6 +246,7 @@ export function registerAuthRoutes(app: express.Application): void {
 
 	app.get("/api/auth/me", authCheckRateLimiter, authMiddleware, (req, res) => {
 		const user = req.user;
+		const appPermissions = user?.userId !== undefined ? getAppPermissions(user.userId) : [];
 		res.json({
 			authenticated: true,
 			user:
@@ -254,6 +256,7 @@ export function registerAuthRoutes(app: express.Application): void {
 							username: user.username,
 							role: user.role,
 							twoFactorAuthenticated: user.twoFactorAuthenticated ?? false,
+							appPermissions,
 						}
 					: undefined,
 		});

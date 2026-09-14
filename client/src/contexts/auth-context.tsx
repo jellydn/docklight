@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api.js";
 import { AuthMeSchema } from "@/lib/schemas.js";
 import type { UserRole } from "@/lib/schemas.js";
+import type { AppPermission } from "@/lib/schemas.js";
 import { queryKeys } from "@/lib/query-keys.js";
 
 interface AuthContextValue {
@@ -10,6 +11,9 @@ interface AuthContextValue {
 	username: string | null;
 	loading: boolean;
 	canModify: boolean;
+	canCreateApp: boolean;
+	canModifyApp: (name: string) => boolean;
+	canDeleteApp: (name: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -17,6 +21,9 @@ const AuthContext = createContext<AuthContextValue>({
 	username: null,
 	loading: true,
 	canModify: false,
+	canCreateApp: false,
+	canModifyApp: () => false,
+	canDeleteApp: () => false,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
@@ -26,14 +33,29 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
 		retry: false,
 	});
 
-	const role = authData?.user?.role ?? null;
-	const username = authData?.user?.username ?? null;
-	const canModify = role === "admin" || role === "operator";
-
-	const value = useMemo(
-		() => ({ role, username, loading: isLoading, canModify }),
-		[role, username, isLoading, canModify]
-	);
+	const value = useMemo(() => {
+		const role = authData?.user?.role ?? null;
+		const appPermissions = authData?.user?.appPermissions ?? [];
+		const canUseAppPermission = (
+			action: AppPermission["action"],
+			scope: string | null
+		): boolean => {
+			if (role === "admin") return true;
+			const permission =
+				appPermissions.find((item) => item.action === action && item.scope === scope) ??
+				appPermissions.find((item) => item.action === action && item.scope === null);
+			return permission ? permission.effect === "allow" : role === "operator";
+		};
+		return {
+			role,
+			username: authData?.user?.username ?? null,
+			loading: isLoading,
+			canModify: role === "admin" || role === "operator",
+			canCreateApp: canUseAppPermission("create", null),
+			canModifyApp: (name: string): boolean => canUseAppPermission("update", name),
+			canDeleteApp: (name: string): boolean => canUseAppPermission("delete", name),
+		};
+	}, [authData?.user, isLoading]);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

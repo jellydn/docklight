@@ -6,7 +6,7 @@ import {
 	removeBuildpack,
 } from "../lib/buildpacks.js";
 import { clearPrefix } from "../lib/cache.js";
-import { authMiddleware, requireOperator } from "../lib/auth.js";
+import { authMiddleware } from "../lib/auth.js";
 import { DokkuCommands } from "../lib/dokku.js";
 import { isSSERequest } from "../lib/sse.js";
 import { isValidAppName } from "../lib/apps.js";
@@ -25,7 +25,7 @@ export function registerAppBuildpackRoutes(app: express.Application): void {
 		res.json({ buildpacks });
 	});
 
-	app.post("/api/apps/:name/buildpacks", authMiddleware, requireOperator, async (req, res) => {
+	app.post("/api/apps/:name/buildpacks", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { url, index } = req.body;
 
@@ -50,7 +50,7 @@ export function registerAppBuildpackRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.delete("/api/apps/:name/buildpacks", authMiddleware, requireOperator, async (req, res) => {
+	app.delete("/api/apps/:name/buildpacks", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { url } = req.body;
 
@@ -75,31 +75,26 @@ export function registerAppBuildpackRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.delete(
-		"/api/apps/:name/buildpacks/all",
-		authMiddleware,
-		requireOperator,
-		async (req, res) => {
-			const name = getParam(req.params, "name");
+	app.delete("/api/apps/:name/buildpacks/all", authMiddleware, async (req, res) => {
+		const name = getParam(req.params, "name");
 
-			if (isSSERequest(req)) {
-				if (!isValidAppName(name)) {
-					res.status(400).json({ error: "Invalid app name" });
-					return;
-				}
-				await streamAction(req, res, {
-					dokkuCommand: DokkuCommands.buildpacksClear(name),
-					auditAction: "buildpack:clear",
-					appName: name,
-				});
+		if (isSSERequest(req)) {
+			if (!isValidAppName(name)) {
+				res.status(400).json({ error: "Invalid app name" });
 				return;
 			}
-
-			const result = await clearBuildpacks(name);
-			if (!handleCommandResult(res, result)) return;
-
-			clearPrefix("apps:");
-			res.json(result);
+			await streamAction(req, res, {
+				dokkuCommand: DokkuCommands.buildpacksClear(name),
+				auditAction: "buildpack:clear",
+				appName: name,
+			});
+			return;
 		}
-	);
+
+		const result = await clearBuildpacks(name);
+		if (!handleCommandResult(res, result)) return;
+
+		clearPrefix("apps:");
+		res.json(result);
+	});
 }

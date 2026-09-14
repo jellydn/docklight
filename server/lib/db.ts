@@ -89,6 +89,23 @@ function getDb(): DatabaseSync {
 	);
 
 	newDb.exec(`
+	  CREATE TABLE IF NOT EXISTS user_permissions (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL,
+		resource TEXT NOT NULL,
+		action TEXT NOT NULL,
+		scope TEXT,
+		effect TEXT NOT NULL,
+		createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+		UNIQUE(user_id, resource, action, scope)
+	  )
+	`);
+	newDb.exec(
+		"CREATE INDEX IF NOT EXISTS idx_user_permissions_lookup ON user_permissions(user_id, resource, action, scope)"
+	);
+
+	newDb.exec(`
 	  CREATE TABLE IF NOT EXISTS password_reset_tokens (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		user_id INTEGER NOT NULL,
@@ -289,6 +306,19 @@ export interface UserTwoFactorState {
 	backupCodeHashes: string[];
 }
 
+export type AppPermissionAction = "create" | "read" | "update" | "delete";
+export type PermissionEffect = "allow" | "deny";
+
+export interface AppPermission {
+	id: number;
+	userId: number;
+	resource: "apps";
+	action: AppPermissionAction;
+	scope: string | null;
+	effect: PermissionEffect;
+	createdAt: string;
+}
+
 export function createUser(
 	username: string,
 	passwordHash: string,
@@ -409,6 +439,61 @@ export function consumeTwoFactorBackupCode(userId: number, codeHash: string): bo
 			.prepare("UPDATE users SET two_factor_backup_codes = ? WHERE id = ?")
 			.run(JSON.stringify(state.backupCodeHashes), userId);
 		return true;
+	});
+}
+
+export function getAppPermissions(userId: number): AppPermission[] {
+	return getDb()
+		.prepare(
+			`SELECT id, user_id as userId, resource, action, scope, effect, createdAt
+			 FROM user_permissions
+			 WHERE user_id = ? AND resource = 'apps'
+			 ORDER BY action, scope`
+		)
+		.all(userId) as unknown as AppPermission[];
+}
+
+export function findAppPermission(
+	userId: number,
+	action: AppPermissionAction,
+	scope: string | null
+): PermissionEffect | null {
+	const row = getDb()
+		.prepare(
+			`SELECT effect
+			 FROM user_permissions
+			 WHERE user_id = ?
+				AND resource = 'apps'
+				AND action = ?
+				AND (scope IS NULL OR scope = ?)
+			 ORDER BY CASE WHEN scope = ? THEN 0 ELSE 1 END
+			 LIMIT 1`
+		)
+		.get(userId, action, scope, scope) as { effect: PermissionEffect } | undefined;
+	return row?.effect ?? null;
+}
+
+export function replaceAppPermissions(
+	userId: number,
+	permissions: Array<{
+		action: AppPermissionAction;
+		scope: string | null;
+		effect: PermissionEffect;
+	}>
+): AppPermission[] {
+	const database = getDb();
+	return runInTransaction(database, () => {
+		database
+			.prepare("DELETE FROM user_permissions WHERE user_id = ? AND resource = 'apps'")
+			.run(userId);
+		const insert = database.prepare(
+			`INSERT INTO user_permissions (user_id, resource, action, scope, effect)
+			 VALUES (?, 'apps', ?, ?, ?)`
+		);
+		for (const permission of permissions) {
+			insert.run(userId, permission.action, permission.scope, permission.effect);
+		}
+		return getAppPermissions(userId);
 	});
 }
 
