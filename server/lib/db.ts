@@ -72,6 +72,18 @@ function getDb(): DatabaseSync {
 	if (!userColumns.some((column) => column.name === "email")) {
 		newDb.exec("ALTER TABLE users ADD COLUMN email TEXT");
 	}
+	if (!userColumns.some((column) => column.name === "two_factor_secret")) {
+		newDb.exec("ALTER TABLE users ADD COLUMN two_factor_secret TEXT");
+	}
+	if (!userColumns.some((column) => column.name === "two_factor_pending_secret")) {
+		newDb.exec("ALTER TABLE users ADD COLUMN two_factor_pending_secret TEXT");
+	}
+	if (!userColumns.some((column) => column.name === "two_factor_backup_codes")) {
+		newDb.exec("ALTER TABLE users ADD COLUMN two_factor_backup_codes TEXT");
+	}
+	if (!userColumns.some((column) => column.name === "two_factor_enabled")) {
+		newDb.exec("ALTER TABLE users ADD COLUMN two_factor_enabled INTEGER NOT NULL DEFAULT 0");
+	}
 	newDb.exec(
 		"CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL AND email != ''"
 	);
@@ -270,6 +282,13 @@ export interface SafeUser {
 	createdAt: string;
 }
 
+export interface UserTwoFactorState {
+	enabled: boolean;
+	secret: string | null;
+	pendingSecret: string | null;
+	backupCodeHashes: string[];
+}
+
 export function createUser(
 	username: string,
 	passwordHash: string,
@@ -312,6 +331,85 @@ export function getAllUsers(): SafeUser[] {
 		"SELECT id, username, email, role, createdAt FROM users ORDER BY createdAt ASC"
 	);
 	return stmt.all() as unknown as SafeUser[];
+}
+
+export function getUserTwoFactorState(userId: number): UserTwoFactorState | null {
+	const row = getDb()
+		.prepare(
+			`SELECT two_factor_enabled as enabled,
+				two_factor_secret as secret,
+				two_factor_pending_secret as pendingSecret,
+				two_factor_backup_codes as backupCodes
+			 FROM users WHERE id = ?`
+		)
+		.get(userId) as
+		| {
+				enabled: number;
+				secret: string | null;
+				pendingSecret: string | null;
+				backupCodes: string | null;
+		  }
+		| undefined;
+
+	if (!row) return null;
+	return {
+		enabled: row.enabled === 1,
+		secret: row.secret,
+		pendingSecret: row.pendingSecret,
+		backupCodeHashes: row.backupCodes ? (JSON.parse(row.backupCodes) as string[]) : [],
+	};
+}
+
+export function savePendingTwoFactorSecret(userId: number, encryptedSecret: string): void {
+	getDb()
+		.prepare("UPDATE users SET two_factor_pending_secret = ? WHERE id = ?")
+		.run(encryptedSecret, userId);
+}
+
+export function enableTwoFactor(
+	userId: number,
+	encryptedSecret: string,
+	backupCodeHashes: string[]
+): void {
+	getDb()
+		.prepare(
+			`UPDATE users
+			 SET two_factor_enabled = 1,
+				two_factor_secret = ?,
+				two_factor_pending_secret = NULL,
+				two_factor_backup_codes = ?
+			 WHERE id = ?`
+		)
+		.run(encryptedSecret, JSON.stringify(backupCodeHashes), userId);
+}
+
+export function disableTwoFactor(userId: number): void {
+	getDb()
+		.prepare(
+			`UPDATE users
+			 SET two_factor_enabled = 0,
+				two_factor_secret = NULL,
+				two_factor_pending_secret = NULL,
+				two_factor_backup_codes = NULL
+			 WHERE id = ?`
+		)
+		.run(userId);
+}
+
+export function consumeTwoFactorBackupCode(userId: number, codeHash: string): boolean {
+	const database = getDb();
+	return runInTransaction(database, () => {
+		const state = getUserTwoFactorState(userId);
+		if (!state) return false;
+		const index = state.backupCodeHashes.indexOf(codeHash);
+		if (index === -1) return false;
+
+		state.backupCodeHashes.splice(index, 1);
+		database
+			.prepare("UPDATE users SET two_factor_backup_codes = ? WHERE id = ?")
+			.run(JSON.stringify(state.backupCodeHashes), userId);
+		return true;
+	});
 }
 
 export function updateUser(

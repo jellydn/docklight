@@ -17,6 +17,7 @@ const Audit = lazy(() => import("./pages/Audit").then((m) => ({ default: m.Audit
 const Users = lazy(() => import("./pages/Users").then((m) => ({ default: m.Users })));
 const Settings = lazy(() => import("./pages/Settings").then((m) => ({ default: m.Settings })));
 const Migration = lazy(() => import("./pages/Migration").then((m) => ({ default: m.Migration })));
+const Security = lazy(() => import("./pages/Security").then((m) => ({ default: m.Security })));
 
 function App() {
 	return (
@@ -79,6 +80,14 @@ function App() {
 							element={
 								<Suspense>
 									<Audit />
+								</Suspense>
+							}
+						/>
+						<Route
+							path="security"
+							element={
+								<Suspense>
+									<Security />
 								</Suspense>
 							}
 						/>

@@ -1,4 +1,6 @@
 import express from "express";
+import cookieParser from "cookie-parser";
+import { authenticator } from "otplib";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,6 +21,11 @@ vi.mock("../lib/db.js", () => ({
 	getUserByUsername: vi.fn(),
 	getUserByEmail: vi.fn(),
 	getUserAuthStateById: vi.fn(),
+	getUserTwoFactorState: vi.fn(),
+	consumeTwoFactorBackupCode: vi.fn(),
+	savePendingTwoFactorSecret: vi.fn(),
+	enableTwoFactor: vi.fn(),
+	disableTwoFactor: vi.fn(),
 	createPasswordResetToken: vi.fn(),
 	deleteExpiredPasswordResetTokens: vi.fn(),
 	resetPasswordWithToken: vi.fn(),
@@ -36,13 +43,22 @@ vi.mock("./util.js", () => ({
 	safeAuditLogWithUserId: vi.fn(),
 }));
 
-import { hashResetToken } from "../lib/auth.js";
-import { createPasswordResetToken, getUserByEmail, resetPasswordWithToken } from "../lib/db.js";
+import { generateToken, hashPassword, hashResetToken } from "../lib/auth.js";
+import {
+	consumeTwoFactorBackupCode,
+	createPasswordResetToken,
+	getUserByEmail,
+	getUserByUsername,
+	getUserTwoFactorState,
+	resetPasswordWithToken,
+} from "../lib/db.js";
 import { sendPasswordResetEmail } from "../lib/email.js";
+import { encryptTwoFactorSecret } from "../lib/two-factor.js";
 import { registerAuthRoutes } from "./auth.js";
 
 function createTestApp(): express.Express {
 	const app = express();
+	app.use(cookieParser());
 	app.use(express.json());
 	registerAuthRoutes(app);
 	return app;
@@ -55,6 +71,8 @@ describe("auth routes", () => {
 		vi.stubEnv("RESEND_API_KEY", "");
 		vi.stubEnv("RESEND_FROM_EMAIL", "");
 		vi.stubEnv("DOCKLIGHT_APP_URL", "https://docklight.example.com");
+		vi.stubEnv("DOCKLIGHT_2FA_ENCRYPTION_KEY", "test-encryption-key");
+		vi.mocked(getUserTwoFactorState).mockReturnValue(null);
 	});
 
 	afterEach(() => {
@@ -142,5 +160,83 @@ describe("auth routes", () => {
 			hashResetToken("reset-token"),
 			expect.any(String)
 		);
+	});
+
+	it("should require and verify a TOTP code before setting the session cookie", async () => {
+		const passwordHash = await hashPassword("correct-password");
+		const secret = authenticator.generateSecret();
+		vi.mocked(getUserByUsername).mockReturnValue({
+			id: 1,
+			username: "alice",
+			email: null,
+			password_hash: passwordHash,
+			role: "admin",
+			createdAt: new Date().toISOString(),
+		});
+		vi.mocked(getUserTwoFactorState).mockReturnValue({
+			enabled: true,
+			secret: encryptTwoFactorSecret(secret),
+			pendingSecret: null,
+			backupCodeHashes: [],
+		});
+
+		const challenge = await request(createTestApp())
+			.post("/api/auth/login")
+			.send({ username: "alice", password: "correct-password" });
+		expect(challenge.body).toEqual({ success: false, requiresTwoFactor: true });
+		expect(challenge.headers["set-cookie"]).toBeUndefined();
+
+		const verified = await request(createTestApp())
+			.post("/api/auth/login")
+			.send({
+				username: "alice",
+				password: "correct-password",
+				twoFactorCode: authenticator.generate(secret),
+			});
+		expect(verified.body).toEqual({ success: true });
+		expect(verified.headers["set-cookie"]?.[0]).toContain("session=");
+	});
+
+	it("should consume a recovery code once when TOTP verification fails", async () => {
+		vi.mocked(getUserByUsername).mockReturnValue({
+			id: 2,
+			username: "bob",
+			email: null,
+			password_hash: await hashPassword("correct-password"),
+			role: "operator",
+			createdAt: new Date().toISOString(),
+		});
+		vi.mocked(getUserTwoFactorState).mockReturnValue({
+			enabled: true,
+			secret: encryptTwoFactorSecret(authenticator.generateSecret()),
+			pendingSecret: null,
+			backupCodeHashes: ["hash"],
+		});
+		vi.mocked(consumeTwoFactorBackupCode).mockReturnValue(true);
+
+		const response = await request(createTestApp()).post("/api/auth/login").send({
+			username: "bob",
+			password: "correct-password",
+			twoFactorCode: "ABCDE-FGHIJ",
+		});
+
+		expect(response.body).toEqual({ success: true });
+		expect(consumeTwoFactorBackupCode).toHaveBeenCalledWith(2, expect.any(String));
+	});
+
+	it("should return two-factor authentication status to an authenticated user", async () => {
+		vi.mocked(getUserTwoFactorState).mockReturnValue({
+			enabled: true,
+			secret: "encrypted",
+			pendingSecret: null,
+			backupCodeHashes: [],
+		});
+		const token = generateToken({ id: 3, username: "carol", role: "viewer" });
+
+		const response = await request(createTestApp())
+			.get("/api/auth/2fa")
+			.set("Cookie", `session=${token}`);
+
+		expect(response.body).toEqual({ enabled: true });
 	});
 });

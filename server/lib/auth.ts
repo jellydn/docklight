@@ -28,6 +28,7 @@ export interface JWTPayload {
 	userId?: number;
 	username?: string;
 	role?: UserRole;
+	twoFactorAuthenticated?: boolean;
 	iat?: number;
 	exp?: number;
 }
@@ -62,13 +63,19 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 export function generateToken(
-	user?: { id: number; username: string; role: UserRole } | null
+	user?: {
+		id: number;
+		username: string;
+		role: UserRole;
+		twoFactorAuthenticated?: boolean;
+	} | null
 ): string {
 	const payload: JWTPayload = { authenticated: true };
 	if (user) {
 		payload.userId = user.id;
 		payload.username = user.username;
 		payload.role = user.role;
+		payload.twoFactorAuthenticated = user.twoFactorAuthenticated ?? false;
 	}
 	return jwt.sign(payload, JWT_SECRET, { expiresIn: "24h" });
 }
@@ -100,7 +107,12 @@ export async function login(
 
 export function setAuthCookie(
 	res: Response,
-	user?: { id: number; username: string; role: UserRole } | null
+	user?: {
+		id: number;
+		username: string;
+		role: UserRole;
+		twoFactorAuthenticated?: boolean;
+	} | null
 ): void {
 	const token = generateToken(user);
 	res.cookie("session", token, {

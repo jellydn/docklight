@@ -1031,8 +1031,10 @@ curl -fsSL https://raw.githubusercontent.com/jellydn/docklight/main/scripts/unin
 
 1. **Always use HTTPS** — Enable Let's Encrypt (Step 5)
 2. **Strong JWT secret** — Use a long, random string for `JWT_SECRET`
-3. **Strong user passwords** — Create admin users with strong passwords
-4. **Restrict access** — Consider putting behind:
+3. **Stable 2FA encryption key** — Set `DOCKLIGHT_2FA_ENCRYPTION_KEY` to a long, random value before users enroll. If unset, Docklight uses `JWT_SECRET`; changing either active encryption key makes enrolled TOTP secrets unreadable.
+4. **Two-factor authentication** — Each user can enroll an authenticator and save one-time recovery codes from the **Security** page.
+5. **Strong user passwords** — Create admin users with strong passwords
+6. **Restrict access** — Consider putting behind:
    - [Cloudflare Zero Trust](https://www.cloudflare.com/products/zero-trust/) (free tier available)
    - [Tailscale](https://tailscale.com/) (VPN-only access)
-5. **SSH fallback** — If Docklight crashes, you always have `ssh root@<your-server-ip>` to manage Dokku directly
+7. **SSH fallback** — If Docklight crashes, you always have `ssh root@<your-server-ip>` to manage Dokku directly
