@@ -7,7 +7,7 @@
 A minimal, self-hosted web UI for managing a single-node Dokku server.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Node](https://img.shields.io/badge/Node-20%2B-339933?logo=node.js&logoColor=white)
+![Node](https://img.shields.io/badge/Node-22.5%2B-339933?logo=node.js&logoColor=white)
 ![Bun](https://img.shields.io/badge/Bun-1.x-000000?logo=bun&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 
@@ -56,7 +56,7 @@ Docklight is designed to run on the same VPS as Dokku.
 | ---------- | ------------------------------------- |
 | Backend    | Node.js, Express, TypeScript          |
 | Frontend   | React, Vite, Tailwind CSS, TypeScript |
-| Database   | SQLite (`better-sqlite3`)             |
+| Database   | SQLite (`node:sqlite`)                |
 | Realtime   | WebSocket (`ws`)                      |
 | Auth       | JWT (`jsonwebtoken`)                  |
 | Deployment | Docker, Dokku                         |
