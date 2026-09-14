@@ -1,10 +1,10 @@
 import { randomBytes, scrypt, timingSafeEqual, createHash } from "crypto";
 import jwt from "jsonwebtoken";
 import { promisify } from "util";
-import { getUserByUsername, getUserByEmail } from "./db.js";
+import { findAppPermission, getUserByEmail, getUserByUsername } from "./db.js";
 import { logger } from "./logger.js";
 import type { NextFunction, Request, Response } from "express";
-import type { UserRole } from "./db.js";
+import type { AppPermissionAction, UserRole } from "./db.js";
 
 const scryptAsync = promisify(scrypt);
 
@@ -167,3 +167,60 @@ export function requireRole(
 
 export const requireAdmin = requireRole("admin");
 export const requireOperator = requireRole("admin", "operator");
+
+export function requireAppPermission(
+	action: AppPermissionAction,
+	getScope: (req: Request) => string | null,
+	fallbackRoles: UserRole[] = ["admin", "operator"]
+): (req: Request, res: Response, next: NextFunction) => void {
+	return (req: Request, res: Response, next: NextFunction) => {
+		const user = req.user;
+		if (user?.userId === undefined || !user.role) {
+			res.status(401).json({ error: "Unauthorized" });
+			return;
+		}
+		if (user.role === "admin") {
+			next();
+			return;
+		}
+
+		if (canAccessApp(user.userId, user.role, action, getScope(req), fallbackRoles)) {
+			next();
+			return;
+		}
+
+		res.status(403).json({ error: "Forbidden" });
+	};
+}
+
+export function canAccessApp(
+	userId: number,
+	role: UserRole,
+	action: AppPermissionAction,
+	scope: string | null,
+	fallbackRoles: UserRole[] = ["admin", "operator"]
+): boolean {
+	if (role === "admin") return true;
+	const permission = findAppPermission(userId, action, scope);
+	return permission === "allow" || (permission === null && fallbackRoles.includes(role));
+}
+
+export const getAppScope = (req: Request): string | null => {
+	const value = req.params.name;
+	return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+};
+
+export function requireScopedAppPermission(req: Request, res: Response, next: NextFunction): void {
+	const scope = getAppScope(req);
+	if (scope === "port-conflicts") {
+		next();
+		return;
+	}
+
+	const deletesApp = req.method === "DELETE" && (req.path === "/" || req.path === "");
+	const action: AppPermissionAction =
+		req.method === "GET" ? "read" : deletesApp ? "delete" : "update";
+	const fallbackRoles: UserRole[] =
+		action === "read" ? ["admin", "operator", "viewer"] : ["admin", "operator"];
+	requireAppPermission(action, getAppScope, fallbackRoles)(req, res, next);
+}

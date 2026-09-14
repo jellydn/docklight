@@ -4,7 +4,7 @@ import http from "http";
 import path from "path";
 import pinoHttp from "pino-http";
 import { startAuditRotation, stopAuditRotation } from "./lib/audit-rotation.js";
-import { authMiddleware } from "./lib/auth.js";
+import { authMiddleware, requireScopedAppPermission } from "./lib/auth.js";
 import { logger } from "./lib/logger.js";
 import { sshPool } from "./lib/executor.js";
 import { setupLogStreaming } from "./lib/websocket.js";
@@ -69,6 +69,7 @@ registerAuthRoutes(app);
 
 // Protected routes (require authentication)
 app.use("/api", authMiddleware);
+app.use("/api/apps/:name", requireScopedAppPermission);
 registerUserRoutes(app);
 registerCommandRoutes(app);
 registerAppRoutes(app);

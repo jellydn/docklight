@@ -22,6 +22,7 @@ vi.mock("../lib/db.js", () => ({
 	getUserByEmail: vi.fn(),
 	getUserAuthStateById: vi.fn(),
 	getUserTwoFactorState: vi.fn(),
+	getAppPermissions: vi.fn(() => []),
 	consumeTwoFactorBackupCode: vi.fn(),
 	savePendingTwoFactorSecret: vi.fn(),
 	enableTwoFactor: vi.fn(),

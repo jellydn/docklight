@@ -58,7 +58,9 @@ export function AppDetail() {
 	const navigate = useNavigate();
 	const { addToast } = useToast();
 	const { execute: streamAction } = useStreamingAction();
-	const { canModify } = useAuth();
+	const { canDeleteApp, canModifyApp } = useAuth();
+	const canModify = name ? canModifyApp(name) : false;
+	const canDelete = name ? canDeleteApp(name) : false;
 	const {
 		data: app,
 		isLoading: loading,
@@ -213,8 +215,7 @@ export function AppDetail() {
 	const [pendingRemovePort, setPendingRemovePort] = useState<PortMapping | null>(null);
 	const [portRemoveSubmitting, setPortRemoveSubmitting] = useState(false);
 
-	const routingDiagnosticsEnabled =
-		(activeTab === "settings" || activeTab === "ssl") && !!name;
+	const routingDiagnosticsEnabled = (activeTab === "settings" || activeTab === "ssl") && !!name;
 	const {
 		data: portConflictsData,
 		isLoading: portConflictsLoading,
@@ -225,10 +226,7 @@ export function AppDetail() {
 		enabled: routingDiagnosticsEnabled,
 	});
 	const routingIssues = useMemo(
-		() =>
-			name
-				? buildRoutingIssues(name, ports, portConflictsData?.conflicts ?? [])
-				: [],
+		() => (name ? buildRoutingIssues(name, ports, portConflictsData?.conflicts ?? []) : []),
 		[name, portsData?.ports, portConflictsData?.conflicts]
 	);
 
@@ -1515,6 +1513,7 @@ export function AppDetail() {
 					copySuccess={copySuccess}
 					scaleChanges={scaleChanges}
 					canModify={canModify}
+					canDelete={canDelete}
 					onCopyRemote={handleCopyRemote}
 					onCopyPush={handleCopyPush}
 					onScaleChange={handleScaleChange}
@@ -1569,10 +1568,7 @@ export function AppDetail() {
 
 			{activeTab === "ssl" && (
 				<>
-					<AppRoutingIssues
-						issues={routingIssues}
-						loading={portConflictsLoading || portsLoading}
-					/>
+					<AppRoutingIssues issues={routingIssues} loading={portConflictsLoading || portsLoading} />
 					<AppSSL
 						sslStatus={sslStatus ?? null}
 						loading={sslLoading}
@@ -1589,10 +1585,7 @@ export function AppDetail() {
 
 			{activeTab === "settings" && (
 				<div className="space-y-6">
-					<AppRoutingIssues
-						issues={routingIssues}
-						loading={portConflictsLoading || portsLoading}
-					/>
+					<AppRoutingIssues issues={routingIssues} loading={portConflictsLoading || portsLoading} />
 					<AppDeployment
 						settings={deploymentSettings ?? null}
 						loading={deploymentLoading}
