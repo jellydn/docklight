@@ -53,6 +53,9 @@ client-typecheck:
 client-lint:
     cd client && bun run lint
 
+client-lint-shadcn:
+    cd client && bun run lint:shadcn
+
 client-format:
     cd client && bun run format
 
