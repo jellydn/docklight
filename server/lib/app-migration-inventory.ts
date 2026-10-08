@@ -1,4 +1,4 @@
-import { isValidAppName } from "./apps.js";
+import { isValidAppName } from "./app-name.js";
 import { stripAnsi } from "./ansi.js";
 import { SUPPORTED_PLUGINS } from "./database-plugins.js";
 
