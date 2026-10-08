@@ -15,7 +15,8 @@
 		"format": "biome format --write .",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"test:coverage": "vitest run --coverage"
+		"test:coverage": "vitest run --coverage",
+		"inventory:app": "tsx app-migration-inventory.ts"
 	},
 	"dependencies": {
 		"cookie-parser": "^1.4.7",
