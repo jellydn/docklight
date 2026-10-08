@@ -213,6 +213,37 @@ as sensitive because previous command output may contain config values.
 
 ## Verification and next layers
 
+### Pinned migration connections
+
+Migration connections are separate from the global Dokku SSH settings. Before
+using the admin connection test, provision these server-side environment values:
+
+- `DOCKLIGHT_MIGRATION_ENCRYPTION_KEY`: 32 random bytes encoded as 64 hex characters.
+- `DOCKLIGHT_MIGRATION_SOURCE_TARGET`: dedicated read-only source account and host.
+- `DOCKLIGHT_MIGRATION_SOURCE_FINGERPRINT`: independently verified SHA256 host key.
+- `DOCKLIGHT_MIGRATION_SOURCE_KEY_PATH`: absolute private-key path on the controller.
+- `DOCKLIGHT_MIGRATION_DESTINATION_KEY_PATH`: separate destination private-key path.
+- `DOCKLIGHT_MIGRATION_ALLOWED_TARGETS`: comma-separated operator-approved targets.
+
+Use `user@host[:port]` or `user@[IPv6]:port`; credential-bearing SSH URLs are
+not accepted. Obtain pins through a trusted host console or independent channel.
+Do not trust an unverified network key scan. Mount keys read-only with private
+permissions. Never paste key contents into the UI, repository, tickets or logs.
+
+The saved destination and fingerprint are encrypted beside the SQLite database
+in a private `migration/` directory. Back up the encryption key separately;
+losing it prevents reading saved settings. The API only returns configuration
+presence and a revision, not the saved host or fingerprint. Changing the approved
+endpoint list blocks subsequent use of an old destination. Same-host connections
+are rejected. Existing global SSH settings and command history are not used.
+
+The connection test runs only Dokku version/app-list checks and opens an SFTP
+session. It does not write files, prove disk capacity, prove database/volume
+compatibility, restore, deploy, or authorize a sync. Each command is bounded to
+30 seconds and 1 MiB combined output; each host operation is bounded to two
+minutes. Closing the request cancels its connection. Only success/failure is
+recorded in audit history, without host addresses or raw diagnostics.
+
 Run server `bun run typecheck`, `bun run lint`, and `bun run test`. The inventory
 and CLI tests mock Dokku; they do not contact a VPS. `--help` and built `--help`
 check the entry point without executing Dokku. Live report-format and restore

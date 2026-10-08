@@ -11,6 +11,7 @@ import { setupLogStreaming } from "./lib/websocket.js";
 import {
 	registerAdminRoutes,
 	registerSettingsRoutes,
+	registerMigrationRoutes,
 	registerAppBuildpackRoutes,
 	registerAppConfigRoutes,
 	registerAppDeploymentRoutes,
@@ -88,6 +89,7 @@ registerPluginRoutes(app);
 registerServerRoutes(app);
 registerAdminRoutes(app);
 registerSettingsRoutes(app);
+registerMigrationRoutes(app);
 
 // SPA fallback for client-side routing (must be after all API routes)
 app.get("/{*path}", (_req, res) => {
