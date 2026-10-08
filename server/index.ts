@@ -12,6 +12,7 @@ import {
 	registerAdminRoutes,
 	registerSettingsRoutes,
 	registerMigrationRoutes,
+	migrationJsonErrorHandler,
 	registerAppBuildpackRoutes,
 	registerAppConfigRoutes,
 	registerAppDeploymentRoutes,
@@ -42,6 +43,7 @@ const app = express();
 // Middleware
 app.use(cookieParser());
 app.use(express.json());
+app.use("/api/migration", migrationJsonErrorHandler);
 app.set("trust proxy", true);
 
 // HTTPS redirect middleware (production only)

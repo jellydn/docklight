@@ -8,6 +8,18 @@ import {
 } from "../lib/migration-connection.js";
 import { listMigrationApps, previewMigrationApp } from "../lib/migration-preview.js";
 
+export function migrationJsonErrorHandler(
+	error: unknown,
+	_req: express.Request,
+	res: express.Response,
+	_next: express.NextFunction
+): void {
+	res.set("Cache-Control", "no-store");
+	res
+		.status((error as { status?: number }).status === 413 ? 413 : 400)
+		.json({ error: "Invalid migration request body." });
+}
+
 function migrationAdmin(
 	req: express.Request,
 	res: express.Response,
@@ -58,12 +70,10 @@ function registerReadOnlyOperation(
 				return;
 			}
 			if (!res.destroyed)
-				res
-					.status(400)
-					.json({
-						error:
-							"Read-only check failed or was cancelled. Refresh the destination and verify pinned host keys and server-side configuration. No changes were made.",
-					});
+				res.status(400).json({
+					error:
+						"Read-only check failed or was cancelled. Refresh the destination and verify pinned host keys and server-side configuration. No changes were made.",
+				});
 		} finally {
 			res.removeListener("close", cancel);
 		}

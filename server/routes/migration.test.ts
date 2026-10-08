@@ -8,7 +8,7 @@ import {
 	testMigrationConnection,
 } from "../lib/migration-connection.js";
 import { listMigrationApps, previewMigrationApp } from "../lib/migration-preview.js";
-import { registerMigrationRoutes } from "./migration.js";
+import { migrationJsonErrorHandler, registerMigrationRoutes } from "./migration.js";
 
 vi.mock("../lib/db.js", () => ({ getUserById: vi.fn(), insertAuditLog: vi.fn() }));
 vi.mock("../lib/rate-limiter.js", () => ({
@@ -38,11 +38,38 @@ describe("migration admin routes", () => {
 		});
 		app = express();
 		app.use(express.json());
+		app.use("/api/migration", migrationJsonErrorHandler);
 		app.use((req, _res, next) => {
 			req.user = { authenticated: true, userId: 7, role: "admin" };
 			next();
 		});
 		registerMigrationRoutes(app);
+	});
+	it("redacts malformed JSON before it reaches default error responses or logs", async () => {
+		app.set("env", "development");
+		const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+		try {
+			const response = await request(app)
+				.put("/api/migration/destination")
+				.set("Content-Type", "application/json")
+				.send('{"target":private}');
+			await new Promise(setImmediate);
+			expect(response.status).toBe(400);
+			expect(response.body).toEqual({ error: "Invalid migration request body." });
+			expect(response.headers["cache-control"]).toBe("no-store");
+			expect(log).not.toHaveBeenCalled();
+			expect(saveMigrationDestination).not.toHaveBeenCalled();
+		} finally {
+			log.mockRestore();
+		}
+	});
+	it("keeps payload-too-large status while excluding submitted values", async () => {
+		const response = await request(app)
+			.put("/api/migration/destination")
+			.send({ target: "x".repeat(110_000) });
+		expect(response.status).toBe(413);
+		expect(response.body).toEqual({ error: "Invalid migration request body." });
+		expect(saveMigrationDestination).not.toHaveBeenCalled();
 	});
 	it("checks current stored role rather than trusting the token", async () => {
 		vi.mocked(getUserById).mockReturnValue({
