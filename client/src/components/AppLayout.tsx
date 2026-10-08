@@ -16,6 +16,7 @@ import {
 	ScrollText,
 	Users,
 	Settings,
+	ArrowRightLeft,
 	LogOut,
 	Menu,
 	X,
@@ -32,6 +33,7 @@ const navItems = [
 const adminNavItems = [
 	{ to: "/users", label: "Users", icon: Users },
 	{ to: "/settings", label: "Settings", icon: Settings },
+	{ to: "/migration", label: "App migration", icon: ArrowRightLeft },
 ] as const;
 
 interface SidebarLinkProps {
@@ -156,9 +158,7 @@ export function AppLayout() {
 					{username && (
 						<div>
 							<p className="text-sm font-medium text-sidebar-foreground truncate">{username}</p>
-							{role && (
-								<p className="text-xs text-sidebar-muted capitalize">{role}</p>
-							)}
+							{role && <p className="text-xs text-sidebar-muted capitalize">{role}</p>}
 						</div>
 					)}
 				</div>

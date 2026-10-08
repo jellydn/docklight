@@ -16,6 +16,7 @@ const Plugins = lazy(() => import("./pages/Plugins").then((m) => ({ default: m.P
 const Audit = lazy(() => import("./pages/Audit").then((m) => ({ default: m.Audit })));
 const Users = lazy(() => import("./pages/Users").then((m) => ({ default: m.Users })));
 const Settings = lazy(() => import("./pages/Settings").then((m) => ({ default: m.Settings })));
+const Migration = lazy(() => import("./pages/Migration").then((m) => ({ default: m.Migration })));
 
 function App() {
 	return (
@@ -97,6 +98,16 @@ function App() {
 								<RequireAdmin>
 									<Suspense>
 										<Settings />
+									</Suspense>
+								</RequireAdmin>
+							}
+						/>
+						<Route
+							path="migration"
+							element={
+								<RequireAdmin>
+									<Suspense>
+										<Migration />
 									</Suspense>
 								</RequireAdmin>
 							}

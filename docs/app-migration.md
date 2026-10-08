@@ -244,6 +244,31 @@ compatibility, restore, deploy, or authorize a sync. Each command is bounded to
 minutes. Closing the request cancels its connection. Only success/failure is
 recorded in audit history, without host addresses or raw diagnostics.
 
+### Admin planning UI
+
+Open **App migration** as an administrator. Saving a destination writes only
+encrypted controller settings; it does not contact a host. Inputs are masked,
+cleared after a successful save, and never returned by the saved-state API.
+Run the pinned test, load source apps, select one app, then request a preview.
+The preview returns counts and fixed blockers, not raw reports, config names or
+values, database identifiers, paths or endpoints. A changed destination revision
+invalidates an in-flight preview. Destination name collisions and shared services
+remain blockers; an SSH success is not migration readiness.
+
+Cancel checks to close the connection. Repeat a cancelled read-only check from
+the start; this is not checkpointed sync resume. If saving was interrupted,
+refresh the destination state before retrying. Audit storage failures and unknown
+report formats must not be treated as success. Existing unrelated audit records
+may contain sensitive legacy command output; only new migration events are
+sanitized. Never export raw history as migration evidence.
+
+The UI deliberately has no executable sync action. The remaining execution
+layers must implement tested consistent database/volume adapters, disk-capacity
+checks, isolated encrypted staging, typed per-app confirmation, single-writer
+fencing, persistent checkpoints, cancellation with uncertain-outcome handling,
+checksum reconciliation on resume, and a rehearsed rollback. A metadata-only
+transfer must not be described as a complete app migration.
+
 Run server `bun run typecheck`, `bun run lint`, and `bun run test`. The inventory
 and CLI tests mock Dokku; they do not contact a VPS. `--help` and built `--help`
 check the entry point without executing Dokku. Live report-format and restore
