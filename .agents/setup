@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+export PATH="$HOME/.local/bin:$HOME/.bun/bin:$PATH"
+mkdir -p "$HOME/.local/bin"
+scratch=$(mktemp -d)
+trap 'rm -rf "$scratch"' EXIT
+SECONDS=0
+
+echo "[setup] Checking toolchain"
+if ! command -v node >/dev/null || ! node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major > 22 || (major === 22 && minor >= 12) ? 0 : 1)'; then
+  curl -fsSL https://nodejs.org/dist/v24.0.0/node-v24.0.0-linux-x64.tar.xz -o "$scratch/node.tar.xz"
+  mkdir -p "$HOME/.local/lib"
+  tar -xJf "$scratch/node.tar.xz" -C "$HOME/.local/lib"
+  for executable in node npm npx; do
+    ln -sf "$HOME/.local/lib/node-v24.0.0-linux-x64/bin/$executable" "$HOME/.local/bin/$executable"
+  done
+fi
+
+if ! command -v bun >/dev/null || [[ "$(bun --version)" != "1.4.2" ]]; then
+  curl -fsSL https://bun.com/install -o "$scratch/install-bun"
+  bash "$scratch/install-bun" bun-v1.4.2
+fi
+
+if ! command -v just >/dev/null; then
+  curl -fsSL https://github.com/casey/just/releases/download/1.40.0/just-1.40.0-x86_64-unknown-linux-musl.tar.gz -o "$scratch/just.tar.gz"
+  tar -xzf "$scratch/just.tar.gz" -C "$scratch" just
+  install -m 755 "$scratch/just" "$HOME/.local/bin/just"
+fi
+
+profile_marker='# Docklight orb toolchain'
+if ! rg -q -F -x "$profile_marker" "$HOME/.bash_profile" 2>/dev/null; then
+  cat >> "$HOME/.bash_profile" <<'EOF'
+
+# Docklight orb toolchain
+export PATH="$HOME/.local/bin:$HOME/.bun/bin:$PATH"
+EOF
+fi
+echo "[setup] Toolchain ready at ${SECONDS}s: Node $(node --version), Bun $(bun --version), $(just --version)"
+
+for project in server client; do
+  echo "[setup] Installing locked $project dependencies at ${SECONDS}s"
+  (cd "$project" && bun install --frozen-lockfile)
+done
+
+echo "[setup] Installing Playwright Chromium at ${SECONDS}s"
+(cd client && bun run -- playwright install chromium)
+echo "[setup] Complete in ${SECONDS}s"

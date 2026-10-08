@@ -184,6 +184,23 @@ just server-dev
 just client-dev
 ```
 
+### Amp orbs
+
+`.agents/setup` prepares the orb before Amp saves a project snapshot. It installs
+Bun 1.4.2, a compatible Node.js runtime when needed, `just`, both projects'
+dependencies from their lockfiles, and Playwright Chromium. Installed tools,
+dependencies, and browser downloads are retained in the snapshot. Repeated setup
+runs use the existing packages and caches; no custom cache marker is needed.
+
+`.agents/resume` checks that the tools and dependencies are present. It does not
+install packages or start servers. Neither script creates users, copies production
+environment settings, or connects to a Dokku host. SQLite needs no separate service.
+Real Dokku actions still require a reachable host and SSH credentials.
+
+To check the lifecycle scripts manually, run `.agents/setup` twice, then
+`.agents/resume`. These files must reach the Amp project's default branch before
+new orbs can use them.
+
 ## 🛠️ Build Commands
 
 ```bash

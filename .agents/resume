@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+export PATH="$HOME/.local/bin:$HOME/.bun/bin:$PATH"
+
+for executable in node bun just; do
+  command -v "$executable" >/dev/null
+done
+test -d server/node_modules
+test -d client/node_modules
+echo "[resume] Docklight toolchain and dependencies are ready"
