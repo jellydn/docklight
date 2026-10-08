@@ -6,6 +6,7 @@ import {
 	saveMigrationDestination,
 	testMigrationConnection,
 } from "../lib/migration-connection.js";
+import { listMigrationApps, previewMigrationApp } from "../lib/migration-preview.js";
 
 function migrationAdmin(
 	req: express.Request,
@@ -32,6 +33,43 @@ function audit(req: express.Request, action: string, success: boolean): void {
 	insertAuditLog(req.user?.userId ?? null, action, null, JSON.stringify({ success }), null);
 }
 
+function registerReadOnlyOperation(
+	app: express.Application,
+	operation: string,
+	action: string,
+	work: (req: express.Request, signal: AbortSignal) => Promise<unknown>
+): void {
+	app.post(`/api/migration/${operation}`, async (req, res) => {
+		const controller = new AbortController();
+		const cancel = (): void => {
+			if (!res.writableEnded) controller.abort();
+		};
+		res.on("close", cancel);
+		try {
+			const result = await work(req, controller.signal);
+			audit(req, action, true);
+			res.json(result);
+		} catch {
+			try {
+				audit(req, action, false);
+			} catch {
+				if (!res.destroyed)
+					res.status(503).json({ error: "Migration audit storage is unavailable." });
+				return;
+			}
+			if (!res.destroyed)
+				res
+					.status(400)
+					.json({
+						error:
+							"Read-only check failed or was cancelled. Refresh the destination and verify pinned host keys and server-side configuration. No changes were made.",
+					});
+		} finally {
+			res.removeListener("close", cancel);
+		}
+	});
+}
+
 export function registerMigrationRoutes(app: express.Application): void {
 	app.use("/api/migration", adminRateLimiter, migrationAdmin);
 	app.get("/api/migration/destination", (_req, res) => {
@@ -49,35 +87,19 @@ export function registerMigrationRoutes(app: express.Application): void {
 			audit(req, "migration:destination-save", true);
 			res.json(result);
 		} catch {
-			res
-				.status(400)
-				.json({
-					error:
-						"Destination not saved. Check the approved endpoint, fingerprint and server-side configuration.",
-				});
+			res.status(400).json({
+				error:
+					"Destination not saved. Check the approved endpoint, fingerprint and server-side configuration.",
+			});
 		}
 	});
-	app.post("/api/migration/test", async (req, res) => {
-		const controller = new AbortController();
-		const cancel = (): void => {
-			if (!res.writableEnded) controller.abort();
-		};
-		res.on("close", cancel);
-		try {
-			const result = await testMigrationConnection(controller.signal);
-			audit(req, "migration:connection-test", true);
-			res.json(result);
-		} catch {
-			audit(req, "migration:connection-test", false);
-			if (!res.destroyed)
-				res
-					.status(400)
-					.json({
-						error:
-							"Read-only test failed or was cancelled. Verify pinned host keys and server-side credentials. No changes were made.",
-					});
-		} finally {
-			res.removeListener("close", cancel);
-		}
-	});
+	registerReadOnlyOperation(app, "test", "migration:connection-test", (_req, signal) =>
+		testMigrationConnection(signal)
+	);
+	registerReadOnlyOperation(app, "apps", "migration:apps", async (_req, signal) => ({
+		apps: await listMigrationApps(signal),
+	}));
+	registerReadOnlyOperation(app, "preview", "migration:preview", (req, signal) =>
+		previewMigrationApp(req.body?.app, req.body?.revision, signal)
+	);
 }

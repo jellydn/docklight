@@ -7,6 +7,7 @@ import {
 	saveMigrationDestination,
 	testMigrationConnection,
 } from "../lib/migration-connection.js";
+import { listMigrationApps, previewMigrationApp } from "../lib/migration-preview.js";
 import { registerMigrationRoutes } from "./migration.js";
 
 vi.mock("../lib/db.js", () => ({ getUserById: vi.fn(), insertAuditLog: vi.fn() }));
@@ -18,6 +19,10 @@ vi.mock("../lib/migration-connection.js", () => ({
 	destinationSummary: vi.fn(),
 	saveMigrationDestination: vi.fn(),
 	testMigrationConnection: vi.fn(),
+}));
+vi.mock("../lib/migration-preview.js", () => ({
+	listMigrationApps: vi.fn(),
+	previewMigrationApp: vi.fn(),
 }));
 
 describe("migration admin routes", () => {
@@ -121,5 +126,46 @@ describe("migration admin routes", () => {
 			'{"success":false}',
 			null
 		);
+	});
+	it("passes app selection in the body and audits no app identifiers", async () => {
+		vi.mocked(listMigrationApps).mockResolvedValue(["pilot"]);
+		expect(
+			(await request(app).post("/api/migration/apps").set("X-Docklight-Migration", "1")).body
+		).toEqual({ apps: ["pilot"] });
+		const preview = {
+			app: "pilot",
+			destinationRevision: "revision",
+			readyForSync: false as const,
+			configKeyCount: 1,
+			databaseServiceCount: 0,
+			sharedServiceCount: 0,
+			failedChecks: 0,
+			blockers: ["Sync is not implemented."],
+		};
+		vi.mocked(previewMigrationApp).mockResolvedValue(preview);
+		const response = await request(app)
+			.post("/api/migration/preview")
+			.set("X-Docklight-Migration", "1")
+			.send({ app: "pilot", revision: "revision" });
+		expect(response.body).toEqual(preview);
+		expect(previewMigrationApp).toHaveBeenCalledWith("pilot", "revision", expect.any(AbortSignal));
+		expect(insertAuditLog).toHaveBeenLastCalledWith(
+			7,
+			"migration:preview",
+			null,
+			'{"success":true}',
+			null
+		);
+	});
+	it("does not leak raw database errors if audit recording fails", async () => {
+		vi.mocked(testMigrationConnection).mockRejectedValue(new Error("private-config"));
+		vi.mocked(insertAuditLog).mockImplementation(() => {
+			throw new Error("private-path");
+		});
+		const response = await request(app)
+			.post("/api/migration/test")
+			.set("X-Docklight-Migration", "1");
+		expect(response.status).toBe(503);
+		expect(response.body).toEqual({ error: "Migration audit storage is unavailable." });
 	});
 });
