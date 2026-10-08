@@ -34,6 +34,10 @@ Browser -> React SPA -> Express API -> Shell Exec -> Dokku CLI -> Docker
 
 Docklight is designed to run on the same VPS as Dokku.
 
+For moving workloads to a new VPS, use the [per-app migration runbook](docs/app-migration.md).
+The read-only inventory CLI helps identify coverage gaps and shared database links;
+it does not execute migration, backup, restore, cleanup or DNS changes.
+
 ## ✨ Features
 
 - Dashboard with app status, domains, last deploy, and VPS health (CPU, memory, disk) with warning/critical thresholds.
