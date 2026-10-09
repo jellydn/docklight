@@ -13,6 +13,150 @@ A per-app move limits downtime and rollback scope. Shared databases, volumes,
 queues and internal app calls can prevent an independent move. DNS propagation
 must not leave two independent copies accepting writes.
 
+## Practical example: `hermes-hub`
+
+This example shows how to plan a move from an old VPS to a new VPS. It is not
+a record of a completed migration. Read-only inspection used an approved SSH
+target and strict verification against an existing trusted `known_hosts` entry.
+No host key was accepted or replaced, and no Dokku settings were changed.
+
+| Sanitized observation | Migration requirement |
+| --- | --- |
+| Deployed and running; one `web` process | Check the same process count after the isolated destination deploy. |
+| Scaling allowed; computed Procfile path is `Procfile` | Include and review the Procfile in the pinned source revision; a reported path alone does not prove the file exists. |
+| Restart policy `on-failure:10`; restore enabled | Preserve the intended restart/reboot behavior on the destination. |
+| Operator-supplied stop timeout: 30 seconds | Recheck the effective timeout on both hosts before the freeze. |
+| Builder, storage, domain, port and certificate reports were accessible | Review exact settings privately; successful reports do not prove restore readiness. |
+| App config key names were queryable | Transfer required values through a secret-safe process, not through this guide or the inventory output. |
+
+The timeout comes from the operator's sanitized report; this inspection did not
+independently confirm it. A single web process does **not** prove the app is
+stateless. Database links, external services, persistent files, jobs, release
+hooks, available disk space and destination compatibility remain unverified.
+Do not mark them absent or skip the dependency gate below.
+
+### 1. Identify both hosts and collect the source checklist
+
+Use Bash on your workstation. Replace the `.invalid` host placeholders only with
+approved targets. Keep hostnames, IP addresses, fingerprints, container IDs,
+config values, raw reports and credentials out of Git, PRs and shared logs.
+
+```bash
+APP=hermes-hub
+SOURCE=dokku@old-vps.invalid
+DESTINATION=dokku@new-vps.invalid
+SSH_OPTIONS=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o UpdateHostKeys=no -o ConnectTimeout=15)
+```
+
+Confirm that the exact host/port has a trusted entry in your SSH known-hosts file.
+For a new host, verify the fingerprint through the provider console or another
+independent trusted channel before an operator adds it. A network key scan alone
+is not identity verification. Stop on an unknown or changed key; never use
+`StrictHostKeyChecking=no`, `accept-new`, or a discarded known-hosts file.
+
+The following commands are read-only. Run them in a private operator terminal,
+not a recorded CI job. Their raw output is **not** safe to attach to a ticket.
+Confirm command support for the installed Dokku version on each host.
+
+```bash
+ssh "${SSH_OPTIONS[@]}" "$SOURCE" ps:report "$APP"
+ssh "${SSH_OPTIONS[@]}" "$SOURCE" git:report "$APP"
+ssh "${SSH_OPTIONS[@]}" "$SOURCE" builder:report "$APP"
+ssh "${SSH_OPTIONS[@]}" "$SOURCE" storage:list "$APP"
+ssh "${SSH_OPTIONS[@]}" "$SOURCE" config:keys "$APP"
+ssh "${SSH_OPTIONS[@]}" "$SOURCE" domains:report "$APP"
+ssh "${SSH_OPTIONS[@]}" "$SOURCE" ports:report "$APP"
+ssh "${SSH_OPTIONS[@]}" "$SOURCE" certs:report "$APP"
+```
+
+These are selected checks, not a full inventory. Complete the
+[preflight and dependency gate](#preflight-and-dependency-gate), including global
+config inheritance, service sharing and processes outside Dokku. To use
+Docklight's sanitized inventory CLI, follow [collect inventory](#how-collect-inventory)
+on the source host. `--local` refers to that host, not to your workstation's SSH
+target. The CLI does not copy secrets or data.
+
+### 2. Prepare the destination and rehearse without production effects
+
+Obtain separate approval for destination writes. Install compatible Dokku,
+Docker and required plugins using the upstream
+[installation instructions](https://dokku.com/docs/getting-started/installation/).
+Docklight's own installer also deploys Docklight; it is not an app-migration tool.
+Verify the destination's SSH identity independently.
+Confirm the app name is unused; do not overwrite an existing destination app.
+The following commands **change the destination** and were not run for this guide:
+
+```bash
+ssh "${SSH_OPTIONS[@]}" "$DESTINATION" apps:create "$APP"
+ssh "${SSH_OPTIONS[@]}" "$DESTINATION" ps:set "$APP" procfile-path Procfile
+ssh "${SSH_OPTIONS[@]}" "$DESTINATION" ps:set "$APP" restart-policy on-failure:10
+```
+
+Before any build/deploy, restore dedicated data from a tested consistent backup,
+restore mounts with correct ownership, recreate links/networks, and securely set
+the required app config. Replace generated database URLs and old host-local paths.
+Review inherited global values and set app-level equivalents where required;
+do not copy all source global settings onto a VPS serving other apps.
+
+Follow [backup and isolated rehearsal](#backup-and-isolated-rehearsal). Keep
+production credentials and production service access out of the rehearsal where
+possible. Fence outbound effects and review build/release hooks **before** the
+first deploy; merely stopping workers after deployment is too late. A `web`
+process can also run jobs or send notifications.
+
+For a Git-based deployment, an operator can use this template after those gates.
+Replace the example repository and `FULL_COMMIT_SHA` with a verified, reachable
+repository and full source commit. Use a deploy key for private repositories,
+never a credential-bearing URL. If the source is image-based, use its pinned
+image digest and the matching Dokku deployment method instead.
+
+```bash
+ssh "${SSH_OPTIONS[@]}" "$DESTINATION" git:sync --build "$APP" https://github.com/example/hermes-hub.git FULL_COMMIT_SHA
+ssh "${SSH_OPTIONS[@]}" "$DESTINATION" ps:report "$APP"
+```
+
+`git:sync --build` builds and deploys; it is not a dry run. Verify the resulting
+revision and process formation. Do not assume the source's scale settings move
+with Git: check the Procfile and any `app.json` formation, then explicitly match
+the approved formation using the installed version's process-management commands.
+Confirm restore behavior and the effective stop timeout as well.
+
+### 3. Test routing before moving traffic
+
+Follow [temporary hostname, production domain and TLS](#temporary-hostname-production-domain-and-tls).
+Keep source DNS unchanged during rehearsal. With a valid destination certificate
+for the production hostname, test Host and SNI through a local override:
+
+```bash
+curl --fail --show-error --resolve app.example.com:443:192.0.2.10 https://app.example.com/
+```
+
+The hostname and address above are documentation placeholders, not the inspected
+app's endpoint. Replace them privately. Do not add `--insecure` or `-k` to hide a
+TLS error. A successful HTTP response is only one check: test login, redirects,
+reads, uploads and controlled writes against isolated rehearsal data.
+
+### 4. Freeze, sync, cut over, and retain a rollback path
+
+Only after owner approval and a successful timed rehearsal, follow
+[brief freeze, final sync and DNS cutover](#brief-freeze-final-sync-and-dns-cutover).
+Lower TTL in advance, stop or fence **all** writers, take a final consistent data
+checkpoint, restore and validate it, then move A/AAAA records and enable one
+destination writer set. A stopped web process alone does not freeze external
+writers, and old DNS clients must not reach a writable source copy.
+
+Use the [acceptance checklist and rollback procedure](#rollback-and-acceptance).
+Before destination production writes, rollback can return traffic to the fenced
+source after checks. After such writes, reconcile new data before returning to
+source; a DNS reversal alone is unsafe. Retain the source and independent backups
+for the agreed recovery period. Deletion is a separate approved action.
+
+Command references: [remote commands](https://dokku.com/docs/deployment/remote-commands/),
+[app management](https://dokku.com/docs/deployment/application-management/),
+[process management](https://dokku.com/docs/processes/process-management/), and
+[Git deployment](https://dokku.com/docs/deployment/methods/git/).
+Mutation examples were checked against documentation, not executed on either VPS.
+
 ## How: collect inventory
 
 After separate approval to inspect the source, run from `server/` on the source
