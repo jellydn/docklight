@@ -105,6 +105,24 @@ describe("migration admin routes", () => {
 			null
 		);
 	});
+	it("does not claim the destination is unchanged when auditing a completed save fails", async () => {
+		vi.mocked(saveMigrationDestination).mockReturnValue({
+			configured: true,
+			sourceConfigured: true,
+			revision: "new-revision",
+		});
+		vi.mocked(insertAuditLog).mockImplementation(() => {
+			throw new Error("private storage diagnostic");
+		});
+		const response = await request(app)
+			.put("/api/migration/destination")
+			.set("X-Docklight-Migration", "1")
+			.send({ target: "operator@destination.invalid", fingerprint: "synthetic-pin" });
+		expect(response.body).toEqual({
+			error:
+				"Destination save could not be confirmed. Refresh the saved state before retrying and check server-side configuration.",
+		});
+	});
 	it("redacts failures in both HTTP responses and audit history", async () => {
 		vi.mocked(testMigrationConnection).mockRejectedValue(
 			new Error("destination.invalid private-config")

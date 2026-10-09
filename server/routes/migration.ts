@@ -49,12 +49,10 @@ export function registerMigrationRoutes(app: express.Application): void {
 			audit(req, "migration:destination-save", true);
 			res.json(result);
 		} catch {
-			res
-				.status(400)
-				.json({
-					error:
-						"Destination not saved. Check the approved endpoint, fingerprint and server-side configuration.",
-				});
+			res.status(400).json({
+				error:
+					"Destination save could not be confirmed. Refresh the saved state before retrying and check server-side configuration.",
+			});
 		}
 	});
 	app.post("/api/migration/test", async (req, res) => {
@@ -70,12 +68,10 @@ export function registerMigrationRoutes(app: express.Application): void {
 		} catch {
 			audit(req, "migration:connection-test", false);
 			if (!res.destroyed)
-				res
-					.status(400)
-					.json({
-						error:
-							"Read-only test failed or was cancelled. Verify pinned host keys and server-side credentials. No changes were made.",
-					});
+				res.status(400).json({
+					error:
+						"Read-only test failed or was cancelled. Verify pinned host keys and server-side credentials. No changes were made.",
+				});
 		} finally {
 			res.removeListener("close", cancel);
 		}
