@@ -94,6 +94,21 @@ describe("app migration inventory", () => {
 		expect(inventory.readyForMigration).toBe(false);
 	});
 
+	it("marks malformed plugin rows unknown without hiding recognized dependencies", async () => {
+		const inventory = await collectAppMigrationInventory(
+			"pilot",
+			runner({
+				"plugin:list": {
+					exitCode: 0,
+					stdout: "postgres 1.0.0 enabled\nInstalled plugins: redis",
+				},
+			})
+		);
+		expect(inventory.observations).toContainEqual({ section: "plugins", status: "unknown" });
+		expect(inventory.blockers).toContain("Unrecognized plugins; verify it manually.");
+		expect(inventory.databaseLinks.map((link) => link.service)).toEqual(["primary", "shared"]);
+	});
+
 	it("rejects service names that could be interpreted as command options", async () => {
 		const run = runner({ "--quiet postgres:list": { exitCode: 0, stdout: "--force" } });
 		const inventory = await collectAppMigrationInventory("pilot", run);
