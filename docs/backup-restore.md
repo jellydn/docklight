@@ -1,6 +1,10 @@
 # Backup and Restore
 
-How to back up and restore Docklight configuration (users and settings).
+How to back up and restore Docklight user accounts and environment-presence metadata.
+
+This is not a Dokku app or VPS backup. App data, databases, volumes, secrets,
+certificates and `server-settings.json` are not included. For moving workloads,
+use the [per-app migration runbook](app-migration.md).
 
 ## What is backed up
 
@@ -98,6 +102,9 @@ mkdir -p /var/backups/docklight
 ```
 
 ## Migration to a new server
+
+These steps restore Docklight user access only. They do not move other Dokku
+apps or preserve Docklight command/audit history and server settings.
 
 1. **Download the backup** from the old server (see above).
 2. **Deploy Docklight** on the new server following the [Deployment Guide](deployment.md).

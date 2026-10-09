@@ -2,6 +2,9 @@ import { type CommandResult, executeCommand } from "./executor.js";
 import { stripAnsi } from "./ansi.js";
 import { DokkuCommands } from "./dokku.js";
 import { logger } from "./logger.js";
+import { isValidAppName } from "./app-name.js";
+
+export { isValidAppName, MAX_APP_NAME_LENGTH } from "./app-name.js";
 
 export interface App {
 	name: string;
@@ -295,20 +298,6 @@ export function parseDomains(stdout: string): string[] {
 	}
 
 	return [...domains];
-}
-
-export const MAX_APP_NAME_LENGTH = 64;
-
-export function isValidAppName(name: string): boolean {
-	// Must be 1-64 chars, lowercase letters, numbers, hyphens only
-	// Cannot start or end with a hyphen (DNS label rules)
-	if (!name || name.length > MAX_APP_NAME_LENGTH || name.length < 1) {
-		return false;
-	}
-	if (name.startsWith("-") || name.endsWith("-")) {
-		return false;
-	}
-	return /^[a-z0-9-]+$/.test(name);
 }
 
 export async function getAppDetail(

@@ -11,6 +11,8 @@ import { setupLogStreaming } from "./lib/websocket.js";
 import {
 	registerAdminRoutes,
 	registerSettingsRoutes,
+	registerMigrationRoutes,
+	migrationJsonErrorHandler,
 	registerAppBuildpackRoutes,
 	registerAppConfigRoutes,
 	registerAppDeploymentRoutes,
@@ -41,6 +43,7 @@ const app = express();
 // Middleware
 app.use(cookieParser());
 app.use(express.json());
+app.use("/api/migration", migrationJsonErrorHandler);
 app.set("trust proxy", true);
 
 // HTTPS redirect middleware (production only)
@@ -88,6 +91,7 @@ registerPluginRoutes(app);
 registerServerRoutes(app);
 registerAdminRoutes(app);
 registerSettingsRoutes(app);
+registerMigrationRoutes(app);
 
 // SPA fallback for client-side routing (must be after all API routes)
 app.get("/{*path}", (_req, res) => {
