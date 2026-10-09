@@ -43,13 +43,14 @@ describe("per-app inventory CLI", () => {
 	});
 
 	it("prints a human report and returns 0 for successful probes, not migration readiness", async () => {
+		const outputs: Record<string, string> = {
+			"apps:list": "pilot",
+			"config:keys": "PORT",
+			"plugin:list": "00_dokku-standard 0.38.31 enabled dokku core standard plugin",
+		};
 		const run = vi.fn(async (args: string[]) => ({
 			exitCode: 0,
-			stdout: args.includes("apps:list")
-				? "pilot"
-				: args[0] === "config:keys"
-					? "PORT"
-					: "Report present",
+			stdout: outputs[args[0] === "--quiet" ? args[1] : args[0]] ?? "Report present",
 		}));
 		const result = await runAppInventoryCli(["--local", "--app", "pilot"], run);
 		expect(result.exitCode).toBe(0);

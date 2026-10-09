@@ -99,7 +99,7 @@ export function registerMigrationRoutes(app: express.Application): void {
 		} catch {
 			res.status(400).json({
 				error:
-					"Destination not saved. Check the approved endpoint, fingerprint and server-side configuration.",
+					"Destination save could not be confirmed. Refresh the saved state before retrying and check server-side configuration.",
 			});
 		}
 	});

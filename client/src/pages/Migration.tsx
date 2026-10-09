@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import { apiFetch } from "@/lib/api.js";
+import { alertBannerClass } from "@/lib/status-styles.js";
 
 const DestinationSchema = z.object({
 	configured: z.boolean(),
@@ -107,7 +108,7 @@ export function Migration(): JSX.Element {
 			setMessage(
 				request.signal.aborted
 					? "Request cancelled or timed out. Read-only checks can be restarted. If a save was interrupted, refresh the saved state before retrying."
-					: "Request failed. Check server-side setup, approved endpoints and independently verified host keys. No raw diagnostics are shown."
+					: "Request failed. Refresh the saved state before retrying a save. Check server-side setup, approved endpoints and independently verified host keys. No raw diagnostics are shown."
 			);
 		} finally {
 			clearTimeout(timer);
@@ -126,7 +127,7 @@ export function Migration(): JSX.Element {
 					Prepare one app for a new VPS. This release is read-only on both hosts.
 				</p>
 			</div>
-			<div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+			<div className={alertBannerClass("warning")}>
 				<strong>Sync is not available yet.</strong> Database and volume adapters, write fencing and
 				resumable sync jobs must be tested first. Nothing here restores, deploys, changes DNS or
 				prunes data.
