@@ -77,7 +77,7 @@ describe("pinned migration connections", () => {
 		).toThrow("approved");
 		expect(() =>
 			saveMigrationDestination(
-				"ssh://operator:password@destination.invalid",
+				" \tssh://operator:password@destination.invalid",
 				fingerprint(destinationKey)
 			)
 		).toThrow("approved");
@@ -90,6 +90,18 @@ describe("pinned migration connections", () => {
 		saveMigrationDestination("operator@destination.invalid", fingerprint(destinationKey));
 		vi.stubEnv("DOCKLIGHT_MIGRATION_ALLOWED_TARGETS", "");
 		expect(() => destinationEndpoint()).toThrow("approved");
+	});
+	it("rejects the source host under a different username before saving", () => {
+		vi.stubEnv("DOCKLIGHT_MIGRATION_ALLOWED_TARGETS", "other@SOURCE.invalid:22");
+		expect(() =>
+			saveMigrationDestination("other@SOURCE.invalid:22", fingerprint(destinationKey))
+		).toThrow("different hosts");
+		expect(destinationSummary().configured).toBe(false);
+	});
+	it("rejects a saved destination if the configured source moves to the same host", () => {
+		saveMigrationDestination("operator@destination.invalid", fingerprint(destinationKey));
+		vi.stubEnv("DOCKLIGHT_MIGRATION_SOURCE_TARGET", "other@destination.invalid");
+		expect(() => destinationEndpoint()).toThrow("different hosts");
 	});
 	it("pins the public key before issuing only read-only commands", async () => {
 		saveMigrationDestination("operator@destination.invalid", fingerprint(destinationKey));

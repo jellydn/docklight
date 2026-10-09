@@ -19,7 +19,7 @@ export interface MigrationEndpoint extends ParsedSshTarget {
 function endpoint(target: string, fingerprint: string, keyPath: string): MigrationEndpoint {
 	const parsed = parseSshTarget(target);
 	if (
-		target.startsWith("ssh://") ||
+		target.trim().startsWith("ssh://") ||
 		!parsed ||
 		!/^[a-z_][a-z0-9_-]{0,31}$/i.test(parsed.username) ||
 		!(isIP(parsed.host) || /^[a-z0-9][a-z0-9.-]{0,252}$/i.test(parsed.host)) ||
@@ -32,7 +32,7 @@ function endpoint(target: string, fingerprint: string, keyPath: string): Migrati
 }
 
 function canonicalTarget(target: string): string | null {
-	if (target.startsWith("ssh://")) return null;
+	if (target.trim().startsWith("ssh://")) return null;
 	const parsed = parseSshTarget(target);
 	if (!parsed) return null;
 	return `${parsed.username}@${parsed.host.toLowerCase()}:${parsed.port}`;
@@ -60,11 +60,22 @@ export function destinationEndpoint(): MigrationEndpoint {
 	const destination = readMigrationFile<MigrationDestination>("destination.json");
 	if (!destination) throw new Error("Save a destination first.");
 	requireAllowedTarget(destination.target);
-	return endpoint(
+	const parsed = endpoint(
 		destination.target,
 		destination.fingerprint,
 		process.env.DOCKLIGHT_MIGRATION_DESTINATION_KEY_PATH || ""
 	);
+	requireDifferentHosts(sourceEndpoint(), parsed);
+	return parsed;
+}
+
+function requireDifferentHosts(source: MigrationEndpoint, destination: MigrationEndpoint): void {
+	if (
+		source.fingerprint === destination.fingerprint ||
+		(source.host.toLowerCase() === destination.host.toLowerCase() &&
+			source.port === destination.port)
+	)
+		throw new Error("Source and destination must be different hosts.");
 }
 
 export function destinationSummary(): {
@@ -90,18 +101,12 @@ export function saveMigrationDestination(
 	if (typeof target !== "string" || typeof fingerprint !== "string" || target.length > 300)
 		throw new Error("Invalid destination configuration.");
 	requireAllowedTarget(target);
-	const canonical = canonicalTarget(target);
 	const parsed = endpoint(
 		target,
 		fingerprint,
 		process.env.DOCKLIGHT_MIGRATION_DESTINATION_KEY_PATH || ""
 	);
-	const source = sourceEndpoint();
-	if (
-		parsed.fingerprint === source.fingerprint ||
-		canonical === canonicalTarget(process.env.DOCKLIGHT_MIGRATION_SOURCE_TARGET || "")
-	)
-		throw new Error("Source and destination must be different hosts.");
+	requireDifferentHosts(sourceEndpoint(), parsed);
 	writeMigrationFile("destination.json", {
 		target,
 		fingerprint,
@@ -210,12 +215,6 @@ export async function testMigrationConnection(
 ): Promise<{ success: true; sourceReadable: true; destinationSftp: true }> {
 	const source = sourceEndpoint();
 	const destination = destinationEndpoint();
-	if (
-		source.fingerprint === destination.fingerprint ||
-		(source.host.toLowerCase() === destination.host.toLowerCase() &&
-			source.port === destination.port)
-	)
-		throw new Error("Source and destination must be different hosts.");
 	await withMigrationConnection(source, signal, async (connection) => {
 		await connection.command(["dokku", "version"]);
 		await connection.command(["dokku", "--quiet", "apps:list"]);
