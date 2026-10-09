@@ -146,8 +146,11 @@ export async function collectAppMigrationInventory(
 
 	const pluginsOutput = await probe("plugins", ["plugin:list"]);
 	if (pluginsOutput === null) return inventory;
-	const pluginNames = lines(pluginsOutput).map((line) => line.split(/\s+/)[0]);
-	if (pluginNames.length === 0) unknown("plugins");
+	const pluginRows = lines(pluginsOutput).map((line) =>
+		line.match(/^([A-Za-z0-9_-]+)\s+\S+\s+(enabled|disabled)(?:\s+.*)?$/)
+	);
+	if (pluginRows.length === 0 || pluginRows.some((row) => row === null)) unknown("plugins");
+	const pluginNames = pluginRows.flatMap((row) => (row ? [row[1]] : []));
 	for (const plugin of SUPPORTED_PLUGINS) {
 		if (!pluginNames.includes(plugin) && !pluginNames.includes(`dokku-${plugin}`)) continue;
 		const section = `${plugin}-services`;
