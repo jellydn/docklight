@@ -110,6 +110,13 @@ repository and full source commit. Use a deploy key for private repositories,
 never a credential-bearing URL. If the source is image-based, use its pinned
 image digest and the matching Dokku deployment method instead.
 
+Before deploying, check the Procfile and any `app.json` formation in the pinned
+revision. When `app.json` manages formation, it must define the approved process
+counts; CLI scaling is disabled. If the counts differ, stop and obtain approval
+for a corrected, pinned revision before deployment. When `app.json` does not
+manage formation, set the approved counts using the installed Dokku version's
+process-management commands.
+
 ```bash
 ssh "${SSH_OPTIONS[@]}" "$DESTINATION" git:sync --build "$APP" https://github.com/example/hermes-hub.git FULL_COMMIT_SHA
 ssh "${SSH_OPTIONS[@]}" "$DESTINATION" ps:report "$APP"
@@ -117,8 +124,7 @@ ssh "${SSH_OPTIONS[@]}" "$DESTINATION" ps:report "$APP"
 
 `git:sync --build` builds and deploys; it is not a dry run. Verify the resulting
 revision and process formation. Do not assume the source's scale settings move
-with Git: check the Procfile and any `app.json` formation, then explicitly match
-the approved formation using the installed version's process-management commands.
+with Git; confirm that the destination matches the approved formation.
 Confirm restore behavior and the effective stop timeout as well.
 
 ### 3. Test routing before moving traffic
