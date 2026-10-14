@@ -1,6 +1,6 @@
 import type express from "express";
 import { NodeSSH } from "node-ssh";
-import { authMiddleware, requireAdmin } from "../lib/auth.js";
+import { authMiddleware, requireResourcePermission } from "../lib/auth.js";
 import { adminRateLimiter } from "../lib/rate-limiter.js";
 import { logger } from "../lib/logger.js";
 import type { ParsedSshTarget } from "../lib/ssh-target.js";
@@ -44,58 +44,70 @@ async function testSshConnection(
 }
 
 export function registerSettingsRoutes(app: express.Application): void {
-	app.get("/api/settings", adminRateLimiter, authMiddleware, requireAdmin, (_req, res) => {
-		const settings = getSettings();
-		res.json(settings);
-	});
-
-	app.put("/api/settings", adminRateLimiter, authMiddleware, requireAdmin, (req, res) => {
-		const body = req.body as Record<string, unknown>;
-
-		if (!body || typeof body !== "object" || Array.isArray(body)) {
-			res.status(400).json({ error: "Request body must be an object" });
-			return;
+	app.get(
+		"/api/settings",
+		adminRateLimiter,
+		authMiddleware,
+		requireResourcePermission("config", "read", () => null, ["admin"]),
+		(_req, res) => {
+			const settings = getSettings();
+			res.json(settings);
 		}
+	);
 
-		const updates: Record<string, string> = {};
-		const allowedFields = ["dokkuSshTarget", "dokkuSshKeyPath", "logLevel"];
+	app.put(
+		"/api/settings",
+		adminRateLimiter,
+		authMiddleware,
+		requireResourcePermission("config", "update", () => null, ["admin"]),
+		(req, res) => {
+			const body = req.body as Record<string, unknown>;
 
-		for (const field of allowedFields) {
-			if (field in body) {
-				const value = body[field];
-				if (typeof value !== "string") {
-					res.status(400).json({ error: `Field '${field}' must be a string` });
-					return;
-				}
-				updates[field] = value;
+			if (!body || typeof body !== "object" || Array.isArray(body)) {
+				res.status(400).json({ error: "Request body must be an object" });
+				return;
 			}
+
+			const updates: Record<string, string> = {};
+			const allowedFields = ["dokkuSshTarget", "dokkuSshKeyPath", "logLevel"];
+
+			for (const field of allowedFields) {
+				if (field in body) {
+					const value = body[field];
+					if (typeof value !== "string") {
+						res.status(400).json({ error: `Field '${field}' must be a string` });
+						return;
+					}
+					updates[field] = value;
+				}
+			}
+
+			if (Object.keys(updates).length === 0) {
+				res.status(400).json({ error: "No valid settings fields provided" });
+				return;
+			}
+
+			const errors = validateSettings(updates);
+			if (errors.length > 0) {
+				res.status(400).json({ error: errors[0]?.message, field: errors[0]?.field });
+				return;
+			}
+
+			updateSettings(updates);
+
+			safeAuditLog(req, "settings:update", null, {
+				fields: Object.keys(updates),
+			});
+
+			res.json(getSettings());
 		}
-
-		if (Object.keys(updates).length === 0) {
-			res.status(400).json({ error: "No valid settings fields provided" });
-			return;
-		}
-
-		const errors = validateSettings(updates);
-		if (errors.length > 0) {
-			res.status(400).json({ error: errors[0]?.message, field: errors[0]?.field });
-			return;
-		}
-
-		updateSettings(updates);
-
-		safeAuditLog(req, "settings:update", null, {
-			fields: Object.keys(updates),
-		});
-
-		res.json(getSettings());
-	});
+	);
 
 	app.post(
 		"/api/settings/test-connection",
 		adminRateLimiter,
 		authMiddleware,
-		requireAdmin,
+		requireResourcePermission("config", "update", () => null, ["admin"]),
 		async (req, res) => {
 			const body = req.body as { target?: string; keyPath?: string };
 			const target = body.target?.trim();

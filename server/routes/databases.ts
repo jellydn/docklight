@@ -10,21 +10,32 @@ import {
 } from "../lib/databases.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
 import { logger } from "../lib/logger.js";
-import { authMiddleware, requireOperator } from "../lib/auth.js";
+import {
+	authMiddleware,
+	canAccessResource,
+	getAppScope,
+	requireAppPermission,
+	requireResourcePermission,
+} from "../lib/auth.js";
 import { executeCommandStreaming } from "../lib/executor.js";
 import { DokkuCommands } from "../lib/dokku.js";
 import { isSSERequest, createSSEWriter } from "../lib/sse.js";
-import type { UserRole } from "../lib/db.js";
 import { getParam, getStatusCode, safeAuditLog } from "./util.js";
 
-function filterConnectionInfoForViewer(
+function filterDatabaseAccess(
 	databases: Database[],
-	role?: UserRole
+	user: express.Request["user"]
 ): Omit<Database, "connectionInfo">[] {
-	if (role === "admin" || role === "operator") {
-		return databases;
-	}
-	return databases.map(({ connectionInfo: _, ...rest }) => rest);
+	return databases
+		.filter((database) =>
+			canAccessResource(user, "databases", "read", database.name, ["admin", "operator", "viewer"])
+		)
+		.map((database) => {
+			if (canAccessResource(user, "databases", "update", database.name, ["admin", "operator"]))
+				return database;
+			const { connectionInfo: _, ...rest } = database;
+			return rest;
+		});
 }
 
 async function streamAction(
@@ -68,7 +79,7 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		const cached = get(cacheKey) as Database[] | null;
 
 		if (cached) {
-			const filtered = filterConnectionInfoForViewer(cached, req.user?.role);
+			const filtered = filterDatabaseAccess(cached, req.user);
 			res.json(filtered);
 			return;
 		}
@@ -81,124 +92,155 @@ export function registerDatabaseRoutes(app: express.Application): void {
 		}
 
 		set(cacheKey, databases);
-		const filtered = filterConnectionInfoForViewer(databases, req.user?.role);
+		const filtered = filterDatabaseAccess(databases, req.user);
 		res.json(filtered);
 	});
 
-	app.post("/api/databases", authMiddleware, requireOperator, async (req, res) => {
-		const { plugin, name } = req.body;
+	app.post(
+		"/api/databases",
+		authMiddleware,
+		requireResourcePermission(
+			"databases",
+			"create",
+			(req) => (typeof req.body?.name === "string" ? req.body.name : null),
+			["admin", "operator"]
+		),
+		async (req, res) => {
+			const { plugin, name } = req.body;
 
-		if (isSSERequest(req)) {
-			await streamAction(
-				req,
-				res,
-				DokkuCommands.dbCreate(plugin, name),
-				"database:create",
-				name,
-				300000
-			);
-			return;
+			if (isSSERequest(req)) {
+				await streamAction(
+					req,
+					res,
+					DokkuCommands.dbCreate(plugin, name),
+					"database:create",
+					name,
+					300000
+				);
+				return;
+			}
+
+			const result = await createDatabase(plugin, name);
+
+			if (result.exitCode === 0) {
+				safeAuditLog(req, "database:create", name, { plugin, name });
+			}
+
+			clearPrefix("databases:");
+			res.json(result);
 		}
+	);
 
-		const result = await createDatabase(plugin, name);
+	app.post(
+		"/api/databases/:name/link",
+		authMiddleware,
+		requireResourcePermission("databases", "update", getAppScope, ["admin", "operator"]),
+		requireAppPermission("update", (req) =>
+			typeof req.body?.app === "string" ? req.body.app : null
+		),
+		async (req, res) => {
+			const name = getParam(req.params, "name");
+			const { plugin, app, alias } = req.body;
 
-		if (result.exitCode === 0) {
-			safeAuditLog(req, "database:create", name, { plugin, name });
+			const validationError = validateDatabaseLink(plugin, name, app, alias);
+			if (validationError) {
+				res.status(400).json(validationError);
+				return;
+			}
+			const trimmedAlias = alias?.trim() || undefined;
+			const auditDetails = { plugin, database: name, app, alias: trimmedAlias };
+
+			if (isSSERequest(req)) {
+				await streamAction(
+					req,
+					res,
+					DokkuCommands.dbLink(plugin, name, app, trimmedAlias),
+					"database:link",
+					name,
+					60000,
+					auditDetails
+				);
+				return;
+			}
+
+			const result = await linkDatabase(plugin, name, app, trimmedAlias);
+
+			if (result.exitCode === 0) {
+				safeAuditLog(req, "database:link", name, auditDetails);
+			}
+
+			clearPrefix("databases:");
+			const statusCode = result.exitCode === 0 ? 200 : getStatusCode(result.exitCode);
+			res.status(statusCode).json(result);
 		}
+	);
 
-		clearPrefix("databases:");
-		res.json(result);
-	});
+	app.post(
+		"/api/databases/:name/unlink",
+		authMiddleware,
+		requireResourcePermission("databases", "update", getAppScope, ["admin", "operator"]),
+		requireAppPermission("update", (req) =>
+			typeof req.body?.app === "string" ? req.body.app : null
+		),
+		async (req, res) => {
+			const name = getParam(req.params, "name");
+			const { plugin, app } = req.body;
 
-	app.post("/api/databases/:name/link", authMiddleware, requireOperator, async (req, res) => {
-		const name = getParam(req.params, "name");
-		const { plugin, app, alias } = req.body;
+			if (isSSERequest(req)) {
+				await streamAction(
+					req,
+					res,
+					DokkuCommands.dbUnlink(plugin, name, app),
+					"database:unlink",
+					name,
+					60000
+				);
+				return;
+			}
 
-		const validationError = validateDatabaseLink(plugin, name, app, alias);
-		if (validationError) {
-			res.status(400).json(validationError);
-			return;
+			const result = await unlinkDatabase(plugin, name, app);
+
+			if (result.exitCode === 0) {
+				safeAuditLog(req, "database:unlink", name, {
+					plugin,
+					database: name,
+					app,
+				});
+			}
+
+			clearPrefix("databases:");
+			res.json(result);
 		}
-		const trimmedAlias = alias?.trim() || undefined;
-		const auditDetails = { plugin, database: name, app, alias: trimmedAlias };
+	);
 
-		if (isSSERequest(req)) {
-			await streamAction(
-				req,
-				res,
-				DokkuCommands.dbLink(plugin, name, app, trimmedAlias),
-				"database:link",
-				name,
-				60000,
-				auditDetails
-			);
-			return;
+	app.delete(
+		"/api/databases/:name",
+		authMiddleware,
+		requireResourcePermission("databases", "delete", getAppScope, ["admin", "operator"]),
+		async (req, res) => {
+			const name = getParam(req.params, "name");
+			const { plugin, confirmName } = req.body;
+
+			if (isSSERequest(req)) {
+				await streamAction(
+					req,
+					res,
+					DokkuCommands.dbDestroy(plugin, name),
+					"database:destroy",
+					name,
+					120000
+				);
+				return;
+			}
+
+			const result = await destroyDatabase(plugin, name, confirmName);
+
+			if (result.exitCode === 0) {
+				safeAuditLog(req, "database:destroy", name, { plugin, name });
+			}
+
+			clearPrefix("databases:");
+			res.json(result);
 		}
-
-		const result = await linkDatabase(plugin, name, app, trimmedAlias);
-
-		if (result.exitCode === 0) {
-			safeAuditLog(req, "database:link", name, auditDetails);
-		}
-
-		clearPrefix("databases:");
-		const statusCode = result.exitCode === 0 ? 200 : getStatusCode(result.exitCode);
-		res.status(statusCode).json(result);
-	});
-
-	app.post("/api/databases/:name/unlink", authMiddleware, requireOperator, async (req, res) => {
-		const name = getParam(req.params, "name");
-		const { plugin, app } = req.body;
-
-		if (isSSERequest(req)) {
-			await streamAction(
-				req,
-				res,
-				DokkuCommands.dbUnlink(plugin, name, app),
-				"database:unlink",
-				name,
-				60000
-			);
-			return;
-		}
-
-		const result = await unlinkDatabase(plugin, name, app);
-
-		if (result.exitCode === 0) {
-			safeAuditLog(req, "database:unlink", name, {
-				plugin,
-				database: name,
-				app,
-			});
-		}
-
-		clearPrefix("databases:");
-		res.json(result);
-	});
-
-	app.delete("/api/databases/:name", authMiddleware, requireOperator, async (req, res) => {
-		const name = getParam(req.params, "name");
-		const { plugin, confirmName } = req.body;
-
-		if (isSSERequest(req)) {
-			await streamAction(
-				req,
-				res,
-				DokkuCommands.dbDestroy(plugin, name),
-				"database:destroy",
-				name,
-				120000
-			);
-			return;
-		}
-
-		const result = await destroyDatabase(plugin, name, confirmName);
-
-		if (result.exitCode === 0) {
-			safeAuditLog(req, "database:destroy", name, { plugin, name });
-		}
-
-		clearPrefix("databases:");
-		res.json(result);
-	});
+	);
 }

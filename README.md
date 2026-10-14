@@ -285,11 +285,11 @@ Each user can open **Security** after login and enroll an authenticator app. Sca
 
 Disabling two-factor authentication requires the account password. TOTP secrets are encrypted at rest with `DOCKLIGHT_2FA_ENCRYPTION_KEY`, or with `JWT_SECRET` when no separate key is set. Configure a stable `DOCKLIGHT_2FA_ENCRYPTION_KEY` before users enroll if JWT signing keys rotate independently.
 
-### App permissions
+### Granular permissions
 
-Admins can open **Users**, select **Permissions** for an account, and add allow or deny rules for app create, read, update, and delete actions. Leave the app scope empty to apply a rule to all apps, or enter an exact app name for a more specific rule. A specific rule takes priority over an all-app rule. When no rule matches, Docklight keeps the existing role behavior: admins have full access, operators can modify apps, and viewers have read-only access. Admin access cannot be denied.
+Admins can open **Users**, select **Permissions** for an account, and add allow or deny rules for apps, databases, installed-plugin visibility, global configuration, and user management. Leave the scope empty for all resources of the selected type, or use an exact app, database, plugin, or username. A named rule takes priority over an all-resource rule. When no rule matches, existing roles apply. Administrators retain full access, and only administrators can change permission rules, change roles, or modify administrator accounts.
 
-This first granular-permissions slice applies only to apps. Database, plugin, configuration, and user-management permission rules remain role-based.
+Database create, update (link/unlink), and delete are separate permissions. Link/unlink also requires update access to the target app, for JSON and streaming requests. Database read access does not grant connection credentials; those require database update access. App read restrictions apply to lists, details, log WebSockets, and live events. Global configuration has no named scope: read permits viewing settings, and update permits changing the server connection and testing SSH. Treat configuration update as a high-trust grant. Plugin permissions control the existing read-only plugin list; no plugin mutation API is exposed. User scopes use usernames; delegated account management cannot create administrators or change roles. Rule replacement is atomic and recorded in the audit trail. Existing app-only API payloads remain valid and default to the apps resource.
 
 ## 📦 Project Structure
 

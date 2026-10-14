@@ -239,15 +239,17 @@ export type GitInfo = z.infer<typeof GitInfoSchema>;
 const UserRoleSchema = z.enum(["admin", "operator", "viewer"]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
-export const AppPermissionSchema = z.object({
+export const PermissionSchema = z.object({
 	id: z.number(),
 	userId: z.number(),
-	resource: z.literal("apps"),
+	resource: z.enum(["apps", "databases", "plugins", "config", "users"]),
 	action: z.enum(["create", "read", "update", "delete"]),
 	scope: z.string().nullable(),
 	effect: z.enum(["allow", "deny"]),
 	createdAt: z.string(),
 });
+export type Permission = z.infer<typeof PermissionSchema>;
+export const AppPermissionSchema = PermissionSchema.extend({ resource: z.literal("apps") });
 export type AppPermission = z.infer<typeof AppPermissionSchema>;
 
 // User schema (safe, no password hash)
@@ -271,6 +273,7 @@ export const AuthMeSchema = z.object({
 			role: UserRoleSchema,
 			twoFactorAuthenticated: z.boolean().optional(),
 			appPermissions: z.array(AppPermissionSchema).optional(),
+			permissions: z.array(PermissionSchema).optional(),
 		})
 		.optional(),
 });

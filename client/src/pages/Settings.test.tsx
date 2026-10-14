@@ -10,6 +10,10 @@ vi.mock("@/lib/api.js", () => ({
 	apiFetch: vi.fn(),
 }));
 
+vi.mock("@/contexts/auth-context.js", () => ({
+	useAuth: () => ({ canAccess: () => true }),
+}));
+
 const mockSettings: ServerSettings = {
 	dokkuSshTarget: "dokku@192.168.1.1",
 	dokkuSshKeyPath: "/app/.ssh/id_ed25519",

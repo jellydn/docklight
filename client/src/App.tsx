@@ -94,7 +94,7 @@ function App() {
 						<Route
 							path="users"
 							element={
-								<RequireAdmin>
+								<RequireAdmin resource="users">
 									<Suspense>
 										<Users />
 									</Suspense>
@@ -104,7 +104,7 @@ function App() {
 						<Route
 							path="settings"
 							element={
-								<RequireAdmin>
+								<RequireAdmin resource="config">
 									<Suspense>
 										<Settings />
 									</Suspense>

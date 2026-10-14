@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AppPermissionsEditor } from "./AppPermissionsEditor";
+import { PermissionsEditor } from "./PermissionsEditor";
 
 vi.mock("../lib/api.js", () => ({ apiFetch: vi.fn() }));
 import { apiFetch } from "../lib/api.js";
@@ -11,7 +11,7 @@ function renderEditor(onClose = vi.fn()): void {
 	const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 	render(
 		<QueryClientProvider client={queryClient}>
-			<AppPermissionsEditor
+			<PermissionsEditor
 				user={{
 					id: 2,
 					username: "operator",
@@ -25,7 +25,7 @@ function renderEditor(onClose = vi.fn()): void {
 	);
 }
 
-describe("AppPermissionsEditor", () => {
+describe("PermissionsEditor", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.mocked(apiFetch).mockImplementation(
@@ -53,7 +53,7 @@ describe("AppPermissionsEditor", () => {
 		await user.click(await screen.findByRole("button", { name: "Add rule" }));
 		await user.selectOptions(screen.getByLabelText("Action 1"), "delete");
 		await user.selectOptions(screen.getByLabelText("Effect 1"), "deny");
-		await user.type(screen.getByLabelText("App scope 1"), "production");
+		await user.type(screen.getByLabelText("Resource scope 1"), "production");
 		await user.click(screen.getByRole("button", { name: "Save permissions" }));
 
 		await waitFor(() => {
@@ -63,10 +63,38 @@ describe("AppPermissionsEditor", () => {
 				expect.objectContaining({
 					method: "PUT",
 					body: JSON.stringify({
-						permissions: [{ action: "delete", effect: "deny", scope: "production" }],
+						permissions: [
+							{ resource: "apps", action: "delete", effect: "deny", scope: "production" },
+						],
 					}),
 				})
 			);
 		});
+	});
+
+	it("saves a database rule and clears a named scope for global configuration", async () => {
+		const user = userEvent.setup();
+		renderEditor();
+		await user.click(await screen.findByRole("button", { name: "Add rule" }));
+		await user.selectOptions(screen.getByLabelText("Resource 1"), "databases");
+		await user.selectOptions(screen.getByLabelText("Action 1"), "delete");
+		await user.type(screen.getByLabelText("Resource scope 1"), "production");
+		await user.click(screen.getByRole("button", { name: "Save permissions" }));
+		await waitFor(() =>
+			expect(apiFetch).toHaveBeenLastCalledWith(
+				"/users/2/permissions",
+				expect.anything(),
+				expect.objectContaining({
+					body: JSON.stringify({
+						permissions: [
+							{ resource: "databases", action: "delete", effect: "deny", scope: "production" },
+						],
+					}),
+				})
+			)
+		);
+		await user.selectOptions(screen.getByLabelText("Resource 1"), "config");
+		expect(screen.getByLabelText("Resource scope 1")).toBeDisabled();
+		expect(screen.getByLabelText("Resource scope 1")).toHaveValue("");
 	});
 });

@@ -3,17 +3,21 @@ import { useEffect, useState, type JSX } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api.js";
-import { AppPermissionSchema, type AppPermission, type User } from "@/lib/schemas.js";
+import { PermissionSchema, type Permission, type User } from "@/lib/schemas.js";
+import { queryClient } from "@/lib/query-client.js";
+import { queryKeys } from "@/lib/query-keys.js";
 
-const PERMISSIONS_SCHEMA = z.array(AppPermissionSchema);
-type EditablePermission = Pick<AppPermission, "action" | "scope" | "effect"> & { clientId: string };
+const PERMISSIONS_SCHEMA = z.array(PermissionSchema);
+type EditablePermission = Pick<Permission, "resource" | "action" | "scope" | "effect"> & {
+	clientId: string;
+};
 
-interface AppPermissionsEditorProps {
+interface PermissionsEditorProps {
 	user: User;
 	onClose: () => void;
 }
 
-export function AppPermissionsEditor({ user, onClose }: AppPermissionsEditorProps): JSX.Element {
+export function PermissionsEditor({ user, onClose }: PermissionsEditorProps): JSX.Element {
 	const [permissions, setPermissions] = useState<EditablePermission[]>([]);
 	const { data, isLoading } = useQuery({
 		queryKey: ["users", user.id, "permissions"],
@@ -23,7 +27,8 @@ export function AppPermissionsEditor({ user, onClose }: AppPermissionsEditorProp
 	useEffect(() => {
 		if (data) {
 			setPermissions(
-				data.map(({ action, effect, scope }) => ({
+				data.map(({ resource, action, effect, scope }) => ({
+					resource,
 					action,
 					effect,
 					scope,
@@ -38,10 +43,18 @@ export function AppPermissionsEditor({ user, onClose }: AppPermissionsEditorProp
 			apiFetch(`/users/${user.id}/permissions`, PERMISSIONS_SCHEMA, {
 				method: "PUT",
 				body: JSON.stringify({
-					permissions: permissions.map(({ action, effect, scope }) => ({ action, effect, scope })),
+					permissions: permissions.map(({ resource, action, effect, scope }) => ({
+						resource,
+						action,
+						effect,
+						scope,
+					})),
 				}),
 			}),
-		onSuccess: onClose,
+		onSuccess: async (): Promise<void> => {
+			await queryClient.invalidateQueries({ queryKey: queryKeys.auth.me });
+			onClose();
+		},
 	});
 
 	const updatePermission = (index: number, updates: Partial<EditablePermission>): void => {
@@ -56,10 +69,11 @@ export function AppPermissionsEditor({ user, onClose }: AppPermissionsEditorProp
 		<div className="border-t border-border bg-muted/30 p-5">
 			<div className="flex items-start justify-between gap-4 mb-4">
 				<div>
-					<h3 className="font-semibold">App permissions for {user.username}</h3>
+					<h3 className="font-semibold">Permissions for {user.username}</h3>
 					<p className="text-sm text-muted-foreground mt-1">
-						Specific app rules override all-app rules. Without a matching rule, the user role
-						applies.
+						Named resource rules override all-resource rules. Without a matching rule, the user role
+						applies. User scopes are usernames. Global configuration uses an empty scope. Only
+						administrators can change roles or administrator accounts.
 					</p>
 				</div>
 				<Button type="button" variant="ghost" onClick={onClose}>
@@ -74,8 +88,25 @@ export function AppPermissionsEditor({ user, onClose }: AppPermissionsEditorProp
 					{permissions.map((permission, index) => (
 						<div
 							key={permission.clientId}
-							className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_2fr_auto] gap-2"
+							className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_1fr_2fr_auto] gap-2"
 						>
+							<select
+								aria-label={`Resource ${index + 1}`}
+								value={permission.resource}
+								onChange={(event) =>
+									updatePermission(index, {
+										resource: event.target.value as Permission["resource"],
+										scope: null,
+									})
+								}
+								className="px-3 py-2 border border-border rounded-md bg-background"
+							>
+								<option value="apps">Apps</option>
+								<option value="databases">Databases</option>
+								<option value="plugins">Plugins</option>
+								<option value="config">Global configuration</option>
+								<option value="users">Users</option>
+							</select>
 							<select
 								aria-label={`Action ${index + 1}`}
 								value={permission.action}
@@ -105,10 +136,11 @@ export function AppPermissionsEditor({ user, onClose }: AppPermissionsEditorProp
 								<option value="deny">Deny</option>
 							</select>
 							<input
-								aria-label={`App scope ${index + 1}`}
+								aria-label={`Resource scope ${index + 1}`}
 								value={permission.scope ?? ""}
+								disabled={permission.resource === "config"}
 								onChange={(event) => updatePermission(index, { scope: event.target.value || null })}
-								placeholder="All apps"
+								placeholder="All resources of this type"
 								className="px-3 py-2 border border-border rounded-md bg-background"
 							/>
 							<Button
@@ -130,6 +162,7 @@ export function AppPermissionsEditor({ user, onClose }: AppPermissionsEditorProp
 								setPermissions((current) => [
 									...current,
 									{
+										resource: "apps",
 										action: "update",
 										effect: "deny",
 										scope: null,
