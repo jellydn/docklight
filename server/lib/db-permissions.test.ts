@@ -1,6 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
+import express from "express";
+import cookieParser from "cookie-parser";
+import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("./port-conflicts.js", () => ({ getPortConflicts: vi.fn() }));
 
 const TEST_DB_PATH = path.join(__dirname, "test-data", "permissions-test.db");
 
@@ -17,6 +22,28 @@ describe("app permission persistence", () => {
 	afterEach(() => {
 		vi.unstubAllEnvs();
 		vi.resetModules();
+	});
+
+	it("filters cached port conflicts after a read grant is revoked", async () => {
+		const { createUser, replaceAppPermissions } = await import("./db.js");
+		const { generateToken } = await import("./auth.js");
+		const { getPortConflicts } = await import("./port-conflicts.js");
+		const { registerAppPortRoutes } = await import("../routes/app-ports.js");
+		const { clearPrefix } = await import("./cache.js");
+		clearPrefix("apps:");
+		const user = createUser("viewer", "hash", "viewer");
+		vi.mocked(getPortConflicts).mockResolvedValue({
+			conflicts: [{ scheme: "http", hostPort: 8080, apps: ["public", "secret"] }],
+		});
+		const app = express();
+		app.use(cookieParser());
+		registerAppPortRoutes(app);
+		const cookie = `session=${generateToken(user)}`;
+		const before = await request(app).get("/api/apps/port-conflicts").set("Cookie", cookie);
+		expect(before.body.conflicts[0].apps).toEqual(["public", "secret"]);
+		replaceAppPermissions(user.id, [{ action: "read", scope: "secret", effect: "deny" }]);
+		const after = await request(app).get("/api/apps/port-conflicts").set("Cookie", cookie);
+		expect(after.body.conflicts).toEqual([{ scheme: "http", hostPort: 8080, apps: ["public"] }]);
 	});
 
 	it("prefers a scoped rule and replaces the complete app policy atomically", async () => {
