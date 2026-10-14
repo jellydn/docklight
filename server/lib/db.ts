@@ -536,30 +536,6 @@ export function replaceUserPermissions(
 	});
 }
 
-export function replaceAppPermissions(
-	userId: number,
-	permissions: Array<{
-		action: AppPermissionAction;
-		scope: string | null;
-		effect: PermissionEffect;
-	}>
-): AppPermission[] {
-	const database = getDb();
-	return runInTransaction(database, () => {
-		database
-			.prepare("DELETE FROM user_permissions WHERE user_id = ? AND resource = 'apps'")
-			.run(userId);
-		const insert = database.prepare(
-			`INSERT INTO user_permissions (user_id, resource, action, scope, effect)
-			 VALUES (?, 'apps', ?, ?, ?)`
-		);
-		for (const permission of permissions) {
-			insert.run(userId, permission.action, permission.scope, permission.effect);
-		}
-		return getAppPermissions(userId);
-	});
-}
-
 export function updateUser(
 	id: number,
 	updates: { role?: UserRole; passwordHash?: string; email?: string | null }
