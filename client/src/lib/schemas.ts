@@ -258,6 +258,7 @@ export const AuthMeSchema = z.object({
 			id: z.number(),
 			username: z.string(),
 			role: UserRoleSchema,
+			twoFactorAuthenticated: z.boolean().optional(),
 		})
 		.optional(),
 });

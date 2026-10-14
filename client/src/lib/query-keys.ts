@@ -26,6 +26,7 @@ export const queryKeys = {
 	},
 	auth: {
 		me: ["auth", "me"] as const,
+		twoFactor: ["auth", "two-factor"] as const,
 	},
 	settings: ["settings"] as const,
 };
