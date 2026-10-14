@@ -46,6 +46,13 @@ describe("PermissionsEditor", () => {
 		);
 	});
 
+	it("does not allow replacement when existing permissions cannot be loaded", async () => {
+		vi.mocked(apiFetch).mockRejectedValue(new Error("Unavailable"));
+		renderEditor();
+		expect(await screen.findByRole("alert")).toHaveTextContent("Could not load permissions");
+		expect(screen.queryByRole("button", { name: "Save permissions" })).not.toBeInTheDocument();
+	});
+
 	it("adds and saves a scoped app rule", async () => {
 		const user = userEvent.setup();
 		renderEditor();

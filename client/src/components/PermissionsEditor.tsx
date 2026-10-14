@@ -19,7 +19,7 @@ interface PermissionsEditorProps {
 
 export function PermissionsEditor({ user, onClose }: PermissionsEditorProps): JSX.Element {
 	const [permissions, setPermissions] = useState<EditablePermission[]>([]);
-	const { data, isLoading } = useQuery({
+	const { data, isLoading, error } = useQuery({
 		queryKey: ["users", user.id, "permissions"],
 		queryFn: () => apiFetch(`/users/${user.id}/permissions`, PERMISSIONS_SCHEMA),
 	});
@@ -83,6 +83,10 @@ export function PermissionsEditor({ user, onClose }: PermissionsEditorProps): JS
 
 			{isLoading ? (
 				<p className="text-sm text-muted-foreground">Loading permissions…</p>
+			) : error ? (
+				<p role="alert" className="text-sm text-destructive">
+					Could not load permissions. Close the editor and try again.
+				</p>
 			) : (
 				<div className="space-y-3">
 					{permissions.map((permission, index) => (
