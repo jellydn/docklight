@@ -84,6 +84,9 @@ function getDb(): DatabaseSync {
 	if (!userColumns.some((column) => column.name === "two_factor_enabled")) {
 		newDb.exec("ALTER TABLE users ADD COLUMN two_factor_enabled INTEGER NOT NULL DEFAULT 0");
 	}
+	if (!userColumns.some((column) => column.name === "two_factor_last_counter")) {
+		newDb.exec("ALTER TABLE users ADD COLUMN two_factor_last_counter INTEGER");
+	}
 	newDb.exec(
 		"CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL AND email != ''"
 	);
@@ -376,6 +379,7 @@ export function enableTwoFactor(
 			`UPDATE users
 			 SET two_factor_enabled = 1,
 				two_factor_secret = ?,
+				two_factor_last_counter = NULL,
 				two_factor_pending_secret = NULL,
 				two_factor_backup_codes = ?
 			 WHERE id = ?`
@@ -410,6 +414,18 @@ export function consumeTwoFactorBackupCode(userId: number, codeHash: string): bo
 			.run(JSON.stringify(state.backupCodeHashes), userId);
 		return true;
 	});
+}
+
+export function consumeTwoFactorCounter(userId: number, counter: number): boolean {
+	return (
+		getDb()
+			.prepare(
+				`UPDATE users SET two_factor_last_counter = ?
+				 WHERE id = ? AND two_factor_enabled = 1
+				 AND (two_factor_last_counter IS NULL OR two_factor_last_counter < ?)`
+			)
+			.run(counter, userId, counter).changes === 1
+	);
 }
 
 export function updateUser(

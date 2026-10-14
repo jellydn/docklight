@@ -11,6 +11,7 @@ import {
 } from "../lib/auth.js";
 import {
 	consumeTwoFactorBackupCode,
+	consumeTwoFactorCounter,
 	createPasswordResetToken,
 	deleteExpiredPasswordResetTokens,
 	disableTwoFactor,
@@ -28,6 +29,7 @@ import {
 	encryptTwoFactorSecret,
 	generateRecoveryCodes,
 	hashRecoveryCode,
+	totpCounter,
 	verifyTotp,
 } from "../lib/two-factor.js";
 import { safeAuditLogWithUserId } from "./util.js";
@@ -60,9 +62,10 @@ export function registerAuthRoutes(app: express.Application): void {
 
 			let validCode = false;
 			try {
-				validCode = twoFactorState.secret
-					? verifyTotp(twoFactorCode.trim(), decryptTwoFactorSecret(twoFactorState.secret))
-					: false;
+				const counter = twoFactorState.secret
+					? totpCounter(twoFactorCode.trim(), decryptTwoFactorSecret(twoFactorState.secret))
+					: null;
+				validCode = counter !== null && consumeTwoFactorCounter(user.id, counter);
 			} catch {
 				validCode = false;
 			}

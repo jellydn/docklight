@@ -7,8 +7,8 @@ const totp = authenticator.clone({ window: 1 });
 
 function getEncryptionKey(): Buffer {
 	const secret =
-		process.env.DOCKLIGHT_2FA_ENCRYPTION_KEY ??
-		process.env.JWT_SECRET ??
+		process.env.DOCKLIGHT_2FA_ENCRYPTION_KEY ||
+		process.env.JWT_SECRET ||
 		"docklight-dev-secret-change-in-production";
 	return createHash("sha256").update(secret).digest();
 }
@@ -50,13 +50,20 @@ export function createTwoFactorSetup(username: string): {
 }
 
 export function verifyTotp(code: string, secret: string): boolean {
-	return /^\d{6}$/.test(code) && totp.check(code, secret);
+	return totpCounter(code, secret) !== null;
+}
+
+export function totpCounter(code: string, secret: string): number | null {
+	if (!/^\d{6}$/.test(code)) return null;
+	const epoch = Date.now();
+	const delta = totp.clone({ epoch }).checkDelta(code, secret);
+	return delta === null ? null : Math.floor(epoch / 30_000) + delta;
 }
 
 export function generateRecoveryCodes(): string[] {
 	return Array.from({ length: RECOVERY_CODE_COUNT }, () => {
-		const value = randomBytes(5).toString("hex").toUpperCase();
-		return `${value.slice(0, 5)}-${value.slice(5)}`;
+		const value = randomBytes(16).toString("hex").toUpperCase();
+		return `${value.slice(0, 16)}-${value.slice(16)}`;
 	});
 }
 

@@ -26,6 +26,14 @@ describe("two-factor helpers", () => {
 		expect(decryptTwoFactorSecret(encrypted)).toBe(secret);
 	});
 
+	it("uses the JWT key when the optional override is empty", () => {
+		vi.stubEnv("DOCKLIGHT_2FA_ENCRYPTION_KEY", "");
+		vi.stubEnv("JWT_SECRET", "jwt-key");
+		const encrypted = encryptTwoFactorSecret("JBSWY3DPEHPK3PXP");
+		vi.stubEnv("DOCKLIGHT_2FA_ENCRYPTION_KEY", "jwt-key");
+		expect(decryptTwoFactorSecret(encrypted)).toBe("JBSWY3DPEHPK3PXP");
+	});
+
 	it("rejects a secret encrypted with another key", () => {
 		const encrypted = encryptTwoFactorSecret("JBSWY3DPEHPK3PXP");
 		vi.stubEnv("DOCKLIGHT_2FA_ENCRYPTION_KEY", "different-key");
@@ -46,7 +54,7 @@ describe("two-factor helpers", () => {
 
 		expect(codes).toHaveLength(10);
 		expect(new Set(codes)).toHaveLength(10);
-		expect(codes.every((code) => /^[A-F0-9]{5}-[A-F0-9]{5}$/.test(code))).toBe(true);
+		expect(codes.every((code) => /^[A-F0-9]{16}-[A-F0-9]{16}$/.test(code))).toBe(true);
 		expect(hashRecoveryCode(codes[0].toLowerCase())).toBe(hashRecoveryCode(codes[0]));
 	});
 });
