@@ -291,6 +291,8 @@ Admins can open **Users**, select **Permissions** for an account, and add allow 
 
 Database create, update (link/unlink), and delete are separate permissions. Link/unlink also requires update access to the target app, for JSON and streaming requests. Database read access does not grant connection credentials; those require database update access. App read restrictions apply to lists, details, log WebSockets, and live events. Global configuration has no named scope: read permits viewing settings, and update permits changing the server connection and testing SSH. Treat configuration update as a high-trust grant. Plugin permissions control the existing read-only plugin list; no plugin mutation API is exposed. User scopes use usernames; delegated account management cannot create administrators or change roles. Rule replacement is atomic and recorded in the audit trail. Existing app-only API payloads remain valid and default to the apps resource.
 
+Global command history can contain output from several resources. Non-administrators with any explicit read denial cannot access recent command history or command audit logs. This prevents those logs from exposing restricted resources. Role-only access is unchanged.
+
 ## 📦 Project Structure
 
 ```text

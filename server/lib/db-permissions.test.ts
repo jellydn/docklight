@@ -83,6 +83,7 @@ describe("app permission persistence", () => {
 		const { registerDatabaseRoutes } = await import("../routes/databases.js");
 		const { registerPluginRoutes } = await import("../routes/plugins.js");
 		const { registerSettingsRoutes } = await import("../routes/settings.js");
+		const { registerCommandRoutes } = await import("../routes/commands.js");
 		const cache = await import("./cache.js");
 		const admin = createUser("admin", "hash", "admin");
 		const operator = createUser("operator", "hash", "operator");
@@ -95,6 +96,7 @@ describe("app permission persistence", () => {
 		registerDatabaseRoutes(app);
 		registerPluginRoutes(app);
 		registerSettingsRoutes(app);
+		registerCommandRoutes(app);
 		const session = (user: typeof admin): string => `session=${generateToken(user)}`;
 		const policy = [
 			{ resource: "databases", action: "read", effect: "deny", scope: null },
@@ -116,6 +118,12 @@ describe("app permission persistence", () => {
 			.send({ permissions: policy });
 		expect(saved.status).toBe(200);
 		expect(saved.body).toHaveLength(policy.length);
+		cache.set("commands:recent:20", [{ command: "dokku apps:list", stdout: "private-app" }]);
+		for (const endpoint of ["/api/commands", "/api/audit/logs"]) {
+			expect((await request(app).get(endpoint).set("Cookie", session(operator))).status).toBe(403);
+			expect((await request(app).get(endpoint).set("Cookie", session(admin))).status).toBe(200);
+			expect((await request(app).get(endpoint).set("Cookie", session(viewer))).status).toBe(200);
+		}
 		expect(
 			getUserAuditLogs().logs.some((entry) => entry.action === "user:permissions:update")
 		).toBe(true);

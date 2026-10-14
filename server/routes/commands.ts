@@ -5,6 +5,7 @@ import { get, set } from "../lib/cache.js";
 import type { AuditLog, CommandHistory } from "../lib/db.js";
 import {
 	getAuditLogs,
+	getUserPermissions,
 	getCommandHistoryForExport,
 	getRecentCommands,
 	getUserAuditLogs,
@@ -47,8 +48,26 @@ function userAuditLogsToCSV(logs: AuditLog[]): string {
 	return [headers.join(","), ...rows].join("\n");
 }
 
+function requireCommandHistoryRead(
+	req: express.Request,
+	res: express.Response,
+	next: express.NextFunction
+): void {
+	if (
+		req.user?.role !== "admin" &&
+		(req.user?.userId === undefined ||
+			getUserPermissions(req.user.userId).some(
+				(rule) => rule.action === "read" && rule.effect === "deny"
+			))
+	) {
+		res.status(403).json({ error: "Global command history requires unrestricted read access" });
+		return;
+	}
+	next();
+}
+
 export function registerCommandRoutes(app: express.Application): void {
-	app.get("/api/commands", authMiddleware, (req, res) => {
+	app.get("/api/commands", authMiddleware, requireCommandHistoryRead, (req, res) => {
 		const limit = Number.parseInt(req.query.limit as string) || 20;
 		const cacheKey = `commands:recent:${limit}`;
 		const cached = get(cacheKey);
@@ -63,7 +82,7 @@ export function registerCommandRoutes(app: express.Application): void {
 		res.json(commands);
 	});
 
-	app.get("/api/audit/logs", authMiddleware, (req, res) => {
+	app.get("/api/audit/logs", authMiddleware, requireCommandHistoryRead, (req, res) => {
 		const limit = Number.parseInt(req.query.limit as string) || 50;
 		const offset = Number.parseInt(req.query.offset as string) || 0;
 		const startDate = req.query.startDate as string | undefined;
