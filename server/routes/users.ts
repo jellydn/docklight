@@ -7,6 +7,8 @@ import {
 	deleteUser,
 	type UserRole,
 	deleteUserWithAdminGuard,
+	getAppPermissions,
+	replaceAppPermissions,
 } from "../lib/db.js";
 import { authMiddleware, requireAdmin, hashPassword } from "../lib/auth.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
@@ -141,6 +143,77 @@ export function registerUserRoutes(app: express.Application): void {
 
 		clearPrefix("users:");
 		res.json(getUserById(id));
+	});
+
+	app.get("/api/users/:id/permissions", authMiddleware, requireAdmin, (req, res) => {
+		const id = Number.parseInt(req.params.id as string);
+		if (Number.isNaN(id)) {
+			res.status(400).json({ error: "Invalid user ID" });
+			return;
+		}
+		if (!getUserById(id)) {
+			res.status(404).json({ error: "User not found" });
+			return;
+		}
+		res.json(getAppPermissions(id));
+	});
+
+	app.put("/api/users/:id/permissions", authMiddleware, requireAdmin, (req, res) => {
+		const id = Number.parseInt(req.params.id as string);
+		if (Number.isNaN(id)) {
+			res.status(400).json({ error: "Invalid user ID" });
+			return;
+		}
+		const user = getUserById(id);
+		if (!user) {
+			res.status(404).json({ error: "User not found" });
+			return;
+		}
+
+		const permissions = req.body?.permissions;
+		if (!Array.isArray(permissions)) {
+			res.status(400).json({ error: "Permissions must be an array" });
+			return;
+		}
+
+		const normalized: Array<{
+			action: "create" | "read" | "update" | "delete";
+			scope: string | null;
+			effect: "allow" | "deny";
+		}> = [];
+		const unique = new Set<string>();
+		for (const permission of permissions) {
+			if (
+				!permission ||
+				!["create", "read", "update", "delete"].includes(permission.action) ||
+				!["allow", "deny"].includes(permission.effect) ||
+				(permission.scope !== null &&
+					permission.scope !== undefined &&
+					typeof permission.scope !== "string")
+			) {
+				res.status(400).json({ error: "Invalid app permission" });
+				return;
+			}
+			const scope = typeof permission.scope === "string" ? permission.scope.trim() || null : null;
+			const key = `${permission.action}:${scope ?? "*"}`;
+			if (unique.has(key)) {
+				res.status(400).json({ error: "Duplicate app permission" });
+				return;
+			}
+			unique.add(key);
+			normalized.push({
+				action: permission.action,
+				effect: permission.effect,
+				scope,
+			});
+		}
+
+		const saved = replaceAppPermissions(id, normalized);
+		safeAuditLog(req, "user:permissions:update", user.username, {
+			resource: "apps",
+			permissions: normalized,
+		});
+		res.json(saved);
 	});
 
 	app.delete("/api/users/:id", authMiddleware, requireAdmin, (req, res) => {

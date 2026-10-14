@@ -8,6 +8,7 @@ interface AppOverviewProps {
 	copySuccess: CopySuccess;
 	scaleChanges: Record<string, number>;
 	canModify: boolean;
+	canDelete: boolean;
 	onCopyRemote: () => void;
 	onCopyPush: () => void;
 	onScaleChange: (processType: string, count: number, currentCount: number) => void;
@@ -21,6 +22,7 @@ export function AppOverview({
 	copySuccess,
 	scaleChanges,
 	canModify,
+	canDelete,
 	onCopyRemote,
 	onCopyPush,
 	onScaleChange,
@@ -137,10 +139,12 @@ export function AppOverview({
 					)}
 				</div>
 
-				{canModify && (
+				{canDelete && (
 					<div className="mt-8 pt-6 border-t border-destructive/20">
 						<div className="rounded-lg border border-destructive/30 p-4 bg-destructive-surface">
-							<h3 className="text-lg font-semibold text-destructive-on-surface mb-2">Danger Zone</h3>
+							<h3 className="text-lg font-semibold text-destructive-on-surface mb-2">
+								Danger Zone
+							</h3>
 							<p className="text-sm text-destructive-on-surface mb-4">
 								Deleting an app is irreversible. All data, logs, and configurations will be
 								permanently removed.

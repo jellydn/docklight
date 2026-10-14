@@ -9,7 +9,7 @@ import {
 } from "../lib/ports.js";
 import { getPortConflicts } from "../lib/port-conflicts.js";
 import { clearPrefix, get, set } from "../lib/cache.js";
-import { authMiddleware, requireOperator } from "../lib/auth.js";
+import { authMiddleware, canAccessApp } from "../lib/auth.js";
 import { DokkuCommands } from "../lib/dokku.js";
 import { isSSERequest } from "../lib/sse.js";
 import { isValidAppName } from "../lib/apps.js";
@@ -20,20 +20,32 @@ export function registerAppPortRoutes(app: express.Application): void {
 	app.get("/api/apps/port-conflicts", authMiddleware, async (req, res) => {
 		const userId = getUserId(req);
 		const cacheKey = `apps:port-conflicts:${userId ?? "anonymous"}`;
-		const cached = get(cacheKey);
-		if (cached) {
-			res.json(cached);
-			return;
-		}
-
-		const result = await getPortConflicts(userId);
-		if ("error" in result && result.error) {
+		const result =
+			(get(cacheKey) as Awaited<ReturnType<typeof getPortConflicts>> | null) ??
+			(await getPortConflicts(userId));
+		if ("error" in result) {
 			res.status(getStatusCode(result.exitCode)).json(result);
 			return;
 		}
 
 		set(cacheKey, result, 30_000);
-		res.json(result);
+		res.json({
+			conflicts: result.conflicts
+				.map((conflict) => ({
+					...conflict,
+					apps: conflict.apps.filter(
+						(name) =>
+							req.user?.userId !== undefined &&
+							!!req.user.role &&
+							canAccessApp(req.user.userId, req.user.role, "read", name, [
+								"admin",
+								"operator",
+								"viewer",
+							])
+					),
+				}))
+				.filter((conflict) => conflict.apps.length > 0),
+		});
 	});
 
 	app.get("/api/apps/:name/ports", authMiddleware, async (req, res) => {
@@ -55,7 +67,7 @@ export function registerAppPortRoutes(app: express.Application): void {
 		res.json({ ports });
 	});
 
-	app.post("/api/apps/:name/ports", authMiddleware, requireOperator, async (req, res) => {
+	app.post("/api/apps/:name/ports", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { scheme, hostPort, containerPort } = req.body;
 
@@ -105,7 +117,7 @@ export function registerAppPortRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.delete("/api/apps/:name/ports", authMiddleware, requireOperator, async (req, res) => {
+	app.delete("/api/apps/:name/ports", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { scheme, hostPort, containerPort } = req.body;
 
@@ -155,7 +167,7 @@ export function registerAppPortRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.delete("/api/apps/:name/ports/all", authMiddleware, requireOperator, async (req, res) => {
+	app.delete("/api/apps/:name/ports/all", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 
 		if (isSSERequest(req)) {

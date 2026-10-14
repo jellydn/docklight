@@ -5,6 +5,7 @@ import { apiFetch } from "../lib/api.js";
 import { queryClient } from "../lib/query-client.js";
 import { queryKeys } from "../lib/query-keys.js";
 import { UserSchema, type User, type UserRole } from "../lib/schemas.js";
+import { AppPermissionsEditor } from "@/components/AppPermissionsEditor.js";
 
 const UsersArraySchema = z.array(UserSchema);
 
@@ -46,6 +47,7 @@ export function Users() {
 	const [editEmail, setEditEmail] = useState("");
 	const [editPassword, setEditPassword] = useState("");
 	const [editError, setEditError] = useState("");
+	const [permissionsUser, setPermissionsUser] = useState<User | null>(null);
 
 	const createUserMutation = useMutation({
 		mutationFn: async (userData: {
@@ -319,6 +321,15 @@ export function Users() {
 													>
 														Edit
 													</button>
+													{user.role !== "admin" && (
+														<button
+															type="button"
+															onClick={() => setPermissionsUser(user)}
+															className="px-3 py-1 bg-muted rounded-md text-xs hover:bg-accent"
+														>
+															Permissions
+														</button>
+													)}
 													<button
 														type="button"
 														onClick={() => handleDelete(user.id, user.username)}
@@ -340,6 +351,12 @@ export function Users() {
 								)}
 							</tbody>
 						</table>
+						{permissionsUser && (
+							<AppPermissionsEditor
+								user={permissionsUser}
+								onClose={() => setPermissionsUser(null)}
+							/>
+						)}
 					</div>
 				)}
 			</div>

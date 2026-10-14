@@ -1,7 +1,7 @@
 import type express from "express";
 import { enableSSL, getSSL, renewSSL } from "../lib/ssl.js";
 import { clearPrefix } from "../lib/cache.js";
-import { authMiddleware, requireOperator } from "../lib/auth.js";
+import { authMiddleware } from "../lib/auth.js";
 import { executeCommandStreaming } from "../lib/executor.js";
 import { DokkuCommands } from "../lib/dokku.js";
 import { isSSERequest, createSSEWriter } from "../lib/sse.js";
@@ -27,7 +27,7 @@ export function registerAppSSLRoutes(app: express.Application): void {
 		res.json(ssl);
 	});
 
-	app.post("/api/apps/:name/ssl/enable", authMiddleware, requireOperator, async (req, res) => {
+	app.post("/api/apps/:name/ssl/enable", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 		const { email } = req.body ?? {};
 
@@ -85,7 +85,7 @@ export function registerAppSSLRoutes(app: express.Application): void {
 		res.json(result);
 	});
 
-	app.post("/api/apps/:name/ssl/renew", authMiddleware, requireOperator, async (req, res) => {
+	app.post("/api/apps/:name/ssl/renew", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 
 		if (isSSERequest(req)) {

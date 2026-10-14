@@ -1,7 +1,7 @@
 import type express from "express";
 import { getChecksReport } from "../lib/checks.js";
 import { get, set } from "../lib/cache.js";
-import { authMiddleware, requireOperator } from "../lib/auth.js";
+import { authMiddleware } from "../lib/auth.js";
 import { DokkuCommands } from "../lib/dokku.js";
 import { isSSERequest } from "../lib/sse.js";
 import { isValidAppName } from "../lib/apps.js";
@@ -36,7 +36,7 @@ export function registerAppChecksRoutes(app: express.Application): void {
 		res.json(report);
 	});
 
-	app.post("/api/apps/:name/checks/enable", authMiddleware, requireOperator, async (req, res) => {
+	app.post("/api/apps/:name/checks/enable", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 		if (!isSSERequest(req)) {
 			res.status(400).json({ error: "This endpoint requires Accept: text/event-stream" });
@@ -53,7 +53,7 @@ export function registerAppChecksRoutes(app: express.Application): void {
 		});
 	});
 
-	app.post("/api/apps/:name/checks/disable", authMiddleware, requireOperator, async (req, res) => {
+	app.post("/api/apps/:name/checks/disable", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 		if (!isSSERequest(req)) {
 			res.status(400).json({ error: "This endpoint requires Accept: text/event-stream" });
@@ -70,7 +70,7 @@ export function registerAppChecksRoutes(app: express.Application): void {
 		});
 	});
 
-	app.post("/api/apps/:name/checks/skip", authMiddleware, requireOperator, async (req, res) => {
+	app.post("/api/apps/:name/checks/skip", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 		if (!isSSERequest(req)) {
 			res.status(400).json({ error: "This endpoint requires Accept: text/event-stream" });
@@ -87,7 +87,7 @@ export function registerAppChecksRoutes(app: express.Application): void {
 		});
 	});
 
-	app.post("/api/apps/:name/checks/run", authMiddleware, requireOperator, async (req, res) => {
+	app.post("/api/apps/:name/checks/run", authMiddleware, async (req, res) => {
 		const name = getParam(req.params, "name");
 		if (!isSSERequest(req)) {
 			res.status(400).json({ error: "This endpoint requires Accept: text/event-stream" });
