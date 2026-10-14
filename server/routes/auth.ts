@@ -52,7 +52,7 @@ export function registerAuthRoutes(app: express.Application): void {
 		}
 
 		const twoFactorState = getUserTwoFactorState(user.id);
-		if (twoFactorState?.enabled && twoFactorState.secret) {
+		if (twoFactorState?.enabled) {
 			if (typeof twoFactorCode !== "string" || !twoFactorCode.trim()) {
 				res.json({ success: false, requiresTwoFactor: true });
 				return;
@@ -60,7 +60,9 @@ export function registerAuthRoutes(app: express.Application): void {
 
 			let validCode = false;
 			try {
-				validCode = verifyTotp(twoFactorCode.trim(), decryptTwoFactorSecret(twoFactorState.secret));
+				validCode = twoFactorState.secret
+					? verifyTotp(twoFactorCode.trim(), decryptTwoFactorSecret(twoFactorState.secret))
+					: false;
 			} catch {
 				validCode = false;
 			}

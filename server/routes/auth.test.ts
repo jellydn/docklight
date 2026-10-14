@@ -195,6 +195,18 @@ describe("auth routes", () => {
 			});
 		expect(verified.body).toEqual({ success: true });
 		expect(verified.headers["set-cookie"]?.[0]).toContain("session=");
+
+		vi.mocked(getUserTwoFactorState).mockReturnValue({
+			enabled: true,
+			secret: null,
+			pendingSecret: null,
+			backupCodeHashes: [],
+		});
+		const missingSecret = await request(createTestApp())
+			.post("/api/auth/login")
+			.send({ username: "alice", password: "correct-password" });
+		expect(missingSecret.body).toEqual({ success: false, requiresTwoFactor: true });
+		expect(missingSecret.headers["set-cookie"]).toBeUndefined();
 	});
 
 	it("should consume a recovery code once when TOTP verification fails", async () => {
