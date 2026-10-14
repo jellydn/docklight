@@ -1,13 +1,15 @@
 import type { ReactNode, JSX } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context.js";
+import type { Permission } from "@/lib/schemas.js";
 
 type RequireAdminProps = {
 	children: ReactNode;
+	resource?: Permission["resource"];
 };
 
-export function RequireAdmin({ children }: RequireAdminProps): JSX.Element {
-	const { role, loading } = useAuth();
+export function RequireAdmin({ children, resource }: RequireAdminProps): JSX.Element {
+	const { role, loading, canAccessSome } = useAuth();
 
 	if (loading) {
 		return (
@@ -17,7 +19,7 @@ export function RequireAdmin({ children }: RequireAdminProps): JSX.Element {
 		);
 	}
 
-	if (role !== "admin") {
+	if (role !== "admin" && (!resource || !canAccessSome(resource, "read"))) {
 		return <Navigate to="/dashboard" replace />;
 	}
 

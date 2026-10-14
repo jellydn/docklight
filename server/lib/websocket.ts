@@ -3,7 +3,7 @@ import type http from "node:http";
 import type net from "node:net";
 import { WebSocketServer } from "ws";
 import type { WebSocket as WS } from "ws";
-import { verifyToken, type JWTPayload } from "./auth.js";
+import { canAccessApp, verifyToken, type JWTPayload } from "./auth.js";
 import { isValidAppName } from "./apps.js";
 import { buildRuntimeCommand } from "./executor.js";
 import { logger } from "./logger.js";
@@ -32,6 +32,7 @@ interface ExtendedIncomingMessage extends http.IncomingMessage {
 	userId?: number | string;
 	clientIP?: string;
 	isEventStream?: boolean;
+	user?: JWTPayload;
 }
 
 function markActivity(ws: ExtendedWebSocket): void {
@@ -236,6 +237,21 @@ export function setupLogStreaming(server: http.Server) {
 			socket.destroy();
 			return;
 		}
+		if (
+			req.appName &&
+			(payload.userId === undefined ||
+				!payload.role ||
+				!canAccessApp(payload.userId, payload.role, "read", req.appName, [
+					"admin",
+					"operator",
+					"viewer",
+				]))
+		) {
+			socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+			socket.destroy();
+			return;
+		}
+		req.user = payload;
 
 		const userId = getUserIdentifier(payload);
 		req.userId = userId;
@@ -312,6 +328,14 @@ export function setupLogStreaming(server: http.Server) {
 		const userId = req.userId;
 		const clientIP = req.clientIP ?? "unknown";
 		ws.clientIP = clientIP;
+		const canRead = (name: string): boolean => {
+			const user = req.user;
+			return (
+				user?.userId !== undefined &&
+				!!user.role &&
+				canAccessApp(user.userId, user.role, "read", name, ["admin", "operator", "viewer"])
+			);
+		};
 
 		if (userId) {
 			ws.userId = userId;
@@ -373,7 +397,7 @@ export function setupLogStreaming(server: http.Server) {
 
 		if (isEventStream) {
 			const unsubscribe = subscribeToAppEvents((event): void => {
-				if (ws.readyState === ws.OPEN) {
+				if (ws.readyState === ws.OPEN && canRead(event.appName)) {
 					markActivity(ws);
 					ws.send(JSON.stringify(event));
 				}
@@ -397,6 +421,10 @@ export function setupLogStreaming(server: http.Server) {
 		let initialMessageReceived = false;
 
 		const startLogProcess = (count: number): void => {
+			if (!canRead(appName as string)) {
+				ws.close(1008, "App read permission is required");
+				return;
+			}
 			const dokkuCommand = DokkuCommands.logsFollow(appName as string, count);
 			if (!isCommandAllowed(dokkuCommand)) {
 				logger.error({ command: dokkuCommand }, "Rejected non-allowlisted log streaming command");
@@ -406,9 +434,16 @@ export function setupLogStreaming(server: http.Server) {
 			const command = buildRuntimeCommand(dokkuCommand);
 			logProcess = spawn("sh", ["-lc", command]);
 
-			logProcess.stdout?.on("data", (data: Buffer) => sendLogLines(ws, data, false));
-
-			logProcess.stderr?.on("data", (data: Buffer) => sendLogLines(ws, data, true));
+			const sendAllowed = (data: Buffer, isError: boolean): void => {
+				if (!canRead(appName as string)) {
+					logProcess?.kill();
+					ws.close(1008, "App read permission is required");
+					return;
+				}
+				sendLogLines(ws, data, isError);
+			};
+			logProcess.stdout?.on("data", (data: Buffer) => sendAllowed(data, false));
+			logProcess.stderr?.on("data", (data: Buffer) => sendAllowed(data, true));
 
 			logProcess.on("error", (error: Error) => {
 				ws.send(JSON.stringify({ error: error.message }));

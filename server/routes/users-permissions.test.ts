@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../lib/auth.js", () => ({
 	authMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 	requireAdmin: (_req: unknown, _res: unknown, next: () => void) => next(),
+	requireResourcePermission: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+	canAccessResource: vi.fn(() => true),
 	hashPassword: vi.fn(),
 }));
 
@@ -15,14 +17,14 @@ vi.mock("../lib/db.js", () => ({
 	updateUserWithGuard: vi.fn(),
 	deleteUser: vi.fn(),
 	deleteUserWithAdminGuard: vi.fn(),
-	getAppPermissions: vi.fn(),
-	replaceAppPermissions: vi.fn(),
+	getUserPermissions: vi.fn(),
+	replaceUserPermissions: vi.fn(),
 }));
 
 vi.mock("../lib/cache.js", () => ({ get: vi.fn(), set: vi.fn(), clearPrefix: vi.fn() }));
 vi.mock("./util.js", () => ({ safeAuditLog: vi.fn(), handleDbError: vi.fn() }));
 
-import { getUserById, replaceAppPermissions } from "../lib/db.js";
+import { getUserById, replaceUserPermissions } from "../lib/db.js";
 import { safeAuditLog } from "./util.js";
 import { registerUserRoutes } from "./users.js";
 
@@ -46,7 +48,7 @@ describe("user app permission routes", () => {
 	});
 
 	it("normalizes, saves, and audits app permission rules", async () => {
-		vi.mocked(replaceAppPermissions).mockReturnValue([]);
+		vi.mocked(replaceUserPermissions).mockReturnValue([]);
 
 		const response = await request(createApp())
 			.put("/api/users/2/permissions")
@@ -55,14 +57,14 @@ describe("user app permission routes", () => {
 			});
 
 		expect(response.status).toBe(200);
-		expect(replaceAppPermissions).toHaveBeenCalledWith(2, [
-			{ action: "delete", effect: "deny", scope: "production" },
+		expect(replaceUserPermissions).toHaveBeenCalledWith(2, [
+			{ resource: "apps", action: "delete", effect: "deny", scope: "production" },
 		]);
 		expect(safeAuditLog).toHaveBeenCalledWith(
 			expect.anything(),
 			"user:permissions:update",
 			"operator",
-			expect.objectContaining({ resource: "apps" })
+			expect.objectContaining({ permissions: expect.any(Array) })
 		);
 	});
 
@@ -77,7 +79,7 @@ describe("user app permission routes", () => {
 			});
 
 		expect(response.status).toBe(400);
-		expect(response.body).toEqual({ error: "Duplicate app permission" });
-		expect(replaceAppPermissions).not.toHaveBeenCalled();
+		expect(response.body).toEqual({ error: "Duplicate permission" });
+		expect(replaceUserPermissions).not.toHaveBeenCalled();
 	});
 });

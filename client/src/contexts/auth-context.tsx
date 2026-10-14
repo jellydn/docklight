@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api.js";
 import { AuthMeSchema } from "@/lib/schemas.js";
 import type { UserRole } from "@/lib/schemas.js";
-import type { AppPermission } from "@/lib/schemas.js";
+import type { Permission } from "@/lib/schemas.js";
 import { queryKeys } from "@/lib/query-keys.js";
 
 interface AuthContextValue {
@@ -14,6 +14,12 @@ interface AuthContextValue {
 	canCreateApp: boolean;
 	canModifyApp: (name: string) => boolean;
 	canDeleteApp: (name: string) => boolean;
+	canAccess: (
+		resource: Permission["resource"],
+		action: Permission["action"],
+		scope?: string | null
+	) => boolean;
+	canAccessSome: (resource: Permission["resource"], action: Permission["action"]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -24,6 +30,8 @@ const AuthContext = createContext<AuthContextValue>({
 	canCreateApp: false,
 	canModifyApp: () => false,
 	canDeleteApp: () => false,
+	canAccess: () => false,
+	canAccessSome: () => false,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
@@ -36,24 +44,41 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
 	const value = useMemo(() => {
 		const role = authData?.user?.role ?? null;
 		const appPermissions = authData?.user?.appPermissions ?? [];
-		const canUseAppPermission = (
-			action: AppPermission["action"],
-			scope: string | null
+		const permissions = authData?.user?.permissions ?? appPermissions;
+		const canAccess = (
+			resource: Permission["resource"],
+			action: Permission["action"],
+			scope: string | null = null
 		): boolean => {
 			if (role === "admin") return true;
-			const permission =
-				appPermissions.find((item) => item.action === action && item.scope === scope) ??
-				appPermissions.find((item) => item.action === action && item.scope === null);
-			return permission ? permission.effect === "allow" : role === "operator";
+			if (!role) return false;
+			const rules = permissions.filter(
+				(item) => item.resource === resource && item.action === action
+			);
+			const rule =
+				rules.find((item) => item.scope === scope) ?? rules.find((item) => item.scope === null);
+			if (rule) return rule.effect === "allow";
+			if (resource === "config" || resource === "users") return false;
+			return action === "read" || role === "operator";
 		};
+		const canAccessSome = (
+			resource: Permission["resource"],
+			action: Permission["action"]
+		): boolean =>
+			canAccess(resource, action) ||
+			permissions.some(
+				(item) => item.resource === resource && item.action === action && item.effect === "allow"
+			);
 		return {
 			role,
 			username: authData?.user?.username ?? null,
 			loading: isLoading,
 			canModify: role === "admin" || role === "operator",
-			canCreateApp: canUseAppPermission("create", null),
-			canModifyApp: (name: string): boolean => canUseAppPermission("update", name),
-			canDeleteApp: (name: string): boolean => canUseAppPermission("delete", name),
+			canCreateApp: canAccess("apps", "create"),
+			canModifyApp: (name: string): boolean => canAccess("apps", "update", name),
+			canDeleteApp: (name: string): boolean => canAccess("apps", "delete", name),
+			canAccess,
+			canAccessSome,
 		};
 	}, [authData?.user, isLoading]);
 

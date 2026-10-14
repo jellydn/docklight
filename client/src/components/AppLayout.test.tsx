@@ -28,7 +28,13 @@ let mockRole: string | null = null;
 let mockUsername: string | null = null;
 
 vi.mock("@/contexts/auth-context.js", () => ({
-	useAuth: () => ({ role: mockRole, username: mockUsername, loading: false, canModify: false }),
+	useAuth: () => ({
+		role: mockRole,
+		username: mockUsername,
+		loading: false,
+		canModify: false,
+		canAccessSome: () => false,
+	}),
 }));
 
 describe("AppLayout", () => {
@@ -177,16 +183,19 @@ describe("AppLayout", () => {
 		it.each([
 			["/users", /Users/],
 			["/settings", /^Settings$/],
-		])("should apply bg-sidebar-foreground/20 to %s link when role is admin", (route, namePattern) => {
-			mockRole = "admin";
-			render(
-				<MemoryRouter initialEntries={[route]}>
-					<AppLayout />
-				</MemoryRouter>
-			);
-			const link = screen.getByRole("link", { name: namePattern });
-			expect(link.className).toContain("bg-sidebar-foreground/20");
-		});
+		])(
+			"should apply bg-sidebar-foreground/20 to %s link when role is admin",
+			(route, namePattern) => {
+				mockRole = "admin";
+				render(
+					<MemoryRouter initialEntries={[route]}>
+						<AppLayout />
+					</MemoryRouter>
+				);
+				const link = screen.getByRole("link", { name: namePattern });
+				expect(link.className).toContain("bg-sidebar-foreground/20");
+			}
+		);
 	});
 
 	describe("sidebar footer with user info", () => {

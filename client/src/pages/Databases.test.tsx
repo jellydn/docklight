@@ -31,7 +31,12 @@ const mockAuthState: { role: string; loading: boolean; canModify: boolean } = {
 };
 
 vi.mock("../contexts/auth-context.js", () => ({
-	useAuth: () => mockAuthState,
+	useAuth: () => ({
+		...mockAuthState,
+		canAccess: () => mockAuthState.canModify,
+		canAccessSome: () => mockAuthState.canModify,
+		canModifyApp: () => mockAuthState.canModify,
+	}),
 }));
 
 const mockToastContext = {

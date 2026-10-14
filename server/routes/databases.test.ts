@@ -10,6 +10,10 @@ vi.mock("../lib/db.js", () => ({ insertAuditLog: vi.fn() }));
 vi.mock("../lib/auth.js", () => ({
 	authMiddleware: (_req: Request, _res: Response, next: NextFunction) => next(),
 	requireOperator: (_req: Request, _res: Response, next: NextFunction) => next(),
+	requireResourcePermission: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+	requireAppPermission: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+	getAppScope: vi.fn(),
+	canAccessResource: vi.fn(() => true),
 }));
 
 import { executeCommand, executeCommandStreaming } from "../lib/executor.js";

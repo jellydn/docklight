@@ -311,15 +311,20 @@ export interface UserTwoFactorState {
 
 export type AppPermissionAction = "create" | "read" | "update" | "delete";
 export type PermissionEffect = "allow" | "deny";
+export type PermissionResource = "apps" | "databases" | "plugins" | "config" | "users";
 
-export interface AppPermission {
+export interface Permission {
 	id: number;
 	userId: number;
-	resource: "apps";
+	resource: PermissionResource;
 	action: AppPermissionAction;
 	scope: string | null;
 	effect: PermissionEffect;
 	createdAt: string;
+}
+
+export interface AppPermission extends Permission {
+	resource: "apps";
 }
 
 export function createUser(
@@ -474,42 +479,60 @@ export function findAppPermission(
 	action: AppPermissionAction,
 	scope: string | null
 ): PermissionEffect | null {
+	return findPermission(userId, "apps", action, scope);
+}
+
+export function findPermission(
+	userId: number,
+	resource: PermissionResource,
+	action: AppPermissionAction,
+	scope: string | null
+): PermissionEffect | null {
 	const row = getDb()
 		.prepare(
 			`SELECT effect
 			 FROM user_permissions
 			 WHERE user_id = ?
-				AND resource = 'apps'
+				AND resource = ?
 				AND action = ?
 				AND (scope IS NULL OR scope = ?)
 			 ORDER BY CASE WHEN scope = ? THEN 0 ELSE 1 END
 			 LIMIT 1`
 		)
-		.get(userId, action, scope, scope) as { effect: PermissionEffect } | undefined;
+		.get(userId, resource, action, scope, scope) as { effect: PermissionEffect } | undefined;
 	return row?.effect ?? null;
 }
 
-export function replaceAppPermissions(
+export function getUserPermissions(userId: number): Permission[] {
+	return getDb()
+		.prepare(
+			`SELECT id, user_id as userId, resource, action, scope, effect, createdAt
+			 FROM user_permissions WHERE user_id = ? ORDER BY resource, action, scope`
+		)
+		.all(userId) as unknown as Permission[];
+}
+
+export function replaceUserPermissions(
 	userId: number,
-	permissions: Array<{
-		action: AppPermissionAction;
-		scope: string | null;
-		effect: PermissionEffect;
-	}>
-): AppPermission[] {
+	permissions: Pick<Permission, "resource" | "action" | "scope" | "effect">[]
+): Permission[] {
 	const database = getDb();
 	return runInTransaction(database, () => {
-		database
-			.prepare("DELETE FROM user_permissions WHERE user_id = ? AND resource = 'apps'")
-			.run(userId);
+		database.prepare("DELETE FROM user_permissions WHERE user_id = ?").run(userId);
 		const insert = database.prepare(
 			`INSERT INTO user_permissions (user_id, resource, action, scope, effect)
-			 VALUES (?, 'apps', ?, ?, ?)`
+			 VALUES (?, ?, ?, ?, ?)`
 		);
 		for (const permission of permissions) {
-			insert.run(userId, permission.action, permission.scope, permission.effect);
+			insert.run(
+				userId,
+				permission.resource,
+				permission.action,
+				permission.scope,
+				permission.effect
+			);
 		}
-		return getAppPermissions(userId);
+		return getUserPermissions(userId);
 	});
 }
 

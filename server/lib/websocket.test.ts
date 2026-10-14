@@ -18,6 +18,7 @@ const capturedEventListener = vi.hoisted(() => {
 
 vi.mock("./auth.js", () => ({
 	verifyToken: vi.fn(),
+	canAccessApp: vi.fn(() => true),
 }));
 
 vi.mock("./apps.js", () => ({
@@ -68,7 +69,7 @@ vi.mock("ws", () => {
 	};
 });
 
-import { verifyToken } from "./auth.js";
+import { canAccessApp, verifyToken } from "./auth.js";
 import { isValidAppName } from "./apps.js";
 import { logger } from "./logger.js";
 import { setupLogStreaming } from "./websocket.js";
@@ -87,6 +88,7 @@ function makeSocket(): net.Socket {
 // Helper: create a minimal mock IncomingMessage
 function makeReq(url: string, cookieHeader?: string): http.IncomingMessage {
 	const req = new EventEmitter() as unknown as http.IncomingMessage;
+	Object.assign(req, { user: { authenticated: true, userId: 1, role: "admin" } });
 	(req as unknown as { url: string }).url = url;
 	(req as unknown as { headers: Record<string, string> }).headers = {
 		host: "localhost",
@@ -126,6 +128,8 @@ describe("setupLogStreaming", () => {
 		vi.mocked(isValidAppName).mockReturnValue(true);
 		vi.mocked(verifyToken).mockReturnValue({
 			authenticated: true,
+			userId: 1,
+			role: "admin",
 			username: "admin",
 		});
 
@@ -181,6 +185,18 @@ describe("setupLogStreaming", () => {
 				Buffer.alloc(0)
 			);
 			expect(mockWss.handleUpgrade).toHaveBeenCalled();
+		});
+
+		it("rejects logs when app read permission is denied", () => {
+			vi.mocked(canAccessApp).mockReturnValueOnce(false);
+			const socket = makeSocket();
+			upgradeHandler(
+				makeReq("/api/apps/private/logs/stream", "session=valid-token"),
+				socket,
+				Buffer.alloc(0)
+			);
+			expect(socket.write).toHaveBeenCalledWith("HTTP/1.1 403 Forbidden\r\n\r\n");
+			expect(mockWss.handleUpgrade).not.toHaveBeenCalled();
 		});
 	});
 
@@ -594,5 +610,8 @@ describe("event stream endpoint", () => {
 		capturedListener(testEvent);
 
 		expect(mockWs.send).toHaveBeenCalledWith(JSON.stringify(testEvent));
+		vi.mocked(canAccessApp).mockReturnValueOnce(false);
+		capturedListener({ ...testEvent, appName: "private-app" });
+		expect(mockWs.send).toHaveBeenCalledTimes(1);
 	});
 });

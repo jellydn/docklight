@@ -15,7 +15,7 @@ import {
 import { alertBannerClass } from "@/lib/status-styles.js";
 
 export function Databases() {
-	const { canModify } = useAuth();
+	const { canAccess, canAccessSome, canModifyApp } = useAuth();
 	const { execute: streamAction } = useStreamingAction();
 	const queryClient = useQueryClient();
 
@@ -253,7 +253,7 @@ export function Databases() {
 			)}
 
 			{/* Create Database Form */}
-			{canModify && (
+			{canAccessSome("databases", "create") && (
 				<div className="bg-card rounded-lg border border-border p-6 mb-6">
 					<h2 className="text-lg font-semibold mb-4">Create New Database</h2>
 					<div className="flex flex-col sm:flex-row gap-2">
@@ -281,7 +281,12 @@ export function Databases() {
 						<button
 							type="button"
 							onClick={handleCreateDatabase}
-							disabled={!newDbPlugin || !newDbName || createDbSubmitting}
+							disabled={
+								!newDbPlugin ||
+								!newDbName ||
+								createDbSubmitting ||
+								!canAccess("databases", "create", newDbName)
+							}
 							className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded-md hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 						>
 							Create
@@ -327,7 +332,7 @@ export function Databases() {
 												{db.linkedApps.map((app) => (
 													<li key={app} className="flex items-center justify-between py-1">
 														<span>{app}</span>
-														{canModify && (
+														{canAccess("databases", "update", db.name) && canModifyApp(app) && (
 															<button
 																type="button"
 																onClick={() => handleUnlinkDatabase(db.name, app)}
@@ -356,58 +361,65 @@ export function Databases() {
 									</div>
 
 									{/* Link App Form */}
-									{canModify && apps.length > 0 && (
-										<div className="mt-4 pt-4 border-t border-border">
-											<div className="flex flex-col sm:flex-row gap-2">
-												<span className="text-sm font-medium text-foreground self-center">
-													Link App:
-												</span>
-												<select
-													value={linkDbName === db.name ? linkAppName : ""}
-													onChange={(e) => {
-														if (linkDbName !== db.name) setLinkAlias("");
-														setLinkDbName(db.name);
-														setLinkAppName(e.target.value);
-													}}
-													className="flex-1 border border-border rounded-md px-3 py-2 text-sm"
-													aria-label="Link app selector"
-												>
-													<option value="">Select app</option>
-													{apps
-														.filter((app) => !db.linkedApps.includes(app.name.toLowerCase()))
-														.map((app) => (
-															<option key={app.name} value={app.name}>
-																{app.name}
-															</option>
-														))}
-												</select>
-												<input
-													type="text"
-													placeholder="Env alias (optional)"
-													value={linkDbName === db.name ? linkAlias : ""}
-													onChange={(e) => {
-														if (linkDbName !== db.name) setLinkAppName("");
-														setLinkDbName(db.name);
-														setLinkAlias(e.target.value);
-													}}
-													aria-label="Environment alias"
-													className="border border-border rounded-md px-3 py-2 text-sm w-full sm:w-40"
-													title="Custom environment variable name (e.g. BLUE_DATABASE). Appends _URL automatically."
-												/>
-												<button
-													type="button"
-													onClick={handleLinkDatabase}
-													disabled={linkAppName === "" || linkDbName !== db.name || linkSubmitting}
-													className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded-md hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-												>
-													Link
-												</button>
+									{canAccess("databases", "update", db.name) &&
+										apps.some((app) => canModifyApp(app.name)) && (
+											<div className="mt-4 pt-4 border-t border-border">
+												<div className="flex flex-col sm:flex-row gap-2">
+													<span className="text-sm font-medium text-foreground self-center">
+														Link App:
+													</span>
+													<select
+														value={linkDbName === db.name ? linkAppName : ""}
+														onChange={(e) => {
+															if (linkDbName !== db.name) setLinkAlias("");
+															setLinkDbName(db.name);
+															setLinkAppName(e.target.value);
+														}}
+														className="flex-1 border border-border rounded-md px-3 py-2 text-sm"
+														aria-label="Link app selector"
+													>
+														<option value="">Select app</option>
+														{apps
+															.filter(
+																(app) =>
+																	canModifyApp(app.name) &&
+																	!db.linkedApps.includes(app.name.toLowerCase())
+															)
+															.map((app) => (
+																<option key={app.name} value={app.name}>
+																	{app.name}
+																</option>
+															))}
+													</select>
+													<input
+														type="text"
+														placeholder="Env alias (optional)"
+														value={linkDbName === db.name ? linkAlias : ""}
+														onChange={(e) => {
+															if (linkDbName !== db.name) setLinkAppName("");
+															setLinkDbName(db.name);
+															setLinkAlias(e.target.value);
+														}}
+														aria-label="Environment alias"
+														className="border border-border rounded-md px-3 py-2 text-sm w-full sm:w-40"
+														title="Custom environment variable name (e.g. BLUE_DATABASE). Appends _URL automatically."
+													/>
+													<button
+														type="button"
+														onClick={handleLinkDatabase}
+														disabled={
+															linkAppName === "" || linkDbName !== db.name || linkSubmitting
+														}
+														className="bg-tertiary text-tertiary-foreground px-4 py-2 rounded-md hover:bg-tertiary/90 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+													>
+														Link
+													</button>
+												</div>
 											</div>
-										</div>
-									)}
+										)}
 
 									{/* Destroy Database Button */}
-									{canModify && (
+									{canAccess("databases", "delete", db.name) && (
 										<div className="mt-4 pt-4 border-t border-border">
 											<button
 												type="button"

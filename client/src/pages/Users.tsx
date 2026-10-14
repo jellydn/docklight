@@ -5,7 +5,8 @@ import { apiFetch } from "../lib/api.js";
 import { queryClient } from "../lib/query-client.js";
 import { queryKeys } from "../lib/query-keys.js";
 import { UserSchema, type User, type UserRole } from "../lib/schemas.js";
-import { AppPermissionsEditor } from "@/components/AppPermissionsEditor.js";
+import { PermissionsEditor } from "@/components/PermissionsEditor.js";
+import { useAuth } from "@/contexts/auth-context.js";
 
 const UsersArraySchema = z.array(UserSchema);
 
@@ -25,6 +26,7 @@ const getRoleBadge = (role: UserRole) => {
 };
 
 export function Users() {
+	const { role, canAccess, canAccessSome } = useAuth();
 	const {
 		data: users,
 		isLoading,
@@ -122,7 +124,8 @@ export function Users() {
 
 	const handleEditSave = async (id: number) => {
 		setEditError("");
-		const body: { role?: UserRole; password?: string; email?: string } = { role: editRole };
+		const body: { role?: UserRole; password?: string; email?: string } =
+			role === "admin" ? { role: editRole } : {};
 		if (editEmail.trim()) body.email = editEmail.trim();
 		if (!editEmail.trim() && editId !== null) body.email = "";
 		if (editPassword) body.password = editPassword;
@@ -150,81 +153,84 @@ export function Users() {
 			<h1 className="text-2xl font-bold mb-6">User Management</h1>
 
 			{/* Create user form */}
-			<div className="bg-card rounded-lg border border-border p-6 mb-6">
-				<h2 className="text-lg font-semibold mb-4">Add User</h2>
-				<form onSubmit={handleCreate} className="flex flex-col gap-3">
-					<div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-						<div>
-							<label htmlFor="new-username" className="block text-sm font-medium mb-1">
-								Username
-							</label>
-							<input
-								id="new-username"
-								type="text"
-								value={newUsername}
-								onChange={(e) => setNewUsername(e.target.value)}
-								className="w-full px-3 py-2 border border-border rounded-md text-sm"
-								required
-								autoComplete="off"
-							/>
+			{canAccessSome("users", "create") && (
+				<div className="bg-card rounded-lg border border-border p-6 mb-6">
+					<h2 className="text-lg font-semibold mb-4">Add User</h2>
+					<form onSubmit={handleCreate} className="flex flex-col gap-3">
+						<div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+							<div>
+								<label htmlFor="new-username" className="block text-sm font-medium mb-1">
+									Username
+								</label>
+								<input
+									id="new-username"
+									type="text"
+									value={newUsername}
+									onChange={(e) => setNewUsername(e.target.value)}
+									className="w-full px-3 py-2 border border-border rounded-md text-sm"
+									required
+									autoComplete="off"
+								/>
+							</div>
+							<div>
+								<label htmlFor="new-email" className="block text-sm font-medium mb-1">
+									Email
+								</label>
+								<input
+									id="new-email"
+									type="email"
+									value={newEmail}
+									onChange={(e) => setNewEmail(e.target.value)}
+									className="w-full px-3 py-2 border border-border rounded-md text-sm"
+									autoComplete="email"
+									placeholder="you@example.com"
+								/>
+							</div>
+							<div>
+								<label htmlFor="new-password" className="block text-sm font-medium mb-1">
+									Password
+								</label>
+								<input
+									id="new-password"
+									type="password"
+									value={newPassword}
+									onChange={(e) => setNewPassword(e.target.value)}
+									className="w-full px-3 py-2 border border-border rounded-md text-sm"
+									required
+									autoComplete="new-password"
+								/>
+							</div>
+							<div>
+								<label htmlFor="new-role" className="block text-sm font-medium mb-1">
+									Role
+								</label>
+								<select
+									id="new-role"
+									value={newRole}
+									onChange={(e) => setNewRole(e.target.value as UserRole)}
+									className="w-full px-3 py-2 border border-border rounded-md text-sm"
+								>
+									{ROLES.filter((r) => role === "admin" || r !== "admin").map((r) => (
+										<option key={r} value={r}>
+											{r}
+										</option>
+									))}
+								</select>
+							</div>
 						</div>
+						{createError && <p className="text-red-600 text-sm">{createError}</p>}
 						<div>
-							<label htmlFor="new-email" className="block text-sm font-medium mb-1">
-								Email
-							</label>
-							<input
-								id="new-email"
-								type="email"
-								value={newEmail}
-								onChange={(e) => setNewEmail(e.target.value)}
-								className="w-full px-3 py-2 border border-border rounded-md text-sm"
-								autoComplete="email"
-								placeholder="you@example.com"
-							/>
-						</div>
-						<div>
-							<label htmlFor="new-password" className="block text-sm font-medium mb-1">
-								Password
-							</label>
-							<input
-								id="new-password"
-								type="password"
-								value={newPassword}
-								onChange={(e) => setNewPassword(e.target.value)}
-								className="w-full px-3 py-2 border border-border rounded-md text-sm"
-								required
-								autoComplete="new-password"
-							/>
-						</div>
-						<div>
-							<label htmlFor="new-role" className="block text-sm font-medium mb-1">
-								Role
-							</label>
-							<select
-								id="new-role"
-								value={newRole}
-								onChange={(e) => setNewRole(e.target.value as UserRole)}
-								className="w-full px-3 py-2 border border-border rounded-md text-sm"
+							<button
+								type="submit"
+								disabled={!canAccess("users", "create", newUsername)}
+								className="px-4 py-2 bg-tertiary text-tertiary-foreground rounded-md hover:bg-tertiary/90 text-sm"
 							>
-								{ROLES.map((r) => (
-									<option key={r} value={r}>
-										{r}
-									</option>
-								))}
-							</select>
+								Add User
+							</button>
 						</div>
-					</div>
-					{createError && <p className="text-red-600 text-sm">{createError}</p>}
-					<div>
-						<button
-							type="submit"
-							className="px-4 py-2 bg-tertiary text-tertiary-foreground rounded-md hover:bg-tertiary/90 text-sm"
-						>
-							Add User
-						</button>
-					</div>
-				</form>
-			</div>
+					</form>
+				</div>
+			)}
 
 			{/* Users list */}
 			<div className="bg-card rounded-lg border border-border overflow-hidden">
@@ -265,7 +271,7 @@ export function Users() {
 											)}
 										</td>
 										<td className="px-6 py-3 whitespace-nowrap">
-											{editId === user.id ? (
+											{editId === user.id && role === "admin" ? (
 												<select
 													value={editRole}
 													onChange={(e) => setEditRole(e.target.value as UserRole)}
@@ -317,11 +323,15 @@ export function Users() {
 													<button
 														type="button"
 														onClick={() => startEdit(user)}
+														disabled={
+															!canAccess("users", "update", user.username) ||
+															(role !== "admin" && user.role === "admin")
+														}
 														className="px-3 py-1 bg-muted rounded-md text-xs hover:bg-accent"
 													>
 														Edit
 													</button>
-													{user.role !== "admin" && (
+													{role === "admin" && user.role !== "admin" && (
 														<button
 															type="button"
 															onClick={() => setPermissionsUser(user)}
@@ -333,6 +343,10 @@ export function Users() {
 													<button
 														type="button"
 														onClick={() => handleDelete(user.id, user.username)}
+														disabled={
+															!canAccess("users", "delete", user.username) ||
+															(role !== "admin" && user.role === "admin")
+														}
 														className="px-3 py-1 bg-destructive/10 text-destructive rounded text-xs hover:bg-destructive/20"
 													>
 														Delete
@@ -352,10 +366,7 @@ export function Users() {
 							</tbody>
 						</table>
 						{permissionsUser && (
-							<AppPermissionsEditor
-								user={permissionsUser}
-								onClose={() => setPermissionsUser(null)}
-							/>
+							<PermissionsEditor user={permissionsUser} onClose={() => setPermissionsUser(null)} />
 						)}
 					</div>
 				)}

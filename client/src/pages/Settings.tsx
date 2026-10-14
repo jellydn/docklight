@@ -5,10 +5,13 @@ import { apiFetch } from "@/lib/api.js";
 import { queryClient } from "@/lib/query-client.js";
 import { queryKeys } from "@/lib/query-keys.js";
 import { ServerSettingsSchema, type ServerSettings } from "@/lib/schemas.js";
+import { useAuth } from "@/contexts/auth-context.js";
 
 const LOG_LEVELS = ["fatal", "error", "warn", "info", "debug", "trace"];
 
 export function Settings(): JSX.Element {
+	const { canAccess } = useAuth();
+	const canUpdate = canAccess("config", "update");
 	const { execute: streamAction } = useStreamingAction();
 	const {
 		data: settings,
@@ -104,107 +107,114 @@ export function Settings(): JSX.Element {
 				<p className="text-muted-foreground">Loading…</p>
 			) : (
 				<form onSubmit={handleSubmit}>
-					<div className="bg-card rounded-lg border border-border p-6 mb-6">
-						<h2 className="text-lg font-semibold mb-4">Dokku SSH Connection</h2>
+					{!canUpdate && (
 						<p className="text-sm text-muted-foreground mb-4">
-							Settings saved here take effect immediately without a server restart.
+							You have read-only access to these settings.
 						</p>
-						<div className="flex flex-col gap-4">
-							<div>
-								<label htmlFor="ssh-target" className="block text-sm font-medium mb-1">
-									SSH Target
-								</label>
-								<input
-									id="ssh-target"
-									type="text"
-									value={form.dokkuSshTarget}
-									onChange={(e) =>
-										handleFieldChange((f) => ({
-											...f,
-											dokkuSshTarget: e.target.value,
-										}))
-									}
-									className="w-full px-3 py-2 border border-border rounded-md text-sm font-mono"
-									placeholder="dokku@your-server-ip"
-									autoComplete="off"
-								/>
-								<p className="text-xs text-muted-foreground/60 mt-1">
-									Format: user@host or user@host:port (e.g. dokku@192.168.1.1)
-								</p>
-							</div>
-							<div>
-								<label htmlFor="ssh-key-path" className="block text-sm font-medium mb-1">
-									SSH Key Path
-								</label>
-								<input
-									id="ssh-key-path"
-									type="text"
-									value={form.dokkuSshKeyPath}
-									onChange={(e) =>
-										handleFieldChange((f) => ({
-											...f,
-											dokkuSshKeyPath: e.target.value,
-										}))
-									}
-									className="w-full px-3 py-2 border border-border rounded-md text-sm font-mono"
-									placeholder="/app/.ssh/id_ed25519"
-									autoComplete="off"
-								/>
-								<p className="text-xs text-muted-foreground/60 mt-1">
-									Absolute path to the SSH private key file on the server
-								</p>
-							</div>
-							<div className="flex items-center gap-3 mt-2">
-								<button
-									type="button"
-									onClick={handleTestConnection}
-									disabled={!form.dokkuSshTarget || testingConnection}
-									className="px-4 py-2 bg-muted text-foreground rounded-md hover:bg-accent text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-								>
-									{testingConnection ? "Testing..." : "Test Connection"}
-								</button>
-							</div>
-						</div>
-					</div>
-
-					<div className="bg-card rounded-lg border border-border p-6 mb-6">
-						<h2 className="text-lg font-semibold mb-4">Logging</h2>
-						<div>
-							<label htmlFor="log-level" className="block text-sm font-medium mb-1">
-								Log Level
-							</label>
-							<select
-								id="log-level"
-								value={form.logLevel}
-								onChange={(e) =>
-									handleFieldChange((f) => ({
-										...f,
-										logLevel: e.target.value as ServerSettings["logLevel"],
-									}))
-								}
-								className="w-full sm:w-48 px-3 py-2 border border-border rounded-md text-sm"
-							>
-								{LOG_LEVELS.map((level) => (
-									<option key={level} value={level}>
-										{level}
-									</option>
-								))}
-							</select>
-						</div>
-					</div>
-
-					{saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
-					{saveSuccess && (
-						<p className="text-green-600 text-sm mb-4">Settings saved successfully.</p>
 					)}
+					<fieldset disabled={!canUpdate}>
+						<div className="bg-card rounded-lg border border-border p-6 mb-6">
+							<h2 className="text-lg font-semibold mb-4">Dokku SSH Connection</h2>
+							<p className="text-sm text-muted-foreground mb-4">
+								Settings saved here take effect immediately without a server restart.
+							</p>
+							<div className="flex flex-col gap-4">
+								<div>
+									<label htmlFor="ssh-target" className="block text-sm font-medium mb-1">
+										SSH Target
+									</label>
+									<input
+										id="ssh-target"
+										type="text"
+										value={form.dokkuSshTarget}
+										onChange={(e) =>
+											handleFieldChange((f) => ({
+												...f,
+												dokkuSshTarget: e.target.value,
+											}))
+										}
+										className="w-full px-3 py-2 border border-border rounded-md text-sm font-mono"
+										placeholder="dokku@your-server-ip"
+										autoComplete="off"
+									/>
+									<p className="text-xs text-muted-foreground/60 mt-1">
+										Format: user@host or user@host:port (e.g. dokku@192.168.1.1)
+									</p>
+								</div>
+								<div>
+									<label htmlFor="ssh-key-path" className="block text-sm font-medium mb-1">
+										SSH Key Path
+									</label>
+									<input
+										id="ssh-key-path"
+										type="text"
+										value={form.dokkuSshKeyPath}
+										onChange={(e) =>
+											handleFieldChange((f) => ({
+												...f,
+												dokkuSshKeyPath: e.target.value,
+											}))
+										}
+										className="w-full px-3 py-2 border border-border rounded-md text-sm font-mono"
+										placeholder="/app/.ssh/id_ed25519"
+										autoComplete="off"
+									/>
+									<p className="text-xs text-muted-foreground/60 mt-1">
+										Absolute path to the SSH private key file on the server
+									</p>
+								</div>
+								<div className="flex items-center gap-3 mt-2">
+									<button
+										type="button"
+										onClick={handleTestConnection}
+										disabled={!form.dokkuSshTarget || testingConnection}
+										className="px-4 py-2 bg-muted text-foreground rounded-md hover:bg-accent text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+									>
+										{testingConnection ? "Testing..." : "Test Connection"}
+									</button>
+								</div>
+							</div>
+						</div>
 
-					<button
-						type="submit"
-						disabled={updateMutation.isPending}
-						className="px-4 py-2 bg-tertiary text-tertiary-foreground rounded-md hover:bg-tertiary/90 text-sm disabled:opacity-50"
-					>
-						{updateMutation.isPending ? "Saving…" : "Save Settings"}
-					</button>
+						<div className="bg-card rounded-lg border border-border p-6 mb-6">
+							<h2 className="text-lg font-semibold mb-4">Logging</h2>
+							<div>
+								<label htmlFor="log-level" className="block text-sm font-medium mb-1">
+									Log Level
+								</label>
+								<select
+									id="log-level"
+									value={form.logLevel}
+									onChange={(e) =>
+										handleFieldChange((f) => ({
+											...f,
+											logLevel: e.target.value as ServerSettings["logLevel"],
+										}))
+									}
+									className="w-full sm:w-48 px-3 py-2 border border-border rounded-md text-sm"
+								>
+									{LOG_LEVELS.map((level) => (
+										<option key={level} value={level}>
+											{level}
+										</option>
+									))}
+								</select>
+							</div>
+						</div>
+
+						{saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
+						{saveSuccess && (
+							<p className="text-green-600 text-sm mb-4">Settings saved successfully.</p>
+						)}
+
+						<button
+							type="submit"
+							disabled={updateMutation.isPending}
+							className="px-4 py-2 bg-tertiary text-tertiary-foreground rounded-md hover:bg-tertiary/90 text-sm disabled:opacity-50"
+						>
+							{updateMutation.isPending ? "Saving…" : "Save Settings"}
+						</button>
+					</fieldset>
 				</form>
 			)}
 		</div>

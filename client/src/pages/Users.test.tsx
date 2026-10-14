@@ -10,6 +10,10 @@ vi.mock("../lib/api.js", () => ({
 	apiFetch: vi.fn(),
 }));
 
+vi.mock("@/contexts/auth-context.js", () => ({
+	useAuth: () => ({ role: "admin", canAccess: () => true, canAccessSome: () => true }),
+}));
+
 const mockUsers: User[] = [
 	{
 		id: 1,

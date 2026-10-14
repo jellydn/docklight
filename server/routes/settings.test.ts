@@ -11,6 +11,7 @@ vi.mock("../lib/server-config.js", () => ({
 vi.mock("../lib/auth.js", () => ({
 	authMiddleware: vi.fn((_req: Request, _res: Response, next: NextFunction) => next()),
 	requireAdmin: vi.fn((_req: Request, _res: Response, next: NextFunction) => next()),
+	requireResourcePermission: () => (_req: Request, _res: Response, next: NextFunction) => next(),
 }));
 
 vi.mock("../lib/rate-limiter.js", () => ({

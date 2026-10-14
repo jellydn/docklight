@@ -1,10 +1,10 @@
 import { randomBytes, scrypt, timingSafeEqual, createHash } from "crypto";
 import jwt from "jsonwebtoken";
 import { promisify } from "util";
-import { findAppPermission, getUserByEmail, getUserByUsername } from "./db.js";
+import { findAppPermission, findPermission, getUserByEmail, getUserByUsername } from "./db.js";
 import { logger } from "./logger.js";
 import type { NextFunction, Request, Response } from "express";
-import type { AppPermissionAction, UserRole } from "./db.js";
+import type { AppPermissionAction, PermissionResource, UserRole } from "./db.js";
 
 const scryptAsync = promisify(scrypt);
 
@@ -167,6 +167,38 @@ export function requireRole(
 
 export const requireAdmin = requireRole("admin");
 export const requireOperator = requireRole("admin", "operator");
+
+export function canAccessResource(
+	user: JWTPayload | undefined,
+	resource: PermissionResource,
+	action: AppPermissionAction,
+	scope: string | null,
+	fallbackRoles: UserRole[]
+): boolean {
+	if (!user?.role || user.userId === undefined) return false;
+	if (user.role === "admin") return true;
+	const permission = findPermission(user.userId, resource, action, scope);
+	return permission === "allow" || (permission === null && fallbackRoles.includes(user.role));
+}
+
+export function requireResourcePermission(
+	resource: PermissionResource,
+	action: AppPermissionAction,
+	getScope: (req: Request) => string | null,
+	fallbackRoles: UserRole[]
+): (req: Request, res: Response, next: NextFunction) => void {
+	return (req, res, next): void => {
+		if (!req.user?.role || req.user.userId === undefined) {
+			res.status(401).json({ error: "Unauthorized" });
+			return;
+		}
+		if (!canAccessResource(req.user, resource, action, getScope(req), fallbackRoles)) {
+			res.status(403).json({ error: "Forbidden" });
+			return;
+		}
+		next();
+	};
+}
 
 export function requireAppPermission(
 	action: AppPermissionAction,

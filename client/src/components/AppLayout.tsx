@@ -67,7 +67,7 @@ export function AppLayout() {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
-	const { role, username } = useAuth();
+	const { role, username, canAccessSome } = useAuth();
 
 	useAppEvents();
 
@@ -130,8 +130,14 @@ export function AppLayout() {
 							onClick={closeSidebar}
 						/>
 					))}
-					{role === "admin" &&
-						adminNavItems.map(({ to, label, icon }) => (
+					{adminNavItems
+						.filter(
+							({ to }) =>
+								role === "admin" ||
+								(to === "/users" && canAccessSome("users", "read")) ||
+								(to === "/settings" && canAccessSome("config", "read"))
+						)
+						.map(({ to, label, icon }) => (
 							<SidebarLink
 								key={to}
 								to={to}
