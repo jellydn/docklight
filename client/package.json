@@ -45,7 +45,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.0",
     "@vitest/ui": "^5.0.0",
-    "happy-dom": "^20.7.0",
+    "happy-dom": "^21.0.0",
     "jsdom": "^30.0.0",
     "oxlint": "^1.83.0",
     "postcss": "^8.5.6",
